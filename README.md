@@ -14,7 +14,7 @@ Grab `P1_R1.fastq.gz` and `P1_R2.fastq.gz` in the Roslin github repo `https://gi
 
 1. FASTA GRCh37 Reference Genome and indexes (.amb, .ann, .fai, etc) from `/ifs/depot/pi/resources/genomes/GRCh37/fasta/b37.*`
 
-2. Sequence group interval data `/ifs/depot/pi/resources/targets/IMPACT468_b37/targets_list/picard_targets_interval_list`
+2. Sequence group interval data `/ifs/depot/pi/resources/targets/IMPACT468_b37/targets_list/picard_targets.interval_list`
 
 3. VCF files and indexes (don't forget to grab the .idx)
 ```
@@ -25,7 +25,7 @@ Grab `P1_R1.fastq.gz` and `P1_R2.fastq.gz` in the Roslin github repo `https://gi
 
 **Alignment**
 
-1. bwa-mem (quay.io/collaboratory/dockstore-tool-bwa-mem:1.0); bwa-mem also needs a `read_group` parameter, or else downstream steps don't work; you can use `"@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"`
+1. bwa-mem (quay.io/collaboratory/dockstore-tool-bwa-mem:1.0). bwa-mem also needs a `read_group` parameter, or else downstream steps don't work; you can use `"@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"`
 
 2. samtools view (quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0); this converts bwa-mem sam output to bam
 
