@@ -23,6 +23,11 @@ Grab `P1_R1.fastq.gz` and `P1_R2.fastq.gz` in the Roslin github repo `https://gi
 /ifs/depot/pi/resources/genomes/GRCh37/dbsnp/138/dbsnp_138.b37.vcf*
 ```
 
+*On AWS*
+
+Example data in `s3:testbucketcmo/example_data/fastq/`.
+Reference files in `s3:testbucketcmo/ref/grch37/`.
+
 **Alignment**
 
 1. bwa-mem (quay.io/collaboratory/dockstore-tool-bwa-mem:1.0). bwa-mem also needs a `read_group` parameter, or else downstream steps don't work; you can use `"@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"`
