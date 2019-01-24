@@ -34,10 +34,10 @@ Reference files in `s3:testbucketcmo/ref/grch37/`.
 
 2. samtools view (quay.io/cancercollaboratory/dockstore-tool-samtools-view:1.0); this converts bwa-mem sam output to bam
 
-3. picard SortSam (roslin/pipeline-picard:2.9)
+3. samtools sort (quay.io/cancercollaboratory/dockstore-tool-samtools-sort:1.0)
 
 **Mark Duplicates**
-1. picard MarkDuplicates (roslin/pipeline-picard:2.9)
+1. gatk MarkDuplicates (broadinstitute/gatk:latest)
 
 **BQSR**
 1. gatk BuildBamIndex (broadinstitute/gatk:latest)
