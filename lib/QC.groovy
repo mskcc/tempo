@@ -1,3 +1,11 @@
+// unchanged from Sarek
+
+// METHODS
+// bcftools(vcf) --- 'bcftools stats'
+// samtoolsStats(bam) --- 'samtools stats'
+
+
+
 class QC {
 // Run bcftools on vcf file
   static def bcftools(vcf) {
