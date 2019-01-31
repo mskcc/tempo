@@ -3,40 +3,13 @@
 /*
 kate: syntax groovy; space-indent on; indent-width 2;
 ================================================================================
-=                                 S  A  R  E  K                                =
-================================================================================
- New Germline (+ Somatic) Analysis Workflow. Started March 2016.
---------------------------------------------------------------------------------
- @Authors
- Sebastian DiLorenzo <sebastian.dilorenzo@bils.se> [@Sebastian-D]
- Jesper Eisfeldt <jesper.eisfeldt@scilifelab.se> [@J35P312]
- Phil Ewels <phil.ewels@scilifelab.se> [@ewels]
- Maxime Garcia <maxime.garcia@scilifelab.se> [@MaxUlysse]
- Szilveszter Juhos <szilveszter.juhos@scilifelab.se> [@szilvajuhos]
- Max Käller <max.kaller@scilifelab.se> [@gulfshores]
- Malin Larsson <malin.larsson@scilifelab.se> [@malinlarsson]
- Marcel Martin <marcel.martin@scilifelab.se> [@marcelm]
- Björn Nystedt <bjorn.nystedt@scilifelab.se> [@bjornnystedt]
- Pall Olason <pall.olason@scilifelab.se> [@pallolason]
---------------------------------------------------------------------------------
- @Homepage
- http://opensource.scilifelab.se/projects/sarek/
---------------------------------------------------------------------------------
- @Documentation
- https://github.com/SciLifeLab/Sarek/README.md
 --------------------------------------------------------------------------------
  Processes overview
- - RunFastQC - Run FastQC for QC on fastq files
  - MapReads - Map reads with BWA
- - MergeBams - Merge BAMs if multilane samples
  - MarkDuplicates - Mark Duplicates with GATK4
  - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
  - RecalibrateBam - Recalibrate Bam with PrintReads
- - RunSamtoolsStats - Run Samtools stats on recalibrated BAM files
- - RunBamQCmapped - Run qualimap BamQC on mapped BAM files
- - RunBamQCrecalibrated - Run qualimap BamQC on recalibrated BAM files
-================================================================================
-=                           C O N F I G U R A T I O N                          =
+--------------------------------------------------------------------------------
 ================================================================================
 */
 
