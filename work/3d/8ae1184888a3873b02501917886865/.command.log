@@ -1,0 +1,6 @@
+[M::bwa_idx_load_from_disk] read 0 ALT contigs
+[W::bseq_read] the 1st file has fewer sequences.
+[W::bseq_read] the 1st file has fewer sequences.
+[main] Version: 0.7.12-r1039
+[main] CMD: bwa mem -R @RG\tID:Seq01p\tSM:Seq01\tPL:ILLUMINA\tPI:330 -t 10 -M human_g1k_v37_decoy.small.fasta input.1 C09D_T_111207.6.ACCAACTG_R1_xxx.fastq.gz
+[main] Real time: 0.031 sec; CPU: 0.000 sec

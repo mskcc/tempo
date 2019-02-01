@@ -21,8 +21,6 @@
 
 
 
-if (!SarekUtils.isAllowedParams(params)) exit 1, "params unknown, see --help for more information"
-
 
 // tsvPath 
 
@@ -156,7 +154,7 @@ process MarkDuplicates {
   """
 }
 
-// --java-options ${params.markdup_java_options} \
+
 
 duplicateMarkedBams = duplicateMarkedBams.map {
     idPatient, bam, bai, idRun ->

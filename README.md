@@ -2,7 +2,7 @@
 
 ## Nextflow framework
 
-Basic Nextflow pipline for processing WES/WGS FASTQs into analysis-ready BAMs using GATK4 best practices. The following pipeline should do:
+Basic Nextflow pipeline for processing WES/WGS FASTQs into analysis-ready BAMs using GATK4 best practices. The following pipeline should do:
 
 * alignment via `bwa mem`
 * `MarkDuplicates` to indentify duplicate reads for QC with GATK4
@@ -19,7 +19,7 @@ https://github.com/SciLifeLab/Sarek
 Clone the repository as `vaporwareNextflow`:
 
 ```
-git clone -b feature/nextflow https://github.com/mskcc/vaporwarevaporwareNextflow
+git clone -b feature/nextflow https://github.com/mskcc/vaporware.git  vaporwareNextflow
 cd vaporwareNextflow
 ```
 
@@ -33,7 +33,7 @@ curl -s https://get.nextflow.io | bash
 
 This installs Nextflow within the `vaporwareNextflow` (the current directory)
 
-###### Using the pipeline
+#### Using the pipeline
 
 ```
 nextflow run SciLifeLab/Sarek/main.nf --sample samples_germline.tsv

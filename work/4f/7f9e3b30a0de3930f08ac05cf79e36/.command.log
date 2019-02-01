@@ -1,0 +1,46 @@
+23:02:20.198 INFO  NativeLibraryLoader - Loading libgkl_compression.so from jar:file:/gatk/gatk-package-4.1.0.0-local.jar!/com/intel/gkl/native/libgkl_compression.so
+23:02:21.989 INFO  BaseRecalibrator - ------------------------------------------------------------
+23:02:21.990 INFO  BaseRecalibrator - The Genome Analysis Toolkit (GATK) v4.1.0.0
+23:02:21.990 INFO  BaseRecalibrator - For support and documentation go to https://software.broadinstitute.org/gatk/
+23:02:21.991 INFO  BaseRecalibrator - Executing as ?@8df90da9717b on Linux v4.9.125-linuxkit amd64
+23:02:21.991 INFO  BaseRecalibrator - Java runtime: OpenJDK 64-Bit Server VM v1.8.0_191-8u191-b12-0ubuntu0.16.04.1-b12
+23:02:21.991 INFO  BaseRecalibrator - Start Date/Time: February 1, 2019 11:02:20 PM UTC
+23:02:21.991 INFO  BaseRecalibrator - ------------------------------------------------------------
+23:02:21.991 INFO  BaseRecalibrator - ------------------------------------------------------------
+23:02:21.992 INFO  BaseRecalibrator - HTSJDK Version: 2.18.2
+23:02:21.993 INFO  BaseRecalibrator - Picard Version: 2.18.25
+23:02:21.993 INFO  BaseRecalibrator - HTSJDK Defaults.COMPRESSION_LEVEL : 2
+23:02:21.993 INFO  BaseRecalibrator - HTSJDK Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS : false
+23:02:21.993 INFO  BaseRecalibrator - HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS : true
+23:02:21.993 INFO  BaseRecalibrator - HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE : false
+23:02:21.993 INFO  BaseRecalibrator - Deflater: IntelDeflater
+23:02:21.993 INFO  BaseRecalibrator - Inflater: IntelInflater
+23:02:21.993 INFO  BaseRecalibrator - GCS max retries/reopens: 20
+23:02:21.994 INFO  BaseRecalibrator - Requester pays: disabled
+23:02:21.994 INFO  BaseRecalibrator - Initializing engine
+23:02:22.486 INFO  FeatureManager - Using codec VCFCodec to read file file:///Users/biederse/vaporware/work/4f/7f9e3b30a0de3930f08ac05cf79e36/dbsnp_138.b37.small.vcf
+23:02:22.534 INFO  FeatureManager - Using codec VCFCodec to read file file:///Users/biederse/vaporware/work/4f/7f9e3b30a0de3930f08ac05cf79e36/Mills_and_1000G_gold_standard.indels.b37.small.vcf
+23:02:22.560 INFO  FeatureManager - Using codec VCFCodec to read file file:///Users/biederse/vaporware/work/4f/7f9e3b30a0de3930f08ac05cf79e36/1000G_phase1.indels.b37.small.vcf
+23:02:22.616 INFO  IntervalArgumentCollection - Processing 804955 bp from intervals
+23:02:22.623 INFO  BaseRecalibrator - Done initializing engine
+23:02:22.631 INFO  BaseRecalibrationEngine - The covariates being used here: 
+23:02:22.631 INFO  BaseRecalibrationEngine - 	ReadGroupCovariate
+23:02:22.631 INFO  BaseRecalibrationEngine - 	QualityScoreCovariate
+23:02:22.631 INFO  BaseRecalibrationEngine - 	ContextCovariate
+23:02:22.631 INFO  BaseRecalibrationEngine - 	CycleCovariate
+23:02:22.652 INFO  ProgressMeter - Starting traversal
+23:02:22.653 INFO  ProgressMeter -        Current Locus  Elapsed Minutes       Reads Processed     Reads/Minute
+23:02:22.703 INFO  BaseRecalibrator - No reads filtered by: ((((((MappingQualityNotZeroReadFilter AND MappingQualityAvailableReadFilter) AND MappedReadFilter) AND NotSecondaryAlignmentReadFilter) AND NotDuplicateReadFilter) AND PassesVendorQualityCheckReadFilter) AND WellformedReadFilter)
+23:02:22.705 INFO  ProgressMeter -             unmapped              0.0                     0              0.0
+23:02:22.705 INFO  ProgressMeter - Traversal complete. Processed 0 total reads in 0.0 minutes.
+23:02:22.706 INFO  BaseRecalibrator - Calculating quantized quality scores...
+23:02:22.731 INFO  BaseRecalibrator - Writing recalibration report...
+23:02:23.047 INFO  BaseRecalibrator - ...done!
+23:02:23.048 INFO  BaseRecalibrator - Shutting down engine
+[February 1, 2019 11:02:23 PM UTC] org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator done. Elapsed time: 0.05 minutes.
+Runtime.totalMemory()=449314816
+Tool returned:
+0
+Using GATK jar /gatk/gatk-package-4.1.0.0-local.jar
+Running:
+    java -Dsamjdk.use_async_io_read_samtools=false -Dsamjdk.use_async_io_write_samtools=true -Dsamjdk.use_async_io_write_tribble=false -Dsamjdk.compression_level=2 -jar /gatk/gatk-package-4.1.0.0-local.jar BaseRecalibrator --input 9876T_XX.md.bam --output 9876T.recal.table --tmp-dir /tmp -R human_g1k_v37_decoy.small.fasta -L small.intervals --known-sites dbsnp_138.b37.small.vcf --known-sites Mills_and_1000G_gold_standard.indels.b37.small.vcf --known-sites 1000G_phase1.indels.b37.small.vcf --verbosity INFO
