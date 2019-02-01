@@ -1,0 +1,33 @@
+23:04:10.352 INFO  NativeLibraryLoader - Loading libgkl_compression.so from jar:file:/gatk/gatk-package-4.1.0.0-local.jar!/com/intel/gkl/native/libgkl_compression.so
+23:04:12.153 INFO  ApplyBQSR - ------------------------------------------------------------
+23:04:12.154 INFO  ApplyBQSR - The Genome Analysis Toolkit (GATK) v4.1.0.0
+23:04:12.154 INFO  ApplyBQSR - For support and documentation go to https://software.broadinstitute.org/gatk/
+23:04:12.155 INFO  ApplyBQSR - Executing as ?@8ed695482597 on Linux v4.9.125-linuxkit amd64
+23:04:12.155 INFO  ApplyBQSR - Java runtime: OpenJDK 64-Bit Server VM v1.8.0_191-8u191-b12-0ubuntu0.16.04.1-b12
+23:04:12.155 INFO  ApplyBQSR - Start Date/Time: February 1, 2019 11:04:10 PM UTC
+23:04:12.155 INFO  ApplyBQSR - ------------------------------------------------------------
+23:04:12.155 INFO  ApplyBQSR - ------------------------------------------------------------
+23:04:12.156 INFO  ApplyBQSR - HTSJDK Version: 2.18.2
+23:04:12.156 INFO  ApplyBQSR - Picard Version: 2.18.25
+23:04:12.156 INFO  ApplyBQSR - HTSJDK Defaults.COMPRESSION_LEVEL : 2
+23:04:12.156 INFO  ApplyBQSR - HTSJDK Defaults.USE_ASYNC_IO_READ_FOR_SAMTOOLS : false
+23:04:12.157 INFO  ApplyBQSR - HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS : true
+23:04:12.157 INFO  ApplyBQSR - HTSJDK Defaults.USE_ASYNC_IO_WRITE_FOR_TRIBBLE : false
+23:04:12.157 INFO  ApplyBQSR - Deflater: IntelDeflater
+23:04:12.157 INFO  ApplyBQSR - Inflater: IntelInflater
+23:04:12.157 INFO  ApplyBQSR - GCS max retries/reopens: 20
+23:04:12.157 INFO  ApplyBQSR - Requester pays: disabled
+23:04:12.157 INFO  ApplyBQSR - Initializing engine
+23:04:12.640 INFO  IntervalArgumentCollection - Processing 804955 bp from intervals
+23:04:12.645 INFO  ApplyBQSR - Done initializing engine
+23:04:12.675 INFO  ProgressMeter - Starting traversal
+23:04:12.676 INFO  ProgressMeter -        Current Locus  Elapsed Minutes       Reads Processed     Reads/Minute
+23:04:12.753 INFO  ApplyBQSR - No reads filtered by: WellformedReadFilter
+23:04:12.755 INFO  ProgressMeter -             unmapped              0.0                     0              0.0
+23:04:12.755 INFO  ProgressMeter - Traversal complete. Processed 0 total reads in 0.0 minutes.
+23:04:12.782 INFO  ApplyBQSR - Shutting down engine
+[February 1, 2019 11:04:12 PM UTC] org.broadinstitute.hellbender.tools.walkers.bqsr.ApplyBQSR done. Elapsed time: 0.04 minutes.
+Runtime.totalMemory()=604504064
+Using GATK jar /gatk/gatk-package-4.1.0.0-local.jar
+Running:
+    java -Dsamjdk.use_async_io_read_samtools=false -Dsamjdk.use_async_io_write_samtools=true -Dsamjdk.use_async_io_write_tribble=false -Dsamjdk.compression_level=2 -jar /gatk/gatk-package-4.1.0.0-local.jar ApplyBQSR -R human_g1k_v37_decoy.small.fasta --input 1234N_XX.md.bam --output 1234N.recal.bam -L small.intervals --create-output-bam-index true --bqsr-recal-file 1234N.recal.table

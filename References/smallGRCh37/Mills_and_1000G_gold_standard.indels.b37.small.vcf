@@ -1,0 +1,206 @@
+##fileformat=VCFv4.1
+##ApplyRecalibration="analysis_type=ApplyRecalibration input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr1.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr1.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr2.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr2.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr3.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr3.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr4.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr4.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr5.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr5.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr6.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr6.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr7.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr7.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr8.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr8.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr9.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr9.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr10.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr10.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr11.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr11.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr12.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr12.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr13.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr13.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr14.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr14.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr15.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr15.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr16.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr16.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr17.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr17.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr18.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr18.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr19.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr19.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr20.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr20.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr21.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr21.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chr22.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chr22.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/combined.phase1.chrX.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/calls/combined.phase1.chrX.raw.indels.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false recal_file=/humgen/gsa-hpprojects/dev/delangel/Phase1Calls/20110808VQSRConsensus/VQSRData/mills100_mG8_pb0.03_QD_FS_HS_RP_IC.recal tranches_file=/humgen/gsa-hpprojects/dev/delangel/Phase1Calls/20110808VQSRConsensus/VQSRData/mills100_mG8_pb0.03_QD_FS_HS_RP_IC.tranches out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub ts_filter_level=95.0 ignore_filter=null mode=INDEL"
+##CombineVariants="analysis_type=CombineVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=[10:126450001-126600000] excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/AFR/AFR.phase1.chr10.844.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/ASN/ASN.phase1.chr10.844.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/AMR/AMR.phase1.chr10.844.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/EUR/EUR.phase1.chr10.844.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/AFR.admix/AFR.admix.phase1.chr10.844.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/ASN.admix/ASN.admix.phase1.chr10.844.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/AMR.admix/AMR.admix.phase1.chr10.844.raw.indels.vcf, /humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v1/calls/chr10/EUR.admix/EUR.admix.phase1.chr10.844.raw.indels.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub genotypemergeoption=PRIORITIZE filteredrecordsmergetype=KEEP_IF_ANY_UNFILTERED rod_priority_list=AFR.admix,AMR.admix,EUR.admix,ASN.admix,AFR,AMR,EUR,ASN printComplexMerges=false filteredAreUncalled=false minimalVCF=false setKey=set assumeIdenticalSamples=false minimumN=1 masterMerge=false mergeInfoWithMaxAC=true"
+##FILTER=<ID=PASS,Description="Truth sensitivity tranche level at VQS Lod < -381.3592">
+##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
+##FORMAT=<ID=GQ,Number=1,Type=Float,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FilterLiftedVariants="analysis_type=FilterLiftedVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta rodBind=[/broad/shptmp/delangel/tmp/0.101786952306615.sorted.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP Membership">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Filtered Depth">
+##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
+##INFO=<ID=Dels,Number=1,Type=Float,Description="Fraction of Reads Containing Spanning Deletions">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=HRun,Number=1,Type=Integer,Description="Largest Contiguous Homopolymer Run of Variant Allele In Either Direction">
+##INFO=<ID=HaplotypeScore,Number=1,Type=Float,Description="Consistency of the site with at most two segregating haplotypes">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SB,Number=1,Type=Float,Description="Strand Bias">
+##INFO=<ID=SetBI,Number=0,Type=Flag,Description="SetBI Membership">
+##INFO=<ID=SetCG,Number=0,Type=Flag,Description="SetCG Membership">
+##INFO=<ID=SetDI,Number=0,Type=Flag,Description="SetDI Membership">
+##INFO=<ID=SetML,Number=0,Type=Flag,Description="SetML Membership">
+##INFO=<ID=SetOX,Number=0,Type=Flag,Description="SetOX Membership">
+##INFO=<ID=SetSI,Number=0,Type=Flag,Description="SetSI Membership">
+##INFO=<ID=VQSLOD,Number=1,Type=Float,Description="Log odds ratio of being a true variant versus being false under the trained gaussian mixture model">
+##INFO=<ID=culprit,Number=1,Type=String,Description="The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
+##INFO=<ID=set,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
+##LeftAlignVariants="analysis_type=LeftAlignVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub"
+##UnifiedGenotyper="analysis_type=UnifiedGenotyper input_file=[/broad/shptmp/temporary_1000G_bams/chr1/CEU.phase1.chr1.31.cleaned.bam, /broad/shptmp/temporary_1000G_bams/chr1/FIN.phase1.chr1.31.cleaned.bam, /broad/shptmp/temporary_1000G_bams/chr1/GBR.phase1.chr1.31.cleaned.bam, /broad/shptmp/temporary_1000G_bams/chr1/IBS.phase1.chr1.31.cleaned.bam, /broad/shptmp/temporary_1000G_bams/chr1/TSI.phase1.chr1.31.cleaned.bam] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=[1:90150001-90300000] excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[/humgen/1kg/processing/production_wgs_phase1/consensus_wgs/indel_v3/tmp/calls/chr1/alleles.chr1.602.raw.indels.vcf, /humgen/gsa-hpprojects/GATK/data/dbsnp_132_b37.leftAligned.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=50 baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false genotype_likelihoods_model=INDEL p_nonref_model=EXACT heterozygosity=0.0010 pcr_error_rate=1.0E-4 genotyping_mode=GENOTYPE_GIVEN_ALLELES output_mode=EMIT_VARIANTS_ONLY standard_min_confidence_threshold_for_calling=4.0 standard_min_confidence_threshold_for_emitting=4.0 computeSLOD=false assume_single_sample_reads=null abort_at_too_much_coverage=-1 min_base_quality_score=17 min_mapping_quality_score=20 max_deletion_fraction=0.05 min_indel_count_for_genotyping=5 indel_heterozygosity=1.25E-4 indelGapContinuationPenalty=10.0 indelGapOpenPenalty=45.0 indelHaplotypeSize=80 doContextDependentGapPenalties=true getGapPenaltiesFromData=false indel_recal_file=indel.recal_data.csv indelDebug=false dovit=false GSA_PRODUCTION_ONLY=false exactCalculation=LINEAR_EXPERIMENTAL ignoreSNPAlleles=true output_all_callable_bases=false genotype=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub debug_file=null metrics_file=null annotation=[]"
+##ValidateVariants="analysis_type=ValidateVariants input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[./indel_hg19_051711_leftAligned_collapsed.vcf] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub validationType=ALL doNotValidateFilteredRecords=false warnOnErrors=true"
+##VariantAnnotator="analysis_type=VariantAnnotator input_file=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta rodBind=[] nonDeterministicRandomSeed=false downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 num_cpu_threads=null num_io_threads=null num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false logging_level=INFO log_to_file=null help=false variant=(RodBinding name=variant source=/humgen/gsa-hpprojects/dev/rpoplin/goldStandardIndel/ALL.vqsr.raw.consensus.vcf) snpEffFile=(RodBinding name= source=UNBOUND) dbsnp=(RodBinding name= source=UNBOUND) comp=[(RodBinding name=SetBI source=/humgen/gsa-hpprojects/dev/rpoplin/goldStandardIndel/ALL.wgs.bi.20101123.leftAlignedPassingIndelsCollapsed.sites.vcf), (RodBinding name=SetDI source=/humgen/gsa-hpprojects/dev/rpoplin/goldStandardIndel/ALL.wgs.dindel.20101123.leftAlignedPassingIndels.sites.vcf), (RodBinding name=SetOX source=/humgen/gsa-hpprojects/dev/rpoplin/goldStandardIndel/ALL.wgs.oxford.20101123.leftAlignedPassingIndelsCollapsed.sites.vcf), (RodBinding name=SetSI source=/humgen/gsa-hpprojects/dev/rpoplin/goldStandardIndel/ALL.wgs.si.20101123.LeftAlignedPassingIndels.sites.vcf), (RodBinding name=SetCG source=/humgen/gsa-hpprojects/dev/rpoplin/goldStandardIndel/Complete_Public_Genomes_69genomes_all.vcf), (RodBinding name=SetML source=/humgen/gsa-hpprojects/GATK/data/Comparisons/Validated/Mills_Devine_Indels_2011/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.vcf)] resource=[] out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub annotation=[] excludeAnnotation=[] group=[] expression=[] useAllAnnotations=false list=false vcfContainsOnlyIndels=false MendelViolationGenotypeQualityThreshold=0.0 requireStrictAlleleMatch=true filter_mismatching_base_and_quals=false"
+##VariantsToVCF="analysis_type=VariantsToVCF input_file=[] sample_metadata=[] read_buffer_size=null phone_home=STANDARD read_filter=[] intervals=null excludeIntervals=null reference_sequence=/humgen/1kg/reference/human_b36_both.fasta rodBind=[./indel_hg18_051711_sorted.txt] rodToIntervalTrackName=null BTI_merge_rule=UNION nonDeterministicRandomSeed=false DBSNP=null downsampling_type=null downsample_to_fraction=null downsample_to_coverage=null baq=OFF baqGapOpenPenalty=40.0 performanceLog=null useOriginalQualities=false defaultBaseQualities=-1 validation_strictness=SILENT unsafe=null num_threads=1 interval_merging=ALL read_group_black_list=null processingTracker=null restartProcessingTracker=false processingTrackerStatusFile=null processingTrackerID=-1 allow_intervals_with_unindexed_bam=false disable_experimental_low_memory_sharding=false logging_level=INFO log_to_file=null help=false out=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub NO_HEADER=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VCFWriterStub sample=null fixRef=true"
+##contig=<ID=1,length=200000,assembly=b37>
+##contig=<ID=2,length=200000,assembly=b37>
+##contig=<ID=3,length=200000,assembly=b37>
+##contig=<ID=8,length=1282,assembly=b37>
+##contig=<ID=11,length=3696,assembly=b37>
+##contig=<ID=X,length=200000,assembly=b37>
+##reference=file:///humgen/1kg/reference/human_g1k_v37.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	
+1	55249	.	C	CTATGG	6160.83	PASS	set=Intersect1000GMinusBI
+1	87114	.	CT	C	666.86	PASS	set=Intersect1000GAll
+2	12320	.	AAT	A	11728.75	PASS	set=Intersect1000GMinusSI
+2	25112	.	CTTA	C	1034.85	PASS	set=Intersect1000GAll
+2	26583	.	AAGAAAAT	A	671.43	PASS	set=Intersect1000GAll
+2	29006	rs113219647	T	TGTTC	34615.77	PASS	set=Intersect1000GMinusOX
+2	33159	.	T	TATATAG	4763.68	PASS	set=Intersect1000GAll
+2	34930	rs111287613	TC	T	8642.51	PASS	set=MillsAlleleMatch1000G
+2	41254	.	T	TA	502.93	PASS	set=Intersect1000GMinusOX
+2	43829	.	C	CT	256.62	PASS	set=Intersect1000GMinusSI
+2	53020	.	G	GA	7067.90	PASS	set=Intersect1000GAll
+2	53820	1504103	GA	G	.	PASS	set=MillsDoubleCenter
+2	55007	rs112988427	CAG	C	17779.08	PASS	set=Intersect1000GMinusSI
+2	55089	rs112554875	A	AC	12525.87	PASS	set=Intersect1000GMinusOX
+2	55847	.	AG	A	357.58	PASS	set=Intersect1000GAll
+2	56430	rs34980522	AT	A	9219.51	PASS	set=Intersect1000GAll
+2	59961	.	G	GC	472.31	PASS	set=Intersect1000GAll
+2	65026	.	AGTT	A	1164.24	PASS	set=Intersect1000GAll
+2	67535	.	G	GT	9915.52	PASS	set=Intersect1000GAll
+2	74627	.	TTG	T	149.79	PASS	set=Intersect1000GAll
+2	89249	rs59677770	CACAA	C	1995.98	PASS	set=Intersect1000GAll
+2	91072	.	G	GC	325.07	PASS	set=Intersect1000GAll
+2	94358	.	GA	G	93.12	PASS	set=Intersect1000GMinusDI
+2	100451	.	AAAGAC	A	1784.81	PASS	set=Intersect1000GAll
+2	110982	1726195	AT	A	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	112084	2189851	CTT	C	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	112630	1421234	A	AT,ATT	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	114169	1492929	CA	C	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	121237	.	TA	T	14367.78	PASS	set=Intersect1000GMinusSI
+2	122452	.	GATGA	G	35.71	PASS	set=Intersect1000GMinusDI
+2	125177	rs5828763,226225	A	AT	67866.86	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+2	125971	.	GAA	G	234.52	PASS	set=Intersect1000GAll
+2	127625	1492569	TAA	T,TAAA	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	128667	.	CA	C	110.97	PASS	set=Intersect1000GAll
+2	130921	1437206	CTTTTTT	C,CTTTT	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	131523	1475103	TA	T	.	PASS	set=MillsDoubleCenter-MillsTracesUnknown
+2	132039	1153344,rs35505422	AT	A	76013.45	PASS	set=MillsCenterUnknown-MillsAlleleMatch1000G-MillsTracesUnknown
+2	135472	.	CAT	C	515.70	PASS	set=Intersect1000GAll
+2	140480	.	TTGAATC	T	2411.02	PASS	set=Intersect1000GMinusSI
+2	141043	1644091,rs36189367	TAAGA	T	25362.58	PASS	set=MillsCenterUnknown-MillsAlleleMatch1000G-MillsTracesUnknown
+2	145523	rs11461239	G	GT	15020.33	PASS	set=MillsAlleleMatch1000G
+2	145965	1194882	GTT	G	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	146858	rs61498111	TC	T	31153.04	PASS	set=Intersect1000GMinusSI
+2	149023	rs77022368	TA	T	20640.72	PASS	set=Intersect1000GAll
+2	150989	.	GGT	G	136.26	PASS	set=Intersect1000GAll
+2	151473	1289692	G	GT	.	PASS	set=MillsCenterUnknown-MillsTraces3Plus
+2	157593	rs59520384	G	GT	552.16	PASS	set=Intersect1000GMinusSI
+2	158706	.	CCT	C	172.71	PASS	set=Intersect1000GAll
+2	159176	.	CTCTT	C	1330.10	PASS	set=Intersect1000GAll
+2	159215	.	CTCTG	C	4214.89	PASS	set=Intersect1000GMinusSI
+2	159532	rs75494879	GAA	G	31236.79	PASS	set=Intersect1000GMinusSI
+2	166751	.	CA	C	282.71	PASS	set=Intersect1000GAll
+2	167322	.	TC	T	1040.44	PASS	set=Intersect1000GAll
+2	170670	.	TTTAA	T	2523.18	PASS	set=Intersect1000GMinusSI
+2	171895	rs58684961	TAGAAG	T	2718.54	PASS	set=Intersect1000GMinusSI
+2	172899	.	CA	C	288.56	PASS	set=Intersect1000GAll
+2	173860	rs58696452	CCTT	C	14162.36	PASS	set=Intersect1000GMinusBI
+2	178425	rs111444774	CAT	C	6438.13	PASS	set=Intersect1000GAll
+2	178487	rs56041037	CCAA	C	27231.33	PASS	set=Intersect1000GMinusSI
+2	181031	rs112869153	G	GT	13467.54	PASS	set=Intersect1000GAll
+2	184203	rs34285864	T	TA	1085.04	PASS	set=MillsAlleleMatch1000G
+2	184770	rs34465700	GGT	G	37163.87	PASS	set=Intersect1000GMinusSI
+2	189314	.	C	CAT	1049.16	PASS	set=Intersect1000GAll
+2	190325	.	CAT	C	517.21	PASS	set=Intersect1000GAll
+2	192416	134341	C	CT	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+2	192950	.	AAAG	A	5370.37	PASS	set=Intersect1000GAll
+2	197426	1195640	A	ATGCAGAGCGTTTTCTCTTCTGTCTTCCTTTCTGGCCTCT	.	PASS	set=MillsTraces3Plus
+3	63992	1138677	TAATAAATA	T,TAATA,TAATAAATAAATA,TAATAAATAAATAAATA	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+3	68434	.	TAGAC	T	22423.94	PASS	set=Intersect1000GMinusSI
+3	73064	1179258,rs67611292	C	CT	15424.81	PASS	set=MillsCenterUnknown-MillsAlleleMatch1000G-MillsTracesUnknown
+3	73318	rs11399606	C	CA	8043.14	PASS	set=MillsAlleleMatch1000G
+3	74811	rs78762950	CG	C	27878.25	PASS	set=MillsAlleleMatch1000G
+3	74917	rs58076854,1139987	GT	G	6307.75	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+3	75428	.	C	CA	4491.71	PASS	set=Intersect1000GAll
+3	77765	rs72571113	TCC	T	29720.70	PASS	set=Intersect1000GMinusSI
+3	79838	rs71058746	GT	G	16286.03	PASS	set=Intersect1000GMinusSI
+3	80108	.	C	CA	979.46	PASS	set=Intersect1000GAll
+3	81261	rs11364552	CG	C	2971.24	PASS	set=MillsAlleleMatch1000G
+3	86038	2194865	A	AGT,AGTGTGT	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+3	87750	1161817,rs35693328	GC	G	26764.60	PASS	set=MillsTraces3Plus-MillsAlleleMatch1000G
+3	89767	rs71058747	A	AT	5839.35	PASS	set=Intersect1000GMinusSI
+3	91404	.	TAGAAG	T	3834.46	PASS	set=Intersect1000GAll
+3	91785	2646390	CTT	C,CT	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+3	92693	rs35263682	G	GTT,GTTT	11585.66	PASS	set=MillsAlleleMatch1000G
+3	94712	1343083,rs58137795	CTG	C	7625.88	PASS	set=MillsCenterUnknown-MillsAlleleMatch1000G-MillsTracesUnknown
+3	94861	.	TAAA	T	2931	PASS	set=Intersect1000GMinusOX
+3	95726	1350909	TA	T	.	PASS	set=MillsTracesUnknown
+3	98390	.	AAAT	A	284.17	PASS	set=Intersect1000GAll
+3	99153	.	ACTAT	A	6278.51	PASS	set=Intersect1000GMinusSI
+3	110087	rs59825515	TCCTC	T	2454.60	PASS	set=Intersect1000GAll
+3	110659	rs11350761	AG	A	13880.75	PASS	set=Intersect1000GMinusSI
+3	111271	366720	TA	T	.	PASS	set=MillsDoubleCenter
+3	118575	.	T	TTCC	195.94	PASS	set=Intersect1000GMinusBI
+3	120238	.	CT	C	571.52	PASS	set=Intersect1000GAll
+3	125298	.	T	TA	908.88	PASS	set=Intersect1000GMinusSI
+3	129662	.	TC	T	7185.92	PASS	set=Intersect1000GAll
+3	130382	rs78583535,1854248	C	CGGAAGGAGAAAGTT	118597.73	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+3	134385	rs113589857	T	TC	2649.61	PASS	set=Intersect1000GAll
+3	137224	rs35142111,1168175	CT	C	74624.57	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+3	137233	rs35150999	AC	A	53350.46	PASS	set=Intersect1000GMinusSI
+3	142605	.	CT	C	15158.06	PASS	set=Intersect1000GAll
+3	146480	1345072	G	GA	.	PASS	set=MillsDoubleCenter-MillsTracesUnknown
+3	146503	rs34005851,693876	AT	A	23351.16	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+3	146619	.	GA	G	1029.80	PASS	set=Intersect1000GAll
+3	147804	rs3079216,84725	CCTT	C	23477.61	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+3	148023	rs34809867	TTATCTC	T	7663.37	PASS	set=Intersect1000GAll
+3	148121	rs34063496,84726	CCTT	C	24702.76	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+3	154407	rs112477063	GA	G	1981.41	PASS	set=Intersect1000GAll
+3	157051	rs35035329	G	GA	1973.51	PASS	set=MillsAlleleMatch1000G
+3	157160	.	A	ATAG	6976.59	PASS	set=Intersect1000GAll
+3	159101	rs11378562	G	GA	3029.59	PASS	set=MillsAlleleMatch1000G
+3	164294	.	TA	T	1626.12	PASS	set=Intersect1000GAll
+3	165581	rs11392951,508419	T	TG	103030.89	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+3	168102	.	GC	G	176.82	PASS	set=Intersect1000GAll
+3	170442	.	C	CT	41533.21	PASS	set=Intersect1000GAll
+3	170636	rs11343183	GA	G	2082.68	PASS	set=Intersect1000GAll
+3	171506	1295840	GCTTTCTTTCTTTCTTT	G,GCTTTCTTTCTTT	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+3	171531	rs60659727	CTTTT	C	26470.05	PASS	set=MillsAlleleMatch1000G
+3	172709	1354450	GTT	G,GT	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+3	175045	rs10663253	A	AGT	22296.20	PASS	set=Intersect1000GMinusSI
+3	179029	rs10538998	ATG	A	37376.66	PASS	set=Intersect1000GMinusSI
+3	183057	rs71058756	A	AT	52235.74	PASS	set=MillsAlleleMatch1000G
+3	186766	1350949	GA	G	.	PASS	set=MillsCenterUnknown-MillsTracesUnknown
+3	187060	.	AT	A	1058.02	PASS	set=Intersect1000GAll
+3	192685	.	CT	C	360.34	PASS	set=Intersect1000GAll
+3	194423	rs71670067	ATG	A	42354.90	PASS	set=MillsAlleleMatch1000G
+3	197355	1336487	C	CA,CAA	.	PASS	set=MillsTracesUnknown
+3	199683	.	CAT	C	588.51	PASS	set=Intersect1000GAll
+X	91725	961790	CA	C	.	PASS	set=MillsDoubleCenter
+X	155386	985528	GA	G	24338.47	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+X	156820	1316893	A	ATTGG	.	PASS	set=MillsDoubleCenter
+X	159916	972681	AC	A	.	PASS	set=MillsDoubleCenter-MillsTracesUnknown
+X	161563	1724788	A	AC	.	PASS	set=MillsDoubleCenter
+X	163390	1931913	C	CA	.	PASS	set=MillsDoubleCenter
+X	163392	552397	A	AC	.	PASS	set=MillsDoubleCenter-MillsTracesUnknown
+X	164177	2005481	CTG	C	1002.91	PASS	set=MillsAlleleMatch1000G-MillsTracesUnknown
+X	166029	986213	A	AC	.	PASS	set=MillsDoubleCenter
+X	166032	986214	GT	G	.	PASS	set=MillsDoubleCenter
+X	166234	988225	AG	A	54203.56	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+X	173062	2547331	T	TC	37937.97	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+X	173067	1248201	G	GA	.	PASS	set=MillsDoubleCenter
+X	173473	.	TG	T	1829.89	PASS	set=MillsAlleleMatch1000G
+X	174261	2743102	G	GCTCCATTGCA	9787.60	PASS	set=MillsCenterUnknown-MillsAlleleMatch1000G-MillsTracesUnknown
+X	177382	962663	CAA	C	.	PASS	set=MillsTracesUnknown
+X	177486	365085	AG	A	15970.38	PASS	set=MillsAlleleMatch1000G-MillsDoubleCenter
+X	179161	2226540	AG	A	19574.68	PASS	set=MillsTraces3Plus-MillsAlleleMatch1000G
+X	183997	772940	AT	A	.	PASS	set=MillsTracesUnknown
+X	184277	1982953	T	TC	7737.79	PASS	set=MillsAlleleMatch1000G-MillsTracesUnknown
+X	187961	1844028	AGAGGAAGGGCCGGGCACTGTGACCTCCGGTCCTCATGACCCTGGGGCACAG	A	.	PASS	set=MillsDoubleCenter
+X	192963	.	CCA	C	8456.74	PASS	set=MillsAlleleMatch1000G
+X	194160	.	G	GA	1142.74	PASS	set=MillsAlleleMatch1000G
+X	194601	.	CA	C	1832.58	PASS	set=MillsAlleleMatch1000G
+X	194754	1527589	A	AG	.	PASS	set=MillsTraces3Plus
+X	194767	1527590	GA	G	.	PASS	set=MillsTraces3Plus
+X	194850	981055	G	GA	14077.14	PASS	set=MillsCenterUnknown-MillsAlleleMatch1000G-MillsTracesUnknown
+X	198018	1687105	ACCCTCCCTCCCTCCCT	A	26230.51	PASS	set=MillsCenterUnknown-MillsAlleleMatch1000G-MillsTracesUnknown
