@@ -36,7 +36,7 @@ This installs Nextflow within the `vaporwareNextflow` (the current directory)
 #### Using the pipeline
 
 ```
-nextflow run SciLifeLab/Sarek/main.nf --sample samples_germline.tsv
+nextflow run main_align_markDups_BaseRecal.nf -resume --samples test_samples.tsv
 ```
 
 more details here...
