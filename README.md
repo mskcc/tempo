@@ -60,6 +60,7 @@ nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profil
 nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile singularity
 ```
 
+NOTE: You must set `NXF_SINGULARITY_CACHEDIR`, e.g. `export NXF_SINGULARITY_CACHEDIR="/ifs/work/taylorlab/biederstedte/Sarek-test"`. See here for details: https://www.nextflow.io/docs/latest/config.html
 
 
 ### Bioinformatic Components for the Main Script
