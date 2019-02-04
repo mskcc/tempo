@@ -33,7 +33,7 @@ curl -s https://get.nextflow.io | bash
 
 This installs Nextflow within the `vaporwareNextflow` (the current directory)
 
-#### Using the pipeline
+#### Executing the scripts
 
 ```
 nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv
@@ -41,8 +41,59 @@ nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv
 
 The parameter `--samples` can be set manually in the `nextflow.config`
 
+#### Local, Docker, and Singularity
 
-### Bioinformatic Components
+Users should modify the `nextflow.config` script directly. I haven't spent time making the scripts very user-frriendly, as this is not the point of the current exercise. One could create a flag with allows default behavior (e.g. run locally), use Docker containers, or use Singularity. (This is one of the reason that Sarek uses conditionals to access multiple `*.config` files---with `nextflow`, all accessible `*config` files are used.)
+
+* For local use, do the following:
+
+```
+singularity {
+    enabled = false
+}
+
+docker {
+    enabled = false
+    fixOwnership = true   
+    runOptions = "-u \$(id -u):\$(id -g)"
+}
+```
+
+* For Docker use, do the following:
+
+```
+singularity {
+    enabled = false
+}
+
+docker {
+    enabled = true
+    fixOwnership = true   
+    runOptions = "-u \$(id -u):\$(id -g)"
+}
+```
+
+* For Singularity use, do the following:
+
+```
+singularity {
+    enabled = true
+}
+
+docker {
+    enabled = false
+    fixOwnership = true   
+    runOptions = "-u \$(id -u):\$(id -g)"
+}
+```
+
+
+
+### Bioinformatic Components for the Main Script
+
+(Please refer to the README on the master branch. )
+
+For the script `main_align_markDups_BaseRecal.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
 
 * `bwa mem` -- alignment
 
