@@ -12,15 +12,11 @@
  - RecalibrateBam - Recalibrate Bam with PrintReads
 */
 
-
 /*
 ================================================================================
 =                           C O N F I G U R A T I O N                          =
 ================================================================================
 */
-
-
-
 
 // tsvPath 
 
@@ -51,8 +47,6 @@ fastqFiles = extractFastq(tsvFile)
 // The tag directive allows you to associate each process executions with a custom label, 
 // so that it will be easier to identify them in the log file or in the trace execution report.
 
-
-
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
@@ -72,11 +66,6 @@ process AlignReads {
   """
 }
 
-
-
-
-
-
 // ConvertSAMtoBAM - Convert SAM to BAM with samtools, 'samtools view'
 
 process ConvertSAMtoBAM {
@@ -94,10 +83,7 @@ process ConvertSAMtoBAM {
   """
 }
 
-
-
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
-
 // samtools sort
 // setting these parameters as fixed `-m 2G` 
 
@@ -117,8 +103,6 @@ process SortBAM {
 }
 
 // GATK MarkDuplicates
-
-
 
 process MarkDuplicates {
   tag {idPatient + "-" + idSample}
@@ -154,8 +138,6 @@ process MarkDuplicates {
   """
 }
 
-
-
 duplicateMarkedBams = duplicateMarkedBams.map {
     idPatient, bam, bai, idRun ->
     tag = bam.baseName.tokenize('.')[0]
@@ -165,9 +147,7 @@ duplicateMarkedBams = duplicateMarkedBams.map {
     [idPatient, status, idSample, idRun, bam, bai]
 }
 
-
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
-
 
 process CreateRecalibrationTable {
   tag {idPatient + "-" + idSample}
@@ -206,13 +186,10 @@ process CreateRecalibrationTable {
 }
 
 
-
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1, 2, 3])
-
 
 process RecalibrateBam {
   tag {idPatient + "-" + idSample}
-
 
   input:
     set idPatient, status, idSample, idRun, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
@@ -242,10 +219,6 @@ process RecalibrateBam {
   """
 }
 
-
-
-
-
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
@@ -257,8 +230,6 @@ def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
   return file(params."${item}")
 }
-
-
 
 def defineReferenceMap() {
   if (!(params.genome in params.genomes)) exit 1, "Genome ${params.genome} not found in configuration"
@@ -281,7 +252,6 @@ def defineReferenceMap() {
   ]
 }
 
-
 def extractFastq(tsvFile) {
   // Channeling the TSV file containing FASTQ.
   // Format is: "subject gender status sample lane fastq1 fastq2"
@@ -303,5 +273,4 @@ def extractFastq(tsvFile) {
     [idPatient, gender, status, idSample, idRun, fastqFile1, fastqFile2]
   }
 }
-
 
