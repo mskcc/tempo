@@ -43,48 +43,21 @@ The parameter `--samples` can be set manually in the `nextflow.config`
 
 #### Local, Docker, and Singularity
 
-Users should modify the `nextflow.config` script directly. I haven't spent time making the scripts very user-frriendly, as this is not the point of the current exercise. One could create a flag with allows default behavior (e.g. run locally), use Docker containers, or use Singularity. (This is one of the reason that Sarek uses conditionals to access multiple `*.config` files---with `nextflow`, all accessible `*config` files are used.)
 
-* For local use, do the following:
 
-```
-singularity {
-    enabled = false
-}
 
-docker {
-    enabled = false
-    fixOwnership = true   
-    runOptions = "-u \$(id -u):\$(id -g)"
-}
-```
+* The default parameters are for local use
 
 * For Docker use, do the following:
 
 ```
-singularity {
-    enabled = false
-}
-
-docker {
-    enabled = true
-    fixOwnership = true   
-    runOptions = "-u \$(id -u):\$(id -g)"
-}
+nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile docker
 ```
 
 * For Singularity use, do the following:
 
 ```
-singularity {
-    enabled = true
-}
-
-docker {
-    enabled = false
-    fixOwnership = true   
-    runOptions = "-u \$(id -u):\$(id -g)"
-}
+nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile singularity
 ```
 
 
