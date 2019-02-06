@@ -46,7 +46,7 @@ The parameter `--samples` can be set manually in the `nextflow.config`
 
 
 
-##### The default parameters are for local use
+**The default parameters are for local use**
 
 * For Docker use, do the following:
 
@@ -60,7 +60,7 @@ nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profil
 nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile singularity
 ```
 
-*NOTE:* In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. This is not a random subdirectory. 
+**NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. This is not a random subdirectory. 
 
 In order to get this working, use e.g. 
 `export NXF_SINGULARITY_CACHEDIR=$HOME/.singularity`
@@ -72,9 +72,9 @@ NXF_SINGULARITY_CACHEDIR:
 Directory where remote Singularity images are stored. When using a computing cluster it must be a shared folder accessible from all computing nodes.
 ```
 
-##### For submitting via LSF on juno
+**For submitting via LSF on juno**
 
-* Do the following:
+* Do the following for LSF on juno:
 
 ```
 nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile lsf_juno
