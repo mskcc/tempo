@@ -45,8 +45,7 @@ The parameter `--samples` can be set manually in the `nextflow.config`
 
 
 
-
-**The default parameters are for local use**
+The default parameters are for local use WITHOUT containers
 
 * For Docker use, do the following:
 
