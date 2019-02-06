@@ -25,13 +25,13 @@ cd vaporwareNextflow
 
 (You need to use the branch `feature/nextflow` if cloning from master.)
 
-Install `Nextflow` within this subdirectory if the Nextflow executable `nextflow` isn't globallly defined:
+Install `Nextflow` within this subdirectory if the Nextflow executable `nextflow` isn't in your PATH:
 
 ```
 curl -s https://get.nextflow.io | bash 
 ```
 
-This installs Nextflow within the `vaporwareNextflow` (the current directory)
+This installs Nextflow within the `vaporwareNextflow` (the current directory). 
 
 #### Executing the scripts
 
@@ -46,7 +46,7 @@ The parameter `--samples` can be set manually in the `nextflow.config`
 
 
 
-* The default parameters are for local use
+##### The default parameters are for local use
 
 * For Docker use, do the following:
 
@@ -60,7 +60,27 @@ nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profil
 nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile singularity
 ```
 
-NOTE: You must set `NXF_SINGULARITY_CACHEDIR`, e.g. `export NXF_SINGULARITY_CACHEDIR="/ifs/work/taylorlab/biederstedte/Sarek-test"`. See here for details: https://www.nextflow.io/docs/latest/config.html
+*NOTE:* In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. This is not a random subdirectory. 
+
+In order to get this working, use e.g. 
+`export NXF_SINGULARITY_CACHEDIR=$HOME/.singularity`
+
+See here for details: https://www.nextflow.io/docs/latest/config.html
+
+```
+NXF_SINGULARITY_CACHEDIR:
+Directory where remote Singularity images are stored. When using a computing cluster it must be a shared folder accessible from all computing nodes.
+```
+
+##### For submitting via LSF on juno
+
+* Do the following:
+
+```
+nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile lsf_juno
+```
+
+
 
 
 ### Bioinformatic Components for the Main Script
