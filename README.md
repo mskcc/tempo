@@ -36,10 +36,10 @@ This installs Nextflow within the `vaporwareNextflow` (the current directory).
 #### Executing the scripts
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv
+nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv
 ```
 
-The parameter `--samples` can be set manually in the `nextflow.config`
+The parameter `--sample` can be set manually in the `nextflow.config`
 
 #### Local, Docker, and Singularity
 
@@ -50,13 +50,13 @@ The default parameters are for local use WITHOUT containers
 * For Docker use, do the following:
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile docker
+nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv -profile docker
 ```
 
 * For Singularity use, do the following:
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile singularity
+nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv -profile singularity
 ```
 
 **NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. This is not a random subdirectory. 
@@ -76,7 +76,7 @@ Directory where remote Singularity images are stored. When using a computing clu
 * Do the following for LSF on juno:
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --samples test_samples.tsv -profile lsf_juno
+nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv -profile lsf_juno
 ```
 
 
