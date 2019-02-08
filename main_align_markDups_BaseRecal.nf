@@ -53,7 +53,7 @@ process AlignReads {
   tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
 
   input:
-    set idPatient, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastqFiles
+    set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastqFiles
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
