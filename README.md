@@ -19,7 +19,7 @@ https://github.com/SciLifeLab/Sarek
 Clone the repository as `vaporwareNextflow`:
 
 ```
-git clone -b feature/nextflow https://github.com/mskcc/vaporware.git  vaporwareNextflow
+git clone -b  nextflow_evan_awsbatch https://github.com/mskcc/vaporware.git  vaporwareNextflow
 cd vaporwareNextflow
 ```
 
