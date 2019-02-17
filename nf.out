@@ -1,5 +1,0 @@
-N E X T F L O W  ~  version 18.10.1
-Launching `main_align_markDups_BaseRecal.nf` [disturbed_faggin] - revision: f540373d49
-[warm up] executor > awsbatch
-[9a/558b8a] Submitted process > AlignReads (1234-1234N_M2)
-[01/2e43ad] Submitted process > AlignReads (1234-1234N_M1)
