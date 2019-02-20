@@ -98,7 +98,7 @@ process SortBAM {
 
   script:
   """
-  samtools sort -m 2G -@ ${task.cpus} -m 2G -o ${idRun}.sorted.bam ${idRun}.bam
+  samtools sort -m 2G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
   """
 }
 
