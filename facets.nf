@@ -40,13 +40,52 @@ process doSNPPileup {
     set file(facetsVcf), file(facetsVcfIndex) from Channel.value([referenceMap.facetsVcf, referenceMap.facetsVcfIndex])
 
   output:
-    file("${output_filename}") into (SNPPileup)
+    set idTumor, idNormal, file("${output_filename}") into SNPPileup
 
   script:
   output_filename = idTumor + "_" + idNormal + ".snppileup.dat.gz"
   """
   snp-pileup -A -P 50 --gzip "${facetsVcf}" "${output_filename}" "${bamTumor}" "${bamNormal}"
   """
+}
+
+process doFacets {
+
+  publishDir "${ params.outDir }"
+
+  input:
+    set idTumor, idNormal, file("${idTumor}_${idNormal}.snppileup.dat.gz") from SNPPileup
+
+  output:
+    file("*.*") into FacetsOutput
+
+  script:
+  snp_pileup_prefix = idTumor + "_" + idNormal
+  counts_file = "${snp_pileup_prefix}.snppileup.dat.gz"
+  genome_value = "hg19"
+  TAG = "${snp_pileup_prefix}"
+  directory = "."
+  """
+  /usr/bin/facets-suite/doFacets.R \
+  --cval 100 \
+  --snp_nbhd 250 \
+  --ndepth 35 \
+  --min_nhet 25 \
+  --purity_cval 500 \
+  --purity_snp_nbhd 250 \
+  --purity_ndepth 35 \
+  --purity_min_nhet 25 \
+  --genome "${genome_value}" \
+  --counts_file "${counts_file}" \
+  --TAG "${TAG}" \
+  --directory "${directory}" \
+  --R_lib latest \
+  --single_chrom F \
+  --ggplot2 T \
+  --seed 1000 \
+  --tumor_id "${idTumor}"
+  """
+
 }
 
 /*
