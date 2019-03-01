@@ -1,5 +1,3 @@
-# vaporware
-
 ## Nextflow framework
 
 Basic Nextflow pipeline for processing WES/WGS FASTQs into analysis-ready BAMs using GATK4 best practices. The following pipeline should do:
