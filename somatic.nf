@@ -26,13 +26,13 @@ tsvFile = file(tsvPath)
 
 bamFiles = extractBamFiles(tsvFile)
 
+( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka ) = bamFiles.into(4)
+
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
 ================================================================================
 */
-
-( bamsForDelly, bamsForMutect2, bamsForManta ) = bamFiles.into(3)
 
 process dellyCall {
   tag { "DELLYCALL_" + idTumor + "_" + idNormal }
@@ -199,6 +199,55 @@ process runManta {
   """
 }
 
+// Running Strelka Best Practice with Manta indel candidates
+// For easier joining, remaping channels to idTumor, idNormal...
+
+bamsForStrelka = bamsForStrelka.map {
+  idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ->
+  [idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal]
+}.join(mantaToStrelka, by:[0,1,2]).map {
+  idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal, mantaCSI, mantaCSIi ->
+  [idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal, mantaCSI, mantaCSIi]
+}
+
+process runStrelka {
+  tag {"RUNSTRELKA_" + idTumor + "_" + idNormal}
+
+  publishDir "${params.outDir}/VariantCalling/Strelka"
+
+  input:
+    set  idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from bamsForStrelka
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
+
+
+  script:
+  """
+  configureStrelkaSomaticWorkflow.py \
+  --tumor ${bamTumor} \
+  --normal ${bamNormal} \
+  --referenceFasta ${genomeFile} \
+  --indelCandidates ${mantaCSI} \
+  --runDir Strelka
+
+  python Strelka/runWorkflow.py -m local -j ${task.cpus}
+
+  mv Strelka/results/variants/somatic.indels.vcf.gz \
+    Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz
+  mv Strelka/results/variants/somatic.indels.vcf.gz.tbi \
+    Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz.tbi
+  mv Strelka/results/variants/somatic.snvs.vcf.gz \
+    Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz
+  mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
+    Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
+  """
+}
 
 /*
 ================================================================================
