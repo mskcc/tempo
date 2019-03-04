@@ -150,7 +150,6 @@ process runMutect2 {
     -R ${genomeFile}\
     -I ${bamTumor}  -tumor ${idTumor} \
     -I ${bamNormal} -normal ${idNormal} \
-    --af-of-alleles-not-in-resource "0.00003125" \
     -O "${idTumor}_vs_${idNormal}_somatic.vcf"
   """
 }
