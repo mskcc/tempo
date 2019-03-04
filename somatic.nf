@@ -32,12 +32,12 @@ bamFiles = extractBamFiles(tsvFile)
 ================================================================================
 */
 
-( bamsForDelly, bamsForMutect2 ) = bamFiles.into(2) 
+( bamsForDelly, bamsForMutect2, bamsForManta ) = bamFiles.into(3)
 
 process dellyCall {
   tag { "DELLYCALL_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/delly_call"
+  publishDir "${ params.outDir }/VariantCalling/delly_call"
 
   input:
     set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
@@ -92,7 +92,7 @@ process makeSamplesFile {
 process dellyFilter {
   tag { "DELLYFILTER_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/delly_filter"
+  publishDir "${ params.outDir }/VariantCalling/delly_filter"
 
   input:
     set idTumor, idNormal, file("samples.tsv") from sampleTSVFile 
@@ -127,7 +127,7 @@ process dellyFilter {
 process runMutect2 {
   tag {"MUTECT2_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/mutect2"
+  publishDir "${ params.outDir }/VariantCalling/mutect2"
 
   input:
     set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMutect2
@@ -151,6 +151,51 @@ process runMutect2 {
     -I ${bamTumor}  -tumor ${idTumor} \
     -I ${bamNormal} -normal ${idNormal} \
     -O "${idTumor}_vs_${idNormal}_somatic.vcf"
+  """
+}
+
+process runManta {
+  tag {"RUNMANTA_" + idTumor + "_" + idNormal}
+
+  publishDir "${params.outDir}/VariantCalling/Manta"
+
+  input:
+    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
+    set file(genomeFile), file(genomeIndex) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex
+    ])
+
+  output:
+    set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
+    set idNormal, idTumor, file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
+
+  script:
+  """
+  configManta.py \
+  --normalBam ${bamNormal} \
+  --tumorBam ${bamTumor} \
+  --reference ${genomeFile} \
+  --runDir Manta
+
+  python Manta/runWorkflow.py -m local -j ${task.cpus}
+
+  mv Manta/results/variants/candidateSmallIndels.vcf.gz \
+    Manta_${idTumor}_vs_${idNormal}.candidateSmallIndels.vcf.gz
+  mv Manta/results/variants/candidateSmallIndels.vcf.gz.tbi \
+    Manta_${idTumor}_vs_${idNormal}.candidateSmallIndels.vcf.gz.tbi
+  mv Manta/results/variants/candidateSV.vcf.gz \
+    Manta_${idTumor}_vs_${idNormal}.candidateSV.vcf.gz
+  mv Manta/results/variants/candidateSV.vcf.gz.tbi \
+    Manta_${idTumor}_vs_${idNormal}.candidateSV.vcf.gz.tbi
+  mv Manta/results/variants/diploidSV.vcf.gz \
+    Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz
+  mv Manta/results/variants/diploidSV.vcf.gz.tbi \
+    Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz.tbi
+  mv Manta/results/variants/somaticSV.vcf.gz \
+    Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz
+  mv Manta/results/variants/somaticSV.vcf.gz.tbi \
+    Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz.tbi
   """
 }
 
