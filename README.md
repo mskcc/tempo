@@ -157,7 +157,7 @@ Input File columns:
 `"idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
 
 Outputs:
-They are found in `{params.outDir}/VariantCalling/<tool_name>`
+They are found in `${params.outDir}/VariantCalling/<tool_name>`
 
 Variables used in pipeline:
 `genomeFile`: reference fasta
