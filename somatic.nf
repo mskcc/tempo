@@ -26,7 +26,7 @@ tsvFile = file(tsvPath)
 
 bamFiles = extractBamFiles(tsvFile)
 
-( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka ) = bamFiles.into(4)
+( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup ) = bamFiles.into(5)
 
 /*
 ================================================================================
@@ -34,10 +34,12 @@ bamFiles = extractBamFiles(tsvFile)
 ================================================================================
 */
 
+// ---------------------- Run Delly Call and Filter
+
 process dellyCall {
   tag { "DELLYCALL_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/delly_call"
+  publishDir "${params.outDir}/VariantCalling/delly_call"
 
   input:
     set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
@@ -124,6 +126,8 @@ process dellyFilter {
   """
 }
 
+// ---------------------- Run MuTect2 
+
 process runMutect2 {
   tag {"MUTECT2_" + idTumor + "_" + idNormal }
 
@@ -154,6 +158,8 @@ process runMutect2 {
   """
 }
 
+// ---------------------- Run Manta and Strelka
+
 process runManta {
   tag {"RUNMANTA_" + idTumor + "_" + idNormal}
 
@@ -168,7 +174,7 @@ process runManta {
 
   output:
     set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
-    set idNormal, idTumor, file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
+    set file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   script:
   """
@@ -199,24 +205,14 @@ process runManta {
   """
 }
 
-// Running Strelka Best Practice with Manta indel candidates
-// For easier joining, remaping channels to idTumor, idNormal...
-
-bamsForStrelka = bamsForStrelka.map {
-  idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ->
-  [idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal]
-}.join(mantaToStrelka, by:[0,1,2]).map {
-  idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal, mantaCSI, mantaCSIi ->
-  [idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal, mantaCSI, mantaCSIi]
-}
-
 process runStrelka {
   tag {"RUNSTRELKA_" + idTumor + "_" + idNormal}
 
   publishDir "${params.outDir}/VariantCalling/Strelka"
 
   input:
-    set  idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from bamsForStrelka
+    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
+    set file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -225,7 +221,6 @@ process runStrelka {
 
   output:
     set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
-
 
   script:
   """
@@ -247,6 +242,67 @@ process runStrelka {
   mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
   """
+}
+
+// ---------------------- Run SNPPileup into doFacets
+
+process doSNPPileup {
+  tag { "SNPPILEUP_" + idTumor + "_" + idNormal }  
+
+  publishDir "${ params.outDir }/VariantCalling/snppileup"
+
+  input:
+    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSNPPileup
+    set file(facetsVcf), file(facetsVcfIndex) from Channel.value([referenceMap.facetsVcf, referenceMap.facetsVcfIndex])
+
+  output:
+    set idTumor, idNormal, file("${output_filename}") into SNPPileup
+
+  script:
+  output_filename = idTumor + "_" + idNormal + ".snppileup.dat.gz"
+  """
+  snp-pileup -A -P 50 --gzip "${facetsVcf}" "${output_filename}" "${bamTumor}" "${bamNormal}"
+  """
+}
+
+process doFacets {
+  tag { "DOFACETS_" + idTumor + "_" + idNormal }  
+
+  publishDir "${ params.outDir }/VariantCalling/facets"
+
+  input:
+    set idTumor, idNormal, file("${idTumor}_${idNormal}.snppileup.dat.gz") from SNPPileup
+
+  output:
+    file("*.*") into FacetsOutput
+
+  script:
+  snp_pileup_prefix = idTumor + "_" + idNormal
+  counts_file = "${snp_pileup_prefix}.snppileup.dat.gz"
+  genome_value = "hg19"
+  TAG = "${snp_pileup_prefix}"
+  directory = "."
+  """
+  /usr/bin/facets-suite/doFacets.R \
+  --cval 100 \
+  --snp_nbhd 250 \
+  --ndepth 35 \
+  --min_nhet 25 \
+  --purity_cval 500 \
+  --purity_snp_nbhd 250 \
+  --purity_ndepth 35 \
+  --purity_min_nhet 25 \
+  --genome "${genome_value}" \
+  --counts_file "${counts_file}" \
+  --TAG "${TAG}" \
+  --directory "${directory}" \
+  --R_lib latest \
+  --single_chrom F \
+  --ggplot2 T \
+  --seed 1000 \
+  --tumor_id "${idTumor}"
+  """
+
 }
 
 /*
