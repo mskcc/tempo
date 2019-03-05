@@ -160,11 +160,17 @@ Outputs:
 They are found in `${params.outDir}/VariantCalling/<tool_name>`
 
 Variables used in pipeline:
+
 `genomeFile`: reference fasta
+
 `idTumor`: tumor sample name 
+
 `idNormal`: normal sample name
+
 `bamTumor`: tumor bam
+
 `bamNormal`: normal bam
+
 
 * `delly` -- SV Caller 
 
