@@ -26,7 +26,7 @@ tsvFile = file(tsvPath)
 
 bamFiles = extractBamFiles(tsvFile)
 
-( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup ) = bamFiles.into(5)
+( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile ) = bamFiles.into(6)
 
 /*
 ================================================================================
@@ -59,7 +59,6 @@ process dellyCall {
 
   output:
     set file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi"), sv_variant into dellyCallOutput
-    set idTumor, idNormal into forMakingSampleFile
 
   """
   outfile="${idTumor}_${idNormal}_${sv_variant}.bcf" 
@@ -75,8 +74,8 @@ process dellyCall {
 process makeSamplesFile {
   tag { "SAMPLESFILE_" + idTumor + "_" + idNormal }
 
-  input:
-    set idTumor, idNormal from forMakingSampleFile 
+  input: 
+    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMakingSampleFile 
 
   output:
     set idTumor, idNormal, file("samples.tsv") into sampleTSVFile
