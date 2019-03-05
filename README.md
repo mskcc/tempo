@@ -172,7 +172,7 @@ Variables used in pipeline:
 `bamNormal`: normal bam
 
 
-* `delly` -- SV Caller 
+#### `delly` -- SV Caller 
 
 https://github.com/dellytools/delly
 
@@ -213,7 +213,7 @@ do
 done
 ```
 
-* `MuTect2` -- SV Caller
+#### `MuTect2` -- SV Caller
 
 https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_walkers_mutect_Mutect2.php
 
@@ -230,7 +230,7 @@ gatk --java-options "-Xmx8g" \
   -O "${idTumor}_vs_${idNormal}_somatic.vcf"
 ```
 
-* `Manta` to `Strelka2` -- small variant caller
+#### `Manta` to `Strelka2` -- small variant caller
 
 ```
 configManta.py \
@@ -281,7 +281,7 @@ mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
   Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
 ```
 
-* `snp-pileup` to `doFacets` -- CNV caller
+#### `snp-pileup` to `doFacets` -- CNV caller
 
 `doFacets.R` requires a counts file, so `snp-pileup` is ran first in process `doSNPPileup`.
 
