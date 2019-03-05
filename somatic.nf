@@ -36,12 +36,15 @@ bamFiles = extractBamFiles(tsvFile)
 
 // ---------------------- Run Delly Call and Filter
 
+sv_variants = Channel.from( "DUP", "BND", "DEL", "INS", "INV" )
+
 process dellyCall {
-  tag { "DELLYCALL_" + idTumor + "_" + idNormal }
+  tag { "DELLYCALL_${sv_variant}_" + idTumor + "_" + idNormal }
 
   publishDir "${params.outDir}/VariantCalling/delly_call"
 
   input:
+    each sv_variant from sv_variants
     set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
       referenceMap.genomeFile,
@@ -55,25 +58,17 @@ process dellyCall {
     ])
 
   output:
-    set file("${idTumor}_${idNormal}_DUP.bcf"), file("${idTumor}_${idNormal}_DUP.bcf.csi"),
-        file("${idTumor}_${idNormal}_DEL.bcf"), file("${idTumor}_${idNormal}_DEL.bcf.csi"),
-        file("${idTumor}_${idNormal}_INS.bcf"), file("${idTumor}_${idNormal}_INS.bcf.csi"),
-        file("${idTumor}_${idNormal}_INV.bcf"), file("${idTumor}_${idNormal}_INV.bcf.csi"),
-        file("${idTumor}_${idNormal}_BND.bcf"), file("${idTumor}_${idNormal}_BND.bcf.csi") into dellyCallOutput
+    set file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi"), sv_variant into dellyCallOutput
     set idTumor, idNormal into forMakingSampleFile
 
   """
-  sv_variants=("DUP" "BND" "DEL" "INS" "INV") 
-  for sv_variant in "\${sv_variants[@]}"; 
-  do
-    outfile="${idTumor}_${idNormal}_\${sv_variant}.bcf" 
-    delly call \
-      -t "\${sv_variant}" \
-      -o "\${outfile}" \
-      -g ${genomeFile} \
-      ${bamTumor} \
-      ${bamNormal}
-  done
+  outfile="${idTumor}_${idNormal}_${sv_variant}.bcf" 
+  delly call \
+    -t "${sv_variant}" \
+    -o "\${outfile}" \
+    -g ${genomeFile} \
+    ${bamTumor} \
+    ${bamNormal}
   """
 }
 
@@ -92,37 +87,25 @@ process makeSamplesFile {
 } 
 
 process dellyFilter {
-  tag { "DELLYFILTER_" + idTumor + "_" + idNormal }
+  tag { "DELLYFILTER_${sv_variant}_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/delly_filter"
 
   input:
     set idTumor, idNormal, file("samples.tsv") from sampleTSVFile 
-    set file("${idTumor}_${idNormal}_DUP.bcf"), file("${idTumor}_${idNormal}_DUP.bcf.csi"),
-        file("${idTumor}_${idNormal}_DEL.bcf"), file("${idTumor}_${idNormal}_DEL.bcf.csi"),
-        file("${idTumor}_${idNormal}_INS.bcf"), file("${idTumor}_${idNormal}_INS.bcf.csi"),
-        file("${idTumor}_${idNormal}_INV.bcf"), file("${idTumor}_${idNormal}_INV.bcf.csi"),
-        file("${idTumor}_${idNormal}_BND.bcf"), file("${idTumor}_${idNormal}_BND.bcf.csi") from dellyCallOutput
+    set file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi"), sv_variant from dellyCallOutput
 
   output:
-    set file("${idTumor}_${idNormal}_DUP.filter.bcf"), file("${idTumor}_${idNormal}_DUP.filter.bcf.csi"),
-        file("${idTumor}_${idNormal}_DEL.filter.bcf"), file("${idTumor}_${idNormal}_DEL.filter.bcf.csi"),
-        file("${idTumor}_${idNormal}_INS.filter.bcf"), file("${idTumor}_${idNormal}_INS.filter.bcf.csi"),
-        file("${idTumor}_${idNormal}_INV.filter.bcf"), file("${idTumor}_${idNormal}_INV.filter.bcf.csi"),
-        file("${idTumor}_${idNormal}_BND.filter.bcf"), file("${idTumor}_${idNormal}_BND.filter.bcf.csi") into dellyFilterOutput 
+    set file("${idTumor}_${idNormal}_${sv_variant}.filter.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.filter.bcf.csi") into dellyFilterOutput 
 
   """
-  sv_variants=("DUP" "BND" "DEL" "INS" "INV") 
-  for sv_variant in "\${sv_variants[@]}"; 
-  do
-    delly_call_file="${idTumor}_${idNormal}_\${sv_variant}.bcf" 
-    outfile="${idTumor}_${idNormal}_\${sv_variant}.filter.bcf" 
-    delly filter \
-      -f somatic \
-      -o "\${outfile}" \
-      -s "samples.tsv" \
-      "\${delly_call_file}"
-  done
+  delly_call_file="${idTumor}_${idNormal}_${sv_variant}.bcf" 
+  outfile="${idTumor}_${idNormal}_${sv_variant}.filter.bcf" 
+  delly filter \
+    -f somatic \
+    -o "\${outfile}" \
+    -s "samples.tsv" \
+    "\${delly_call_file}"
   """
 }
 
