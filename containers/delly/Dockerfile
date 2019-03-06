@@ -1,4 +1,4 @@
-FROM alpine:3.8
+FROM frolvlad/alpine-glibc:alpine-3.9
 
 LABEL maintainer="Nikhil Kumar (kumarn1@mskcc.org)" \
       version.image="1.0.0" \
@@ -22,7 +22,6 @@ ENV SEQTK_ROOT /opt/htslib
 RUN apk add --update --no-cache ncurses \
     && apk add --virtual=deps --update --no-cache ncurses-dev musl-dev git g++ make zlib-dev \
     && apk add bash build-base asciidoc bzip2-dev xz-dev boost-dev \
-    && mkdir /opt \
     && cd /opt \
     # install delly
     && cd /opt \
