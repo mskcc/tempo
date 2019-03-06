@@ -97,8 +97,15 @@ process SortBAM {
     set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") into sortedBam
 
   script:
+  // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
+  if(params.mem_per_core) { 
+    mem = task.memory.toString().split(" ")[0]
+  }
+  else {
+    mem = task.memory.toString().split(" ")[0].toInteger()/task.cpus
+  }
   """
-  samtools sort -m 2G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
+  samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
   """
 }
 
