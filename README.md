@@ -157,7 +157,7 @@ NOTE: `manta -> strelka` and `mutect2` were lifted and modified from Sarek's imp
 
 Execution on lsf:
 ```
-nextflow run somatic.nf --sample test_inputs/lsf/test_somatic_new.tsv -profile lsf_juno --outDir $PWD
+nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD
 ```
 
 Input File columns:
