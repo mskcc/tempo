@@ -37,7 +37,7 @@ process doSNPPileup {
 
   input:
     set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFiles
-    set file(facetsVcf), file(facetsVcfIndex) from Channel.value([referenceMap.facetsVcf, referenceMap.facetsVcfIndex])
+    file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
     set idTumor, idNormal, file("${output_filename}") into SNPPileup
@@ -118,8 +118,7 @@ def defineReferenceMap() {
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
     // for SNP Pileup
-    'facetsVcf'        : checkParamReturnFile("facetsVcf"),
-    'facetsVcfIndex'   : checkParamReturnFile("facetsVcfIndex")
+    'facetsVcf'        : checkParamReturnFile("facetsVcf") 
   ]
 }
 
