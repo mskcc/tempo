@@ -5,3 +5,4 @@ work/
 .nextflow*
 *.img
 *.tar.gz
+example_data/
