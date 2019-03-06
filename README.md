@@ -153,6 +153,23 @@ Execution on lsf:
 nextflow run somatic.nf --sample test_inputs/lsf/test_somatic_new.tsv -profile lsf_juno --outDir $PWD
 ```
 
+You can also specifiy which specific tool(s) you want to run with the `--tools <toolname(s), comma-delimited>` flag.
+
+If `--tools` is not specified, `somatic.nf` runs all tools, currently `delly`,`facets`,`manta`,`strelka2`, and `mutect2`.
+
+Tool name `delly` will run processes `dellyCall`,`makeSamplesFile`, and `dellyFilter`.
+
+Tool name `manta` runs ONLY process `runManta`; `manta` and `strelka2` needed to run process `runStrelka`.
+
+Tool name `facets` runs process `doSNPPileup` and `doFacets`.
+
+Tool name `mutect2` runs process `runMutect2`.
+
+Example run of only `delly`, `manta, `strelka2`:
+```
+nextflow run somatic.nf --sample test_inputs/lsf/test_somatic_new.tsv -profile lsf_juno --outDir $PWD --tools delly, manta, strelka2
+```
+
 Input File columns:
 `"idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
 
