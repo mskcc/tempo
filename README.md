@@ -17,7 +17,7 @@ https://github.com/SciLifeLab/Sarek
 Clone the repository as `vaporwareNextflow`:
 
 ```
-git clone -b  nextflow_evan_awsbatch https://github.com/mskcc/vaporware.git  vaporwareNextflow
+git clone  https://github.com/mskcc/vaporware.git  vaporwareNextflow
 cd vaporwareNextflow
 ```
 
@@ -34,7 +34,7 @@ This installs Nextflow within the `vaporwareNextflow` (the current directory).
 #### Executing the scripts
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv
+nextflow run alignment.nf --sample test_samples.tsv
 ```
 
 The parameter `--sample` can be set manually in the `nextflow.config`
@@ -48,13 +48,13 @@ The default parameters are for local use WITHOUT containers
 * For Docker use, do the following:
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv -profile docker
+nextflow run alignment.nf --sample test_samples.tsv -profile docker
 ```
 
 * For Singularity use, do the following:
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv -profile singularity
+nextflow run alignment.nf --sample test_samples.tsv -profile singularity
 ```
 
 **NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. This is not a random subdirectory. 
@@ -74,17 +74,24 @@ Directory where remote Singularity images are stored. When using a computing clu
 * Do the following for LSF on juno:
 
 ```
-nextflow run main_align_markDups_BaseRecal.nf --sample test_samples.tsv -profile lsf_juno
+nextflow run alignment.nf --sample test_samples.tsv -profile lsf_juno
 ```
 
+**For submitting via AWS Batch**
 
+**NOTE:** In order to run pipeline on `AWS Batch`, you first must create `AWS Batch Compute Environment`.
 
+* Do the following for AWS Batch:
+
+```
+nextflow run alignment.nf --sample test_samples.tsv -profile awsbatch
+```
 
 ### Bioinformatic Components for the Main Script
 
 (Please refer to the README on the master branch. )
 
-For the script `main_align_markDups_BaseRecal.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
+For the script `alignment.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
 
 * `bwa mem` -- alignment
 
