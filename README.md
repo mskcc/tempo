@@ -61,6 +61,7 @@ nextflow run alignment.nf --sample test_inputs/lsf/test_samples.tsv -profile lsf
 #### For submitting via AWS Batch
 
 In order to run pipeline on `AWS Batch`, you first must create `AWS Batch Compute Environment` and `AWS Batch Job Queue` as described here https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html, https://docs.aws.amazon.com/batch/latest/userguide/create-job-queue.html.
+For user-specified Ami ID you should use `ami-077e66e85f2156f67`.
 You must also create `S3 bucket` which will be used as working directory and where your outputs will be stored, as described here https://docs.aws.amazon.com/AmazonS3/latest/user-guide/create-bucket.html. 
 
 **NOTE:** Your AWS Batch Instance role needs to have permissions to READ and WRITE to the S3 bucket.
