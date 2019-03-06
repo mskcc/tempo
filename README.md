@@ -65,7 +65,7 @@ You must also create `S3 bucket` which will be used as working directory and whe
 
 **NOTE:** Your AWS Batch Instance role needs to have permissions to READ and WRITE to the S3 bucket.
 
-Create awsbatch.config file in `conf` directory using `conf/awsbatch.config.template`
+Create `awsbatch.config` file in `conf` directory using `conf/awsbatch.config.template`
 
 Replace:
 `<AWS_REGION>` with aws region where you built your compute environment
@@ -97,11 +97,9 @@ nextflow run alignment.nf --sample samples.tsv -profile docker
 nextflow run alignment.nf --sample samples.tsv -profile singularity
 ```
 
-##Components
+## Components
 
 ### Bioinformatic Components for the Alignment Script
-
-(Please refer to the README on the master branch. )
 
 For the script `alignment.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
 
