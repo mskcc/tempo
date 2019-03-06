@@ -74,7 +74,7 @@ Directory where remote Singularity images are stored. When using a computing clu
 * Do the following for LSF on juno:
 
 ```
-nextflow run alignment.nf --sample test_samples.tsv -profile lsf_juno
+nextflow run alignment.nf --sample test_inputs/lsf/test_samples.tsv -profile lsf_juno
 ```
 
 **For submitting via AWS Batch**
@@ -84,7 +84,7 @@ nextflow run alignment.nf --sample test_samples.tsv -profile lsf_juno
 * Do the following for AWS Batch:
 
 ```
-nextflow run alignment.nf --sample test_samples.tsv -profile awsbatch
+nextflow run alignment.nf --sample test_inputs/aws/test_samples.tsv -profile awsbatch
 ```
 
 ### Bioinformatic Components for the Main Script
