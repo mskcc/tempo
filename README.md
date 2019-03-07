@@ -178,7 +178,7 @@ nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_j
 ```
 
 Input File columns:
-`"idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
+`"sequenceType  idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
 
 Outputs:
 They are found in `${params.outDir}/VariantCalling/<tool_name>`
@@ -186,6 +186,8 @@ They are found in `${params.outDir}/VariantCalling/<tool_name>`
 Variables used in pipeline:
 
 `genomeFile`: reference fasta
+
+`sequenceType`: Either `exome` or `genome`; currently un-used
 
 `idTumor`: tumor sample name 
 
