@@ -162,7 +162,7 @@ nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_j
 
 You can also specifiy which specific tool(s) you want to run with the `--tools <toolname(s), comma-delimited>` flag.
 
-If `--tools` is not specified, `somatic.nf` runs all tools, currently `delly`,`facets`,`manta`,`strelka2`, and `mutect2`.
+If `--tools` is not specified, `somatic.nf` runs all tools, currently `delly`,`facets`,`manta`,`strelka2`, `mutect2`, and `msisensor`.
 
 Tool name `delly` will run processes `dellyCall`,`makeSamplesFile`, and `dellyFilter`.
 
@@ -171,6 +171,8 @@ Tool name `manta` runs ONLY process `runManta`; `manta` and `strelka2` needed to
 Tool name `facets` runs process `doSNPPileup` and `doFacets`.
 
 Tool name `mutect2` runs process `runMutect2`.
+
+Tool name `msisensor` runs process `runMsiSensor`.
 
 Example run of only `delly`, `manta, `strelka2`:
 ```
@@ -343,4 +345,17 @@ directory = "."
 --ggplot2 T \
 --seed 1000 \
 --tumor_id "${idTumor}"
+```
+
+#### `msisensor` -- MicroSatellite Instability detection
+
+https://github.com/ding-lab/msisensor
+
+msiSensorList is defined in `references.config
+
+```
+output_prefix = "${idTumor}_${idNormal}"
+
+msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
+
 ```
