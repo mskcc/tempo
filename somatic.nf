@@ -332,7 +332,7 @@ process runMsiSensor {
   when: "msisensor" in tools
 
   script:
-  output_prefix = "${idTumor}_${idNormal}."
+  output_prefix = "${idTumor}_${idNormal}"
   """
   msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
   """
