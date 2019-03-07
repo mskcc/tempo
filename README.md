@@ -27,6 +27,8 @@ curl -s https://get.nextflow.io | bash
 
 This installs Nextflow within the `vaporware` (the current directory). 
 
+Optionally, move the `nextflow` file to a directory accessible by your $PATH variable in order to avoid remembering and typing the full path to `nextflow` each time.
+
 #### Executing the scripts
 
 Command for running nextflow
