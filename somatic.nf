@@ -34,6 +34,8 @@ bamFiles = extractBamFiles(tsvFile)
 ================================================================================
 */
 
+tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
+
 // ---------------------- Run Delly Call and Filter
 
 sv_variants = Channel.from( "DUP", "BND", "DEL", "INS", "INV" )
@@ -60,6 +62,8 @@ process dellyCall {
   output:
     set file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi"), sv_variant into dellyCallOutput
 
+  when: 'delly' in tools
+
   """
   outfile="${idTumor}_${idNormal}_${sv_variant}.bcf" 
   delly call \
@@ -80,6 +84,8 @@ process makeSamplesFile {
   output:
     set idTumor, idNormal, file("samples.tsv") into sampleTSVFile
 
+  when: 'delly' in tools
+
   """
     echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
   """
@@ -96,6 +102,8 @@ process dellyFilter {
 
   output:
     set file("${idTumor}_${idNormal}_${sv_variant}.filter.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.filter.bcf.csi") into dellyFilterOutput 
+
+  when: 'delly' in tools
 
   """
   delly_call_file="${idTumor}_${idNormal}_${sv_variant}.bcf" 
@@ -128,6 +136,8 @@ process runMutect2 {
   output:
     set idNormal, idTumor, file("${idTumor}_vs_${idNormal}_somatic.vcf") into mutect2Output
 
+  when: 'mutect2' in tools
+
   script:
   """
   # Xmx hard-coded for now due to lsf bug
@@ -157,6 +167,8 @@ process runManta {
   output:
     set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
     set file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
+
+  when: 'manta' in tools
 
   script:
   """
@@ -204,6 +216,8 @@ process runStrelka {
   output:
     set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
 
+  when: 'manta' in tools && 'strelka2' in tools
+
   script:
   """
   configureStrelkaSomaticWorkflow.py \
@@ -240,6 +254,8 @@ process doSNPPileup {
   output:
     set idTumor, idNormal, file("${output_filename}") into SNPPileup
 
+  when: 'facets' in tools
+
   script:
   output_filename = idTumor + "_" + idNormal + ".snppileup.dat.gz"
   """
@@ -257,6 +273,8 @@ process doFacets {
 
   output:
     file("*.*") into FacetsOutput
+
+  when: 'facets' in tools
 
   script:
   snp_pileup_prefix = idTumor + "_" + idNormal
