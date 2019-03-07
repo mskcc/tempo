@@ -1,8 +1,8 @@
 tmp/
 work/
+example_data
 .*swp
 .DS_Store
 .nextflow*
 *.img
 *.tar.gz
-example_data/
