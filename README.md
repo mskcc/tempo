@@ -8,7 +8,7 @@ https://www.nextflow.io/
 Inspiration from `Sarek` at the NBIS and SciLifeLab in Sweden:
 https://github.com/SciLifeLab/Sarek
 
-Vaporware containes several pipeline scripts (alignment.nf, somatic.nf). Detalied explanation for each step is provided bellow.
+Vaporware containes several pipeline scripts (make_bam_and_qc.nf, somatic.nf). Detalied explanation for each step is provided bellow.
 
 ### Setup instructions
 
@@ -37,7 +37,7 @@ Command for running nextflow
 nextflow run <nextflow_script> --sample <samples_tsv>
 ```
 
-nextflow_script - alignment.nf or somatic.nf
+nextflow_script - make_bam_and_qc.nf or somatic.nf
 samples_tsv - samples - description how to create .tsv input files is provided below in steps section for each component of the pipeline
 
 #### For submitting via LSF on juno
@@ -57,7 +57,7 @@ Directory where remote Singularity images are stored. When using a computing clu
 * Do the following for LSF on juno:
 
 ```
-nextflow run alignment.nf --sample test_inputs/lsf/test_samples.tsv -profile lsf_juno
+nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile lsf_juno
 ```
 
 #### For submitting via AWS Batch
@@ -79,32 +79,32 @@ Replace:
 * Do the following for AWS Batch:
 
 ```
-nextflow run alignment.nf --sample test_inputs/aws/test_samples.tsv -profile awsbatch
+nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
 ```
 
 #### Local, Docker, and Singularity
 
-**NOTE:** To being able to run locally you need to provide reference files from `conf/references.config` and create `samples.tsv` as described in `Bioinformatic Components for the Alignment Script` section below.
+**NOTE:** To being able to run locally you need to provide reference files from `conf/references.config` and create `samples.tsv` as described in `Bioinformatic Components for the Make Bam and QC Script` section below.
 
 The default parameters are for local use WITHOUT containers
 
 * For Docker use, do the following:
 
 ```
-nextflow run alignment.nf --sample samples.tsv -profile docker
+nextflow run make_bam_and_qc.nf --sample samples.tsv -profile docker
 ```
 
 * For Singularity use, do the following:
 
 ```
-nextflow run alignment.nf --sample samples.tsv -profile singularity
+nextflow run make_bam_and_qc.nf --sample samples.tsv -profile singularity
 ```
 
 ## Components
 
-### Bioinformatic Components for the Alignment Script
+### Bioinformatic Components for the Make Bam and QC Script
 
-For the script `alignment.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
+For the script `make_bam_and_qc.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
 
 Input File columns:
 `"patientId gender  status  sample  lane  fastq1  fastq2"`
@@ -130,12 +130,12 @@ Variables used in pipeline:
 
 Execution on lsf:
 ```
-nextflow run alignment.nf --sample test_inputs/lsf/test_alignment.tsv -profile lsf_juno --outDir $PWD
+nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile lsf_juno --outDir $PWD
 ```
 
 Execution on aws:
 ```
-nextflow run alignment.nf --sample test_inputs/aws/test_alignment.tsv -profile awsbatch
+nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
 ```
 
 * `bwa mem` -- alignment
