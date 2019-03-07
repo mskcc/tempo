@@ -1,0 +1,7 @@
+tmp/
+work/
+.*swp
+.DS_Store
+.nextflow*
+*.img
+*.tar.gz
