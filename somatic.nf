@@ -6,6 +6,13 @@
  Processes overview
  - dellyCall
  - dellyFilter
+ - makeSamplesFile
+ - runMutect2
+ - runManta
+ - runStrelka
+ - doSNPPileup
+ - doFacets
+ - runMsiSensor 
 */
 
 
@@ -26,7 +33,7 @@ tsvFile = file(tsvPath)
 
 bamFiles = extractBamFiles(tsvFile)
 
-( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile ) = bamFiles.into(6)
+( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile, bamsForMsiSensor ) = bamFiles.into(7)
 
 /*
 ================================================================================
@@ -305,6 +312,32 @@ process doFacets {
 
 }
 
+process runMsiSensor {
+  tag { "MSISENSOR_" + idTumor + "_" + idNormal }  
+
+  publishDir "${ params.outDir }/VariantCalling/msisensor"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict,
+      referenceMap.msiSensorList
+    ])
+
+  output:
+    file("${output_prefix}*") into msiOutput 
+
+  when: "msisensor" in tools
+
+  script:
+  output_prefix = "${idTumor}_${idNormal}."
+  """
+  msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
+  """
+}
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
@@ -335,7 +368,9 @@ def defineReferenceMap() {
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
     // for SNP Pileup
-    'facetsVcf'        : checkParamReturnFile("facetsVcf")
+    'facetsVcf'        : checkParamReturnFile("facetsVcf"),
+    // MSI Sensor
+    'msiSensorList'    : checkParamReturnFile("msiSensorList")
   ]
 }
 
