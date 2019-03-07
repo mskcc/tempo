@@ -174,7 +174,7 @@ Tool name `mutect2` runs process `runMutect2`.
 
 Example run of only `delly`, `manta, `strelka2`:
 ```
-nextflow run somatic.nf --sample test_inputs/lsf/test_somatic_new.tsv -profile lsf_juno --outDir $PWD --tools delly, manta, strelka2
+nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD --tools delly, manta, strelka2
 ```
 
 Input File columns:
