@@ -125,7 +125,6 @@ process MergeBams {
     set idPatient, status, idSample, idRun, file(bam) from groupedBam
 
   output:
-    // set idPatient, status, idSample, file("${idSample}.bam") into mergedBam
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into mergedBam
 
   // when: step == 'mapping' && !params.onlyQC
@@ -135,10 +134,6 @@ process MergeBams {
   samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
   """
 }
-
-// From Sarek: samtools sort --threads ${task.cpus} -m 2G - > ${idRun}.bam
-//samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
-//samtools merge --threads ${task.cpus} ${idSample}.bam ${bam}
 
 if (params.verbose) singleBam = singleBam.view {
   "Single BAM:\n\
@@ -176,7 +171,6 @@ process MarkDuplicates {
   // when: step == 'mapping' && !params.onlyQC
 
   input:
-    // set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") from sortedBam
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
 
   output:
@@ -224,7 +218,6 @@ process CreateRecalibrationTable {
   tag {idPatient + "-" + idSample}
 
   input:
-    // set idPatient, status, idSample, idRun, file(bam), file(bai) from mdBam // realignedBam
     set idPatient, status, idSample, file(bam), file(bai) from mdBam 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
       referenceMap.genomeFile,
