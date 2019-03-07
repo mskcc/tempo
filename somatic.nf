@@ -141,7 +141,7 @@ process runMutect2 {
     ])
 
   output:
-    set idNormal, idTumor, file("${idTumor}_vs_${idNormal}_somatic.vcf") into mutect2Output
+    set idNormal, idTumor, file("${idTumor}_vs_${idNormal}_somatic.vcf.gz") into mutect2Output
 
   when: 'mutect2' in tools
 
@@ -153,7 +153,51 @@ process runMutect2 {
     -R ${genomeFile}\
     -I ${bamTumor}  -tumor ${idTumor} \
     -I ${bamNormal} -normal ${idNormal} \
-    -O "${idTumor}_vs_${idNormal}_somatic.vcf"
+    -O "${idTumor}_vs_${idNormal}_somatic.vcf.gz"
+  """
+}
+
+process indexVCF {
+  tag {"INDEXVCF_" + idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/index_vcf"
+
+  input:
+    set idTumor, idNormal, file(mutect2Vcf) from mutect2Output
+
+  output:
+    set idTumor, idNormal, file(mutect2Vcf), file("${mutect2Vcf.baseName}.gz.tbi") into mutect2IndexedOutput
+
+  when: 'mutect2' in tools
+
+  script:
+  """
+  tabix -p vcf ${mutect2Vcf} 
+  """
+}
+
+process runMutect2Filter {
+  tag {"MUTECT2FILTER_" + idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/mutect2_filter"
+
+  input:
+    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2IndexedOutput
+
+  output:
+    set file("*somatic.filtered.vcf*") into mutect2FilteredOutput
+
+  when: 'mutect2' in tools
+
+  outfile="${idTumor}_vs_${idNormal}_somatic.filtered.vcf"
+
+  script:
+  """
+  # Xmx hard-coded for now due to lsf bug
+  gatk --java-options "-Xmx8g" \
+    FilterMutectCalls \
+    --variant "${mutect2Vcf}" \
+    --output "${outfile}" 
   """
 }
 
