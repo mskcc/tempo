@@ -229,7 +229,7 @@ nextflow run somatic.nf --sample test_inputs/aws/test_somatic.tsv -profile awsba
 
 You can also specifiy which specific tool(s) you want to run with the `--tools <toolname(s), comma-delimited>` flag.
 
-If `--tools` is not specified, `somatic.nf` runs all tools, currently `delly`,`facets`,`manta`,`strelka2`, and `mutect2`.
+If `--tools` is not specified, `somatic.nf` runs all tools, currently `delly`,`facets`,`manta`,`strelka2`, `mutect2`, and `msisensor`.
 
 Tool name `delly` will run processes `dellyCall`,`makeSamplesFile`, and `dellyFilter`.
 
@@ -239,10 +239,32 @@ Tool name `facets` runs process `doSNPPileup` and `doFacets`.
 
 Tool name `mutect2` runs process `runMutect2`.
 
+Tool name `msisensor` runs process `runMsiSensor`.
+
 Example run of only `delly`, `manta, `strelka2` on lsf:
 ```
 nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD --tools delly, manta, strelka2
 ```
+
+Input File columns:
+`"sequenceType  idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
+
+Outputs:
+They are found in `${params.outDir}/VariantCalling/${idTumor}_${idNormal}/<tool_name>`
+
+Variables used in pipeline:
+
+`genomeFile`: reference fasta
+
+`sequenceType`: Either `exome` or `genome`; currently un-used
+
+`idTumor`: tumor sample name 
+
+`idNormal`: normal sample name
+
+`bamTumor`: tumor bam
+
+`bamNormal`: normal bam
 
 #### `delly` -- SV Caller 
 
@@ -389,4 +411,17 @@ directory = "."
 --ggplot2 T \
 --seed 1000 \
 --tumor_id "${idTumor}"
+```
+
+#### `msisensor` -- MicroSatellite Instability detection
+
+https://github.com/ding-lab/msisensor
+
+msiSensorList is defined in `references.config
+
+```
+output_prefix = "${idTumor}_${idNormal}"
+
+msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
+
 ```
