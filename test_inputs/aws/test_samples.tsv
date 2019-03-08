@@ -1,2 +1,0 @@
-1234	XX	0	1234N	1234N_M1	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-N_IGO_06208_30/BRCA-00067-N_IGO_06208_30_S10_L004_R1_001.fastq.gz	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-N_IGO_06208_30/BRCA-00067-N_IGO_06208_30_S10_L004_R2_001.fastq.gz
-1234	XX	0	1234N	1234N_M2	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-T_IGO_06208_1/BRCA-00067-T_IGO_06208_1_S25_L006_R1_001.fastq.gz	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-T_IGO_06208_1/BRCA-00067-T_IGO_06208_1_S25_L006_R2_001.fastq.gz
