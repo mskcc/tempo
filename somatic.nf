@@ -50,7 +50,7 @@ sv_variants = Channel.from( "DUP", "BND", "DEL", "INS", "INV" )
 process dellyCall {
   tag { "DELLYCALL_${sv_variant}_" + idTumor + "_" + idNormal }
 
-  publishDir "${params.outDir}/VariantCalling/delly_call"
+  publishDir "${params.outDir}/VariantCalling/${idTumor}_${idNormal}/delly_call"
 
   input:
     each sv_variant from sv_variants
@@ -101,7 +101,7 @@ process makeSamplesFile {
 process dellyFilter {
   tag { "DELLYFILTER_${sv_variant}_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/delly_filter"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/delly_filter"
 
   input:
     set sequenceType, idTumor, idNormal, file("samples.tsv") from sampleTSVFile 
@@ -128,7 +128,7 @@ process dellyFilter {
 process runMutect2 {
   tag {"MUTECT2_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/mutect2"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2"
 
   input:
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMutect2
@@ -160,7 +160,7 @@ process runMutect2 {
 process indexVCF {
   tag {"INDEXVCF_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/index_vcf"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/index_vcf"
 
   input:
     set idTumor, idNormal, file(mutect2Vcf) from mutect2Output
@@ -179,7 +179,7 @@ process indexVCF {
 process runMutect2Filter {
   tag {"MUTECT2FILTER_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/mutect2_filter"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2_filter"
 
   input:
     set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2IndexedOutput
@@ -206,7 +206,7 @@ process runMutect2Filter {
 process runManta {
   tag {"RUNMANTA_" + idTumor + "_" + idNormal}
 
-  publishDir "${params.outDir}/VariantCalling/Manta"
+  publishDir "${params.outDir}/VariantCalling/${idTumor}_${idNormal}/Manta"
 
   input:
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -253,7 +253,7 @@ process runManta {
 process runStrelka {
   tag {"RUNSTRELKA_" + idTumor + "_" + idNormal}
 
-  publishDir "${params.outDir}/VariantCalling/Strelka"
+  publishDir "${params.outDir}/VariantCalling/${idTumor}_${idNormal}/Strelka"
 
   input:
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
@@ -296,7 +296,7 @@ process runStrelka {
 process doSNPPileup {
   tag { "SNPPILEUP_" + idTumor + "_" + idNormal }  
 
-  publishDir "${ params.outDir }/VariantCalling/snppileup"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/snppileup"
 
   input:
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSNPPileup
@@ -317,10 +317,10 @@ process doSNPPileup {
 process doFacets {
   tag { "DOFACETS_" + idTumor + "_" + idNormal }  
 
-  publishDir "${ params.outDir }/VariantCalling/facets"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/facets"
 
   input:
-    set sequenceType, idTumor, idNormal, file("${idTumor}_${idNormal}.snppileup.dat.gz") from SNPPileup
+    set sequenceType, idTumor, idNormal, file(snpPileupFile) from SNPPileup
 
   output:
     file("*.*") into FacetsOutput
@@ -329,28 +329,27 @@ process doFacets {
 
   script:
   snp_pileup_prefix = idTumor + "_" + idNormal
-  counts_file = "${snp_pileup_prefix}.snppileup.dat.gz"
+  counts_file = "${snpPileupFile}"
   genome_value = "hg19"
   TAG = "${snp_pileup_prefix}"
-  directory = "."
   """
   /usr/bin/facets-suite/doFacets.R \
-  --cval 100 \
-  --snp_nbhd 250 \
-  --ndepth 35 \
-  --min_nhet 25 \
-  --purity_cval 500 \
-  --purity_snp_nbhd 250 \
-  --purity_ndepth 35 \
-  --purity_min_nhet 25 \
-  --genome "${genome_value}" \
+  --cval "${params.facets.cval}" \
+  --snp_nbhd "${params.facets.snp_nbhd}" \
+  --ndepth "${params.facets.ndepth}" \
+  --min_nhet "${params.facets.min_nhet}" \
+  --purity_cval "${params.facets.purity_cval}" \
+  --purity_snp_nbhd "${params.facets.purity_snp_nbhd}" \
+  --purity_ndepth "${params.facets.purity_ndepth}" \
+  --purity_min_nhet "${params.facets.purity_min_nhet}" \
+  --genome "${params.facets.genome}" \
   --counts_file "${counts_file}" \
   --TAG "${TAG}" \
-  --directory "${directory}" \
-  --R_lib latest \
-  --single_chrom F \
-  --ggplot2 T \
-  --seed 1000 \
+  --directory "${params.facets.directory}" \
+  --R_lib "${params.facets.R_lib}" \
+  --single_chrom "${params.facets.single_chrom}" \
+  --ggplot2 "${params.facets.ggplot2}" \
+  --seed "${params.facets.seed}" \
   --tumor_id "${idTumor}"
   """
 
@@ -359,7 +358,7 @@ process doFacets {
 process runMsiSensor {
   tag { "MSISENSOR_" + idTumor + "_" + idNormal }  
 
-  publishDir "${ params.outDir }/VariantCalling/msisensor"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/msisensor"
 
   input:
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
