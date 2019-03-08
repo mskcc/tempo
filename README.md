@@ -1,10 +1,6 @@
-## Nextflow framework
+## Vaporware pipeline
 
-Basic Nextflow pipeline for processing WES/WGS FASTQs into analysis-ready BAMs using GATK4 best practices. The following pipeline should do:
-
-* alignment via `bwa mem`
-* `MarkDuplicates` to indentify duplicate reads for QC with GATK4
-* Base recalibration via `gatk BaseRecalibrator` and `gatk ApplyBQSR`
+Pipeline for processing WES/WGS FASTQs into analysis-ready BAMs using GATK4 best practices, built using Nextflow domain specific language. 
 
 See Nextflow documention here: 
 https://www.nextflow.io/
@@ -12,16 +8,16 @@ https://www.nextflow.io/
 Inspiration from `Sarek` at the NBIS and SciLifeLab in Sweden:
 https://github.com/SciLifeLab/Sarek
 
-### Usage instructions
+Vaporware containes several pipeline scripts (make_bam_and_qc.nf, somatic.nf). Detalied explanation for each step is provided bellow.
 
-Clone the repository as `vaporwareNextflow`:
+### Setup instructions
+
+Clone the repository as `vaporware`:
 
 ```
-git clone  https://github.com/mskcc/vaporware.git  vaporwareNextflow
-cd vaporwareNextflow
+git clone https://github.com/mskcc/vaporware.git vaporware
+cd vaporware
 ```
-
-(You need to use the branch `feature/nextflow` if cloning from master.)
 
 Install `Nextflow` within this subdirectory if the Nextflow executable `nextflow` isn't in your PATH:
 
@@ -29,33 +25,22 @@ Install `Nextflow` within this subdirectory if the Nextflow executable `nextflow
 curl -s https://get.nextflow.io | bash 
 ```
 
-This installs Nextflow within the `vaporwareNextflow` (the current directory). 
+This installs Nextflow within the `vaporware` (the current directory). 
+
+Optionally, move the `nextflow` file to a directory accessible by your $PATH variable in order to avoid remembering and typing the full path to `nextflow` each time.
 
 #### Executing the scripts
 
-```
-nextflow run alignment.nf --sample test_samples.tsv
-```
-
-The parameter `--sample` can be set manually in the `nextflow.config`
-
-#### Local, Docker, and Singularity
-
-
-
-The default parameters are for local use WITHOUT containers
-
-* For Docker use, do the following:
+Command for running nextflow
 
 ```
-nextflow run alignment.nf --sample test_samples.tsv -profile docker
+nextflow run <nextflow_script> --sample <samples_tsv>
 ```
 
-* For Singularity use, do the following:
+nextflow_script - make_bam_and_qc.nf or somatic.nf
+samples_tsv - samples - description how to create .tsv input files is provided below in steps section for each component of the pipeline
 
-```
-nextflow run alignment.nf --sample test_samples.tsv -profile singularity
-```
+#### For submitting via LSF on juno
 
 **NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. This is not a random subdirectory. 
 
@@ -69,29 +54,89 @@ NXF_SINGULARITY_CACHEDIR:
 Directory where remote Singularity images are stored. When using a computing cluster it must be a shared folder accessible from all computing nodes.
 ```
 
-**For submitting via LSF on juno**
-
 * Do the following for LSF on juno:
 
 ```
-nextflow run alignment.nf --sample test_inputs/lsf/test_samples.tsv -profile lsf_juno
+nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile lsf_juno
 ```
 
-**For submitting via AWS Batch**
+#### For submitting via AWS Batch
 
-**NOTE:** In order to run pipeline on `AWS Batch`, you first must create `AWS Batch Compute Environment`.
+In order to run pipeline on `AWS Batch`, you first must create `AWS Batch Compute Environment` and `AWS Batch Job Queue` as described here https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html, https://docs.aws.amazon.com/batch/latest/userguide/create-job-queue.html.
+For user-specified Ami ID you should use `ami-077e66e85f2156f67`.
+You must also create `S3 bucket` which will be used as working directory and where your outputs will be stored, as described here https://docs.aws.amazon.com/AmazonS3/latest/user-guide/create-bucket.html. 
+
+**NOTE:** Your AWS Batch Instance role needs to have permissions to READ and WRITE to the S3 bucket.
+
+Create `awsbatch.config` file in `conf` directory using `conf/awsbatch.config.template`
+
+Replace:
+`<AWS_REGION>` with aws region where you built your compute environment
+`<STORAGE_ENCRYPTION>` storage encryption for your bucket (default: 'AES256')
+`<AWS_BATCH_QUEUE_ARN>` ARN of your AWS Batch Job Queue
+`<AWS_S3_WORKDIR>` S3 bucket used as working directory
 
 * Do the following for AWS Batch:
 
 ```
-nextflow run alignment.nf --sample test_inputs/aws/test_samples.tsv -profile awsbatch
+nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
 ```
 
-### Bioinformatic Components for the Main Script
+#### Local, Docker, and Singularity
 
-(Please refer to the README on the master branch. )
+**NOTE:** To being able to run locally you need to provide reference files from `conf/references.config` and create `samples.tsv` as described in `Bioinformatic Components for the Make Bam and QC Script` section below.
 
-For the script `alignment.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
+The default parameters are for local use WITHOUT containers
+
+* For Docker use, do the following:
+
+```
+nextflow run make_bam_and_qc.nf --sample samples.tsv -profile docker
+```
+
+* For Singularity use, do the following:
+
+```
+nextflow run make_bam_and_qc.nf --sample samples.tsv -profile singularity
+```
+
+## Components
+
+### Bioinformatic Components for the Make Bam and QC Script
+
+For the script `make_bam_and_qc.nf`, the pipeline does alignment with `bwa mem`, converts the SAM to a sorted BAM with `samtools`, and does uses `GATK4` to mark duplicates and do base recalibration. 
+
+Input File columns:
+`"patientId gender  status  sample  lane  fastq1  fastq2"`
+
+Outputs:
+They are found in `${params.outDir}/VariantCalling/<tool_name>`
+
+Variables used in pipeline:
+
+`patientId`: Patient Id
+
+`gender`: XX or XY 
+
+`status`: 0 - Normal 1 - Tumor
+
+`sample`: Sample Id
+
+`lane`: if sample is multiplexed
+
+`fastq1`: Path to first pair of fastq
+
+`fastq2`: Path to second pair of fastq
+
+Execution on lsf:
+```
+nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile lsf_juno --outDir $PWD
+```
+
+Execution on aws:
+```
+nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
+```
 
 * `bwa mem` -- alignment
 
@@ -140,7 +185,6 @@ https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.2/org_bro
  
  ```
 
-
 ### Bioinformatic Components for the Variant Calling Script
 
 For the script `somatic.nf`, the pipeline performs the following:
@@ -154,10 +198,33 @@ mutect2
 
 NOTE: `manta -> strelka` and `mutect2` were lifted and modified from Sarek's implementation at https://github.com/mskcc/Sarek
 
+Input File columns:
+`"idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
+
+Outputs:
+They are found in `${params.outDir}/VariantCalling/<tool_name>`
+
+Variables used in pipeline:
+
+`genomeFile`: reference fasta
+
+`idTumor`: tumor sample name 
+
+`idNormal`: normal sample name
+
+`bamTumor`: tumor bam
+
+`bamNormal`: normal bam
+
 
 Execution on lsf:
 ```
 nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD
+```
+
+Execution on aws:
+```
+nextflow run somatic.nf --sample test_inputs/aws/test_somatic.tsv -profile awsbatch
 ```
 
 You can also specifiy which specific tool(s) you want to run with the `--tools <toolname(s), comma-delimited>` flag.
@@ -174,7 +241,7 @@ Tool name `mutect2` runs process `runMutect2`.
 
 Tool name `msisensor` runs process `runMsiSensor`.
 
-Example run of only `delly`, `manta, `strelka2`:
+Example run of only `delly`, `manta, `strelka2` on lsf:
 ```
 nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD --tools delly, manta, strelka2
 ```
@@ -183,7 +250,7 @@ Input File columns:
 `"sequenceType  idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
 
 Outputs:
-They are found in `${params.outDir}/VariantCalling/<tool_name>`
+They are found in `${params.outDir}/VariantCalling/${idTumor}_${idNormal}/<tool_name>`
 
 Variables used in pipeline:
 
@@ -198,7 +265,6 @@ Variables used in pipeline:
 `bamTumor`: tumor bam
 
 `bamNormal`: normal bam
-
 
 #### `delly` -- SV Caller 
 
