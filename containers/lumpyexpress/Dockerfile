@@ -23,7 +23,7 @@ RUN cd /tmp \
     && wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 \
     && tar vxjf samtools-${SAMTOOLS_VERSION}.tar.bz2 \
     && cd samtools-${SAMTOOLS_VERSION} \
-    && ./configure --prefix=/usr/bin \
+    && ./configure --prefix=/usr \
     && make \
     && rm -rf /tmp/*
 
@@ -48,11 +48,6 @@ RUN cd /opt \
     && git clone --recursive https://github.com/arq5x/lumpy-sv.git \
     && cd lumpy-sv/ \
     && git checkout tags/${LUMPYSV_VERSION} \
-    && make \
-    && cd bin/ \
-    # set lumpyexpress.config
-    && sed -i 's/SAMTOOLS=/SAMTOOLS=\/usr\/bin\/samtools/' lumpyexpress.config \
-    && sed -i 's/SAMBLASTER=/SAMBLASTER=\/usr\/bin\/samblaster/' lumpyexpress.config \
-    && sed -i 's/SAMBAMBA=/SAMBAMBA=\/usr\/bin\/sambamba/' lumpyexpress.config
+    && make 
 
 env PATH=/opt/lumpy-sv/bin:$PATH
