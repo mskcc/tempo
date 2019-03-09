@@ -25,6 +25,7 @@ RUN cd /tmp \
     && cd samtools-${SAMTOOLS_VERSION} \
     && ./configure --prefix=/usr \
     && make \
+    && make install \
     && rm -rf /tmp/*
 
 # Install sambamba
