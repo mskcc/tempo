@@ -11,10 +11,10 @@ RUN apt-get update -qq \
     && apt-get -y install \
         zlib1g-dev bzip2 libbz2-dev liblzma-dev libncurses5-dev \
         python python-pip python-dev python3 wget ldc \
-    gawk  build-essential \
+        gawk build-essential \
         libcurl4-gnutls-dev \
         autoconf \
-    libssl-dev \
+        libssl-dev \
         git \
     && pip install --upgrade pip numpy scipy pysam
 
@@ -51,8 +51,8 @@ RUN cd /opt \
     && make \
     && cd bin/ \
     # set lumpyexpress.config
-    && sed -i 's/SAMTOOLS=/SAMTOOLS=\/usr\/bin\/samtools/' \
-    && sed -i 's/SAMBLASTER=/SAMBLASTER=\/usr\/bin\/samblaster/' \
-    && sed -i 's/SAMBAMBA=/SAMBAMBA=\/usr\/bin\/sambamba/' 
+    && sed -i 's/SAMTOOLS=/SAMTOOLS=\/usr\/bin\/samtools/' lumpyexpress.config \
+    && sed -i 's/SAMBLASTER=/SAMBLASTER=\/usr\/bin\/samblaster/' lumpyexpress.config \
+    && sed -i 's/SAMBAMBA=/SAMBAMBA=\/usr\/bin\/sambamba/' lumpyexpress.config
 
 env PATH=/opt/lumpy-sv/bin:$PATH
