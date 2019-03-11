@@ -33,7 +33,7 @@ tsvFile = file(tsvPath)
 
 bamFiles = extractBamFiles(tsvFile)
 
-( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile, bamsForMsiSensor ) = bamFiles.into(7)
+( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile, bamsForMsiSensor, bamsForLumpy ) = bamFiles.into(8)
 
 /*
 ================================================================================
@@ -380,6 +380,29 @@ process runMsiSensor {
   msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
   """
 }
+
+process runLumpyExpress {
+  tag { "LUMPYEXPRESS_" + idTumor + "_" + idNormal }  
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/lumpyexpress"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForLumpy
+
+  output:
+    file("*.vcf") into lumpyExpressOutput
+
+  when: 'lumpyexpress' in tools
+
+  script:
+  """
+  output_filename=${idTumor}_${idNormal}.lumpyexpress.vcf
+  lumpyexpress \
+    -B ${bamTumor},${bamNormal} \
+    -o "\${output_filename}"
+  """
+}
+
 
 /*
 ================================================================================

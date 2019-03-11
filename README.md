@@ -270,19 +270,18 @@ Variables used in pipeline:
 
 https://github.com/dellytools/delly
 
-For now we assume that we want all five variants of SV performed for `delly call`, thus the for-loop in the Nextflow process `dellyCall`.
+For now we assume that we want all five variants of SV performed for `delly call`; `sv_variant` is defined before the process is initiated in a list named `sv_variants`. 
+
+We use `nextflow` to iterate through that list, submitting the processes in parallel.
+
 ```
-sv_variants=("DUP" "BND" "DEL" "INS" "INV")
-for sv_variant in "\${sv_variants[@]}";
-do
-  outfile="${idTumor}_${idNormal}_\${sv_variant}.bcf"
-  delly call \
-    -t "\${sv_variant}" \
-    -o "\${outfile}" \
-    -g ${genomeFile} \
-    ${bamTumor} \
-    ${bamNormal}
-done
+outfile="${idTumor}_${idNormal}_\${sv_variant}.bcf"
+delly call \
+  -t "\${sv_variant}" \
+  -o "\${outfile}" \
+  -g ${genomeFile} \
+  ${bamTumor} \
+  ${bamNormal}
 ```
 
 The next step, `delly filter`, requires a sample input file that contains a tumor ID and a normal ID that's considered "control"; this is done in the process `makeSampleFile`:
@@ -291,20 +290,16 @@ The next step, `delly filter`, requires a sample input file that contains a tumo
 echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
 ```
 
-This is fed to process `dellyFilter`; we also need a for-loop here for ease:
+These `sv_variant` processes are then fed to another process `dellyFilter`.
 
 ```
-sv_variants=("DUP" "BND" "DEL" "INS" "INV")
-for sv_variant in "\${sv_variants[@]}";
-do
-  delly_call_file="${idTumor}_${idNormal}_\${sv_variant}.bcf"
-  outfile="${idTumor}_${idNormal}_\${sv_variant}.filter.bcf"
-  delly filter \
-    -f somatic \
-    -o "\${outfile}" \
-    -s "samples.tsv" \
-    "\${delly_call_file}"
-done
+delly_call_file="${idTumor}_${idNormal}_\${sv_variant}.bcf"
+outfile="${idTumor}_${idNormal}_\${sv_variant}.filter.bcf"
+delly filter \
+  -f somatic \
+  -o "\${outfile}" \
+  -s "samples.tsv" \
+  "\${delly_call_file}"
 ```
 
 #### `MuTect2` -- SV Caller
@@ -423,5 +418,15 @@ msiSensorList is defined in `references.config
 output_prefix = "${idTumor}_${idNormal}"
 
 msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
+```
 
+#### `lumpyexpress` -- Structural Variant Caller
+
+https://github.com/arq5x/lumpy-sv
+
+```
+output_filename=${idTumor}_${idNormal}.lumpyexpress.vcf
+lumpyexpress \
+  -B ${bamTumor},${bamNormal} \
+  -o "\${output_filename}"
 ```
