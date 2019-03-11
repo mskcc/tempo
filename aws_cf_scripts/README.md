@@ -58,7 +58,7 @@ When build is complete the `StackStatus` field in response json will have the va
 "Outputs": [
                 {
                     "OutputKey": "ComputeEnvironmentArn",
-                    "OutputValue": "arn:aws:batch:us-east-1:474622381158:compute-environment/ComputeEnvironment-c5b2c9926a6fb42"
+                    "OutputValue": "arn:aws:batch:us-east-1:474622381158:compute-environment/ComputeEnvironment-c5b2c9926a6fb42"conf/awsbatch.config
                 },
                 {
                     "OutputKey": "JobQueueArn",
@@ -74,10 +74,14 @@ Use `OutputValue` of `JobQueueArn` for `<AWS-BATCH-QUEUE-ARN>` value when creati
 Create `awsbatch.config` file in `conf` directory using `conf/awsbatch.config.template`
 
 Replace:
+
 `<AWS-REGION>` with aws region where you built your compute environment
+
 `<STORAGE-ENCRYPTION>` storage encryption for your bucket (default: 'AES256')
-`<AWS-BATCH-QUEUE-ARN>` ARN of your AWS Batch Job Queue
-`<AWS-S3-WORKDIR>` S3 bucket used as working directory
+
+`<AWS-BATCH-QUEUE-ARN>` ARN of your AWS Batch Job Queue built in [Building the Compute Environment](#Building-the-Compute-Environment) section
+
+`<AWS-S3-WORKDIR>` S3 bucket used as working directory created in [Create the S3 Bucket](#Create-the-S3-Bucket) section
 
 ## Calculating the DiskSize value
 
