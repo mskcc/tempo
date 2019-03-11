@@ -20,9 +20,11 @@ Run the command below from the vaporware repo root directory and set `<DiskSize>
 
 This command submits CloudFormation Stack for building the [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) for execution, which we will use for building Batch Compute Environment. When you submit the command you will get StackId ARN as a responce similar to this below.
 
-`{
+```
+{
     "StackId": "arn:aws:cloudformation:us-east-1:474622381158:stack/vaporwareAMI/f8d47a90-41c8-11e9-98cc-0eb85d5eff94"
-}`
+}
+```
 
 Building the AMI will last for a few minutes. You can check the status of the build process by running the command.
 
