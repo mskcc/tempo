@@ -109,6 +109,52 @@ process SortBAM {
   """
 }
 
+singleBam = Channel.create()
+groupedBam = Channel.create()
+sortedBam.groupTuple(by:[0,1,2])
+  .choice(singleBam, groupedBam) {it[3].size() > 1 ? 1 : 0}
+singleBam = singleBam.map {
+  idPatient, status, idSample, idRun, bam ->
+  [idPatient, status, idSample, bam]
+}
+
+process MergeBams {
+  tag {idPatient + "-" + idSample}
+
+  input:
+    set idPatient, status, idSample, idRun, file(bam) from groupedBam
+
+  output:
+    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into mergedBam
+
+  // when: step == 'mapping' && !params.onlyQC
+
+  script:
+  """
+  samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
+  """
+}
+
+if (params.verbose) singleBam = singleBam.view {
+  "Single BAM:\n\
+  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
+  File  : [${it[4].fileName}]"
+}
+
+if (params.verbose) mergedBam = mergedBam.view {
+  "Merged BAM:\n\
+  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
+  File  : [${it[4].fileName}]"
+}
+
+mergedBam = mergedBam.mix(singleBam)
+
+if (params.verbose) mergedBam = mergedBam.view {
+  "BAM for MarkDuplicates:\n\
+  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
+  File  : [${it[4].fileName}]"
+}
+
 // GATK MarkDuplicates
 
 process MarkDuplicates {
@@ -125,42 +171,55 @@ process MarkDuplicates {
   // when: step == 'mapping' && !params.onlyQC
 
   input:
-    set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") from sortedBam
+    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
 
   output:
-    set idPatient, file("${idRun}_${status}.md.bam"), file("${idRun}_${status}.md.bai"), idRun into duplicateMarkedBams
-    set idPatient, status, idSample, val("${idRun}_${status}.md.bam"), val("${idRun}_${status}.md.bai") into markDuplicatesTSV
-    file ("${idRun}.bam.metrics") into markDuplicatesReport
+    set idPatient, file("${idSample}_${status}.md.bam"), file("${idSample}_${status}.md.bai"), idSample, idRun into duplicateMarkedBams
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai") into markDuplicatesTSV
+    file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
   """
   gatk MarkDuplicates --java-options ${params.markdup_java_options}  \
   --MAX_RECORDS_IN_RAM 50000 \
-  --INPUT ${idRun}.sorted.bam \
-  --METRICS_FILE ${idRun}.bam.metrics \
+  --INPUT ${idSample}.merged.bam \
+  --METRICS_FILE ${idSample}.bam.metrics \
   --TMP_DIR . \
   --ASSUME_SORT_ORDER coordinate \
   --CREATE_INDEX true \
-  --OUTPUT ${idRun}_${status}.md.bam
+  --OUTPUT ${idSample}_${status}.md.bam
   """
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    idPatient, bam, bai, idRun ->
+    idPatient, bam, bai, idSample, idRun ->
     tag = bam.baseName.tokenize('.')[0]
     /// status   = tag[-1..-1].toInteger()  X
     status = 0
-    idSample = tag.take(tag.length()-2)
-    [idPatient, status, idSample, idRun, bam, bai]
+    // idSample = tag.take(tag.length()-2)
+    [idPatient, status, idSample, bam, bai]
 }
 
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
+
+if (params.verbose) mdBamToJoin = mdBamToJoin.view {
+  "MD Bam to Join BAM:\n\
+  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
+  File  : [${it[4].fileName}]"
+}
+
+if (params.verbose) mdBam = mdBam.view {
+  "BAM for MarkDuplicates:\n\
+  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
+  File  : [${it[4].fileName}]"
+}
 
 process CreateRecalibrationTable {
   tag {idPatient + "-" + idSample}
 
   input:
-    set idPatient, status, idSample, idRun, file(bam), file(bai) from mdBam // realignedBam
+    set idPatient, status, idSample, file(bam), file(bai) from mdBam 
+
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -173,8 +232,8 @@ process CreateRecalibrationTable {
     ])
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.recal.table") into recalibrationTable
-    set idPatient, status, idSample, idRun, val("${idRun}_${status}.md.bam"), val("${idRun}_${status}.md.bai"), val("${idRun}.recal.table") into recalibrationTableTSV
+    set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
 
 
   script:
@@ -182,7 +241,7 @@ process CreateRecalibrationTable {
   """
   gatk BaseRecalibrator \
   --input ${bam} \
-  --output ${idRun}.recal.table \
+  --output ${idSample}.recal.table \
   --tmp-dir /tmp \
   -R ${genomeFile} \
   -L ${intervals} \
@@ -192,14 +251,17 @@ process CreateRecalibrationTable {
   """
 }
 
-
-recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1, 2, 3])
+recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1, 2])
 
 process RecalibrateBam {
   tag {idPatient + "-" + idSample}
 
+  // The publishDir directive allows you to publish the process output files to a specified folder
+  publishDir params.outDir, mode: params.publishDirMode
+
   input:
-    set idPatient, status, idSample, idRun, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+    set idPatient, status, idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -208,8 +270,8 @@ process RecalibrateBam {
     ])
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.recal.bam"), file("${idRun}.recal.bai") into recalibratedBam, recalibratedBamForStats
-    set idPatient, status, idSample, idRun, val("${idRun}.recal.bam"), val("${idRun}.recal.bai") into recalibratedBamTSV
+    set idPatient, status, idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
+    set idPatient, status, idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
 
   // GATK4 HaplotypeCaller can not do BQSR on the fly, so we have to create a
   // recalibrated BAM explicitly.
@@ -219,7 +281,7 @@ process RecalibrateBam {
   gatk ApplyBQSR \
   -R ${genomeFile} \
   --input ${bam} \
-  --output ${idRun}.recal.bam \
+  --output ${idSample}.recal.bam \
   -L ${intervals} \
   --create-output-bam-index true \
   --bqsr-recal-file ${recalibrationReport}
