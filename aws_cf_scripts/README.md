@@ -12,7 +12,7 @@ Use `S3` bucket path for `<AWS-S3-WORKDIR>` value when creating `awsbatch.config
 
 ## Building the AMI
 
-***NOTE: You need this step only if default disk size of 200GB is not enough for processing your data. If 200GB is suficient please got to the `Building the Compute Environment` section.***
+***NOTE: You need this step only if default disk size of 200GB is not enough for processing your data. If 200GB is suficient please go to the [Building the Compute Environment](#Building-the-Compute-Environment) section.***
 
 Run the command below from the vaporware repo root directory and set `<DiskSize>` parameter to a [proper](#Calculating-the-DiskSize-value) value based on the input file sizes (NOTE: minimal disk size is 200GB).
 
