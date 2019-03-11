@@ -219,6 +219,7 @@ process CreateRecalibrationTable {
 
   input:
     set idPatient, status, idSample, file(bam), file(bai) from mdBam 
+
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -250,7 +251,6 @@ process CreateRecalibrationTable {
   """
 }
 
-
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1, 2])
 
 process RecalibrateBam {
@@ -261,6 +261,7 @@ process RecalibrateBam {
 
   input:
     set idPatient, status, idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
