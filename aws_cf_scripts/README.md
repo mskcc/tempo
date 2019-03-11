@@ -52,7 +52,7 @@ Building the AWS Batch Compute Environment will last for a few minutes. You can 
 
 ***NOTE: By default EC2 Instance Role will have access to all your buckets. If you want to limit access of EC2 Instance Role just to the bucket you created you need to add `--parameters ParameterKey=WorkDirBucket,ParameterValue=<AWS-S3-WORKDIR>` in the previous command.***
 
-`aws cloudformation describe-stacks --stack-name aws cloudformation describe-stacks --stack-name `
+`aws cloudformation describe-stacks --stack-name vaporwareAWSBatchCE`
 
 When build is complete the `StackStatus` field in response json will have the value `CREATE_COMPLETE` and the `Outputs` section will look similar to:
 
