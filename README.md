@@ -62,21 +62,9 @@ nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.ts
 
 #### For submitting via AWS Batch
 
-In order to run pipeline on `AWS Batch`, you first must create `AWS Batch Compute Environment` and `AWS Batch Job Queue` as described here https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html, https://docs.aws.amazon.com/batch/latest/userguide/create-job-queue.html.
-For user-specified Ami ID you should use `ami-077e66e85f2156f67`.
-You must also create `S3 bucket` which will be used as working directory and where your outputs will be stored, as described here https://docs.aws.amazon.com/AmazonS3/latest/user-guide/create-bucket.html. 
-
-**NOTE:** Your AWS Batch Instance role needs to have permissions to READ and WRITE to the S3 bucket.
-
-Create `awsbatch.config` file in `conf` directory using `conf/awsbatch.config.template`
-
-Replace:
-`<AWS_REGION>` with aws region where you built your compute environment
-`<STORAGE_ENCRYPTION>` storage encryption for your bucket (default: 'AES256')
-`<AWS_BATCH_QUEUE_ARN>` ARN of your AWS Batch Job Queue
-`<AWS_S3_WORKDIR>` S3 bucket used as working directory
-
-* Do the following for AWS Batch:
+In order to run pipeline on `AWS Batch`, you first must create your `Compute Environment` and `Configuration File` as described [here](aws_cf_scripts/README.md).
+ 
+* When you build your compute environment and create configuration file do the following:
 
 ```
 nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
