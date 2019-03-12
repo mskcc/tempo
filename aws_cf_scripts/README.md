@@ -48,6 +48,8 @@ Run the command below from the vaporware repo root directory and set `<AMI-ID>` 
 
 `aws cloudformation create-stack --stack-name vaporwareAWSBatchCE --template-body file://aws_cf_scripts/AWSBatchCreate.yaml --capabilities CAPABILITY_IAM --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID>`
 
+**NOTE: You can specify any name instead of vaporwareAWSBatchCE
+
 Building the AWS Batch Compute Environment will last for a few minutes. You can check the status of the build process by running the command.
 
 ***NOTE: By default EC2 Instance Role will have access to all your buckets. If you want to limit access of EC2 Instance Role just to the bucket you created you need to add `--parameters ParameterKey=WorkDirBucket,ParameterValue=<AWS-S3-WORKDIR>` in the previous command.***
