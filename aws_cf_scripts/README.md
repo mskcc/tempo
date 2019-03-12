@@ -46,7 +46,7 @@ We will use `OutputValue` for the next step.
 
 Run the command below from the vaporware repo root directory and set `<AMI-ID>` parameter to `OutputValue` from previous step. If you skiped previous section do not add --parameters argument when running the command.
 
-`aws cloudformation create-stack --stack-name vaporwareAWSBatchCE --template-body file://aws_cf_scripts/AWSBatchCreate.yaml --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID> --capabilities CAPABILITY_IAM`
+`aws cloudformation create-stack --stack-name vaporwareAWSBatchCE --template-body file://aws_cf_scripts/AWSBatchCreate.yaml --capabilities CAPABILITY_IAM --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID>`
 
 Building the AWS Batch Compute Environment will last for a few minutes. You can check the status of the build process by running the command.
 
