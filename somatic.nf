@@ -6,6 +6,13 @@
  Processes overview
  - dellyCall
  - dellyFilter
+ - makeSamplesFile
+ - runMutect2
+ - runManta
+ - runStrelka
+ - doSNPPileup
+ - doFacets
+ - runMsiSensor 
 */
 
 
@@ -26,7 +33,7 @@ tsvFile = file(tsvPath)
 
 bamFiles = extractBamFiles(tsvFile)
 
-( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile ) = bamFiles.into(6)
+( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile, bamsForMsiSensor, bamsForLumpy ) = bamFiles.into(8)
 
 /*
 ================================================================================
@@ -43,11 +50,11 @@ sv_variants = Channel.from( "DUP", "BND", "DEL", "INS", "INV" )
 process dellyCall {
   tag { "DELLYCALL_${sv_variant}_" + idTumor + "_" + idNormal }
 
-  publishDir "${params.outDir}/VariantCalling/delly_call"
+  publishDir "${params.outDir}/VariantCalling/${idTumor}_${idNormal}/delly_call"
 
   input:
     each sv_variant from sv_variants
-    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -79,10 +86,10 @@ process makeSamplesFile {
   tag { "SAMPLESFILE_" + idTumor + "_" + idNormal }
 
   input: 
-    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMakingSampleFile 
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMakingSampleFile 
 
   output:
-    set idTumor, idNormal, file("samples.tsv") into sampleTSVFile
+    set sequenceType, idTumor, idNormal, file("samples.tsv") into sampleTSVFile
 
   when: 'delly' in tools
 
@@ -94,10 +101,10 @@ process makeSamplesFile {
 process dellyFilter {
   tag { "DELLYFILTER_${sv_variant}_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/delly_filter"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/delly_filter"
 
   input:
-    set idTumor, idNormal, file("samples.tsv") from sampleTSVFile 
+    set sequenceType, idTumor, idNormal, file("samples.tsv") from sampleTSVFile 
     set file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi"), sv_variant from dellyCallOutput
 
   output:
@@ -121,10 +128,10 @@ process dellyFilter {
 process runMutect2 {
   tag {"MUTECT2_" + idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/mutect2"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2"
 
   input:
-    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMutect2
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMutect2
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -134,7 +141,7 @@ process runMutect2 {
     ])
 
   output:
-    set idNormal, idTumor, file("${idTumor}_vs_${idNormal}_somatic.vcf") into mutect2Output
+    set idNormal, idTumor, file("${idTumor}_vs_${idNormal}_somatic.vcf.gz") into mutect2Output
 
   when: 'mutect2' in tools
 
@@ -146,7 +153,51 @@ process runMutect2 {
     -R ${genomeFile}\
     -I ${bamTumor}  -tumor ${idTumor} \
     -I ${bamNormal} -normal ${idNormal} \
-    -O "${idTumor}_vs_${idNormal}_somatic.vcf"
+    -O "${idTumor}_vs_${idNormal}_somatic.vcf.gz"
+  """
+}
+
+process indexVCF {
+  tag {"INDEXVCF_" + idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/index_vcf"
+
+  input:
+    set idTumor, idNormal, file(mutect2Vcf) from mutect2Output
+
+  output:
+    set idTumor, idNormal, file(mutect2Vcf), file("${mutect2Vcf.baseName}.gz.tbi") into mutect2IndexedOutput
+
+  when: 'mutect2' in tools
+
+  script:
+  """
+  tabix -p vcf ${mutect2Vcf} 
+  """
+}
+
+process runMutect2Filter {
+  tag {"MUTECT2FILTER_" + idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2_filter"
+
+  input:
+    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2IndexedOutput
+
+  output:
+    file("*somatic.filtered.vcf*") into mutect2FilteredOutput
+
+  when: 'mutect2' in tools
+
+  outfile="${idTumor}_vs_${idNormal}_somatic.filtered.vcf"
+
+  script:
+  """
+  # Xmx hard-coded for now due to lsf bug
+  gatk --java-options "-Xmx8g" \
+    FilterMutectCalls \
+    --variant "${mutect2Vcf}" \
+    --output "${outfile}" 
   """
 }
 
@@ -155,10 +206,10 @@ process runMutect2 {
 process runManta {
   tag {"RUNMANTA_" + idTumor + "_" + idNormal}
 
-  publishDir "${params.outDir}/VariantCalling/Manta"
+  publishDir "${params.outDir}/VariantCalling/${idTumor}_${idNormal}/Manta"
 
   input:
-    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -202,10 +253,10 @@ process runManta {
 process runStrelka {
   tag {"RUNSTRELKA_" + idTumor + "_" + idNormal}
 
-  publishDir "${params.outDir}/VariantCalling/Strelka"
+  publishDir "${params.outDir}/VariantCalling/${idTumor}_${idNormal}/Strelka"
 
   input:
-    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
     set file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
@@ -245,14 +296,14 @@ process runStrelka {
 process doSNPPileup {
   tag { "SNPPILEUP_" + idTumor + "_" + idNormal }  
 
-  publishDir "${ params.outDir }/VariantCalling/snppileup"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/snppileup"
 
   input:
-    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSNPPileup
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSNPPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
-    set idTumor, idNormal, file("${output_filename}") into SNPPileup
+    set sequenceType, idTumor, idNormal, file("${output_filename}") into SNPPileup
 
   when: 'facets' in tools
 
@@ -266,10 +317,10 @@ process doSNPPileup {
 process doFacets {
   tag { "DOFACETS_" + idTumor + "_" + idNormal }  
 
-  publishDir "${ params.outDir }/VariantCalling/facets"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/facets"
 
   input:
-    set idTumor, idNormal, file("${idTumor}_${idNormal}.snppileup.dat.gz") from SNPPileup
+    set sequenceType, idTumor, idNormal, file(snpPileupFile) from SNPPileup
 
   output:
     file("*.*") into FacetsOutput
@@ -278,32 +329,80 @@ process doFacets {
 
   script:
   snp_pileup_prefix = idTumor + "_" + idNormal
-  counts_file = "${snp_pileup_prefix}.snppileup.dat.gz"
+  counts_file = "${snpPileupFile}"
   genome_value = "hg19"
   TAG = "${snp_pileup_prefix}"
-  directory = "."
   """
   /usr/bin/facets-suite/doFacets.R \
-  --cval 100 \
-  --snp_nbhd 250 \
-  --ndepth 35 \
-  --min_nhet 25 \
-  --purity_cval 500 \
-  --purity_snp_nbhd 250 \
-  --purity_ndepth 35 \
-  --purity_min_nhet 25 \
-  --genome "${genome_value}" \
+  --cval "${params.facets.cval}" \
+  --snp_nbhd "${params.facets.snp_nbhd}" \
+  --ndepth "${params.facets.ndepth}" \
+  --min_nhet "${params.facets.min_nhet}" \
+  --purity_cval "${params.facets.purity_cval}" \
+  --purity_snp_nbhd "${params.facets.purity_snp_nbhd}" \
+  --purity_ndepth "${params.facets.purity_ndepth}" \
+  --purity_min_nhet "${params.facets.purity_min_nhet}" \
+  --genome "${params.facets.genome}" \
   --counts_file "${counts_file}" \
   --TAG "${TAG}" \
-  --directory "${directory}" \
-  --R_lib latest \
-  --single_chrom F \
-  --ggplot2 T \
-  --seed 1000 \
+  --directory "${params.facets.directory}" \
+  --R_lib "${params.facets.R_lib}" \
+  --single_chrom "${params.facets.single_chrom}" \
+  --ggplot2 "${params.facets.ggplot2}" \
+  --seed "${params.facets.seed}" \
   --tumor_id "${idTumor}"
   """
 
 }
+
+process runMsiSensor {
+  tag { "MSISENSOR_" + idTumor + "_" + idNormal }  
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/msisensor"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict,
+      referenceMap.msiSensorList
+    ])
+
+  output:
+    file("${output_prefix}*") into msiOutput 
+
+  when: "msisensor" in tools
+
+  script:
+  output_prefix = "${idTumor}_${idNormal}"
+  """
+  msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
+  """
+}
+
+process runLumpyExpress {
+  tag { "LUMPYEXPRESS_" + idTumor + "_" + idNormal }  
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/lumpyexpress"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForLumpy
+
+  output:
+    file("*.vcf") into lumpyExpressOutput
+
+  when: 'lumpyexpress' in tools
+
+  script:
+  """
+  output_filename=${idTumor}_${idNormal}.lumpyexpress.vcf
+  lumpyexpress \
+    -B ${bamTumor},${bamNormal} \
+    -o "\${output_filename}"
+  """
+}
+
 
 /*
 ================================================================================
@@ -335,7 +434,9 @@ def defineReferenceMap() {
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
     // for SNP Pileup
-    'facetsVcf'        : checkParamReturnFile("facetsVcf")
+    'facetsVcf'        : checkParamReturnFile("facetsVcf"),
+    // MSI Sensor
+    'msiSensorList'    : checkParamReturnFile("msiSensorList")
   ]
 }
 
@@ -345,19 +446,20 @@ def extractBamFiles(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    SarekUtils.checkNumberOfItem(row, 6)
-    def idTumor = row[0]
-    def idNormal = row[1]
-    def bamTumor = SarekUtils.returnFile(row[2])
-    def bamNormal = SarekUtils.returnFile(row[3])
-    def baiTumor = SarekUtils.returnFile(row[4])
-    def baiNormal = SarekUtils.returnFile(row[5])
+    SarekUtils.checkNumberOfItem(row, 7)
+    def sequenceType = row[0]
+    def idTumor = row[1]
+    def idNormal = row[2]
+    def bamTumor = SarekUtils.returnFile(row[3])
+    def bamNormal = SarekUtils.returnFile(row[4])
+    def baiTumor = SarekUtils.returnFile(row[5])
+    def baiNormal = SarekUtils.returnFile(row[6])
 
     SarekUtils.checkFileExtension(bamTumor,".bam")
     SarekUtils.checkFileExtension(bamNormal,".bam")
     SarekUtils.checkFileExtension(baiTumor,".bai")
     SarekUtils.checkFileExtension(baiNormal,".bai")
 
-    [ idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
+    [ sequenceType, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
   }
 }
