@@ -62,21 +62,9 @@ nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.ts
 
 #### For submitting via AWS Batch
 
-In order to run pipeline on `AWS Batch`, you first must create `AWS Batch Compute Environment` and `AWS Batch Job Queue` as described here https://docs.aws.amazon.com/batch/latest/userguide/compute_environments.html, https://docs.aws.amazon.com/batch/latest/userguide/create-job-queue.html.
-For user-specified Ami ID you should use `ami-077e66e85f2156f67`.
-You must also create `S3 bucket` which will be used as working directory and where your outputs will be stored, as described here https://docs.aws.amazon.com/AmazonS3/latest/user-guide/create-bucket.html. 
-
-**NOTE:** Your AWS Batch Instance role needs to have permissions to READ and WRITE to the S3 bucket.
-
-Create `awsbatch.config` file in `conf` directory using `conf/awsbatch.config.template`
-
-Replace:
-`<AWS_REGION>` with aws region where you built your compute environment
-`<STORAGE_ENCRYPTION>` storage encryption for your bucket (default: 'AES256')
-`<AWS_BATCH_QUEUE_ARN>` ARN of your AWS Batch Job Queue
-`<AWS_S3_WORKDIR>` S3 bucket used as working directory
-
-* Do the following for AWS Batch:
+In order to run pipeline on `AWS Batch`, you first must create your `Compute Environment` and `Configuration File` as described [here](aws_cf_scripts/README.md).
+ 
+* When you build your compute environment and create configuration file do the following:
 
 ```
 nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
@@ -229,7 +217,7 @@ nextflow run somatic.nf --sample test_inputs/aws/test_somatic.tsv -profile awsba
 
 You can also specifiy which specific tool(s) you want to run with the `--tools <toolname(s), comma-delimited>` flag.
 
-If `--tools` is not specified, `somatic.nf` runs all tools, currently `delly`,`facets`,`manta`,`strelka2`, and `mutect2`.
+If `--tools` is not specified, `somatic.nf` runs all tools, currently `delly`,`facets`,`manta`,`strelka2`, `mutect2`, and `msisensor`.
 
 Tool name `delly` will run processes `dellyCall`,`makeSamplesFile`, and `dellyFilter`.
 
@@ -239,28 +227,49 @@ Tool name `facets` runs process `doSNPPileup` and `doFacets`.
 
 Tool name `mutect2` runs process `runMutect2`.
 
+Tool name `msisensor` runs process `runMsiSensor`.
+
 Example run of only `delly`, `manta, `strelka2` on lsf:
 ```
 nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD --tools delly, manta, strelka2
 ```
 
+Input File columns:
+`"sequenceType  idTumor   idNormal    bamTumor    bamNormal   baiTumor    baiNormal"`
+
+Outputs:
+They are found in `${params.outDir}/VariantCalling/${idTumor}_${idNormal}/<tool_name>`
+
+Variables used in pipeline:
+
+`genomeFile`: reference fasta
+
+`sequenceType`: Either `exome` or `genome`; currently un-used
+
+`idTumor`: tumor sample name 
+
+`idNormal`: normal sample name
+
+`bamTumor`: tumor bam
+
+`bamNormal`: normal bam
+
 #### `delly` -- SV Caller 
 
 https://github.com/dellytools/delly
 
-For now we assume that we want all five variants of SV performed for `delly call`, thus the for-loop in the Nextflow process `dellyCall`.
+For now we assume that we want all five variants of SV performed for `delly call`; `sv_variant` is defined before the process is initiated in a list named `sv_variants`. 
+
+We use `nextflow` to iterate through that list, submitting the processes in parallel.
+
 ```
-sv_variants=("DUP" "BND" "DEL" "INS" "INV")
-for sv_variant in "\${sv_variants[@]}";
-do
-  outfile="${idTumor}_${idNormal}_\${sv_variant}.bcf"
-  delly call \
-    -t "\${sv_variant}" \
-    -o "\${outfile}" \
-    -g ${genomeFile} \
-    ${bamTumor} \
-    ${bamNormal}
-done
+outfile="${idTumor}_${idNormal}_\${sv_variant}.bcf"
+delly call \
+  -t "\${sv_variant}" \
+  -o "\${outfile}" \
+  -g ${genomeFile} \
+  ${bamTumor} \
+  ${bamNormal}
 ```
 
 The next step, `delly filter`, requires a sample input file that contains a tumor ID and a normal ID that's considered "control"; this is done in the process `makeSampleFile`:
@@ -269,20 +278,16 @@ The next step, `delly filter`, requires a sample input file that contains a tumo
 echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
 ```
 
-This is fed to process `dellyFilter`; we also need a for-loop here for ease:
+These `sv_variant` processes are then fed to another process `dellyFilter`.
 
 ```
-sv_variants=("DUP" "BND" "DEL" "INS" "INV")
-for sv_variant in "\${sv_variants[@]}";
-do
-  delly_call_file="${idTumor}_${idNormal}_\${sv_variant}.bcf"
-  outfile="${idTumor}_${idNormal}_\${sv_variant}.filter.bcf"
-  delly filter \
-    -f somatic \
-    -o "\${outfile}" \
-    -s "samples.tsv" \
-    "\${delly_call_file}"
-done
+delly_call_file="${idTumor}_${idNormal}_\${sv_variant}.bcf"
+outfile="${idTumor}_${idNormal}_\${sv_variant}.filter.bcf"
+delly filter \
+  -f somatic \
+  -o "\${outfile}" \
+  -s "samples.tsv" \
+  "\${delly_call_file}"
 ```
 
 #### `MuTect2` -- SV Caller
@@ -389,4 +394,27 @@ directory = "."
 --ggplot2 T \
 --seed 1000 \
 --tumor_id "${idTumor}"
+```
+
+#### `msisensor` -- MicroSatellite Instability detection
+
+https://github.com/ding-lab/msisensor
+
+msiSensorList is defined in `references.config
+
+```
+output_prefix = "${idTumor}_${idNormal}"
+
+msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
+```
+
+#### `lumpyexpress` -- Structural Variant Caller
+
+https://github.com/arq5x/lumpy-sv
+
+```
+output_filename=${idTumor}_${idNormal}.lumpyexpress.vcf
+lumpyexpress \
+  -B ${bamTumor},${bamNormal} \
+  -o "\${output_filename}"
 ```
