@@ -6,3 +6,4 @@ example_data
 .nextflow*
 *.img
 *.tar.gz
+conf/awsbatch.config
