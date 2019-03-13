@@ -125,13 +125,73 @@ process dellyFilter {
 
 // ---------------------- Run MuTect2 
 
+process CreateIntervalBeds {
+  tag {intervals.fileName}
+
+  input:
+    file(intervals) from Channel.value(referenceMap.intervals)
+
+  output:
+    file '*.bed' into bedIntervals mode flatten
+
+  script:
+  // If the interval file is BED format, the fifth column is interpreted to
+  // contain runtime estimates, which is then used to combine short-running jobs
+  if (intervals.getName().endsWith('.bed'))
+    """
+    awk -vFS="\t" '{
+      t = \$5  # runtime estimate
+      if (t == "") {
+        # no runtime estimate in this row, assume default value
+        t = (\$3 - \$2) / ${params.nucleotidesPerSecond}
+      }
+      if (name == "" || (chunk > 600 && (chunk + t) > longest * 1.05)) {
+        # start a new chunk
+        name = sprintf("%s_%d-%d.bed", \$1, \$2+1, \$3)
+        chunk = 0
+        longest = 0
+      }
+      if (t > longest)
+        longest = t
+      chunk += t
+      print \$0 > name
+    }' ${intervals}
+    """
+  else
+    """
+    awk -vFS="[:-]" '{
+      name = sprintf("%s_%d-%d", \$1, \$2, \$3);
+      printf("%s\\t%d\\t%d\\n", \$1, \$2-1, \$3) > name ".bed"
+    }' ${intervals}
+    """
+}
+
+bedIntervals = bedIntervals
+  .map { intervalFile ->
+    def duration = 0.0
+    for (line in intervalFile.readLines()) {
+      final fields = line.split('\t')
+      if (fields.size() >= 5) duration += fields[4].toFloat()
+      else {
+        start = fields[1].toInteger()
+        end = fields[2].toInteger()
+        duration += (end - start) / params.nucleotidesPerSecond
+      }
+    }
+    [duration, intervalFile]
+  }.toSortedList({ a, b -> b[0] <=> a[0] })
+  .flatten().collate(2)
+  .map{duration, intervalFile -> intervalFile}
+
+bamsForMutect2Intervals = bamsForMutect2.spread(bedIntervals)
+
 process runMutect2 {
   tag {"MUTECT2_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMutect2
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -153,7 +213,8 @@ process runMutect2 {
     -R ${genomeFile}\
     -I ${bamTumor}  -tumor ${idTumor} \
     -I ${bamNormal} -normal ${idNormal} \
-    -O "${idTumor}_vs_${idNormal}_somatic.vcf.gz"
+    -L ${intervalBed} \
+    -O "${intervalBed.baseName}_${idTumor}_vs_${idNormal}_somatic.vcf.gz"
   """
 }
 
