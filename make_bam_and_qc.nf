@@ -127,12 +127,8 @@ singleBamDebug = singleBamDebug.map {
 }
 
 if (params.debug) {
-    groupedBamDebug.subscribe { Object obj ->
-        println "DEBUG: ${obj.toString()};"
-    }
-    singleBamDebug.subscribe { Object obj ->
-        println "DEBUG: ${obj.toString()};"
-    }
+  debug(groupedBamDebug);
+  debug(singleBamDebug);
 }   
 
 process MergeBams {
@@ -142,7 +138,7 @@ process MergeBams {
     set idPatient, status, idSample, idRun, file(bam) from groupedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into (mergedBam, mergedBamPrint)
+    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
 
   // when: step == 'mapping' && !params.onlyQC
 
@@ -153,9 +149,7 @@ process MergeBams {
 }
 
 if (params.debug) {
-    mergedBamPrint.subscribe { Object obj ->
-        println "DEBUG: ${obj.toString()};"
-    }
+  debug(mergedBamDebug);
 }
 
 if (params.verbose) singleBam = singleBam.view {
@@ -342,6 +336,12 @@ def defineReferenceMap() {
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
   ]
+}
+
+def debug(channel) {
+  channel.subscribe { Object obj ->
+    println "DEBUG: ${obj.toString()};"
+  }
 }
 
 def extractFastq(tsvFile) {
