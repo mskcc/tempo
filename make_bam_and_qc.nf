@@ -138,13 +138,13 @@ process MergeBams {
 if (params.verbose) singleBam = singleBam.view {
   "Single BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 if (params.verbose) mergedBam = mergedBam.view {
   "Merged BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 mergedBam = mergedBam.mix(singleBam)
@@ -152,7 +152,7 @@ mergedBam = mergedBam.mix(singleBam)
 if (params.verbose) mergedBam = mergedBam.view {
   "BAM for MarkDuplicates:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 // GATK MarkDuplicates
@@ -205,13 +205,13 @@ duplicateMarkedBams = duplicateMarkedBams.map {
 if (params.verbose) mdBamToJoin = mdBamToJoin.view {
   "MD Bam to Join BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 if (params.verbose) mdBam = mdBam.view {
   "BAM for MarkDuplicates:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 process CreateRecalibrationTable {
