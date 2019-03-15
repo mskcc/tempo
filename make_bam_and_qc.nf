@@ -41,7 +41,6 @@ fastqFiles = extractFastq(tsvFile)
 ================================================================================
 */
 
-
 // tag
 // https://www.nextflow.io/docs/latest/process.html#tag
 // The tag directive allows you to associate each process executions with a custom label, 
@@ -198,13 +197,13 @@ process MarkDuplicates {
   script:
   """
   gatk MarkDuplicates --java-options ${params.markdup_java_options}  \
-  --MAX_RECORDS_IN_RAM 50000 \
-  --INPUT ${idSample}.merged.bam \
-  --METRICS_FILE ${idSample}.bam.metrics \
-  --TMP_DIR . \
-  --ASSUME_SORT_ORDER coordinate \
-  --CREATE_INDEX true \
-  --OUTPUT ${idSample}_${status}.md.bam
+    --MAX_RECORDS_IN_RAM 50000 \
+    --INPUT ${idSample}.merged.bam \
+    --METRICS_FILE ${idSample}.bam.metrics \
+    --TMP_DIR . \
+    --ASSUME_SORT_ORDER coordinate \
+    --CREATE_INDEX false \
+    --OUTPUT ${idSample}_${status}.md.bam
   """
 }
 
@@ -252,19 +251,18 @@ process CreateRecalibrationTable {
     set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
     set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
 
-
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+
   """
   gatk BaseRecalibrator \
-  --input ${bam} \
-  --output ${idSample}.recal.table \
-  --tmp-dir /tmp \
-  -R ${genomeFile} \
-  -L ${intervals} \
-  --known-sites ${dbsnp} \
-  ${known} \
-  --verbosity INFO
+    --tmp-dir /tmp \
+    --reference ${genomeFile} \
+    --known-sites ${dbsnp} \
+    ${known} \
+    --verbosity INFO \
+    --input ${bam} \
+    --output ${idSample}.recal.table \ 
   """
 }
 
@@ -290,18 +288,14 @@ process RecalibrateBam {
     set idPatient, status, idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
     set idPatient, status, idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
 
-  // GATK4 HaplotypeCaller can not do BQSR on the fly, so we have to create a
-  // recalibrated BAM explicitly.
-
   script:
   """
   gatk ApplyBQSR \
-  -R ${genomeFile} \
-  --input ${bam} \
-  --output ${idSample}.recal.bam \
-  -L ${intervals} \
-  --create-output-bam-index true \
-  --bqsr-recal-file ${recalibrationReport}
+    --reference ${genomeFile} \
+    --create-output-bam-index true \
+    --bqsr-recal-file ${recalibrationReport} \
+    --input ${bam} \
+    --output ${idSample}.recal.bam 
   """
 }
 
@@ -310,7 +304,6 @@ process RecalibrateBam {
 =                               AWESOME FUNCTIONS                             =
 ================================================================================
 */
-
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
@@ -365,4 +358,3 @@ def extractFastq(tsvFile) {
     [idPatient, gender, status, idSample, idRun, fastqFile1, fastqFile2]
   }
 }
-
