@@ -1,2 +1,2 @@
 1234	XX	0	1234N	1234N_M1	/juno/work/pi/cmopipeline/data/fastq/P1_R1.fastq.gz	/juno/work/pi/cmopipeline/data/fastq/P1_R2.fastq.gz
-1234	XX	0	1234N	1234N_M2	/juno/work/pi/cmopipeline/data/fastq/P2_R1.fastq.gz	/juno/work/pi/cmopipeline/data/fastq/P2_R2.fastq.gz
+1234	XX	1	1234T	1234T_M2	/juno/work/pi/cmopipeline/data/fastq/P2_R1.fastq.gz	/juno/work/pi/cmopipeline/data/fastq/P2_R2.fastq.gz
