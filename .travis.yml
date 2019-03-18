@@ -1,0 +1,17 @@
+sudo: required
+language: java
+jdk: openjdk8
+
+os:
+  - linux
+
+services:
+  - docker
+
+before_install:
+  - curl -fsSL get.nextflow.io | bash
+  - chmod +x nextflow
+
+script:
+  # Run test script here
+  - True
