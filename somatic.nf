@@ -128,11 +128,15 @@ process dellyFilter {
 process CreateIntervalBeds {
   tag {intervals.fileName}
 
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/intervals"
+
   input:
     file(intervals) from Channel.value(referenceMap.intervals)
 
   output:
     file '*.bed' into bedIntervals mode flatten
+
+  when: "mutect2" in tools
 
   script:
   // If the interval file is BED format, the fifth column is interpreted to
