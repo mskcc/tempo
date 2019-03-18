@@ -185,6 +185,13 @@ bedIntervals = bedIntervals
 
 bamsForMutect2Intervals = bamsForMutect2.spread(bedIntervals)
 
+if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
+  "BAMs for Mutect2 with Intervals:\n\
+  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
+  File  : [${it[4].fileName}]"
+}
+
+
 process runMutect2 {
   tag {"MUTECT2_" + idTumor + "_" + idNormal }
 
@@ -201,7 +208,7 @@ process runMutect2 {
     ])
 
   output:
-    set idNormal, idTumor, file("${idTumor}_vs_${idNormal}_somatic.vcf.gz") into mutect2Output
+    set idTumor, idNormal, file("${intervalBed.baseName}_${idTumor}_vs_${idNormal}_somatic.vcf.gz") into mutect2Output
 
   when: 'mutect2' in tools
 
@@ -277,7 +284,7 @@ process runManta {
     ])
 
   output:
-    set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
+    set idTumor, idNormal, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
     set file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: 'manta' in tools
@@ -326,7 +333,7 @@ process runStrelka {
     ])
 
   output:
-    set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
+    set idTumor, idNormal, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
 
   when: 'manta' in tools && 'strelka2' in tools
 
