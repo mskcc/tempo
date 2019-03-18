@@ -257,7 +257,7 @@ process runMutect2Filter {
 
   when: 'mutect2' in tools
 
-  outfile="${idTumor}_vs_${idNormal}_somatic.filtered.vcf"
+  outfile="${mutect2Vcf.fileName}".replaceFirst("vcf.gz","filtered.vcf")
 
   script:
   """
@@ -510,7 +510,7 @@ def defineReferenceMap() {
 
 def extractBamFiles(tsvFile) {
   // Channeling the TSV file containing FASTQ.
-  // Format is: "idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
+  // Format is: "sequenceType idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
