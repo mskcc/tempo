@@ -65,26 +65,8 @@ process AlignReads {
   """
 }
 
-// ConvertSAMtoBAM - Convert SAM to BAM with samtools, 'samtools view'
-/*
-process ConvertSAMtoBAM {
-  tag {idPatient + "-" + idSample}
-
-  input:
-    set idPatient, status, idSample, idRun, file("${idRun}.sam") from alignedSam
-
-  output:
-    set idPatient, status, idSample, idRun, file("${idRun}.bam") into unsortedBam
-
-  script:
-  """
-  samtools view -S -b -@ ${task.cpus} ${idRun}.sam > ${idRun}.bam
-  """
-}
-*/
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 // samtools sort
-// setting these parameters as fixed `-m 2G` 
 
 process SortBAM {
   tag {idPatient + "-" + idSample}
