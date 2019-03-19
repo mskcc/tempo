@@ -128,64 +128,26 @@ process dellyFilter {
 process CreateIntervalBeds {
   tag {intervals.fileName}
 
-  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/intervals"
+  publishDir "${ params.outDir }/VariantCalling/interval_beds"
 
   input:
-    file(intervals) from Channel.value(referenceMap.intervals)
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.intervals])
 
   output:
-    file '*.bed' into bedIntervals mode flatten
+    file 'interval_beds/*.interval_list' into bedIntervals mode flatten
 
   when: "mutect2" in tools
 
   script:
-  // If the interval file is BED format, the fifth column is interpreted to
-  // contain runtime estimates, which is then used to combine short-running jobs
-  if (intervals.getName().endsWith('.bed'))
-    """
-    awk -vFS="\t" '{
-      t = \$5  # runtime estimate
-      if (t == "") {
-        # no runtime estimate in this row, assume default value
-        t = (\$3 - \$2) / ${params.nucleotidesPerSecond}
-      }
-      if (name == "" || (chunk > 600 && (chunk + t) > longest * 1.05)) {
-        # start a new chunk
-        name = sprintf("%s_%d-%d.bed", \$1, \$2+1, \$3)
-        chunk = 0
-        longest = 0
-      }
-      if (t > longest)
-        longest = t
-      chunk += t
-      print \$0 > name
-    }' ${intervals}
-    """
-  else
-    """
-    awk -vFS="[:-]" '{
-      name = sprintf("%s_%d-%d", \$1, \$2, \$3);
-      printf("%s\\t%d\\t%d\\n", \$1, \$2-1, \$3) > name ".bed"
-    }' ${intervals}
-    """
+  """
+  gatk SplitIntervals \
+    -R ${genomeFile} \
+    -L ${intervals} \
+    --scatter-count 10 \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    -O interval_beds
+  """
 }
-
-bedIntervals = bedIntervals
-  .map { intervalFile ->
-    def duration = 0.0
-    for (line in intervalFile.readLines()) {
-      final fields = line.split('\t')
-      if (fields.size() >= 5) duration += fields[4].toFloat()
-      else {
-        start = fields[1].toInteger()
-        end = fields[2].toInteger()
-        duration += (end - start) / params.nucleotidesPerSecond
-      }
-    }
-    [duration, intervalFile]
-  }.toSortedList({ a, b -> b[0] <=> a[0] })
-  .flatten().collate(2)
-  .map{duration, intervalFile -> intervalFile}
 
 bamsForMutect2Intervals = bamsForMutect2.spread(bedIntervals)
 
@@ -195,9 +157,8 @@ if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
   File  : [${it[4].fileName}]"
 }
 
-
 process runMutect2 {
-  tag {"MUTECT2_" + idTumor + "_" + idNormal }
+  tag {"MUTECT2_" + intervalBed.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2"
 
@@ -212,7 +173,7 @@ process runMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, file("${intervalBed.baseName}_${idTumor}_vs_${idNormal}_somatic.vcf.gz") into mutect2Output
+    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz") into mutect2Output
 
   when: 'mutect2' in tools
 
@@ -225,12 +186,12 @@ process runMutect2 {
     -I ${bamTumor}  -tumor ${idTumor} \
     -I ${bamNormal} -normal ${idNormal} \
     -L ${intervalBed} \
-    -O "${intervalBed.baseName}_${idTumor}_vs_${idNormal}_somatic.vcf.gz"
+    -O "${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz"
   """
 }
 
 process indexVCF {
-  tag {"INDEXVCF_" + idTumor + "_" + idNormal }
+  tag {"INDEXVCF_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/index_vcf"
 
@@ -249,7 +210,7 @@ process indexVCF {
 }
 
 process runMutect2Filter {
-  tag {"MUTECT2FILTER_" + idTumor + "_" + idNormal }
+  tag {"MUTECT2FILTER_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2_filter"
 
