@@ -190,8 +190,8 @@ process MarkDuplicates {
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
 
   output:
-    set idPatient, file("${idSample}_${status}.md.bam"), file("${idSample}_${status}.md.bai"), idSample, idRun into duplicateMarkedBams
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai") into markDuplicatesTSV
+    set idPatient, file("${idSample}_${status}.md.bam"), idSample, idRun into duplicateMarkedBams
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam") into markDuplicatesTSV
     file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
@@ -208,12 +208,12 @@ process MarkDuplicates {
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    idPatient, bam, bai, idSample, idRun ->
+    idPatient, bam, idSample, idRun ->
     tag = bam.baseName.tokenize('.')[0]
     /// status   = tag[-1..-1].toInteger()  X
     status = 0
     // idSample = tag.take(tag.length()-2)
-    [idPatient, status, idSample, bam, bai]
+    [idPatient, status, idSample, bam]
 }
 
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
@@ -234,22 +234,21 @@ process CreateRecalibrationTable {
   tag {idPatient + "-" + idSample}
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai) from mdBam 
+    set idPatient, status, idSample, file(bam) from mdBam 
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
       referenceMap.dbsnp,
       referenceMap.dbsnpIndex,
       referenceMap.knownIndels,
-      referenceMap.knownIndelsIndex,
-      referenceMap.intervals,
+      referenceMap.knownIndelsIndex 
     ])
 
   output:
     set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}.recal.table") into recalibrationTableTSV
 
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
@@ -262,7 +261,7 @@ process CreateRecalibrationTable {
     ${known} \
     --verbosity INFO \
     --input ${bam} \
-    --output ${idSample}.recal.table \ 
+    --output ${idSample}.recal.table 
   """
 }
 
@@ -275,13 +274,12 @@ process RecalibrateBam {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+    set idPatient, status, idSample, file(bam), file(recalibrationReport) from recalibrationTable
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
-      referenceMap.genomeDict,
-      referenceMap.intervals,
+      referenceMap.genomeDict 
     ])
 
   output:
@@ -322,9 +320,7 @@ def defineReferenceMap() {
     // genome .fai file
     'genomeIndex'      : checkParamReturnFile("genomeIndex"),
     // BWA index files
-    'bwaIndex'         : checkParamReturnFile("bwaIndex"),
-    // intervals file for spread-and-gather processes
-    'intervals'        : checkParamReturnFile("intervals"),
+    'bwaIndex'         : checkParamReturnFile("bwaIndex"), 
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
