@@ -57,17 +57,17 @@ process AlignReads {
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.sam") into (alignedSam)
+    set idPatient, status, idSample, idRun, file("${idRun}.bam") into (unsortedBam)
 
   script:
   readGroup = "@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"
   """
-  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} > ${idRun}.sam
+  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idRun}.bam
   """
 }
 
 // ConvertSAMtoBAM - Convert SAM to BAM with samtools, 'samtools view'
-
+/*
 process ConvertSAMtoBAM {
   tag {idPatient + "-" + idSample}
 
@@ -82,7 +82,7 @@ process ConvertSAMtoBAM {
   samtools view -S -b -@ ${task.cpus} ${idRun}.sam > ${idRun}.bam
   """
 }
-
+*/
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 // samtools sort
 // setting these parameters as fixed `-m 2G` 
@@ -102,7 +102,7 @@ process SortBAM {
     mem = task.memory.toString().split(" ")[0]
   }
   else {
-    mem = task.memory.toString().split(" ")[0].toInteger()/task.cpus
+    mem = task.memory.toString().split(" ")[0].toInteger() - 1
   }
   """
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
@@ -282,7 +282,6 @@ process RecalibrateBam {
   -R ${genomeFile} \
   --input ${bam} \
   --output ${idSample}.recal.bam \
-  -L ${intervals} \
   --create-output-bam-index true \
   --bqsr-recal-file ${recalibrationReport}
   """
