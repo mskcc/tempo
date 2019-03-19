@@ -125,13 +125,45 @@ process dellyFilter {
 
 // ---------------------- Run MuTect2 
 
+process CreateIntervalBeds {
+  tag {intervals.fileName}
+
+  publishDir "${ params.outDir }/VariantCalling/interval_beds"
+
+  input:
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.intervals])
+
+  output:
+    file 'interval_beds/*.interval_list' into bedIntervals mode flatten
+
+  when: "mutect2" in tools
+
+  script:
+  """
+  gatk SplitIntervals \
+    -R ${genomeFile} \
+    -L ${intervals} \
+    --scatter-count 10 \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    -O interval_beds
+  """
+}
+
+bamsForMutect2Intervals = bamsForMutect2.spread(bedIntervals)
+
+if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
+  "BAMs for Mutect2 with Intervals:\n\
+  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
+  File  : [${it[4].fileName}]"
+}
+
 process runMutect2 {
-  tag {"MUTECT2_" + idTumor + "_" + idNormal }
+  tag {"MUTECT2_" + intervalBed.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMutect2
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -141,7 +173,7 @@ process runMutect2 {
     ])
 
   output:
-    set idNormal, idTumor, file("${idTumor}_vs_${idNormal}_somatic.vcf.gz") into mutect2Output
+    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz") into mutect2Output
 
   when: 'mutect2' in tools
 
@@ -153,12 +185,13 @@ process runMutect2 {
     -R ${genomeFile}\
     -I ${bamTumor}  -tumor ${idTumor} \
     -I ${bamNormal} -normal ${idNormal} \
-    -O "${idTumor}_vs_${idNormal}_somatic.vcf.gz"
+    -L ${intervalBed} \
+    -O "${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz"
   """
 }
 
 process indexVCF {
-  tag {"INDEXVCF_" + idTumor + "_" + idNormal }
+  tag {"INDEXVCF_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/index_vcf"
 
@@ -177,7 +210,7 @@ process indexVCF {
 }
 
 process runMutect2Filter {
-  tag {"MUTECT2FILTER_" + idTumor + "_" + idNormal }
+  tag {"MUTECT2FILTER_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2_filter"
 
@@ -189,7 +222,7 @@ process runMutect2Filter {
 
   when: 'mutect2' in tools
 
-  outfile="${idTumor}_vs_${idNormal}_somatic.filtered.vcf"
+  outfile="${mutect2Vcf.fileName}".replaceFirst("vcf.gz","filtered.vcf")
 
   script:
   """
@@ -216,7 +249,7 @@ process runManta {
     ])
 
   output:
-    set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
+    set idTumor, idNormal, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
     set file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: 'manta' in tools
@@ -265,7 +298,7 @@ process runStrelka {
     ])
 
   output:
-    set idNormal, idTumor, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
+    set idTumor, idNormal, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
 
   when: 'manta' in tools && 'strelka2' in tools
 
@@ -442,7 +475,7 @@ def defineReferenceMap() {
 
 def extractBamFiles(tsvFile) {
   // Channeling the TSV file containing FASTQ.
-  // Format is: "idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
+  // Format is: "sequenceType idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
