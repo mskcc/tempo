@@ -7,3 +7,6 @@ example_data
 *.img
 *.tar.gz
 conf/awsbatch.config
+nf.*
+*.bam
+*.bai
