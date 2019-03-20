@@ -59,32 +59,14 @@ process AlignReads {
     set idPatient, status, idSample, idRun, file("${idRun}.bam") into (unsortedBam)
 
   script:
-  readGroup = "@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"
+  readGroup = "@RG\\tID:${idSample}_${idRun}\\tSM:${idSample}\\tLB:${idSample}_${idRun}\\tPL:Illumina"
   """
   bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idRun}.bam
   """
 }
 
-// ConvertSAMtoBAM - Convert SAM to BAM with samtools, 'samtools view'
-/*
-process ConvertSAMtoBAM {
-  tag {idPatient + "-" + idSample}
-
-  input:
-    set idPatient, status, idSample, idRun, file("${idRun}.sam") from alignedSam
-
-  output:
-    set idPatient, status, idSample, idRun, file("${idRun}.bam") into unsortedBam
-
-  script:
-  """
-  samtools view -S -b -@ ${task.cpus} ${idRun}.sam > ${idRun}.bam
-  """
-}
-*/
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 // samtools sort
-// setting these parameters as fixed `-m 2G` 
 
 process SortBAM {
   tag {idPatient + "-" + idSample}
@@ -101,7 +83,7 @@ process SortBAM {
     mem = task.memory.toString().split(" ")[0] - 1 
   }
   else {
-    mem = task.memory.toString().split(" ")[0].toInteger().intdiv(task.cpus) - 1
+    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
   }
   """
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
