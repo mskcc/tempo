@@ -93,7 +93,7 @@ process SortBAM {
     set idPatient, status, idSample, idRun, file("${idRun}.bam") from unsortedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") into sortedBam
+    set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") into (sortedBam, sortedBamDebug)
 
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
@@ -109,13 +109,26 @@ process SortBAM {
 }
 
 singleBam = Channel.create()
+singleBamDebug = Channel.create()
 groupedBam = Channel.create()
+groupedBamDebug = Channel.create()
 sortedBam.groupTuple(by:[0,1,2])
-  .choice(singleBam, groupedBam) {it[3].size() > 1 ? 1 : 0}
+  .choice(singleBam, groupedBam) {it[2].size() > 1 ? 1 : 0}
 singleBam = singleBam.map {
   idPatient, status, idSample, idRun, bam ->
   [idPatient, status, idSample, bam]
 }
+sortedBamDebug.groupTuple(by:[0,1,2])
+  .choice(singleBamDebug, groupedBamDebug) {it[2].size() > 1 ? 1 : 0}
+singleBamDebug = singleBamDebug.map {
+  idPatient, status, idSample, idRun, bam ->
+  [idPatient, status, idSample, bam]
+}
+
+if (params.debug) {
+  debug(groupedBamDebug);
+  debug(singleBamDebug);
+}   
 
 process MergeBams {
   tag {idPatient + "-" + idSample}
@@ -124,7 +137,7 @@ process MergeBams {
     set idPatient, status, idSample, idRun, file(bam) from groupedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into mergedBam
+    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
 
   // when: step == 'mapping' && !params.onlyQC
 
@@ -134,16 +147,20 @@ process MergeBams {
   """
 }
 
+if (params.debug) {
+  debug(mergedBamDebug);
+}
+
 if (params.verbose) singleBam = singleBam.view {
   "Single BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 if (params.verbose) mergedBam = mergedBam.view {
   "Merged BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[4]}]"
 }
 
 mergedBam = mergedBam.mix(singleBam)
@@ -151,7 +168,7 @@ mergedBam = mergedBam.mix(singleBam)
 if (params.verbose) mergedBam = mergedBam.view {
   "BAM for MarkDuplicates:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[4]}]"
 }
 
 // GATK MarkDuplicates
@@ -173,8 +190,8 @@ process MarkDuplicates {
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
 
   output:
-    set idPatient, file("${idSample}_${status}.md.bam"), file("${idSample}_${status}.md.bai"), idSample, idRun into duplicateMarkedBams
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai") into markDuplicatesTSV
+    set idPatient, file("${idSample}_${status}.md.bam"), idSample, idRun into duplicateMarkedBams
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam") into markDuplicatesTSV
     file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
@@ -191,12 +208,12 @@ process MarkDuplicates {
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    idPatient, bam, bai, idSample, idRun ->
+    idPatient, bam, idSample, idRun ->
     tag = bam.baseName.tokenize('.')[0]
     /// status   = tag[-1..-1].toInteger()  X
     status = 0
     // idSample = tag.take(tag.length()-2)
-    [idPatient, status, idSample, bam, bai]
+    [idPatient, status, idSample, bam]
 }
 
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
@@ -204,35 +221,34 @@ duplicateMarkedBams = duplicateMarkedBams.map {
 if (params.verbose) mdBamToJoin = mdBamToJoin.view {
   "MD Bam to Join BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 if (params.verbose) mdBam = mdBam.view {
   "BAM for MarkDuplicates:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 process CreateRecalibrationTable {
   tag {idPatient + "-" + idSample}
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai) from mdBam 
+    set idPatient, status, idSample, file(bam) from mdBam 
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
       referenceMap.dbsnp,
       referenceMap.dbsnpIndex,
       referenceMap.knownIndels,
-      referenceMap.knownIndelsIndex,
-      referenceMap.intervals,
+      referenceMap.knownIndelsIndex 
     ])
 
   output:
     set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}.recal.table") into recalibrationTableTSV
 
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
@@ -258,13 +274,12 @@ process RecalibrateBam {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+    set idPatient, status, idSample, file(bam), file(recalibrationReport) from recalibrationTable
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
-      referenceMap.genomeDict,
-      referenceMap.intervals,
+      referenceMap.genomeDict 
     ])
 
   output:
@@ -305,13 +320,17 @@ def defineReferenceMap() {
     // genome .fai file
     'genomeIndex'      : checkParamReturnFile("genomeIndex"),
     // BWA index files
-    'bwaIndex'         : checkParamReturnFile("bwaIndex"),
-    // intervals file for spread-and-gather processes
-    'intervals'        : checkParamReturnFile("intervals"),
+    'bwaIndex'         : checkParamReturnFile("bwaIndex"), 
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
   ]
+}
+
+def debug(channel) {
+  channel.subscribe { Object obj ->
+    println "DEBUG: ${obj.toString()};"
+  }
 }
 
 def extractFastq(tsvFile) {
