@@ -60,7 +60,7 @@ process AlignReads {
     set idPatient, status, idSample, idRun, file("${idRun}.sam") into (alignedSam)
 
   script:
-  readGroup = "@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"
+    readGroup = "@RG\\tID:${idSample}_${idRun}\\tSM:${idSample}\\tLB:${idSample}_${idRun}\\tPL:Illumina"
   """
   bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} > ${idRun}.sam
   """
