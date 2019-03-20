@@ -65,8 +65,26 @@ process AlignReads {
   """
 }
 
+// ConvertSAMtoBAM - Convert SAM to BAM with samtools, 'samtools view'
+/*
+process ConvertSAMtoBAM {
+  tag {idPatient + "-" + idSample}
+
+  input:
+    set idPatient, status, idSample, idRun, file("${idRun}.sam") from alignedSam
+
+  output:
+    set idPatient, status, idSample, idRun, file("${idRun}.bam") into unsortedBam
+
+  script:
+  """
+  samtools view -S -b -@ ${task.cpus} ${idRun}.sam > ${idRun}.bam
+  """
+}
+*/
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 // samtools sort
+// setting these parameters as fixed `-m 2G` 
 
 process SortBAM {
   tag {idPatient + "-" + idSample}
@@ -80,10 +98,10 @@ process SortBAM {
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
   if(params.mem_per_core) { 
-    mem = task.memory.toString().split(" ")[0]
+    mem = task.memory.toString().split(" ")[0] - 1 
   }
   else {
-    mem = task.memory.toString().split(" ")[0].toInteger() - 1
+    mem = task.memory.toString().split(" ")[0].toInteger().intdiv(task.cpus) - 1
   }
   """
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
