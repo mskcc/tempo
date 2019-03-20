@@ -261,7 +261,7 @@ process CreateRecalibrationTable {
     ${known} \
     --verbosity INFO \
     --input ${bam} \
-    --output ${idSample}.recal.table 
+    --output ${idSample}.recal.table
   """
 }
 
@@ -293,7 +293,7 @@ process RecalibrateBam {
     --create-output-bam-index true \
     --bqsr-recal-file ${recalibrationReport} \
     --input ${bam} \
-    --output ${idSample}.recal.bam 
+    --output ${idSample}.recal.bam
   """
 }
 
