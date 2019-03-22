@@ -33,8 +33,6 @@ tsvFile = file(tsvPath)
 
 bamFiles = extractBamFiles(tsvFile)
 
-( bamsForDelly, bamsForMutect2, bamsForManta, bamsForStrelka, bamFilesForSNPPileup, bamsForMakingSampleFile, bamsForMsiSensor, bamsForLumpy ) = bamFiles.into(8)
-
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
@@ -46,6 +44,8 @@ tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} 
 // ---------------------- Run Delly Call and Filter
 
 sv_variants = Channel.from( "DUP", "BND", "DEL", "INS", "INV" )
+
+( bamsForDelly, bamFiles ) = bamFiles.into(2)
 
 process dellyCall {
   tag { "DELLYCALL_${sv_variant}_" + idTumor + "_" + idNormal }
@@ -81,6 +81,8 @@ process dellyCall {
     ${bamNormal}
   """
 }
+
+( bamsForMakingSampleFile, bamFiles ) = bamFiles.into(2)
 
 process makeSamplesFile {
   tag { "SAMPLESFILE_" + idTumor + "_" + idNormal }
@@ -125,13 +127,16 @@ process dellyFilter {
 
 // ---------------------- Run MuTect2 
 
+( sampleIdsForIntervalBeds, bamFiles ) = bamFiles.into(2)
+
 process CreateIntervalBeds {
   tag {intervals.fileName}
 
-  publishDir "${ params.outDir }/VariantCalling/interval_beds"
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/interval_beds"
 
   input:
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.intervals])
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
 
   output:
     file 'interval_beds/*.interval_list' into bedIntervals mode flatten
@@ -149,6 +154,7 @@ process CreateIntervalBeds {
   """
 }
 
+( bamsForMutect2, bamFiles ) = bamFiles.into(2)
 bamsForMutect2Intervals = bamsForMutect2.spread(bedIntervals)
 
 if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
@@ -218,7 +224,8 @@ process runMutect2Filter {
     set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2IndexedOutput
 
   output:
-    file("*somatic.filtered.vcf*") into mutect2FilteredOutput
+    file("*somatic.filtered.vcf") into mutect2FilteredOutput
+    file("*somatic.filtered.vcf.idx") into mutect2FilteredOutputIndex
 
   when: 'mutect2' in tools
 
@@ -235,6 +242,7 @@ process runMutect2Filter {
 }
 
 // ---------------------- Run Manta and Strelka
+( bamsForManta, bamsForStrelka, bamFiles ) = bamFiles.into(3)
 
 process runManta {
   tag {"RUNMANTA_" + idTumor + "_" + idNormal}
@@ -325,7 +333,8 @@ process runStrelka {
 }
 
 // ---------------------- Run SNPPileup into doFacets
-
+( bamFilesForSNPPileup, bamFiles ) = bamFiles.into(2)
+ 
 process doSNPPileup {
   tag { "SNPPILEUP_" + idTumor + "_" + idNormal }  
 
@@ -388,6 +397,8 @@ process doFacets {
 
 }
 
+( bamsForMsiSensor, bamFiles ) = bamFiles.into(2)
+
 process runMsiSensor {
   tag { "MSISENSOR_" + idTumor + "_" + idNormal }  
 
@@ -414,6 +425,8 @@ process runMsiSensor {
   """
 }
 
+( bamsForLumpy, bamFiles ) = bamFiles.into(2)
+
 process runLumpyExpress {
   tag { "LUMPYEXPRESS_" + idTumor + "_" + idNormal }  
 
@@ -435,7 +448,6 @@ process runLumpyExpress {
     -o "\${output_filename}"
   """
 }
-
 
 /*
 ================================================================================
