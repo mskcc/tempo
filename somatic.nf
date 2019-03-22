@@ -241,6 +241,30 @@ process runMutect2Filter {
   """
 }
 
+( sampleIdsForMutect2Combine, bamFiles ) = bamFiles.into(2)
+
+process combineMutect2VCF {
+  tag {"MUTECT2COMBINE_" + idTumor + "_" + idNormal }
+
+  publishDir "${params.outDir}/VariantCalling/${idTumor}_${idNormal}/mutect2_combined"
+
+  input:
+    file(mutect2Vcfs) from mutect2FilteredOutput.collect()
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
+
+  output:
+    file("${outfile}") into mutect2CombinedVcfOutput
+
+  when: 'mutect2' in tools
+
+  outfile="mutect2.filtered.combined.vcf"
+
+  script:
+  """
+  bcftools concat ${mutect2Vcfs} | bcftools sort --output-type z --output-file ${outfile}
+  """
+}
+
 // ---------------------- Run Manta and Strelka
 ( bamsForManta, bamsForStrelka, bamFiles ) = bamFiles.into(3)
 
