@@ -257,7 +257,7 @@ process combineMutect2VCF {
 
   when: 'mutect2' in tools
 
-  outfile="mutect2.filtered.combined.vcf"
+  outfile="${idTumor}_${idNormal}.mutect2.filtered.combined.vcf"
 
   script:
   """
