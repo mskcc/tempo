@@ -330,7 +330,8 @@ process runStrelka {
     ])
 
   output:
-    set idTumor, idNormal, file("*.vcf.gz"), file("*.vcf.gz.tbi") into strelkaOutput
+    set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
+    set file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutputSNVs
 
   when: 'manta' in tools && 'strelka2' in tools
 
@@ -355,6 +356,27 @@ process runStrelka {
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
   """
 }
+
+// ---------------------- Run bcftools filter, norm, merge
+
+process combineChannel {
+  publishDir "${ params.outDir }/VariantCalling/vcf_output"
+  input:
+    file(mutect2combinedVCF) from mutect2CombinedVcfOutput
+    set file(strelkaIndels), file(strelkaIndelsTBI) from strelkaOutputIndels
+    set file(strelkaSNV), file(strelkaSNVTBI) from strelkaOutputSNVs
+
+  output:
+    set file(mutect2combinedVCF), file(strelkaIndels), file(strelkaSNV) into vcfOutputSet
+
+  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
+
+  script:
+  """
+  echo 'placeholder process to make a channel containing vcf data'
+  """
+}
+
 
 // ---------------------- Run SNPPileup into doFacets
 ( bamFilesForSNPPileup, bamFiles ) = bamFiles.into(2)
