@@ -41,7 +41,6 @@ fastqFiles = extractFastq(tsvFile)
 ================================================================================
 */
 
-
 // tag
 // https://www.nextflow.io/docs/latest/process.html#tag
 // The tag directive allows you to associate each process executions with a custom label, 
@@ -57,35 +56,17 @@ process AlignReads {
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.sam") into (alignedSam)
+    set idPatient, status, idSample, idRun, file("${idRun}.bam") into (unsortedBam)
 
   script:
-  readGroup = "@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"
+  readGroup = "@RG\\tID:${idSample}_${idRun}\\tSM:${idSample}\\tLB:${idSample}_${idRun}\\tPL:Illumina"
   """
-  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} > ${idRun}.sam
-  """
-}
-
-// ConvertSAMtoBAM - Convert SAM to BAM with samtools, 'samtools view'
-
-process ConvertSAMtoBAM {
-  tag {idPatient + "-" + idSample}
-
-  input:
-    set idPatient, status, idSample, idRun, file("${idRun}.sam") from alignedSam
-
-  output:
-    set idPatient, status, idSample, idRun, file("${idRun}.bam") into unsortedBam
-
-  script:
-  """
-  samtools view -S -b -@ ${task.cpus} ${idRun}.sam > ${idRun}.bam
+  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idRun}.bam
   """
 }
 
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 // samtools sort
-// setting these parameters as fixed `-m 2G` 
 
 process SortBAM {
   tag {idPatient + "-" + idSample}
@@ -94,15 +75,15 @@ process SortBAM {
     set idPatient, status, idSample, idRun, file("${idRun}.bam") from unsortedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") into sortedBam
+    set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") into (sortedBam, sortedBamDebug)
 
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
   if(params.mem_per_core) { 
-    mem = task.memory.toString().split(" ")[0]
+    mem = task.memory.toString().split(" ")[0] - 1 
   }
   else {
-    mem = task.memory.toString().split(" ")[0].toInteger()/task.cpus
+    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
   }
   """
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
@@ -110,13 +91,26 @@ process SortBAM {
 }
 
 singleBam = Channel.create()
+singleBamDebug = Channel.create()
 groupedBam = Channel.create()
+groupedBamDebug = Channel.create()
 sortedBam.groupTuple(by:[0,1,2])
-  .choice(singleBam, groupedBam) {it[3].size() > 1 ? 1 : 0}
+  .choice(singleBam, groupedBam) {it[2].size() > 1 ? 1 : 0}
 singleBam = singleBam.map {
   idPatient, status, idSample, idRun, bam ->
   [idPatient, status, idSample, bam]
 }
+sortedBamDebug.groupTuple(by:[0,1,2])
+  .choice(singleBamDebug, groupedBamDebug) {it[2].size() > 1 ? 1 : 0}
+singleBamDebug = singleBamDebug.map {
+  idPatient, status, idSample, idRun, bam ->
+  [idPatient, status, idSample, bam]
+}
+
+if (params.debug) {
+  debug(groupedBamDebug);
+  debug(singleBamDebug);
+}   
 
 process MergeBams {
   tag {idPatient + "-" + idSample}
@@ -125,7 +119,7 @@ process MergeBams {
     set idPatient, status, idSample, idRun, file(bam) from groupedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into mergedBam
+    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
 
   // when: step == 'mapping' && !params.onlyQC
 
@@ -135,16 +129,20 @@ process MergeBams {
   """
 }
 
+if (params.debug) {
+  debug(mergedBamDebug);
+}
+
 if (params.verbose) singleBam = singleBam.view {
   "Single BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 if (params.verbose) mergedBam = mergedBam.view {
   "Merged BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[4]}]"
 }
 
 mergedBam = mergedBam.mix(singleBam)
@@ -152,7 +150,7 @@ mergedBam = mergedBam.mix(singleBam)
 if (params.verbose) mergedBam = mergedBam.view {
   "BAM for MarkDuplicates:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[4]}]"
 }
 
 // GATK MarkDuplicates
@@ -174,30 +172,30 @@ process MarkDuplicates {
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
 
   output:
-    set idPatient, file("${idSample}_${status}.md.bam"), file("${idSample}_${status}.md.bai"), idSample, idRun into duplicateMarkedBams
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai") into markDuplicatesTSV
+    set idPatient, file("${idSample}_${status}.md.bam"), idSample, idRun into duplicateMarkedBams
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam") into markDuplicatesTSV
     file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
   """
   gatk MarkDuplicates --java-options ${params.markdup_java_options}  \
-  --MAX_RECORDS_IN_RAM 50000 \
-  --INPUT ${idSample}.merged.bam \
-  --METRICS_FILE ${idSample}.bam.metrics \
-  --TMP_DIR . \
-  --ASSUME_SORT_ORDER coordinate \
-  --CREATE_INDEX true \
-  --OUTPUT ${idSample}_${status}.md.bam
+    --MAX_RECORDS_IN_RAM 50000 \
+    --INPUT ${idSample}.merged.bam \
+    --METRICS_FILE ${idSample}.bam.metrics \
+    --TMP_DIR . \
+    --ASSUME_SORT_ORDER coordinate \
+    --CREATE_INDEX false \
+    --OUTPUT ${idSample}_${status}.md.bam
   """
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    idPatient, bam, bai, idSample, idRun ->
+    idPatient, bam, idSample, idRun ->
     tag = bam.baseName.tokenize('.')[0]
     /// status   = tag[-1..-1].toInteger()  X
     status = 0
     // idSample = tag.take(tag.length()-2)
-    [idPatient, status, idSample, bam, bai]
+    [idPatient, status, idSample, bam]
 }
 
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
@@ -205,49 +203,47 @@ duplicateMarkedBams = duplicateMarkedBams.map {
 if (params.verbose) mdBamToJoin = mdBamToJoin.view {
   "MD Bam to Join BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 if (params.verbose) mdBam = mdBam.view {
   "BAM for MarkDuplicates:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
+  File  : [${it[3].fileName}]"
 }
 
 process CreateRecalibrationTable {
   tag {idPatient + "-" + idSample}
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai) from mdBam 
+    set idPatient, status, idSample, file(bam) from mdBam 
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex), file(intervals) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
       referenceMap.dbsnp,
       referenceMap.dbsnpIndex,
       referenceMap.knownIndels,
-      referenceMap.knownIndelsIndex,
-      referenceMap.intervals,
+      referenceMap.knownIndelsIndex 
     ])
 
   output:
     set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}_${status}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
-
+    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}.recal.table") into recalibrationTableTSV
 
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+
   """
   gatk BaseRecalibrator \
-  --input ${bam} \
-  --output ${idSample}.recal.table \
-  --tmp-dir /tmp \
-  -R ${genomeFile} \
-  -L ${intervals} \
-  --known-sites ${dbsnp} \
-  ${known} \
-  --verbosity INFO
+    --tmp-dir /tmp \
+    --reference ${genomeFile} \
+    --known-sites ${dbsnp} \
+    ${known} \
+    --verbosity INFO \
+    --input ${bam} \
+    --output ${idSample}.recal.table
   """
 }
 
@@ -260,31 +256,26 @@ process RecalibrateBam {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+    set idPatient, status, idSample, file(bam), file(recalibrationReport) from recalibrationTable
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
-      referenceMap.genomeDict,
-      referenceMap.intervals,
+      referenceMap.genomeDict 
     ])
 
   output:
     set idPatient, status, idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
     set idPatient, status, idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
 
-  // GATK4 HaplotypeCaller can not do BQSR on the fly, so we have to create a
-  // recalibrated BAM explicitly.
-
   script:
   """
   gatk ApplyBQSR \
-  -R ${genomeFile} \
-  --input ${bam} \
-  --output ${idSample}.recal.bam \
-  -L ${intervals} \
-  --create-output-bam-index true \
-  --bqsr-recal-file ${recalibrationReport}
+    --reference ${genomeFile} \
+    --create-output-bam-index true \
+    --bqsr-recal-file ${recalibrationReport} \
+    --input ${bam} \
+    --output ${idSample}.recal.bam
   """
 }
 
@@ -293,7 +284,6 @@ process RecalibrateBam {
 =                               AWESOME FUNCTIONS                             =
 ================================================================================
 */
-
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
@@ -312,13 +302,17 @@ def defineReferenceMap() {
     // genome .fai file
     'genomeIndex'      : checkParamReturnFile("genomeIndex"),
     // BWA index files
-    'bwaIndex'         : checkParamReturnFile("bwaIndex"),
-    // intervals file for spread-and-gather processes
-    'intervals'        : checkParamReturnFile("intervals"),
+    'bwaIndex'         : checkParamReturnFile("bwaIndex"), 
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
   ]
+}
+
+def debug(channel) {
+  channel.subscribe { Object obj ->
+    println "DEBUG: ${obj.toString()};"
+  }
 }
 
 def extractFastq(tsvFile) {
@@ -342,4 +336,3 @@ def extractFastq(tsvFile) {
     [idPatient, gender, status, idSample, idRun, fastqFile1, fastqFile2]
   }
 }
-

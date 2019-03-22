@@ -3,9 +3,9 @@
 // NOTE: this setting is only required if the AWS CLI tool is installed in a custom AMI
 // executor.awscli = '/home/ec2-user/miniconda/bin/aws'
 
-aws.region = <AWS_REGION> 
-aws.client.storageEncryption = <STORAGE_ENCRYPTION>
-process.queue = <AWS_BATCH_QUEUE_ARN>
+aws.region = <AWS-REGION> 
+aws.client.storageEncryption = <STORAGE-ENCRYPTION>
+process.queue = <AWS-BATCH-QUEUE-ARN>
 executor.name = 'awsbatch'
 executor.awscli = '/home/ec2-user/miniconda/bin/aws'
-workDir = <AWS_S3_WORKDIR> 
+workDir = <AWS-S3-WORKDIR> 
