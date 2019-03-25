@@ -359,10 +359,13 @@ process runStrelka {
 
 // ---------------------- Run bcftools filter, norm, merge
 
+( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
+
 process combineChannel {
-  publishDir "${ params.outDir }/VariantCalling/vcf_output"
+
   input:
     file(mutect2combinedVCF) from mutect2CombinedVcfOutput
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
     set file(strelkaIndels), file(strelkaIndelsTBI) from strelkaOutputIndels
     set file(strelkaSNV), file(strelkaSNVTBI) from strelkaOutputSNVs
 
@@ -377,6 +380,73 @@ process combineChannel {
   """
 }
 
+( sampleIdsForBCFToolsFilterNorm, sampleIdsForBCFToolsMerge, bamFiles ) = bamFiles.into(3)
+
+process runBCFToolsFilterNorm {
+  tag { idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/vcf_output"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBCFToolsFilterNorm
+    each file(vcf) from vcfOutputSet.flatten()
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    file("*filtered.norm.vcf.gz") into vcfFilterNormOutput
+
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+
+  outfile="${vcf}".replaceFirst('vcf.gz', 'filtered.norm.vcf.gz')
+
+  script:
+  """
+  tabix -p vcf ${vcf}
+
+  bcftools filter \
+    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --output-type z \
+    "${vcf}" | \
+  bcftools norm \
+    --fasta-ref ${genomeFile} \
+    --output-type z \
+    --output "${outfile}" 
+  """
+}
+
+process runBCFToolsMerge {
+  tag { idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/vcf_merged_output"
+
+  input:
+    file('*.vcf.gz') from vcfFilterNormOutput.collect()
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBCFToolsMerge
+
+  output:
+    file("*filtered.norm.merge.vcf.gz") into vcfMergedOutput
+
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+
+  script:
+  """
+  for f in *.vcf.gz
+  do
+    tabix -p vcf \$f
+  done
+
+  bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type z \
+    --output "${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf.gz" \
+    *.vcf.gz
+  """
+}
 
 // ---------------------- Run SNPPileup into doFacets
 ( bamFilesForSNPPileup, bamFiles ) = bamFiles.into(2)
@@ -440,7 +510,6 @@ process doFacets {
   --seed "${params.facets.seed}" \
   --tumor_id "${idTumor}"
   """
-
 }
 
 ( bamsForMsiSensor, bamFiles ) = bamFiles.into(2)
