@@ -286,18 +286,18 @@ process Alfred {
   publishDir params.outDir
 
   input:
-    set idPatient, status, idSample, file(bam) from recalibratedBam
+    set idPatient, status, idSample, file(bam), file(bai) from recalibratedBam
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+    set file(genomeFile) from Channel.value([
       referenceMap.genomeFile
     ])
 
   output:
-    set idPatient, status, idSample, file("${idSample}.alfred.tsv.gz") into bamsQCStats
+    set idPatient, status, idSample, file("${idSample}.alfred.tsv.gz"), file("${idSample}.alfred.tsv.gz.pdf") into bamsQCStats
 
   script:
   """
-  alfred qc --reference ${genomeFile} --ignore --outfile ${idSample}.alfred.tsv.gz ${bam} && Rscript alfred_path/scripts/stats.R ${idSample}.alfred.tsv.gz
+  alfred qc --reference ${genomeFile} --ignore --outfile ${idSample}.alfred.tsv.gz ${bam} && Rscript /opt/alfred/scripts/stats.R ${idSample}.alfred.tsv.gz
   """
 
 }
