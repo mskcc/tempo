@@ -67,7 +67,7 @@ process dellyCall {
     ])
 
   output:
-    set file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi"), sv_variant into dellyCallOutput
+    set idTumor, idNormal, sv_variant, file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi") into dellyCallOutput
 
   when: 'delly' in tools
 
@@ -91,7 +91,7 @@ process makeSamplesFile {
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMakingSampleFile 
 
   output:
-    set sequenceType, idTumor, idNormal, file("samples.tsv") into sampleTSVFile
+    file("samples.tsv") into sampleTSVFile
 
   when: 'delly' in tools
 
@@ -100,28 +100,30 @@ process makeSamplesFile {
   """
 } 
 
+dellyCallOutput = dellyCallOutput.spread(sampleTSVFile)
+
 process dellyFilter {
-  tag { "DELLYFILTER_${sv_variant}_" + idTumor + "_" + idNormal }
+  tag {  idTumor + "_" + idNormal +", " + sv_variant }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/delly_filter"
 
   input:
-    set sequenceType, idTumor, idNormal, file("samples.tsv") from sampleTSVFile 
-    set file("${idTumor}_${idNormal}_${sv_variant}.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.bcf.csi"), sv_variant from dellyCallOutput
+    set idTumor, idNormal, sv_variant, file(dellyBcf), file(dellyBcfIndex), file(sampleTsv) from dellyCallOutput
 
   output:
-    set file("${idTumor}_${idNormal}_${sv_variant}.filter.bcf"), file("${idTumor}_${idNormal}_${sv_variant}.filter.bcf.csi") into dellyFilterOutput 
+    set file("*.filter.bcf"), file("*.filter.bcf.csi") into dellyFilterOutput
 
   when: 'delly' in tools
 
+  outfile="${dellyBcf}".replaceFirst(".bcf",".filter.bcf")
+
+  script:
   """
-  delly_call_file="${idTumor}_${idNormal}_${sv_variant}.bcf" 
-  outfile="${idTumor}_${idNormal}_${sv_variant}.filter.bcf" 
   delly filter \
     -f somatic \
-    -o "\${outfile}" \
-    -s "samples.tsv" \
-    "\${delly_call_file}"
+    -o ${outfile} \
+    -s ${sampleTsv} \
+    ${dellyBcf}
   """
 }
 
@@ -362,6 +364,7 @@ process runStrelka {
 ( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
 
 process combineChannel {
+  tag { idTumor + "_" + idNormal }
 
   input:
     file(mutect2combinedVCF) from mutect2CombinedVcfOutput
@@ -428,7 +431,7 @@ process runBCFToolsMerge {
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBCFToolsMerge
 
   output:
-    file("*filtered.norm.merge.vcf.gz") into vcfMergedOutput
+    file("*filtered.norm.merge.vcf") into vcfMergedOutput
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
@@ -442,8 +445,8 @@ process runBCFToolsMerge {
   bcftools merge \
     --force-samples \
     --merge none \
-    --output-type z \
-    --output "${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf.gz" \
+    --output-type v \
+    --output "${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf" \
     *.vcf.gz
   """
 }
