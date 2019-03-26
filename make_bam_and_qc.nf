@@ -288,7 +288,7 @@ process Alfred {
   input:
     set idPatient, status, idSample, file(bam), file(bai) from recalibratedBam
 
-    set file(genomeFile) from Channel.value([
+    file(genomeFile) from Channel.value([
       referenceMap.genomeFile
     ])
 
