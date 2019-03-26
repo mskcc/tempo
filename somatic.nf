@@ -479,11 +479,11 @@ process runVCF2MAF {
 
   script:
   """
-  perl /usr/bin/vcf2maf/vcf2maf.pl \
+  perl /opt/vcf2maf.pl \
     --input-vcf ${vcfMerged} \
     --tumor-id ${idTumor} \
     --normal-id ${idNormal} \
-    --vep-path /usr/bin/vep \
+    --vep-path /opt/vep/src/ensembl-vep \
     --vep-data ${vepCache} \
     --filter-vcf ${vcf2mafFilterVcf} \
     --output-maf ${outfile} \
