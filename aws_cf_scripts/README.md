@@ -12,11 +12,13 @@ Use `S3` bucket path for `<AWS-S3-WORKDIR>` value when creating `awsbatch.config
 
 ## Building the AMI
 
-***NOTE: You need this step only if default disk size of 200GB is not enough for processing your data. If 200GB is suficient please go to the [Building the Compute Environment](#Building-the-Compute-Environment) section.***
+Vaporware AMI is implemented with [EBS autoscaling script](https://docs.opendata.aws/genomics-workflows/core-env/create-custom-compute-resources/) which will automatically increase disk space when needed.
 
-Run the command below from the vaporware repo root directory and set `<DiskSize>` parameter to a [proper](#Calculating-the-DiskSize-value) value based on the input file sizes (NOTE: minimal disk size is 200GB).
+To prepare the AMI for your compute environment run the command below from the vaporware root directory.
 
-`aws cloudformation create-stack --stack-name vaporwareAMI --template-body file://aws_cf_scripts/AMICreate.yaml --parameters ParameterKey=AMIName,ParameterValue=vaporware-ami ParameterKey=DiskSize,ParameterValue=<DiskSize> --capabilities CAPABILITY_IAM`
+`aws cloudformation create-stack --stack-name vaporwareAMI --template-body file://aws_cf_scripts/AMICreate.yaml --parameters ParameterKey=AMIName,ParameterValue=vaporware-ami --capabilities CAPABILITY_IAM`
+
+***NOTE: You can specify any name instead of `vaporwareAMI` for stack-name.***
 
 This command submits CloudFormation Stack for building the [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) for execution, which we will use for building Batch Compute Environment. When you submit the command you will get StackId ARN as a responce similar to this below.
 
@@ -48,9 +50,9 @@ Run the command below from the vaporware repo root directory and set `<AMI-ID>` 
 
 `aws cloudformation create-stack --stack-name vaporwareAWSBatchCE --template-body file://aws_cf_scripts/AWSBatchCreate.yaml --capabilities CAPABILITY_IAM --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID>`
 
-Building the AWS Batch Compute Environment will last for a few minutes. You can check the status of the build process by running the command.
+***NOTE: You can specify any name instead of `vaporwareAWSBatchCE` for stack-name.***
 
-***NOTE: By default EC2 Instance Role will have access to all your buckets. If you want to limit access of EC2 Instance Role just to the bucket you created you need to add `--parameters ParameterKey=WorkDirBucket,ParameterValue=<AWS-S3-WORKDIR>` in the previous command.***
+Building the AWS Batch Compute Environment will last for a few minutes. You can check the status of the build process by running the command.
 
 `aws cloudformation describe-stacks --stack-name vaporwareAWSBatchCE`
 
@@ -84,7 +86,3 @@ Replace:
 `<AWS-BATCH-QUEUE-ARN>` ARN of your AWS Batch Job Queue built in [Building the Compute Environment](#Building-the-Compute-Environment) section
 
 `<AWS-S3-WORKDIR>` S3 bucket used as working directory created in [Create the S3 Bucket](#Create-the-S3-Bucket) section
-
-## Calculating the DiskSize value
-
-### TODO
