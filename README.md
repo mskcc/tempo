@@ -294,9 +294,28 @@ delly filter \
 
 https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_walkers_mutect_Mutect2.php
 
-Currently our implementation of `mutect2` has hard-coded `-Xmx` parameters; should be adjusted later.
+Running `mutect2` consists of three processes: `CreateIntervalBeds`, `runMutect2`, `indexVCF`, `runMutect2Filter`, and `combineMutect2VCF`.
 
-Also needs to be adjusted to work with scattered intervals.
+The output of `combineMutect2VCF` is later then sent to process `combineChannel` to be merged with `strelka2` output into one MAF file.
+
+###### SplitIntervals
+
+Before running `mutect2`, we use `SplitIntervals` (in process `CreateIntervalBeds`) against interval file `human.b37.genome.bed`. Currently we only split into a `scatter-count` of 10; we can adjust in the future.
+
+```
+  gatk SplitIntervals \
+    -R ${genomeFile} \
+    -L ${intervals} \
+    --scatter-count 10 \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    -O interval_beds
+```
+
+###### runMutect2
+
+Currently our implementation of process `runMutect2` has hard-coded `-Xmx` parameters; should be adjusted later.
+
+NOTE: A somatic.nf run of `mutect2` will create a certain number of processes for each of the subsequent steps based on how many splits are performed above (currently set at 10), up until `combineMutect2VCF`.
 
 ```
 gatk --java-options "-Xmx8g" \
@@ -306,6 +325,33 @@ gatk --java-options "-Xmx8g" \
   -I ${bamNormal} -normal ${idNormal} \
   -O "${idTumor}_vs_${idNormal}_somatic.vcf"
 ```
+
+###### Index, Filter, and Combine
+
+The outputs from `runMutect2` - `mutect2Vcf` is indexed with `tabix` (from process `indexVCF`):
+
+```
+  tabix -p vcf ${mutect2Vcf}
+```
+
+This creates a `.tbi` file stored in `mutect2VcfIndex`. They are then fed into `FilterMutectCalls` (from process `runMutect2Filter`):
+
+```
+  # Xmx hard-coded for now due to lsf bug
+  gatk --java-options "-Xmx8g" \
+    FilterMutectCalls \
+    --variant "${mutect2Vcf}" \
+    --output "${outfile}"
+```
+
+All genereated, filtered `mutect2` `vcf` files are then submitted to process `combineMutect2VCF`. This uses `bcftools concat | bcftools sort` to create the final `mutect2` output VCF.
+
+```
+  outfile="${idTumor}_${idNormal}.mutect2.filtered.combined.vcf.gz"
+
+  bcftools concat ${mutect2Vcfs} | bcftools sort --output-type z --output-file ${outfile}
+```
+
 
 #### `Manta` to `Strelka2` -- small variant caller
 
