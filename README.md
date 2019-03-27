@@ -298,7 +298,7 @@ Running `mutect2` consists of three processes: `CreateIntervalBeds`, `runMutect2
 
 The output of `combineMutect2VCF` is later then sent to process `combineChannel` to be merged with `strelka2` output into one MAF file.
 
-###### SplitIntervals
+##### SplitIntervals
 
 Before running `mutect2`, we use `SplitIntervals` (in process `CreateIntervalBeds`) against interval file `human.b37.genome.bed`. Currently we only split into a `scatter-count` of 10; we can adjust in the future.
 
@@ -311,7 +311,7 @@ Before running `mutect2`, we use `SplitIntervals` (in process `CreateIntervalBed
     -O interval_beds
 ```
 
-###### runMutect2
+##### runMutect2
 
 Currently our implementation of process `runMutect2` has hard-coded `-Xmx` parameters; should be adjusted later.
 
@@ -326,7 +326,7 @@ gatk --java-options "-Xmx8g" \
   -O "${idTumor}_vs_${idNormal}_somatic.vcf"
 ```
 
-###### Index, Filter, and Combine
+##### Index, Filter, and Combine
 
 The outputs from `runMutect2` - `mutect2Vcf` is indexed with `tabix` (from process `indexVCF`):
 
@@ -344,14 +344,13 @@ This creates a `.tbi` file stored in `mutect2VcfIndex`. They are then fed into `
     --output "${outfile}"
 ```
 
-All genereated, filtered `mutect2` `vcf` files are then submitted to process `combineMutect2VCF`. This uses `bcftools concat | bcftools sort` to create the final `mutect2` output VCF.
+All generated, filtered `mutect2` `vcf` files are then submitted to process `combineMutect2VCF`. This uses `bcftools concat | bcftools sort` to create the final `mutect2` output VCF.
 
 ```
   outfile="${idTumor}_${idNormal}.mutect2.filtered.combined.vcf.gz"
 
   bcftools concat ${mutect2Vcfs} | bcftools sort --output-type z --output-file ${outfile}
 ```
-
 
 #### `Manta` to `Strelka2` -- small variant caller
 
@@ -403,6 +402,46 @@ mv Strelka/results/variants/somatic.snvs.vcf.gz \
 mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
   Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
 ```
+
+#### combineChannel; bcftools filter, norm, and merge
+
+The `combineChannel` process just takes the VCF files from the `combineMutect2VCF` and `runStrelka` processes into one Channel, `vcfOutputSet`. This allows parallel job submission for each VCF.
+
+Process `runBCFToolsFilterNorm` performs three commands to the `${vcf}` file: `tabix` to index it; `bcftools filter` to filter the file and output a zipped `vcf`; and `bcftools norm` to perform a normalization step.
+
+```
+  tabix -p vcf ${vcf}
+
+  bcftools filter \
+    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --output-type z \
+    "${vcf}" | \
+  bcftools norm \
+    --fasta-ref ${genomeFile} \
+    --output-type z \
+    --output "${outfile}"
+```
+
+#### bcftools merge
+
+The process `runBCFToolsMerge` loads `vcfFilterNormOutput` as input.
+
+Each `${vcf}` in `vcfFilterNormOutput` is first indexed with `tabix` and then fed into `bcftools merge`. The output is an uncompressed VCF file so that it can be processed by `vcf2maf`.
+
+```
+  for f in *.vcf.gz
+  do
+    tabix -p vcf \$f
+  done
+
+  bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type v \
+    --output "${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf" \
+    *.vcf.gz
+```
+
 
 #### `snp-pileup` to `doFacets` -- CNV caller
 
