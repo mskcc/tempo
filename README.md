@@ -428,6 +428,8 @@ The process `runBCFToolsMerge` loads `vcfFilterNormOutput` as input.
 
 Each `${vcf}` in `vcfFilterNormOutput` is first indexed with `tabix` and then fed into `bcftools merge`. The output is an uncompressed VCF file so that it can be processed by `vcf2maf`.
 
+Output is sent to channel `vcfMergedOutput`.
+
 ```
   for f in *.vcf.gz
   do
@@ -442,6 +444,23 @@ Each `${vcf}` in `vcfFilterNormOutput` is first indexed with `tabix` and then fe
     *.vcf.gz
 ```
 
+#### vcf2maf
+
+Process `runVCF2MAF` takes the VCF file in channel `vcfMergedOutput` and runs `vcf2maf` to make one MAF file.
+
+The hard-coded paths in the below script are relative to the container used by the process.
+
+```
+  perl /opt/vcf2maf.pl \
+    --input-vcf ${vcfMerged} \
+    --tumor-id ${idTumor} \
+    --normal-id ${idNormal} \
+    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-data ${vepCache} \
+    --filter-vcf ${vcf2mafFilterVcf} \
+    --output-maf ${outfile} \
+    --ref-fasta ${genomeFile}
+```
 
 #### `snp-pileup` to `doFacets` -- CNV caller
 
