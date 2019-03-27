@@ -3,10 +3,7 @@ Description: Create AWS Batch Job Queue.
 Parameters:
   AmiId:
     Type: String
-    Default: ami-077e66e85f2156f67
-  WorkDirBucket:
-    Type: String
-    Default: '*'
+    Default: ami-01f5f64e36d79ebf8
 Resources:
   VPC:
     Type: 'AWS::EC2::VPC'
@@ -84,7 +81,19 @@ Resources:
                   - 's3:GetObject'
                   - 's3:DeleteObject'
                   - 's3:PutObjectAcl'
-                Resource: !Ref WorkDirBucket
+                  - 'ec2:AttachVolume'
+                  - 'ec2:CreateVolume'
+                  - 'ec2:DeleteVolume'
+                  - 'ec2:DescribeInstanceAttribute'
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeVolumeAttribute'
+                  - 'ec2:DescribeVolumeStatus'
+                  - 'ec2:DescribeVolumes'
+                  - 'ec2:DetachVolume'
+                  - 'ec2:EnableVolumeIO'
+                  - 'ec2:ModifyInstanceAttribute'
+                  - 'ec2:ModifyVolumeAttribute'
+                Resource: '*'
       ManagedPolicyArns:
         - >-
           arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
@@ -103,12 +112,9 @@ Resources:
         Type: EC2
         MinvCpus: 0
         DesiredvCpus: 0
-        MaxvCpus: 256
+        MaxvCpus: 1024
         InstanceTypes:
-          - m4.4xlarge
-          - m4.2xlarge
-          - m4.xlarge
-          - m4.large
+          - optimal
         ImageId: !Ref AmiId
         Subnets:
           - !Ref Subnet

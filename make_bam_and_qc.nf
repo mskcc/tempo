@@ -320,6 +320,28 @@ process RecalibrateBam {
   """
 }
 
+process Alfred {
+  tag {idPatient + "-" + idSample}
+
+  publishDir params.outDir
+
+  input:
+    set idPatient, status, idSample, file(bam), file(bai) from recalibratedBam
+
+    file(genomeFile) from Channel.value([
+      referenceMap.genomeFile
+    ])
+
+  output:
+    set idPatient, status, idSample, file("${idSample}.alfred.tsv.gz"), file("${idSample}.alfred.tsv.gz.pdf") into bamsQCStats
+
+  script:
+  """
+  alfred qc --reference ${genomeFile} --ignore --outfile ${idSample}.alfred.tsv.gz ${bam} && Rscript /opt/alfred/scripts/stats.R ${idSample}.alfred.tsv.gz
+  """
+
+}
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
