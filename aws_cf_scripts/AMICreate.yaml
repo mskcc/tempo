@@ -2,30 +2,83 @@ Description: Create an AMI from an EC2 instance.
 Parameters:
   ImageId:
     Description: Image ID for base EC2 instance.
-    Type: 'AWS::EC2::Image::Id'
-    Default: ami-077e66e85f2156f67
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux/recommended/image_id
+    AllowedValues:
+      - /aws/service/ecs/optimized-ami/amazon-linux/recommended/image_id
   InstanceType:
     Description: Instance type to launch EC2 instances.
     Type: String
     Default: t2.medium
     AllowedValues:
       - t2.medium
-  DiskSize:
-    Description: Disk size for AMI.
+  ScratchMountPoint:
     Type: String
-    Default: '250'
+    Default: /scratch
+    Description: Path for the scratch mount point in the instance
+  ScratchVolumeSize:
+    Type: Number
+    Default: 20
+    Description: The initial size of the scratch volume
   AMIName:
     Type: String
     Default: vaporware-ami
     Description: The name of the AMI that is created
+  UseEncryption:
+    Type: String
+    Default: Yes
+    Description: Whether or not to encrypt the addtional volumes on the EC2 instance
+    AllowedValues:
+      - Yes
+      - No
+
+Conditions:
+  UseEncryptedVolume: !Equals [!Ref UseEncryption, Yes]
+
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Metadata:
       AWS::CloudFormation::Init:
         config:
-          yum:
-            wget: []
+          packages:
+            rpm:
+              ssm-agent: "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm"
+            yum:
+              jq: []
+              btrfs-progs: []
+              python27-pip: []
+              sed: []
+              wget: []
+          commands:
+            00InstallBoto3:
+              command: pip install -U awscli boto3
+            01InstallAutoScaling:
+              command: wget https://aws-genomics-workflows.s3.amazonaws.com/artifacts/aws-ebs-autoscale.tgz && tar -xzf aws-ebs-autoscale.tgz
+              cwd: /opt
+            02MountAutoScaling:
+              command: !Sub |
+                sh /opt/ebs-autoscale/bin/init-ebs-autoscale.sh '${ScratchMountPoint}' /dev/sdc 2>&1 > /var/log/init-ebs-autoscale.log
+              env:
+                PATH: "/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin"
+            03GetECSAdditions:
+              command: wget https://aws-genomics-workflows.s3.amazonaws.com/artifacts/aws-ecs-additions.tgz && tar -xzf aws-ecs-additions.tgz
+              cwd: /opt
+            04StopDocker:
+              command: service docker stop
+            05CreateDockerStorageConfig:
+              command: echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay2\"" > "/etc/sysconfig/docker-storage"
+            05RemoveDockerStorageCreateConfig:
+              command: rm /etc/sysconfig/docker-storage-setup
+            06CreateDaemonConfig:
+              command: echo "{\"data-root\":\"/scratch/docker\"}" > /etc/docker/daemon.json
+            07CreateDockerDir:
+              command: mkdir /scratch/docker
+            08StartDockerService:
+              command: service docker start
+            09InstallAWSCLI:
+              command: yum install -y bzip2 wget && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && bash Miniconda3-latest-Linux-x86_64.sh -b -f -p /home/ec2-user/miniconda && /home/ec2-user/miniconda/bin/conda install -c conda-forge -y awscli && rm Miniconda3-latest-Linux-x86_64.sh
+              cwd: /home/ec2-user
     Properties:
       ImageId: !Ref ImageId
       InstanceType: !Ref InstanceType
@@ -39,10 +92,12 @@ Resources:
             /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
             shutdown -h now
       BlockDeviceMappings:
-        - DeviceName: /dev/xvda
+        - DeviceName: /dev/sdc
           Ebs:
-            VolumeSize: !Ref DiskSize
             VolumeType: gp2
+            VolumeSize: !Ref ScratchVolumeSize
+            Encrypted:
+              Fn::If: [UseEncryptedVolume, true, false]
     CreationPolicy:
       ResourceSignal:
         Timeout: PT15M
