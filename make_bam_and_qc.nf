@@ -35,6 +35,9 @@ tsvFile = file(tsvPath)
 
 fastqFiles = extractFastq(tsvFile)
 
+// Duplicate channel
+fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
+
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
@@ -45,6 +48,43 @@ fastqFiles = extractFastq(tsvFile)
 // https://www.nextflow.io/docs/latest/process.html#tag
 // The tag directive allows you to associate each process executions with a custom label, 
 // so that it will be easier to identify them in the log file or in the trace execution report.
+
+// FastP - FastP on lane pairs, R1/R2
+
+process FastP {
+  tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
+
+  publishDir params.outDir, mode: params.publishDirMode
+
+  input:
+    set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastPFiles
+
+  output:
+    file("*.html") into fastPResults 
+
+  """
+  fastp -h ${idRun}.html -i ${fastqFile1} -I ${fastqFile2}
+  """
+}
+
+// FastQC - FastQC on lane pairs, R1/R2
+
+//process FastQC {
+//  tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
+//
+//  publishDir params.outDir, mode: params.publishDirMode
+//
+//  input:
+//    set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastQCFiles
+//
+//  output:
+//    set file("*.html"), file("*.zip") into fastQCResults
+//    
+//  """
+//  # fastqc --threads X --noextract --outdir outdir R1.fastq.gz R2.fastq.gz
+//  fastqc --threads 4 --noextract --outdir . ${fastqFile1} ${fastqFile2}
+//  """
+//}
 
 // AlignReads - Map reads with BWA mem output SAM
 
