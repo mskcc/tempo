@@ -451,6 +451,46 @@ process runBCFToolsMerge {
   """
 }
 
+( sampleIdsForVCF2MAF, bamFiles ) = bamFiles.into(2)
+
+process runVCF2MAF {
+  tag { idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/vcf2maf"
+
+  input:
+    file(vcfMerged) from vcfMergedOutput
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVCF2MAF
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict,
+      referenceMap.vcf2mafFilterVcf,
+      referenceMap.vcf2mafFilterVcfIndex,
+      referenceMap.vepCache
+    ])
+
+  output:
+    file("*.maf") into mafFile
+
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+
+  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+
+  script:
+  """
+  perl /opt/vcf2maf.pl \
+    --input-vcf ${vcfMerged} \
+    --tumor-id ${idTumor} \
+    --normal-id ${idNormal} \
+    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-data ${vepCache} \
+    --filter-vcf ${vcf2mafFilterVcf} \
+    --output-maf ${outfile} \
+    --ref-fasta ${genomeFile}
+  """
+}
+
 // ---------------------- Run SNPPileup into doFacets
 ( bamFilesForSNPPileup, bamFiles ) = bamFiles.into(2)
  
@@ -599,7 +639,11 @@ def defineReferenceMap() {
     // for SNP Pileup
     'facetsVcf'        : checkParamReturnFile("facetsVcf"),
     // MSI Sensor
-    'msiSensorList'    : checkParamReturnFile("msiSensorList")
+    'msiSensorList'    : checkParamReturnFile("msiSensorList"),
+    // vcf2maf filter vcf
+    'vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf"),
+    'vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex"),
+    'vepCache'                 : checkParamReturnFile("vepCache")
   ]
 }
 
