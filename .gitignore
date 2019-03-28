@@ -11,3 +11,4 @@ nf.*
 *.bam
 *.bai
 *.tsv
+*.html
