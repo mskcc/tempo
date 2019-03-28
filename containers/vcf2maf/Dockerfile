@@ -40,10 +40,6 @@ RUN curl -L -o tmp2.tar.gz https://github.com/samtools/bcftools/releases/downloa
     cd .. && \
     rm -rf *
 
-# install liftOver
-RUN curl -L http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/liftOver > /usr/local/bin/liftOver && \
-    chmod a+x /usr/local/bin/liftOver
-
 # install vcf2maf
 WORKDIR /opt/
 
