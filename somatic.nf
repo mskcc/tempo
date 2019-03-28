@@ -189,32 +189,13 @@ process runMutect2 {
   """
 }
 
-process indexVCF {
-  tag {"INDEXVCF_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
-
-  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/index_vcf"
-
-  input:
-    set idTumor, idNormal, file(mutect2Vcf) from mutect2Output
-
-  output:
-    set idTumor, idNormal, file(mutect2Vcf), file("${mutect2Vcf.baseName}.gz.tbi") into mutect2IndexedOutput
-
-  when: 'mutect2' in tools
-
-  script:
-  """
-  tabix -p vcf ${mutect2Vcf} 
-  """
-}
-
 process runMutect2Filter {
   tag {"MUTECT2FILTER_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2_filter"
 
   input:
-    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2IndexedOutput
+    set idTumor, idNormal, file(mutect2Vcf) from mutect2Output
 
   output:
     file("*somatic.filtered.vcf") into mutect2FilteredOutput
@@ -226,6 +207,8 @@ process runMutect2Filter {
 
   script:
   """
+  tabix -p vcf ${mutect2Vcf} 
+
   # Xmx hard-coded for now due to lsf bug
   gatk --java-options "-Xmx8g" \
     FilterMutectCalls \
