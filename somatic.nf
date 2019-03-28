@@ -7,12 +7,21 @@
  - dellyCall
  - dellyFilter
  - makeSamplesFile
+ - CreateIntervalBeds
  - runMutect2
+ - indexVCF
+ - runMutect2Filter
+ - combineMutect2VCF
  - runManta
  - runStrelka
+ - combineChannel
+ - runBCFToolsFilterNorm
+ - runBCFToolsMerge
+ - runVCF2MAF
  - doSNPPileup
  - doFacets
- - runMsiSensor 
+ - runMsiSensor
+ - runLumpyExpress
 */
 
 
