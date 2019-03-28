@@ -91,33 +91,13 @@ process dellyCall {
   """
 }
 
-( bamsForMakingSampleFile, bamFiles ) = bamFiles.into(2)
-
-process makeSamplesFile {
-  tag { "SAMPLESFILE_" + idTumor + "_" + idNormal }
-
-  input: 
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMakingSampleFile 
-
-  output:
-    file("samples.tsv") into sampleTSVFile
-
-  when: 'delly' in tools
-
-  """
-    echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
-  """
-} 
-
-dellyCallOutput = dellyCallOutput.spread(sampleTSVFile)
-
 process dellyFilter {
   tag {  idTumor + "_" + idNormal +", " + sv_variant }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/delly_filter"
 
   input:
-    set idTumor, idNormal, sv_variant, file(dellyBcf), file(dellyBcfIndex), file(sampleTsv) from dellyCallOutput
+    set idTumor, idNormal, sv_variant, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
   output:
     set file("*.filter.bcf"), file("*.filter.bcf.csi") into dellyFilterOutput
@@ -128,10 +108,12 @@ process dellyFilter {
 
   script:
   """
+  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
+
   delly filter \
     -f somatic \
     -o ${outfile} \
-    -s ${sampleTsv} \
+    -s samples.tsv \
     ${dellyBcf}
   """
 }
