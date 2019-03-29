@@ -57,7 +57,7 @@ Directory where remote Singularity images are stored. When using a computing clu
 * Do the following for LSF on juno:
 
 ```
-nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile lsf_juno
+nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile juno
 ```
 
 #### For submitting via AWS Batch
@@ -118,7 +118,7 @@ Variables used in pipeline:
 
 Execution on lsf:
 ```
-nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile lsf_juno --outDir $PWD
+nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile juno --outDir $PWD
 ```
 
 Execution on aws:
@@ -207,7 +207,7 @@ Variables used in pipeline:
 
 Execution on lsf:
 ```
-nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD
+nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile juno --outDir $PWD
 ```
 
 Execution on aws:
@@ -231,7 +231,7 @@ Tool name `msisensor` runs process `runMsiSensor`.
 
 Example run of only `delly`, `manta, `strelka2` on lsf:
 ```
-nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile lsf_juno --outDir $PWD --tools delly, manta, strelka2
+nextflow run somatic.nf --sample test_inputs/lsf/test_somatic.tsv -profile juno --outDir $PWD --tools delly, manta, strelka2
 ```
 
 Input File columns:
