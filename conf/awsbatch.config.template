@@ -9,3 +9,4 @@ process.queue = <AWS-BATCH-QUEUE-ARN>
 executor.name = 'awsbatch'
 executor.awscli = '/home/ec2-user/miniconda/bin/aws'
 workDir = <AWS-S3-WORKDIR> 
+outDir = <AWS-S3-OUTDIR>
