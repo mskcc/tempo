@@ -354,7 +354,7 @@ process RunStrelka2 {
 }
 
 // --- Process Mutect2 and Strelka2 VCFs
-( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
+(sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
 
 process combineChannel {
   tag {idTumor + "_vs_" + idNormal}
@@ -376,15 +376,15 @@ process combineChannel {
   """
 }
 
-( sampleIdsForBCFToolsFilterNorm, sampleIdsForBCFToolsMerge, bamFiles ) = bamFiles.into(3)
+(sampleIdsForBcfToolsFilterNorm, sampleIdsForBcfToolsMerge, bamFiles) = bamFiles.into(3)
 
-process runBCFToolsFilterNorm {
+process RunBcfToolsFilterNorm {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_output"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBCFToolsFilterNorm
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilterNorm
     each file(vcf) from vcfOutputSet.flatten()
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
@@ -401,27 +401,27 @@ process runBCFToolsFilterNorm {
 
   script:
   """
-  tabix -p vcf ${vcf}
+  tabix --preset vcf ${vcf}
 
   bcftools filter \
     -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
     --output-type z \
-    "${vcf}" | \
+    ${vcf} | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
     --output-type z \
-    --output "${outfile}" 
+    --output ${outfile}
   """
 }
 
-process runBCFToolsMerge {
+process RunBcfToolsMerge {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output"
 
   input:
     file('*.vcf.gz') from vcfFilterNormOutput.collect()
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBCFToolsMerge
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsMerge
 
   output:
     file("*filtered.norm.merge.vcf") into vcfMergedOutput
@@ -432,28 +432,28 @@ process runBCFToolsMerge {
   """
   for f in *.vcf.gz
   do
-    tabix -p vcf \$f
+    tabix --preset vcf \$f
   done
 
   bcftools merge \
     --force-samples \
     --merge none \
     --output-type v \
-    --output "${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf" \
+    --output ${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf \
     *.vcf.gz
   """
 }
 
-( sampleIdsForVCF2MAF, bamFiles ) = bamFiles.into(2)
+(sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
 
-process runVCF2MAF {
+process RunVcf2Maf {
   tag { idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/vcf2maf"
 
   input:
     file(vcfMerged) from vcfMergedOutput
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVCF2MAF
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -466,7 +466,7 @@ process runVCF2MAF {
   output:
     file("*.maf") into mafFile
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools 
 
   outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
 
@@ -485,19 +485,19 @@ process runVCF2MAF {
 }
 
 // --- Run FACETS
-( bamFilesForSNPPileup, bamFiles ) = bamFiles.into(2)
+(bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
-process doSNPPileup {
+process DoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSNPPileup
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSnpPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
-    set sequenceType, idTumor, idNormal, file("${output_filename}") into SNPPileup
+    set sequenceType, idTumor, idNormal, file("${output_filename}") into SnpPileup
 
   when: 'facets' in tools
 
@@ -514,13 +514,13 @@ process doSNPPileup {
   """
 }
 
-process doFacets {
+process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
 
   input:
-    set sequenceType, idTumor, idNormal, file(snpPileupFile) from SNPPileup
+    set sequenceType, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
     file("*.*") into FacetsOutput
@@ -555,9 +555,9 @@ process doFacets {
 }
 
 // --- Run MSIsensor
-( bamsForMsiSensor, bamFiles ) = bamFiles.into(2)
+(bamsForMsiSensor, bamFiles) = bamFiles.into(2)
 
-process runMsiSensor {
+process RunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor"
@@ -588,9 +588,9 @@ process runMsiSensor {
 }
 
 // --- Run Lumpy
-( bamsForLumpy, bamFiles ) = bamFiles.into(2)
+(bamsForLumpy, bamFiles) = bamFiles.into(2)
 
-process runLumpyExpress {
+process RunLumpyExpress {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lumpyexpress"
