@@ -172,7 +172,7 @@ process runMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz") into mutect2Output
+    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz.*") into mutect2Output
 
   when: 'mutect2' in tools
 
@@ -195,7 +195,7 @@ process runMutect2Filter {
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2_filter"
 
   input:
-    set idTumor, idNormal, file(mutect2Vcf) from mutect2Output
+    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
 
   output:
     file("*somatic.filtered.vcf") into mutect2FilteredOutput
@@ -203,12 +203,10 @@ process runMutect2Filter {
 
   when: 'mutect2' in tools
 
-  outfile="${mutect2Vcf.fileName}".replaceFirst("vcf.gz","filtered.vcf")
+  outfile="${mutect2Vcf.fileName}".replaceFirst("vcf.gz","filtered.vcf.gz")
 
   script:
   """
-  tabix -p vcf ${mutect2Vcf} 
-
   # Xmx hard-coded for now due to lsf bug
   gatk --java-options "-Xmx8g" \
     FilterMutectCalls \
@@ -226,6 +224,7 @@ process combineMutect2VCF {
 
   input:
     file(mutect2Vcfs) from mutect2FilteredOutput.collect()
+    file(mutect2VcfIndexes) from mutect2FilteredOutputIndex.collect()
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
 
   output:
