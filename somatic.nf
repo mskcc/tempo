@@ -7,12 +7,21 @@
  - dellyCall
  - dellyFilter
  - makeSamplesFile
+ - CreateIntervalBeds
  - runMutect2
+ - indexVCF
+ - runMutect2Filter
+ - combineMutect2VCF
  - runManta
  - runStrelka
+ - combineChannel
+ - runBCFToolsFilterNorm
+ - runBCFToolsMerge
+ - runVCF2MAF
  - doSNPPileup
  - doFacets
- - runMsiSensor 
+ - runMsiSensor
+ - runLumpyExpress
 */
 
 
@@ -75,34 +84,14 @@ process DellyCall {
   """
 }
 
-(bamsForMakingSampleFile, bamFiles) = bamFiles.into(2)
-
-process MakeSamplesFile {
-  tag {idTumor + "_vs_" + idNormal}
-
-  input: 
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMakingSampleFile 
-
-  output:
-    file("samples.tsv") into sampleTsvFile
-
-  when: 'delly' in tools
-
-  script:
-  """
-  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
-  """
-} 
-
-dellyCallOutput = dellyCallOutput.spread(sampleTsvFile)
-
 process DellyFilter {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly"
 
   input:
-    set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex), file(sampleTsv) from dellyCallOutput
+    set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
+
 
   output:
     set file("*.filter.bcf"), file("*.filter.bcf.csi") into dellyFilterOutput
@@ -113,6 +102,8 @@ process DellyFilter {
 
   script:
   """
+  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
+
   delly filter \
     --filter somatic \
     --samples samples.tsv \
@@ -225,25 +216,6 @@ process RunMutect2Filter {
     --output ${outfile}
   """
 }
-
-// process IndexVcf {
-//   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
-
-//   // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
-
-//   input:
-//     set idTumor, idNormal, file(mutect2Vcf) from mutect2FilteredOutput
-
-//   output:
-//     set idTumor, idNormal, file(mutect2Vcf), file("${mutect2Vcf.baseName}.gz.tbi") into mutect2IndexedOutput
-
-//   when: 'mutect2' in tools
-
-//   script:
-//   """
-//   tabix --preset vcf ${mutect2Vcf} 
-//   """
-// }
 
 (sampleIdsForMutect2Combine, bamFiles) = bamFiles.into(2)
 
@@ -472,6 +444,46 @@ process runBCFToolsMerge {
   """
 }
 
+( sampleIdsForVCF2MAF, bamFiles ) = bamFiles.into(2)
+
+process runVCF2MAF {
+  tag { idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/vcf2maf"
+
+  input:
+    file(vcfMerged) from vcfMergedOutput
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVCF2MAF
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict,
+      referenceMap.vcf2mafFilterVcf,
+      referenceMap.vcf2mafFilterVcfIndex,
+      referenceMap.vepCache
+    ])
+
+  output:
+    file("*.maf") into mafFile
+
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+
+  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+
+  script:
+  """
+  perl /opt/vcf2maf.pl \
+    --input-vcf ${vcfMerged} \
+    --tumor-id ${idTumor} \
+    --normal-id ${idNormal} \
+    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-data ${vepCache} \
+    --filter-vcf ${vcf2mafFilterVcf} \
+    --output-maf ${outfile} \
+    --ref-fasta ${genomeFile}
+  """
+}
+
 // --- Run FACETS
 ( bamFilesForSNPPileup, bamFiles ) = bamFiles.into(2)
  
@@ -634,7 +646,10 @@ def defineReferenceMap() {
     // Microsatellite sites for MSIsensor
     'msiSensorList'    : checkParamReturnFile("msiSensorList"),
     // Genomic regions to exclude for Delly
-    'dellyExcludeRegions' : checkParamReturnFile("dellyExcludeRegions")
+    'dellyExcludeRegions' : checkParamReturnFile("dellyExcludeRegions"),
+    'vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf"),
+    'vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex"),
+    'vepCache'                 : checkParamReturnFile("vepCache")
   ]
 }
 
