@@ -200,7 +200,7 @@ process RunMutect2Filter {
 
   output:
     file("*filtered.vcf.gz") into mutect2FilteredOutput
-    file("*filtered.vcf.gz.idx") into mutect2FilteredOutputIndex
+    file("*filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
 
   when: 'mutect2' in tools
 
