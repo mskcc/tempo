@@ -56,35 +56,18 @@ process AlignReads {
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.sam") into (alignedSam)
+    set idPatient, status, idSample, idRun, file("${idRun}.bam") into (unsortedBam)
 
   script:
-  readGroup = "@RG\\tID:Seq01p\\tSM:Seq01\\tPL:ILLUMINA\\tPI:330"
+    readGroup = "@RG\\tID:${idSample}_${idRun}\\tSM:${idSample}\\tLB:${idSample}_${idRun}\\tPL:Illumina"
+    
   """
-  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} > ${idRun}.sam
-  """
-}
-
-// ConvertSAMtoBAM - Convert SAM to BAM with samtools, 'samtools view'
-
-process ConvertSAMtoBAM {
-  tag {idPatient + "-" + idSample}
-
-  input:
-    set idPatient, status, idSample, idRun, file("${idRun}.sam") from alignedSam
-
-  output:
-    set idPatient, status, idSample, idRun, file("${idRun}.bam") into unsortedBam
-
-  script:
-  """
-  samtools view -S -b -@ ${task.cpus} ${idRun}.sam > ${idRun}.bam
+  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idRun}.bam
   """
 }
 
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 // samtools sort
-// setting these parameters as fixed `-m 2G` 
 
 process SortBAM {
   tag {idPatient + "-" + idSample}
@@ -98,10 +81,10 @@ process SortBAM {
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
   if(params.mem_per_core) { 
-    mem = task.memory.toString().split(" ")[0]
+    mem = task.memory.toString().split(" ")[0] - 1 
   }
   else {
-    mem = task.memory.toString().split(" ")[0].toInteger()/task.cpus
+    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
   }
   """
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
@@ -295,6 +278,28 @@ process RecalibrateBam {
     --input ${bam} \
     --output ${idSample}.recal.bam
   """
+}
+
+process Alfred {
+  tag {idPatient + "-" + idSample}
+
+  publishDir params.outDir
+
+  input:
+    set idPatient, status, idSample, file(bam), file(bai) from recalibratedBam
+
+    file(genomeFile) from Channel.value([
+      referenceMap.genomeFile
+    ])
+
+  output:
+    set idPatient, status, idSample, file("${idSample}.alfred.tsv.gz"), file("${idSample}.alfred.tsv.gz.pdf") into bamsQCStats
+
+  script:
+  """
+  alfred qc --reference ${genomeFile} --ignore --outfile ${idSample}.alfred.tsv.gz ${bam} && Rscript /opt/alfred/scripts/stats.R ${idSample}.alfred.tsv.gz
+  """
+
 }
 
 /*
