@@ -625,7 +625,7 @@ def checkParamReturnFile(item) {
 
 def defineReferenceMap() {
   if (!(params.genome in params.genomes)) exit 1, "Genome ${params.genome} not found in configuration"
-  return [
+  result_array = [
     'dbsnp'            : checkParamReturnFile("dbsnp"),
     'dbsnpIndex'       : checkParamReturnFile("dbsnpIndex"),
     // genome reference dictionary
@@ -636,21 +636,24 @@ def defineReferenceMap() {
     'genomeIndex'      : checkParamReturnFile("genomeIndex"),
     // BWA index files
     'bwaIndex'         : checkParamReturnFile("bwaIndex"),
-    // intervals file for spread-and-gather processes
-    'intervals'        : checkParamReturnFile("intervals"),
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
-    // for SNP Pileup
-    'facetsVcf'        : checkParamReturnFile("facetsVcf"),
-    // Microsatellite sites for MSIsensor
-    'msiSensorList'    : checkParamReturnFile("msiSensorList"),
-    // Genomic regions to exclude for Delly
-    'dellyExcludeRegions' : checkParamReturnFile("dellyExcludeRegions"),
-    'vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf"),
-    'vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex"),
-    'vepCache'                 : checkParamReturnFile("vepCache")
   ]
+
+  if (!params.test) {
+    result_array << ['vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf")]
+    result_array << ['vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex")]
+    result_array << ['vepCache'                 : checkParamReturnFile("vepCache")]
+    // for SNP Pileup
+    result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
+    // MSI Sensor
+    result_array << ['msiSensorList'    : checkParamReturnFile("msiSensorList")]
+    // intervals file for spread-and-gather processes
+    result_array << ['intervals'        : checkParamReturnFile("intervals")]
+  }
+
+  return result_array
 }
 
 def extractBamFiles(tsvFile) {
