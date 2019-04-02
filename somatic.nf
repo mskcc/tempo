@@ -7,12 +7,21 @@
  - dellyCall
  - dellyFilter
  - makeSamplesFile
+ - CreateIntervalBeds
  - runMutect2
+ - indexVCF
+ - runMutect2Filter
+ - combineMutect2VCF
  - runManta
  - runStrelka
+ - combineChannel
+ - runBCFToolsFilterNorm
+ - runBCFToolsMerge
+ - runVCF2MAF
  - doSNPPileup
  - doFacets
- - runMsiSensor 
+ - runMsiSensor
+ - runLumpyExpress
 */
 
 
@@ -82,33 +91,13 @@ process dellyCall {
   """
 }
 
-( bamsForMakingSampleFile, bamFiles ) = bamFiles.into(2)
-
-process makeSamplesFile {
-  tag { "SAMPLESFILE_" + idTumor + "_" + idNormal }
-
-  input: 
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMakingSampleFile 
-
-  output:
-    file("samples.tsv") into sampleTSVFile
-
-  when: 'delly' in tools
-
-  """
-    echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
-  """
-} 
-
-dellyCallOutput = dellyCallOutput.spread(sampleTSVFile)
-
 process dellyFilter {
   tag {  idTumor + "_" + idNormal +", " + sv_variant }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/delly_filter"
 
   input:
-    set idTumor, idNormal, sv_variant, file(dellyBcf), file(dellyBcfIndex), file(sampleTsv) from dellyCallOutput
+    set idTumor, idNormal, sv_variant, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
   output:
     set file("*.filter.bcf"), file("*.filter.bcf.csi") into dellyFilterOutput
@@ -119,10 +108,12 @@ process dellyFilter {
 
   script:
   """
+  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
+
   delly filter \
     -f somatic \
     -o ${outfile} \
-    -s ${sampleTsv} \
+    -s samples.tsv \
     ${dellyBcf}
   """
 }
@@ -181,7 +172,7 @@ process runMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz") into mutect2Output
+    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}_somatic.vcf.gz.*") into mutect2Output
 
   when: 'mutect2' in tools
 
@@ -198,40 +189,21 @@ process runMutect2 {
   """
 }
 
-process indexVCF {
-  tag {"INDEXVCF_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
-
-  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/index_vcf"
-
-  input:
-    set idTumor, idNormal, file(mutect2Vcf) from mutect2Output
-
-  output:
-    set idTumor, idNormal, file(mutect2Vcf), file("${mutect2Vcf.baseName}.gz.tbi") into mutect2IndexedOutput
-
-  when: 'mutect2' in tools
-
-  script:
-  """
-  tabix -p vcf ${mutect2Vcf} 
-  """
-}
-
 process runMutect2Filter {
   tag {"MUTECT2FILTER_" + mutect2Vcf.baseName + "_" + idTumor + "_" + idNormal }
 
   publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/mutect2_filter"
 
   input:
-    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2IndexedOutput
+    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
 
   output:
-    file("*somatic.filtered.vcf") into mutect2FilteredOutput
-    file("*somatic.filtered.vcf.idx") into mutect2FilteredOutputIndex
+    file("*somatic.filtered.vcf.gz") into mutect2FilteredOutput
+    file("*somatic.filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
 
   when: 'mutect2' in tools
 
-  outfile="${mutect2Vcf.fileName}".replaceFirst("vcf.gz","filtered.vcf")
+  outfile="${mutect2Vcf.fileName}".replaceFirst("vcf.gz","filtered.vcf.gz")
 
   script:
   """
@@ -252,6 +224,7 @@ process combineMutect2VCF {
 
   input:
     file(mutect2Vcfs) from mutect2FilteredOutput.collect()
+    file(mutect2VcfIndexes) from mutect2FilteredOutputIndex.collect()
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
 
   output:
@@ -451,6 +424,46 @@ process runBCFToolsMerge {
   """
 }
 
+( sampleIdsForVCF2MAF, bamFiles ) = bamFiles.into(2)
+
+process runVCF2MAF {
+  tag { idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/vcf2maf"
+
+  input:
+    file(vcfMerged) from vcfMergedOutput
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVCF2MAF
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict,
+      referenceMap.vcf2mafFilterVcf,
+      referenceMap.vcf2mafFilterVcfIndex,
+      referenceMap.vepCache
+    ])
+
+  output:
+    file("*.maf") into mafFile
+
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+
+  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+
+  script:
+  """
+  perl /opt/vcf2maf.pl \
+    --input-vcf ${vcfMerged} \
+    --tumor-id ${idTumor} \
+    --normal-id ${idNormal} \
+    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-data ${vepCache} \
+    --filter-vcf ${vcf2mafFilterVcf} \
+    --output-maf ${outfile} \
+    --ref-fasta ${genomeFile}
+  """
+}
+
 // ---------------------- Run SNPPileup into doFacets
 ( bamFilesForSNPPileup, bamFiles ) = bamFiles.into(2)
  
@@ -599,7 +612,11 @@ def defineReferenceMap() {
     // for SNP Pileup
     'facetsVcf'        : checkParamReturnFile("facetsVcf"),
     // MSI Sensor
-    'msiSensorList'    : checkParamReturnFile("msiSensorList")
+    'msiSensorList'    : checkParamReturnFile("msiSensorList"),
+    // vcf2maf filter vcf
+    'vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf"),
+    'vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex"),
+    'vepCache'                 : checkParamReturnFile("vepCache")
   ]
 }
 
