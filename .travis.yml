@@ -16,5 +16,5 @@ before_install:
 
 script:
   # Run test script here
-  - ./tests/run_tests.sh
+  - python tests/test_runner.py tests/tests.json
  
