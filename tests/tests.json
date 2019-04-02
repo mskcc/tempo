@@ -1,5 +1,5 @@
 {
     "test_make_bam_and_qc": ["./nextflow", "run", "make_bam_and_qc.nf", "--sample", "tests/test_make_bam_and_qc.tsv", "-profile", "test"],
-    "test_delly": ["./nextflow", "run", "somatic.nf", "--sample", "tests/test_somatic.tsv", "-profile", "test", "--tools", "delly"],
-    "test_manta_strelka": ["./nextflow", "run", "somatic.nf", "--sample", "tests/test_somatic.tsv", "-profile", "test", "--tools", "manta,strelka2"]
+    "test_delly": ["./nextflow", "run", "somatic.nf", "--sample", "tests/test_somatic.tsv", "-profile", "test", "--tools", "delly", "--test"],
+    "test_manta_strelka": ["./nextflow", "run", "somatic.nf", "--sample", "tests/test_somatic.tsv", "-profile", "test", "--tools", "manta,strelka2", "--test"]
 }
