@@ -198,8 +198,8 @@ process runMutect2Filter {
     set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
 
   output:
-    file("*somatic.filtered.vcf") into mutect2FilteredOutput
-    file("*somatic.filtered.vcf.idx") into mutect2FilteredOutputIndex
+    file("*somatic.filtered.vcf.gz") into mutect2FilteredOutput
+    file("*somatic.filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
 
   when: 'mutect2' in tools
 
