@@ -53,12 +53,14 @@ fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
 
 process FastP {
   tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
+  
+  scratch true
 
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
     set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastPFiles
-
+    env TMPDIR='/scratch'
   output:
     file("*.html") into fastPResults 
 
@@ -320,12 +322,15 @@ process RecalibrateBam {
   """
 }
 
+ignore_read_groups = Channel.from( 1 , 0 )
+
 process Alfred {
   tag {idPatient + "-" + idSample}
 
   publishDir params.outDir
-
+  
   input:
+    each ignore_rg from ignore_read_groups
     set idPatient, status, idSample, file(bam), file(bai) from recalibratedBam
 
     file(genomeFile) from Channel.value([
@@ -333,11 +338,14 @@ process Alfred {
     ])
 
   output:
-    set idPatient, status, idSample, file("${idSample}.alfred.tsv.gz"), file("${idSample}.alfred.tsv.gz.pdf") into bamsQCStats
+    set idPatient, status, ignore_rg, idSample, file("${outfile}"), file("${outfile}.pdf") into bamsQCStats
+//    set idPatient, status, ignore_rg, idSample, file(ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"), file(ignore_rg ? "${idSample}.alfred.tsv.gz.pdf" : "${idSample}.alfred.RG.tsv.gz.pdf") into bamsQCStats
 
   script:
+  def ignore = ${ignore_rg} == 1 ? "--ignore" : ''
+  def outfile = ${ignore_rg} == 1 ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
   """
-  alfred qc --reference ${genomeFile} --ignore --outfile ${idSample}.alfred.tsv.gz ${bam} && Rscript /opt/alfred/scripts/stats.R ${idSample}.alfred.tsv.gz
+  alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
   """
 
 }
