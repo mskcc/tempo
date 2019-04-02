@@ -322,7 +322,7 @@ process RecalibrateBam {
   """
 }
 
-ignore_read_groups = Channel.from( 1 , 0 )
+ignore_read_groups = Channel.from( true , false )
 
 process Alfred {
   tag {idPatient + "-" + idSample}
@@ -338,12 +338,11 @@ process Alfred {
     ])
 
   output:
-    set idPatient, status, ignore_rg, idSample, file("${outfile}"), file("${outfile}.pdf") into bamsQCStats
-//    set idPatient, status, ignore_rg, idSample, file(ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"), file(ignore_rg ? "${idSample}.alfred.tsv.gz.pdf" : "${idSample}.alfred.RG.tsv.gz.pdf") into bamsQCStats
+    set idPatient, status, ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
   script:
-  def ignore = ${ignore_rg} == 1 ? "--ignore" : ''
-  def outfile = ${ignore_rg} == 1 ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
+  def ignore = ignore_rg ? "--ignore" : ''
+  def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
   """
   alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
   """
