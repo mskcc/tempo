@@ -53,14 +53,12 @@ fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
 
 process FastP {
   tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
-  
-  scratch true
 
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
     set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastPFiles
-    env TMPDIR='/scratch'
+
   output:
     file("*.html") into fastPResults 
 
