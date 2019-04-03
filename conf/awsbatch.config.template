@@ -5,6 +5,8 @@
 
 aws.region = <AWS-REGION> 
 aws.client.storageEncryption = <STORAGE-ENCRYPTION>
+workDir = <AWS-S3-WORKDIR> 
+outDir = <AWS-S3-OUTDIR>
 
 executor {
   name = 'awsbatch'
@@ -17,6 +19,4 @@ process {
 
 params {
   mem_per_core = false
-  workDir = <AWS-S3-WORKDIR> 
-  outDir = <AWS-S3-OUTDIR>
 }
