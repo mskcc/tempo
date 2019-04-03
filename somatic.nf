@@ -21,7 +21,6 @@
  - doSNPPileup
  - doFacets
  - runMsiSensor
- - runLumpyExpress
 */
 
 
