@@ -23,6 +23,7 @@ def print_report(status):
 
 if __name__ == '__main__':
     test_file = sys.argv[1]
+    successful = True
     with open(test_file, 'r') as f:
         tests = json.load(f)
     report = []
@@ -32,4 +33,7 @@ if __name__ == '__main__':
             report.append("PASSED: %s" % k)
         else:
             report.append("FAILED: %s" % k)
+            successful = False
     print_report(report)
+    if not successful:
+        exit(1)
