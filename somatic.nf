@@ -21,7 +21,6 @@
  - doSNPPileup
  - doFacets
  - runMsiSensor
- - runLumpyExpress
 */
 
 
@@ -553,30 +552,6 @@ process runMsiSensor {
   output_prefix = "${idTumor}_${idNormal}"
   """
   msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
-  """
-}
-
-( bamsForLumpy, bamFiles ) = bamFiles.into(2)
-
-process runLumpyExpress {
-  tag { "LUMPYEXPRESS_" + idTumor + "_" + idNormal }  
-
-  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/lumpyexpress"
-
-  input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForLumpy
-
-  output:
-    file("*.vcf") into lumpyExpressOutput
-
-  when: 'lumpyexpress' in tools
-
-  script:
-  """
-  output_filename=${idTumor}_${idNormal}.lumpyexpress.vcf
-  lumpyexpress \
-    -B ${bamTumor},${bamNormal} \
-    -o "\${output_filename}"
   """
 }
 
