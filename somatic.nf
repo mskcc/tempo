@@ -6,7 +6,6 @@
  Processes overview
  - dellyCall
  - dellyFilter
- - makeSamplesFile
  - CreateIntervalBeds
  - runMutect2
  - indexVCF
@@ -21,7 +20,6 @@
  - doSNPPileup
  - doFacets
  - runMsiSensor
- - runLumpyExpress
 */
 
 
@@ -498,7 +496,7 @@ process DoSnpPileup {
   output_filename = idTumor + "_" + idNormal + ".snppileup.dat.gz"
   """
   snp-pileup \
-    --count-orhpans \
+    --count-orphans \
     --pseudo-snps 50 \
     --gzip \
     ${facetsVcf} \
