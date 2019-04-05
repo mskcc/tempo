@@ -62,10 +62,9 @@ process DellyCall {
   input:
     each svType from svTypes
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
-    set file(genomeFile), file(genomeIndex), file(dellyExcludeRegions) from Channel.value([
+    set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.dellyExcludeRegions
+      referenceMap.genomeIndex
     ])
 
   output:
@@ -78,7 +77,6 @@ process DellyCall {
   delly call \
     --svtype ${svType} \
     --genome ${genomeFile} \
-    --exclude ${dellyExcludeRegions} \
     --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
     ${bamTumor} ${bamNormal}
   """
@@ -269,13 +267,11 @@ process RunManta {
 
   when: 'manta' in tools
 
-  // fix call regions
   // flag with --exome if exome
   script:
   """
   configManta.py \
     --referenceFasta ${genomeFile} \
-    --callRegions ${call_regions} \
     --normalBam ${bamNormal} \
     --tumorBam ${bamTumor} \
     --runDir Manta
@@ -331,7 +327,6 @@ process RunStrelka2 {
   """
   configureStrelkaSomaticWorkflow.py \
     --referenceFasta ${genomeFile} \
-    --callRegions ${call_regions} \
     --indelCandidates ${mantaCSI} \
     --tumorBam ${bamTumor} \
     --normalBam ${bamNormal} \
@@ -645,8 +640,6 @@ def defineReferenceMap() {
     'facetsVcf'        : checkParamReturnFile("facetsVcf"),
     // Microsatellite sites for MSIsensor
     'msiSensorList'    : checkParamReturnFile("msiSensorList"),
-    // Genomic regions to exclude for Delly
-    'dellyExcludeRegions' : checkParamReturnFile("dellyExcludeRegions"),
     'vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf"),
     'vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex"),
     'vepCache'                 : checkParamReturnFile("vepCache")
