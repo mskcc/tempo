@@ -618,6 +618,7 @@ def defineReferenceMap() {
     // intervals file for spread-and-gather processes
     result_array << ['intervals'        : checkParamReturnFile("intervals")]
   }
+  return result_array
 }
 
 def extractBamFiles(tsvFile) {
