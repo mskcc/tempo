@@ -278,8 +278,7 @@ process RunManta {
 
   python Manta/runWorkflow.py \
     --mode local \
-    --jobs ${task.cpus} \
-    --memGb ${task.memory}
+    --jobs ${task.cpus}
 
   mv Manta/results/variants/candidateSmallIndels.vcf.gz \
     Manta_${idTumor}_vs_${idNormal}.candidateSmallIndels.vcf.gz
@@ -334,8 +333,7 @@ process RunStrelka2 {
 
   python Strelka/runWorkflow.py \
     --mode local \
-    --jobs ${task.cpus} \
-    --memGb ${task.memory}
+    --jobs ${task.cpus}
 
   mv Strelka/results/variants/somatic.indels.vcf.gz \
     Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz
