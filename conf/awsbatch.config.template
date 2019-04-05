@@ -16,6 +16,7 @@ executor {
 
 process {
   queue = <AWS-BATCH-QUEUE-ARN>
+  scratch = '/scratch'
 }
 
 params {
