@@ -578,31 +578,6 @@ process RunMsiSensor {
   """
 }
 
-// --- Run Lumpy
-(bamsForLumpy, bamFiles) = bamFiles.into(2)
-
-process RunLumpyExpress {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lumpyexpress"
-
-  input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForLumpy
-
-  output:
-    file("*.vcf") into lumpyExpressOutput
-
-  when: 'lumpyexpress' in tools
-
-  script:
-  """
-  output_filename=${idTumor}_${idNormal}.lumpyexpress.vcf
-  lumpyexpress \
-    -B ${bamTumor},${bamNormal} \
-    -o "\${output_filename}"
-  """
-}
-
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
