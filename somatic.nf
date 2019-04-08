@@ -595,17 +595,20 @@ process RunHlaPolysolver {
   when: "hla" in tools
   
   script:
+  outDir = "output"
   """
-  # /home/polysolver/scripts/shell_call_hla_type bam race includeFreq build format insertCalc outDir
+  cp /home/polysolver/scripts/shell_call_hla_type .
+  
+  sed -i "171s/TMP_DIR=.*/TMP_DIR=$outDir/" shell_call_hla_type 
 
-  bash /home/polysolver/scripts/shell_call_hla_type \
+  bash shell_call_hla_type \
   ${bamNormal} \
   Unknown \
   1 \
   hg19 \
   STDFQ \
   0 \
-  output ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > output/winners.hla.txt 
+  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > output/winners.hla.txt 
   """
 }
 
