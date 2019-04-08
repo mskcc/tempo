@@ -590,7 +590,7 @@ process RunHlaPolysolver {
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
 
   output:
-    file("test/*") into hlaOutput
+    file("output/*") into hlaOutput
 
   when: "hla" in tools
   
@@ -605,7 +605,7 @@ process RunHlaPolysolver {
   hg19 \
   STDFQ \
   0 \
-  test
+  output ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > output/winners.hla.txt 
   """
 }
 
