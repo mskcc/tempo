@@ -578,6 +578,37 @@ process RunMsiSensor {
   """
 }
 
+// --- Run HLA Polysolver 
+(bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
+
+process RunHlaPolysolver {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
+
+  output:
+    file("test/*") into hlaOutput
+
+  when: "hla" in tools
+  
+  script:
+  """
+  # /home/polysolver/scripts/shell_call_hla_type bam race includeFreq build format insertCalc outDir
+
+  bash /home/polysolver/scripts/shell_call_hla_type \
+  ${bamNormal} \
+  Unknown \
+  1 \
+  hg19 \
+  STDFQ \
+  0 \
+  test
+  """
+}
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
