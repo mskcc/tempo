@@ -5,9 +5,9 @@
 --------------------------------------------------------------------------------
  Processes overview
  - AlignReads - Map reads with BWA mem output SAM
- - ConvertSAMtoBAM - Convert SAM to BAM with samtools
  - SortBAM - Sort BAM with samtools
  - MarkDuplicates - Mark Duplicates with GATK4
+ - MergeBam - Merge BAMs from differen lanes for the same sample
  - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
  - RecalibrateBam - Recalibrate Bam with PrintReads
 */
@@ -52,7 +52,7 @@ fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
 // FastP - FastP on lane pairs, R1/R2
 
 process FastP {
-  tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
+  tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
 
   publishDir params.outDir, mode: params.publishDirMode
 
@@ -70,7 +70,7 @@ process FastP {
 // FastQC - FastQC on lane pairs, R1/R2
 
 //process FastQC {
-//  tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
+//  tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
 //
 //  publishDir params.outDir, mode: params.publishDirMode
 //
@@ -89,7 +89,7 @@ process FastP {
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
-  tag {idPatient + "-" + idRun}   // The tag directive allows you to associate each process executions with a custom label
+  tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
 
   input:
     set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastqFiles
@@ -110,7 +110,7 @@ process AlignReads {
 // samtools sort
 
 process SortBAM {
-  tag {idPatient + "-" + idSample}
+  tag {idRun}
 
   input:
     set idPatient, status, idSample, idRun, file("${idRun}.bam") from unsortedBam
@@ -121,7 +121,7 @@ process SortBAM {
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
   if(params.mem_per_core) { 
-    mem = task.memory.toString().split(" ")[0] - 1 
+    mem = task.memory.toString().split(" ")[0]i.toInteger() - 1 
   }
   else {
     mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
@@ -131,17 +131,41 @@ process SortBAM {
   """
 }
 
+// GATK MarkDuplicates
+
+process MarkDuplicates {
+  tag {idRun}
+
+  input:
+    set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") from sortedBam
+
+  output:
+    set idPatient, status, idSample, idRun,  file("${idRun}.preMerge.bam") into (duplicateMarkedBams, duplicateMarkedBamsDebug, preMergeBams, preMergeBamsDebug)
+
+  script:
+  """
+  gatk MarkDuplicates --java-options ${params.markdup_java_options}  \
+    --MAX_RECORDS_IN_RAM 50000 \
+    --INPUT ${idRun}.sorted.bam \
+    --METRICS_FILE ${idRun}.bam.metrics \
+    --TMP_DIR . \
+    --ASSUME_SORT_ORDER coordinate \
+    --CREATE_INDEX false \
+    --OUTPUT ${idRun}.preMerge.bam
+  """
+}
+
 singleBam = Channel.create()
 singleBamDebug = Channel.create()
 groupedBam = Channel.create()
 groupedBamDebug = Channel.create()
-sortedBam.groupTuple(by:[0,1,2])
+preMergeBams.groupTuple(by:[0,1,2])
   .choice(singleBam, groupedBam) {it[2].size() > 1 ? 1 : 0}
 singleBam = singleBam.map {
   idPatient, status, idSample, idRun, bam ->
   [idPatient, status, idSample, bam]
 }
-sortedBamDebug.groupTuple(by:[0,1,2])
+preMergeBamsDebug.groupTuple(by:[0,1,2])
   .choice(singleBamDebug, groupedBamDebug) {it[2].size() > 1 ? 1 : 0}
 singleBamDebug = singleBamDebug.map {
   idPatient, status, idSample, idRun, bam ->
@@ -154,19 +178,24 @@ if (params.debug) {
 }   
 
 process MergeBams {
-  tag {idPatient + "-" + idSample}
+  tag {idSample}
+
+  // The publishDir directive allows you to publish the process output files to a specified folder
+  publishDir params.outDir, mode: params.publishDirMode
 
   input:
     set idPatient, status, idSample, idRun, file(bam) from groupedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
+    set idPatient, status, idSample, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
+    set idPatient, status, idSample, val("${idSample}.merged.bam"), val("${idSample}.merged.bai") into mergedBamTSV
 
   // when: step == 'mapping' && !params.onlyQC
 
   script:
   """
   samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
+  samtools index ${idSample}.merged.bam ${idSample}.merged.bai
   """
 }
 
@@ -194,70 +223,12 @@ if (params.verbose) mergedBam = mergedBam.view {
   File  : [${it[4]}]"
 }
 
-// GATK MarkDuplicates
-
-process MarkDuplicates {
-  tag {idPatient + "-" + idSample}
-
-  // The publishDir directive allows you to publish the process output files to a specified folder
-
-  // publishDir params.outDir, mode: params.publishDirMode,
-  //  saveAs: {
-  //    if (it == "${idRun}.bam.metrics") "${directoryMap.markDuplicatesQC.minus(params.outDir+'/')}/${it}"
-  //    else "${directoryMap.duplicateMarked.minus(params.outDir+'/')}/${it}"
-  //  }
-
-  // when: step == 'mapping' && !params.onlyQC
-
-  input:
-    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
-
-  output:
-    set idPatient, file("${idSample}_${status}.md.bam"), idSample, idRun into duplicateMarkedBams
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam") into markDuplicatesTSV
-    file ("${idSample}.bam.metrics") into markDuplicatesReport
-
-  script:
-  """
-  gatk MarkDuplicates --java-options ${params.markdup_java_options}  \
-    --MAX_RECORDS_IN_RAM 50000 \
-    --INPUT ${idSample}.merged.bam \
-    --METRICS_FILE ${idSample}.bam.metrics \
-    --TMP_DIR . \
-    --ASSUME_SORT_ORDER coordinate \
-    --CREATE_INDEX false \
-    --OUTPUT ${idSample}_${status}.md.bam
-  """
-}
-
-duplicateMarkedBams = duplicateMarkedBams.map {
-    idPatient, bam, idSample, idRun ->
-    tag = bam.baseName.tokenize('.')[0]
-    /// status   = tag[-1..-1].toInteger()  X
-    status = 0
-    // idSample = tag.take(tag.length()-2)
-    [idPatient, status, idSample, bam]
-}
-
-(mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
-
-if (params.verbose) mdBamToJoin = mdBamToJoin.view {
-  "MD Bam to Join BAM:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[3].fileName}]"
-}
-
-if (params.verbose) mdBam = mdBam.view {
-  "BAM for MarkDuplicates:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[3].fileName}]"
-}
 
 process CreateRecalibrationTable {
-  tag {idPatient + "-" + idSample}
+  tag {idSample}
 
   input:
-    set idPatient, status, idSample, file(bam) from mdBam 
+    set idPatient, status, idSample, file(bam) from mergedBam 
 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
@@ -271,7 +242,7 @@ process CreateRecalibrationTable {
 
   output:
     set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idPatient, status, idSample, val("${idSample}_${status}.md.bam"), val("${idSample}.recal.table") into recalibrationTableTSV
+    set idPatient, status, idSample, val("${idSample}.merged.bam"), val("${idSample}.recal.table") into recalibrationTableTSV
 
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
@@ -288,10 +259,10 @@ process CreateRecalibrationTable {
   """
 }
 
-recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1, 2])
+recalibrationTable = mergedBam.join(recalibrationTable, by:[0, 1, 2])
 
 process RecalibrateBam {
-  tag {idPatient + "-" + idSample}
+  tag {idSample}
 
   // The publishDir directive allows you to publish the process output files to a specified folder
   publishDir params.outDir, mode: params.publishDirMode
@@ -323,9 +294,9 @@ process RecalibrateBam {
 ignore_read_groups = Channel.from( true , false )
 
 process Alfred {
-  tag {idPatient + "-" + idSample}
+  tag {idSample}
 
-  publishDir params.outDir
+  publishDir params.outDir, mode: params.publishDirMode
   
   input:
     each ignore_rg from ignore_read_groups
