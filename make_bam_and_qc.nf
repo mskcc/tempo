@@ -187,7 +187,7 @@ process MergeBams {
     set idPatient, status, idSample, idRun, file(bam) from groupedBam
 
   output:
-    set idPatient, status, idSample, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
+    set idPatient, status, idSample, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug, preBQSRBam)
     set idPatient, status, idSample, val("${idSample}.merged.bam"), val("${idSample}.merged.bai") into mergedBamTSV
 
   // when: step == 'mapping' && !params.onlyQC
@@ -228,7 +228,7 @@ process CreateRecalibrationTable {
   tag {idSample}
 
   input:
-    set idPatient, status, idSample, file(bam) from mergedBam 
+    set idPatient, status, idSample, file(bam) from preBQSRBam 
 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
