@@ -7,7 +7,7 @@
  - AlignReads - Map reads with BWA mem output SAM
  - SortBAM - Sort BAM with samtools
  - MarkDuplicates - Mark Duplicates with GATK4
- - MergeBam - Merge BAMs from differen lanes for the same sample
+ - MergeBam - Merge BAMs from different lanes for the same sample
  - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
  - RecalibrateBam - Recalibrate Bam with PrintReads
 */
