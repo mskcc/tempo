@@ -596,10 +596,11 @@ process RunHlaPolysolver {
   
   script:
   outDir = "output"
+  TMPDIR = "$outDir-nf-scratch"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
   
-  sed -i "171s/TMP_DIR=.*/TMP_DIR=$outDir/" shell_call_hla_type 
+  sed -i "171s/TMP_DIR=.*/TMP_DIR=$TMPDIR/" shell_call_hla_type 
 
   bash shell_call_hla_type \
   ${bamNormal} \
@@ -608,7 +609,7 @@ process RunHlaPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > output/winners.hla.txt 
+  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
   """
 }
 
