@@ -5,7 +5,21 @@
 
 aws.region = <AWS-REGION> 
 aws.client.storageEncryption = <STORAGE-ENCRYPTION>
-process.queue = <AWS-BATCH-QUEUE-ARN>
-executor.name = 'awsbatch'
-executor.awscli = '/home/ec2-user/miniconda/bin/aws'
+aws.mountPoint = '/scratch'
 workDir = <AWS-S3-WORKDIR> 
+outDir = <AWS-S3-OUTDIR>
+
+executor {
+  name = 'awsbatch'
+  awscli = '/home/ec2-user/miniconda/bin/aws'
+}
+
+process {
+  queue = <AWS-BATCH-QUEUE-ARN>
+}
+
+params {
+  mem_per_core = false
+  reference_base = "s3:/"
+  genome_base = params.genome == 'GRCh37' ? "${reference_base}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh37" : params.genome == 'GRCh38' ? "${reference_base}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh38" : " ${reference_base}/mskcc-igenomes/igenomes/smallGRCh37"
+}
