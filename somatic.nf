@@ -578,6 +578,41 @@ process RunMsiSensor {
   """
 }
 
+// --- Run HLA Polysolver 
+(bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
+
+process RunHlaPolysolver {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
+
+  output:
+    file("output/*") into hlaOutput
+
+  when: "hla" in tools
+  
+  script:
+  outDir = "output"
+  TMPDIR = "$outDir-nf-scratch"
+  """
+  cp /home/polysolver/scripts/shell_call_hla_type .
+  
+  sed -i "171s/TMP_DIR=.*/TMP_DIR=$TMPDIR/" shell_call_hla_type 
+
+  bash shell_call_hla_type \
+  ${bamNormal} \
+  Unknown \
+  1 \
+  hg19 \
+  STDFQ \
+  0 \
+  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
+  """
+}
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
