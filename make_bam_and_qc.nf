@@ -121,7 +121,7 @@ process SortBAM {
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
   if(params.mem_per_core) { 
-    mem = task.memory.toString().split(" ")[0]i.toInteger() - 1 
+    mem = task.memory.toString().split(" ")[0].toInteger() - 1 
   }
   else {
     mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
