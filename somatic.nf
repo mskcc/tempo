@@ -347,7 +347,7 @@ process RunStrelka2 {
 // --- Process Mutect2 and Strelka2 VCFs
 (sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
 
-process combineChannel {
+process CombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
