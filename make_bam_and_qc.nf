@@ -203,7 +203,7 @@ process MarkDuplicates {
 
   // The publishDir directive allows you to publish the process output files to a specified folder
 
-  // publishDir params.outDir, mode: params.publishDirMode,
+   publishDir params.outDir, mode: params.publishDirMode,
   //  saveAs: {
   //    if (it == "${idRun}.bam.metrics") "${directoryMap.markDuplicatesQC.minus(params.outDir+'/')}/${it}"
   //    else "${directoryMap.duplicateMarked.minus(params.outDir+'/')}/${it}"
@@ -215,8 +215,8 @@ process MarkDuplicates {
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
 
   output:
-    set idPatient, file("${idSample}.md.bam"), idSample, idRun into duplicateMarkedBams
-    set idPatient, status, idSample, val("${idSample}.md.bam") into markDuplicatesTSV
+    set idPatient, file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, idRun into duplicateMarkedBams
+    set idPatient, status, idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai") into markDuplicatesTSV
     file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
@@ -233,12 +233,12 @@ process MarkDuplicates {
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    idPatient, bam, idSample, idRun ->
+    idPatient, bam, bai, idSample, idRun ->
     tag = bam.baseName.tokenize('.')[0]
     /// status   = tag[-1..-1].toInteger()  X
     status = 0
     // idSample = tag.take(tag.length()-2)
-    [idPatient, status, idSample, bam]
+    [idPatient, status, idSample, bam, bai]
 }
 
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
@@ -259,7 +259,7 @@ process CreateRecalibrationTable {
   tag {idSample}
 
   input:
-    set idPatient, status, idSample, file(bam) from mdBam 
+    set idPatient, status, idSample, file(bam), file(bai) from mdBam 
 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
@@ -273,7 +273,7 @@ process CreateRecalibrationTable {
 
   output:
     set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idPatient, status, idSample, val("${idSample}.md.bam"), val("${idSample}.recal.table") into recalibrationTableTSV
+    set idPatient, status, idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
 
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
@@ -299,7 +299,7 @@ process RecalibrateBam {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idPatient, status, idSample, file(bam), file(recalibrationReport) from recalibrationTable
+    set idPatient, status, idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
