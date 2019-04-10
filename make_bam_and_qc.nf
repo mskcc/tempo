@@ -68,8 +68,9 @@ process FastP {
   """
 }
 */
- FastQC - FastQC on lane pairs, R1/R2
-i/*
+
+//FastQC - FastQC on lane pairs, R1/R2
+/*
 process FastQC {
   tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
 
