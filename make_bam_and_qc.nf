@@ -203,7 +203,7 @@ process MarkDuplicates {
 
   // The publishDir directive allows you to publish the process output files to a specified folder
 
-   publishDir params.outDir, mode: params.publishDirMode,
+   publishDir params.outDir, mode: params.publishDirMode
   //  saveAs: {
   //    if (it == "${idRun}.bam.metrics") "${directoryMap.markDuplicatesQC.minus(params.outDir+'/')}/${it}"
   //    else "${directoryMap.duplicateMarked.minus(params.outDir+'/')}/${it}"
