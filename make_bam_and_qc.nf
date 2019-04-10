@@ -227,7 +227,7 @@ process MarkDuplicates {
     --METRICS_FILE ${idSample}.bam.metrics \
     --TMP_DIR . \
     --ASSUME_SORT_ORDER coordinate \
-    --CREATE_INDEX false \
+    --CREATE_INDEX true \
     --OUTPUT ${idSample}.md.bam
   """
 }
