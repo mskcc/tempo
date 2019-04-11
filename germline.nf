@@ -234,9 +234,8 @@ process RunManta {
   script:
   """
   configManta.py \
-    --referenceFasta ${genomeFile} \
-    --normalBam ${bamNormal} \
-    --tumorBam ${bamTumor} \
+    --reference ${genomeFile} \
+    --bam ${bamNormal} \
     --runDir Manta
 
   python Manta/runWorkflow.py \
@@ -244,21 +243,17 @@ process RunManta {
     --jobs ${task.cpus}
 
   mv Manta/results/variants/candidateSmallIndels.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.candidateSmallIndels.vcf.gz
+    Manta_${idNormal}.candidateSmallIndels.vcf.gz
   mv Manta/results/variants/candidateSmallIndels.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.candidateSmallIndels.vcf.gz.tbi
+    Manta_${idNormal}.candidateSmallIndels.vcf.gz.tbi
   mv Manta/results/variants/candidateSV.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.candidateSV.vcf.gz
+    Manta_${idNormal}.candidateSV.vcf.gz
   mv Manta/results/variants/candidateSV.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.candidateSV.vcf.gz.tbi
+    Manta_${idNormal}.candidateSV.vcf.gz.tbi
   mv Manta/results/variants/diploidSV.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz
+    Manta_${idNormal}.diploidSV.vcf.gz
   mv Manta/results/variants/diploidSV.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz.tbi
-  mv Manta/results/variants/germlineSV.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.germlineSV.vcf.gz
-  mv Manta/results/variants/germlineSV.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.germlineSV.vcf.gz.tbi
+    Manta_${idNormal}.diploidSV.vcf.gz.tbi
   """
 }
 
