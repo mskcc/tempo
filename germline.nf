@@ -59,7 +59,7 @@ process DellyCall {
     ])
 
   output:
-    set idNormal, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutput
+    set idTumor, idNormal, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutput
 
   when: 'delly' in tools
 
@@ -79,7 +79,7 @@ process DellyFilter {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
-    set idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
+    set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
 
   output:
@@ -272,31 +272,26 @@ process RunStrelka2 {
     ])
 
   output:
-    set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
-    set file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutputSNVs
+    file("*.vcf.gz") into strelkaOutput
+    file("*.vcf.gz.tbi") into strelkaIndexedOutput
 
-  when: 'manta' in tools && 'strelka2' in tools
+  when: 'strelka2' in tools
   
   script:
   """
-  configureStrelkaSomaticWorkflow.py \
+  configureStrelkaGermlineWorkflow.py \
     --referenceFasta ${genomeFile} \
-    --tumorBam ${bamTumor} \
-    --normalBam ${bamNormal} \
+    --bam ${bamNormal} \
     --runDir Strelka
 
   python Strelka/runWorkflow.py \
     --mode local \
     --jobs ${task.cpus}
 
-  mv Strelka/results/variants/germline.indels.vcf.gz \
-    Strelka_${idTumor}_vs_${idNormal}_germline_indels.vcf.gz
-  mv Strelka/results/variants/germline.indels.vcf.gz.tbi \
-    Strelka_${idTumor}_vs_${idNormal}_germline_indels.vcf.gz.tbi
-  mv Strelka/results/variants/germline.snvs.vcf.gz \
-    Strelka_${idTumor}_vs_${idNormal}_germline_snvs.vcf.gz
-  mv Strelka/results/variants/germline.snvs.vcf.gz.tbi \
-    Strelka_${idTumor}_vs_${idNormal}_germline_snvs.vcf.gz.tbi
+  mv Strelka/results/variants/genome.*.vcf.gz Strelka_${idNormal}_genome.vcf.gz
+  mv Strelka/results/variants/genome.*.vcf.gz.tbi Strelka_${idNormal}_genome.vcf.gz.tbi
+  mv Strelka/results/variants/variants.vcf.gz Strelka_${idNormal}_variants.vcf.gz
+  mv Strelka/results/variants/variants.vcf.gz.tbi Strelka_${idNormal}_variants.vcf.gz.tbi
   """
 }
 
@@ -349,11 +344,10 @@ process CombineChannel {
   input:
     file(haplotypecallercombinedVCF) from haplotypecallerCombinedVcfOutput
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
-    set file(strelkaIndels), file(strelkaIndelsTBI) from strelkaOutputIndels
-    set file(strelkaSNV), file(strelkaSNVTBI) from strelkaOutputSNVs
+    set file(strelkaFile), file(strelkaFileIndexed) from strelkaOutput
 
   output:
-    set file(haplotypecallercombinedVCF), file(strelkaIndels), file(strelkaSNV) into vcfOutputSet
+    file(haplotypecallercombinedVCF) into vcfOutputSet
 
   when: 'manta' in tools && 'strelka2' in tools && 'haplotypecaller' in tools
 
