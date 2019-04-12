@@ -310,7 +310,7 @@ process MergeDellyAndManta {
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
 
   output:
-    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
+    file("*.merge.vcf.gz") into vcfDellyMantaMergedOutput
 
   when: 'manta' in tools && 'delly' in tools
 
@@ -329,9 +329,44 @@ process MergeDellyAndManta {
   bcftools merge \
     --force-samples \
     --merge none \
-    --output-type v \
-    --output ${idNormal}.delly.manta.filtered.merge.vcf \
+    --output-type z \
+    --output ${idNormal}.delly.manta.merge.vcf.gz \
     *.vcf.gz
+  """
+}
+
+( sampleIdsForBcfToolsFilter, bamFiles ) = bamFiles.into(2)
+
+process RunBcfToolsFilterOnDellyManta {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_output"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilter
+    file(vcf) from vcfDellyMantaMergedOutput
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    file("*filtered.vcf.gz") into vcfFilterNormOutput
+
+  when: "manta" in tools && "delly" in tools
+
+  outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.vcf.gz')
+
+  script:
+  """
+  tabix --preset vcf ${vcf}
+
+  bcftools filter \
+    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --output-type z \
+    --output ${outfile} \
+    ${vcf} 
   """
 }
 
@@ -374,7 +409,7 @@ process RunBcfToolsFilterNorm {
     ])
 
   output:
-    file("*filtered.norm.vcf.gz") into vcfFilterNormOutput
+    file("*filtered.norm.vcf.gz") into vcfFilterOutput
 
   when: "haplotypecaller" in tools && "manta" in tools && "strelka2" in tools
 
