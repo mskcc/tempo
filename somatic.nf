@@ -482,7 +482,7 @@ process RunBcfToolsMerge {
 process RunVcf2Maf {
   tag { idTumor + "_" + idNormal }
 
-  publishDir "${ params.outDir }/VariantCalling/${idTumor}_${idNormal}/vcf2maf"
+  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations"
 
   input:
     file(vcfMerged) from vcfMergedOutput
