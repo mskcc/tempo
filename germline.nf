@@ -252,7 +252,7 @@ process RunManta {
 }
 
 // --- Run Strelka2
-process RunStrelka {
+process RunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2"
