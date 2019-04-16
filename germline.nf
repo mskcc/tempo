@@ -141,6 +141,68 @@ if (params.verbose) bamsForHaplotypecallerIntervals = bamsForHaplotypecallerInte
   File  : [${it[4].fileName}]"
 }
 
+process RunHaplotypecaller {
+  tag {idTumor + "_vs_" + idNormal + "_" + intervalBed.baseName}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForHaplotypecallerIntervals
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    file("*.vcf.gz") into haplotypecallerOutput
+    file("*.vcf.gz.tbi") into haplotypecallerIndexedOutput
+
+  when: 'haplotypecaller' in tools
+
+  script:
+  """
+  # Xmx hard-coded for now due to lsf bug
+  # Wrong intervals set here
+  gatk --java-options -Xmx8g \
+    HaplotypeCaller \
+    --reference ${genomeFile} \
+    --intervals ${intervalBed} \
+    --input ${bamNormal} \
+    --output ${idNormal}_${intervalBed.baseName}.vcf.gz
+  """
+}
+
+(sampleIdsForHaplotypecallerCombine, bamFiles) = bamFiles.into(2)
+
+process CombineHaplotypecallerVcf {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
+
+  input:
+    file(haplotypecallerVcf) from haplotypecallerOutput.collect()
+    file(haplotypecallerVcfIndex) from haplotypecallerIndexedOutput.collect()
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForHaplotypecallerCombine
+
+  output:
+    file("${outfile}") into haplotypecallerCombinedVcfOutput
+
+  when: 'haplotypecaller' in tools
+
+  outfile="${idNormal}.haplotypecaller.filtered.vcf.gz"
+
+  script:
+  """
+  bcftools concat \
+    --allow-overlaps \
+    ${haplotypecallerVcf} | \
+  bcftools sort \
+    --output-type z \
+    --output-file ${outfile}
+  """
+}
+
 // --- Run Manta
 (bamsForManta, bamsForStrelka, bamFiles) = bamFiles.into(3)
 
@@ -227,6 +289,134 @@ process RunStrelka2 {
   """
 }
 
+( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
+
+process CombineChannel {
+  tag {idTumor + "_vs_" + idNormal}
+
+  input:
+    file(haplotypecallercombinedVCF) from haplotypecallerCombinedVcfOutput
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
+    file(strelkaFile) from strelkaOutput
+
+  output:
+    set file(haplotypecallercombinedVCF), file(strelkaFile) into vcfOutputSet
+
+  when: 'strelka2' in tools && 'haplotypecaller' in tools
+
+  script:
+  """
+  echo 'placeholder process to make a channel containing vcf data'
+  """
+}
+
+(sampleIdsForBcfToolsFilterNorm, sampleIdsForBcfToolsMerge, bamFiles) = bamFiles.into(3)
+
+process RunBcfToolsFilterNorm {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_output"
+
+  input:
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilterNorm
+    each file(vcf) from vcfOutputSet.flatten()
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    file("*filtered.norm.vcf.gz") into vcfFilterNormOutput
+
+  when: "strelka2" in tools && "haplotypecaller" in tools
+
+  outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.norm.vcf.gz')
+
+  script:
+  """
+  tabix --preset vcf ${vcf}
+  bcftools filter \
+    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --output-type z \
+    ${vcf} | \
+  bcftools norm \
+    --fasta-ref ${genomeFile} \
+    --output-type z \
+    --output ${outfile}
+  """
+}
+
+process RunBcfToolsMerge {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_merged_output"
+
+  input:
+    file('*.vcf.gz') from vcfFilterNormOutput.collect()
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsMerge
+
+  output:
+    file("*filtered.norm.merge.vcf") into vcfMergedOutput
+
+  when: "strelka2" in tools && "haplotypecaller" in tools
+
+  script:
+  """
+  for f in *.vcf.gz
+  do
+    tabix --preset vcf \$f
+  done
+  bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type v \
+    --output ${idNormal}.haplotypecaller.strelka2.filtered.norm.merge.vcf \
+    *.vcf.gz
+  """
+}
+
+(sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
+
+process RunVcf2Maf {
+  tag { idTumor + "_" + idNormal }
+
+  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations"
+
+  input:
+    file(vcfMerged) from vcfMergedOutput
+    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict,
+      referenceMap.vcf2mafFilterVcf,
+      referenceMap.vcf2mafFilterVcfIndex,
+      referenceMap.vepCache
+    ])
+
+  output:
+    file("*.maf") into mafFile
+
+  when: "strelka2" in tools && "haplotypecaller" in tools
+
+  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+
+  // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
+  script:
+  """
+  perl /opt/vcf2maf.pl \
+    --input-vcf ${vcfMerged} \
+    --tumor-id ${idNormal} \
+    --normal-id ${idNormal} \
+    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-data ${vepCache} \
+    --filter-vcf ${vcf2mafFilterVcf} \
+    --output-maf ${outfile} \
+    --ref-fasta ${genomeFile}
+  """
+}
+
 // --- Process Delly and Manta VCFs 
 
 ( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
@@ -284,7 +474,7 @@ process RunBcfToolsFilterOnDellyManta {
     ])
 
   output:
-    file("*filtered.vcf.gz") into vcfFilterNormOutput
+    file("*filtered.vcf.gz") into vcfFilterDellyMantaOutput
 
   when: "manta" in tools && "delly" in tools
 
