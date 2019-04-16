@@ -682,6 +682,7 @@ def defineReferenceMap() {
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+    'msiSensorList'    : checkParamReturnFile("msiSensorList")
   ]
 
   if (!params.test) {
@@ -690,8 +691,6 @@ def defineReferenceMap() {
     result_array << ['vepCache'                 : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
-    // MSI Sensor
-    result_array << ['msiSensorList'    : checkParamReturnFile("msiSensorList")]
     // intervals file for spread-and-gather processes
     result_array << ['intervals'        : checkParamReturnFile("intervals")]
   }
