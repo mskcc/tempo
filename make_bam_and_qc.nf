@@ -27,7 +27,7 @@ fastqFiles = Channel.empty()
 
 tsvFile = file(tsvPath)
 
-fastqFiles = extractFastq(tsvFile)
+fastqFiles = extractFastqNew(tsvFile) 
 
 // Duplicate channel
 fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
@@ -41,51 +41,51 @@ fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
 // FastP - FastP on lane pairs, R1/R2
 
 process FastP {
-  tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
+  tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastPFiles
+    set idSample, lane, file(fastqFile1), file(fastqFile2) from fastPFiles
 
   output:
     file("*.html") into fastPResults 
 
   """
-  fastp -h ${idRun}.html -i ${fastqFile1} -I ${fastqFile2}
+  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
   """
 }
 
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
-  tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
+  tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
   input:
-    set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastqFiles
+    set idSample, lane, file(fastqFile1), file(fastqFile2) from fastqFiles
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.bam") into (unsortedBam)
+    set idSample, lane, file("${lane}.bam") into (unsortedBam)
 
   script:
-    readGroup = "@RG\\tID:${idRun}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     
   """
-  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idRun}.bam
+  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
   """
 }
 
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 
 process SortBAM {
-  tag {idRun}
+  tag {lane}
 
   input:
-    set idPatient, status, idSample, idRun, file("${idRun}.bam") from unsortedBam
+    set idSample, lane, file("${lane}.bam") from unsortedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idRun}.sorted.bam") into (sortedBam, sortedBamDebug)
+    set idSample, lane, file("${lane}.sorted.bam") into (sortedBam, sortedBamDebug)
 
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
@@ -96,7 +96,7 @@ process SortBAM {
     mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
   }
   """
-  samtools sort -m ${mem}G -@ ${task.cpus} -o ${idRun}.sorted.bam ${idRun}.bam
+  samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
   """
 }
 
@@ -104,17 +104,17 @@ singleBam = Channel.create()
 singleBamDebug = Channel.create()
 groupedBam = Channel.create()
 groupedBamDebug = Channel.create()
-sortedBam.groupTuple(by:[0,1,2])
-  .choice(singleBam, groupedBam) {it[2].size() > 1 ? 1 : 0}
+sortedBam.groupTuple(by:[0,1])
+  .choice(singleBam, groupedBam) {it[1].size() > 1 ? 1 : 0}
 singleBam = singleBam.map {
-  idPatient, status, idSample, idRun, bam ->
-  [idPatient, status, idSample, bam]
+  idSample, lane, bam ->
+  [idSample, bam]
 }
-sortedBamDebug.groupTuple(by:[0,1,2])
-  .choice(singleBamDebug, groupedBamDebug) {it[2].size() > 1 ? 1 : 0}
+sortedBamDebug.groupTuple(by:[0,1])
+  .choice(singleBamDebug, groupedBamDebug) {it[1].size() > 1 ? 1 : 0}
 singleBamDebug = singleBamDebug.map {
-  idPatient, status, idSample, idRun, bam ->
-  [idPatient, status, idSample, bam]
+  idSample, lane, bam ->
+  [idSample, bam]
 }
 
 if (params.debug) {
@@ -126,10 +126,10 @@ process MergeBams {
   tag {idSample}
 
   input:
-    set idPatient, status, idSample, idRun, file(bam) from groupedBam
+    set idSample, lane, file(bam) from groupedBam
 
   output:
-    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
+    set idSample, lane, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
 
   script:
   """
@@ -143,22 +143,22 @@ if (params.debug) {
 
 if (params.verbose) singleBam = singleBam.view {
   "Single BAM:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[3].fileName}]"
+  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
+  File  : [${it[2].fileName}]"
 }
 
 if (params.verbose) mergedBam = mergedBam.view {
   "Merged BAM:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4]}]"
+  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
+  File  : [${it[2]}]"
 }
 
 mergedBam = mergedBam.mix(singleBam)
 
 if (params.verbose) mergedBam = mergedBam.view {
   "BAM for MarkDuplicates:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4]}]"
+  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
+  File  : [${it[2]}]"
 }
 
 // GATK MarkDuplicates
@@ -169,11 +169,11 @@ process MarkDuplicates {
    publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
+    set idSample, lane, file("${idSample}.merged.bam") from mergedBam
 
   output:
-    set idPatient, file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, idRun into duplicateMarkedBams
-    set idPatient, status, idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai") into markDuplicatesTSV
+    set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane into duplicateMarkedBams
+    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai") into markDuplicatesTSV
     file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
@@ -190,14 +190,13 @@ process MarkDuplicates {
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    idPatient, bam, bai, idSample, idRun ->
+    bam, bai, idSample, lane ->
     tag = bam.baseName.tokenize('.')[0]
-    status = 0
-    [idPatient, status, idSample, bam, bai]
+    [idSample, bam, bai]
 }
 
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
-
+/*
 if (params.verbose) mdBamToJoin = mdBamToJoin.view {
   "MD Bam to Join BAM:\n\
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
@@ -209,12 +208,12 @@ if (params.verbose) mdBam = mdBam.view {
   ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
   File  : [${it[3].fileName}]"
 }
-
+*/
 process CreateRecalibrationTable {
   tag {idSample}
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai) from mdBam 
+    set idSample, file(bam), file(bai) from mdBam 
 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
@@ -227,8 +226,8 @@ process CreateRecalibrationTable {
     ])
 
   output:
-    set idPatient, status, idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idPatient, status, idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
+    set idSample, file("${idSample}.recal.table") into recalibrationTable
+    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
 
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
@@ -245,7 +244,7 @@ process CreateRecalibrationTable {
   """
 }
 
-recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1, 2])
+recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1])
 
 process RecalibrateBam {
   tag {idSample}
@@ -253,7 +252,7 @@ process RecalibrateBam {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idPatient, status, idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+    set idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
@@ -262,8 +261,8 @@ process RecalibrateBam {
     ])
 
   output:
-    set idPatient, status, idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
-    set idPatient, status, idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
+    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
 
   script:
   """
@@ -285,14 +284,14 @@ process Alfred {
   
   input:
     each ignore_rg from ignore_read_groups
-    set idPatient, status, idSample, file(bam), file(bai) from recalibratedBam
+    set idSample, file(bam), file(bai) from recalibratedBam
 
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
     ])
 
   output:
-    set idPatient, status, ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
+    set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
   script:
   def ignore = ignore_rg ? "--ignore" : ''
@@ -358,5 +357,25 @@ def extractFastq(tsvFile) {
     SarekUtils.checkFileExtension(fastqFile2,".fastq.gz")
 
     [idPatient, gender, status, idSample, idRun, fastqFile1, fastqFile2]
+  }
+}
+
+def extractFastqNew(tsvFile) {
+  Channel.from(tsvFile)
+  .splitCsv(sep: '\t')
+  .map { row ->
+    SarekUtils.checkNumberOfItem(row, 4)
+    def idSample =    row[0]
+    def lane =   row[1]
+    def fastqFile1 = SarekUtils.returnFile(row[2])
+    def sizeFastqFile1 = fastqFile1.size()
+    def fastqFile2 = SarekUtils.returnFile(row[3])
+    def sizeFastqFile2 = fastqFile2.size()
+
+    SarekUtils.checkFileExtension(fastqFile1,".fastq.gz")
+    SarekUtils.checkFileExtension(fastqFile2,".fastq.gz")
+
+    [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2]
+    // [idSample, lane, fastqFile1, fastqFile2]
   }
 }
