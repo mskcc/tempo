@@ -53,9 +53,10 @@ process DellyCall {
   input:
     each svType from svTypes
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
-    set file(genomeFile), file(genomeIndex) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(dellyExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
-      referenceMap.genomeIndex
+      referenceMap.genomeIndex,
+      referenceMap.dellyExcludeRegions
     ])
 
   output:
@@ -68,6 +69,7 @@ process DellyCall {
   delly call \
     --svtype ${svType} \
     --genome ${genomeFile} \
+    --exclude ${dellyExcludeRegions} \
     --outfile ${idNormal}_${svType}.bcf \
     ${bamNormal}
   """
@@ -519,6 +521,7 @@ def defineReferenceMap() {
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+    'dellyExcludeRegions' : checkParamReturnFile("dellyExcludeRegions")
   ]
 
   if (!params.test) {
