@@ -11,7 +11,7 @@ services:
 before_install:
   - curl -fsSL get.nextflow.io | bash
   - chmod +x nextflow
-  - wget -O test-data.tar.gz "https://drive.google.com/uc?export=download&id=1xSKRKB_LhXOF_5EreapWl1rTz_Fe_ir4"
+  - wget -O test-data.tar.gz "https://drive.google.com/uc?export=download&id=1jY146e5beEAcwjQg4JWIU1FVkVFEOm7R"
   - tar -xzvf test-data.tar.gz 
 
 script:
