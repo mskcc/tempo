@@ -27,7 +27,7 @@ fastqFiles = Channel.empty()
 
 tsvFile = file(tsvPath)
 
-fastqFiles = (tsvFile) 
+fastqFiles = extractFastq(tsvFile) 
 
 // Duplicate channel
 fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
@@ -46,7 +46,7 @@ process FastP {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idSample, lane, file(fastqFile1), file(fastqFile2) from fastPFiles
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2 from fastPFiles
 
   output:
     file("*.html") into fastPResults 
@@ -62,7 +62,7 @@ process AlignReads {
   tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
   input:
-    set idSample, lane, file(fastqFile1), file(fastqFile2) from fastqFiles
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2 from fastqFiles
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
@@ -244,7 +244,7 @@ process CreateRecalibrationTable {
   """
 }
 
-recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1])
+recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
 process RecalibrateBam {
   tag {idSample}
@@ -261,7 +261,7 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
 
   script:
@@ -273,6 +273,13 @@ process RecalibrateBam {
     --input ${bam} \
     --output ${idSample}.recal.bam
   """
+}
+
+File file = new File("out.txt")
+recalibratedBamForOutput.subscribe { Object obj ->
+    file.withWriterAppend{ out ->
+      out.println "${obj.toString()};"
+    }
 }
 
 ignore_read_groups = Channel.from( true , false )
@@ -342,18 +349,17 @@ def extractFastq(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    SarekUtils.checkNumberOfItem(row, 4)
-    def idSample =    row[0]
-    def lane =   row[1]
-    def fastqFile1 = SarekUtils.returnFile(row[2])
+    VaporwareUtils.checkNumberOfItem(row, 4)
+    def idSample = row[0]
+    def lane = row[1]
+    def fastqFile1 = VaporwareUtils.returnFile(row[2])
     def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = SarekUtils.returnFile(row[3])
+    def fastqFile2 = VaporwareUtils.returnFile(row[3])
     def sizeFastqFile2 = fastqFile2.size()
 
-    SarekUtils.checkFileExtension(fastqFile1,".fastq.gz")
-    SarekUtils.checkFileExtension(fastqFile2,".fastq.gz")
+    VaporwareUtils.checkFileExtension(fastqFile1,".fastq.gz")
+    VaporwareUtils.checkFileExtension(fastqFile2,".fastq.gz")
 
     [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2]
-    // [idSample, lane, fastqFile1, fastqFile2]
   }
 }
