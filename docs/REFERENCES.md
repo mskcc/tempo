@@ -3,10 +3,10 @@
 ## GRCh37
 
 ### Genome
-[GATK bundle](https://software.broadinstitute.org/gatk/download/bundle). Fill in details...
+[GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/gatk-legacy-bundles/b37).
 
 ### SNV and indel calling
-For exomes, use `bed` file corresponding to the platform use for target capture, see [documentation on intervals](https://github.mskcc/vaporware/docs/INTERVALS.md).
+For exomes, use `bed` file corresponding to the platform used for target capture, see [documentation on intervals](https://github.mskcc/vaporware/docs/INTERVALS.md).
 
 For genomes, use `bed` file of "callable" regions from GATK's bundle.
 
