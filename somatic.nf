@@ -748,13 +748,13 @@ def defineReferenceMap() {
 
 def extractBamFiles(tsvFile) {
   // Channeling the TSV file containing FASTQ.
-  // Format is: "idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
+  // Format is: "assay targets idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
     SarekUtils.checkNumberOfItem(row, 8)
     def assay = row[0]
-    target = row[1]
+    def target = row[1]
     def idTumor = row[2]
     def idNormal = row[3]
     def bamTumor = SarekUtils.returnFile(row[4])
