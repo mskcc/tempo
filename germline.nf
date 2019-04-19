@@ -228,8 +228,11 @@ process RunManta {
 
   // flag with --exome if exome
   script:
+  options = ""
+  if (sequenceType == "exome") options = "--exome"
   """
   configManta.py \
+    ${options} \
     --reference ${genomeFile} \
     --bam ${bamNormal} \
     --runDir Manta
@@ -274,8 +277,11 @@ process RunStrelka2 {
   when: 'strelka2' in tools
   
   script:
+  options = ""
+  if (sequenceType == "exome") options = "--exome"
   """
   configureStrelkaGermlineWorkflow.py \
+    ${options} \
     --referenceFasta ${genomeFile} \
     --bam ${bamNormal} \
     --runDir Strelka
