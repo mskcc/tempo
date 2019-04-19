@@ -36,10 +36,11 @@ X       0       155270560
 Y       0       59373566
 ```
 
-#### Exome capture platform
+### Exome capture platform
 Currently supporting:
-- __AgilentExon_51MB__:SureSelectXT Human All Exon V4 from Agilent
-- __IDT_Exome__:xGen Exome Research Panel v1.0 from IDT
+- __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent
+- __IDT_Exome__: xGen Exome Research Panel v1.0 from IDT
+
 Add 5 bp to each end of exons to make sure splice site mutations can be called:
 ``` shell
 bedtools slop \
@@ -49,3 +50,5 @@ bedtools slop \
     -l 5 \
     > targets.plus5bp.bed
 ```
+
+## GRCh38
