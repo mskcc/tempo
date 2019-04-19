@@ -18,12 +18,6 @@
 ================================================================================
 */
 
-// tsvPath 
-
-
-// Evan comment: this is a silly thing to keep, 
-// but it reminds me that this could be so much more flexible with complex conditionals
-
 tsvPath = ''
 if (params.sample) tsvPath = params.sample
 
@@ -44,14 +38,8 @@ fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
 ================================================================================
 */
 
-// tag
-// https://www.nextflow.io/docs/latest/process.html#tag
-// The tag directive allows you to associate each process executions with a custom label, 
-// so that it will be easier to identify them in the log file or in the trace execution report.
-
 // FastP - FastP on lane pairs, R1/R2
 
-/*
 process FastP {
   tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
 
@@ -67,27 +55,7 @@ process FastP {
   fastp -h ${idRun}.html -i ${fastqFile1} -I ${fastqFile2}
   """
 }
-*/
 
-//FastQC - FastQC on lane pairs, R1/R2
-/*
-process FastQC {
-  tag {idRun}   // The tag directive allows you to associate each process executions with a custom label
-
-  publishDir params.outDir, mode: params.publishDirMode
-
-  input:
-    set idPatient, gender, status, idSample, idRun, file(fastqFile1), file(fastqFile2) from fastQCFiles
-
-  output:
-    set file("*.html"), file("*.zip") into fastQCResults
-    
-  """
-  # fastqc --threads X --noextract --outdir outdir R1.fastq.gz R2.fastq.gz
-  fastqc --threads 4 --noextract --outdir . ${fastqFile1} ${fastqFile2}
-  """
-}
-*/
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
@@ -109,7 +77,6 @@ process AlignReads {
 }
 
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
-// samtools sort
 
 process SortBAM {
   tag {idRun}
@@ -164,8 +131,6 @@ process MergeBams {
   output:
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
 
-  // when: step == 'mapping' && !params.onlyQC
-
   script:
   """
   samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
@@ -201,15 +166,7 @@ if (params.verbose) mergedBam = mergedBam.view {
 process MarkDuplicates {
   tag {idSample}
 
-  // The publishDir directive allows you to publish the process output files to a specified folder
-
    publishDir params.outDir, mode: params.publishDirMode
-  //  saveAs: {
-  //    if (it == "${idRun}.bam.metrics") "${directoryMap.markDuplicatesQC.minus(params.outDir+'/')}/${it}"
-  //    else "${directoryMap.duplicateMarked.minus(params.outDir+'/')}/${it}"
-  //  }
-
-  // when: step == 'mapping' && !params.onlyQC
 
   input:
     set idPatient, status, idSample, idRun, file("${idSample}.merged.bam") from mergedBam
@@ -235,9 +192,7 @@ process MarkDuplicates {
 duplicateMarkedBams = duplicateMarkedBams.map {
     idPatient, bam, bai, idSample, idRun ->
     tag = bam.baseName.tokenize('.')[0]
-    /// status   = tag[-1..-1].toInteger()  X
     status = 0
-    // idSample = tag.take(tag.length()-2)
     [idPatient, status, idSample, bam, bai]
 }
 
@@ -295,7 +250,6 @@ recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0, 1, 2])
 process RecalibrateBam {
   tag {idSample}
 
-  // The publishDir directive allows you to publish the process output files to a specified folder
   publishDir params.outDir, mode: params.publishDirMode
 
   input:

@@ -60,9 +60,10 @@ process DellyCall {
   input:
     each svType from svTypes
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
-    set file(genomeFile), file(genomeIndex) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(dellyExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
-      referenceMap.genomeIndex
+      referenceMap.genomeIndex,
+      referenceMap.dellyExcludeRegions
     ])
 
   output:
@@ -75,6 +76,7 @@ process DellyCall {
   delly call \
     --svtype ${svType} \
     --genome ${genomeFile} \
+    --exclude ${dellyExcludeRegions} \
     --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
     ${bamTumor} ${bamNormal}
   """
@@ -269,8 +271,11 @@ process RunManta {
 
   // flag with --exome if exome
   script:
+  options = ""
+  if(sequenceType == 'exome') options = "--exome"
   """
   configManta.py \
+    ${options} \
     --referenceFasta ${genomeFile} \
     --normalBam ${bamNormal} \
     --tumorBam ${bamTumor} \
@@ -323,8 +328,11 @@ process RunStrelka2 {
   // flag with --exome if exome
 
   script:
+  options = ""
+  if(sequenceType == 'exome') options = "--exome"
   """
   configureStrelkaSomaticWorkflow.py \
+    ${options} \
     --referenceFasta ${genomeFile} \
     --indelCandidates ${mantaCSI} \
     --tumorBam ${bamTumor} \
@@ -682,6 +690,8 @@ def defineReferenceMap() {
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+    'msiSensorList'    : checkParamReturnFile("msiSensorList"),
+    'dellyExcludeRegions' : checkParamReturnFile("dellyExcludeRegions")
   ]
 
   if (!params.test) {
@@ -690,8 +700,6 @@ def defineReferenceMap() {
     result_array << ['vepCache'                 : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
-    // MSI Sensor
-    result_array << ['msiSensorList'    : checkParamReturnFile("msiSensorList")]
     // intervals file for spread-and-gather processes
     result_array << ['intervals'        : checkParamReturnFile("intervals")]
   }

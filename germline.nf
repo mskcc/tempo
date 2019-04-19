@@ -53,9 +53,10 @@ process DellyCall {
   input:
     each svType from svTypes
     set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
-    set file(genomeFile), file(genomeIndex) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(dellyExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
-      referenceMap.genomeIndex
+      referenceMap.genomeIndex,
+      referenceMap.dellyExcludeRegions
     ])
 
   output:
@@ -68,6 +69,7 @@ process DellyCall {
   delly call \
     --svtype ${svType} \
     --genome ${genomeFile} \
+    --exclude ${dellyExcludeRegions} \
     --outfile ${idNormal}_${svType}.bcf \
     ${bamNormal}
   """
@@ -226,8 +228,11 @@ process RunManta {
 
   // flag with --exome if exome
   script:
+  options = ""
+  if (sequenceType == "exome") options = "--exome"
   """
   configManta.py \
+    ${options} \
     --reference ${genomeFile} \
     --bam ${bamNormal} \
     --runDir Manta
@@ -272,8 +277,11 @@ process RunStrelka2 {
   when: 'strelka2' in tools
   
   script:
+  options = ""
+  if (sequenceType == "exome") options = "--exome"
   """
   configureStrelkaGermlineWorkflow.py \
+    ${options} \
     --referenceFasta ${genomeFile} \
     --bam ${bamNormal} \
     --runDir Strelka
@@ -519,6 +527,7 @@ def defineReferenceMap() {
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+    'dellyExcludeRegions' : checkParamReturnFile("dellyExcludeRegions")
   ]
 
   if (!params.test) {
