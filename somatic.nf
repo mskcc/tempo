@@ -121,13 +121,20 @@ process CreateScatteredIntervals {
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
-      referenceMap.genomeDict,
+      referenceMap.genomeDict
+      ])
+    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
+      ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex,
+      referenceMap.wgsTargetsIndex
       ])
 
   output:
@@ -268,6 +275,10 @@ process RunManta {
       referenceMap.genomeFile,
       referenceMap.genomeIndex
     ])
+    set file(svCallingIncludeRegions), file(svCallingIncludeRegionsIndex) from Channel.value([
+      referenceMap.svCallingIncludeRegions,
+      referenceMap.svCallingIncludeRegionsIndex
+    ])
 
   output:
     file("*.vcf.gz") into mantaOutput
@@ -275,13 +286,13 @@ process RunManta {
     set file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: 'manta' in tools
-
   script:
   options = ""
   if(params.exome) options = "--exome"
   """
   configManta.py \
     ${options} \
+    --callRegions ${svCallingIncludeRegions} \
     --referenceFasta ${genomeFile} \
     --normalBam ${bamNormal} \
     --tumorBam ${bamTumor} \
@@ -324,21 +335,36 @@ process RunStrelka2 {
       referenceMap.genomeIndex,
       referenceMap.genomeDict
     ])
+    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets,
+      referenceMap.wgsTargets
+      ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex,
+      referenceMap.wgsTargetsIndex
+      ])
 
   output:
     set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
     set file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutputSNVs
 
   when: 'manta' in tools && 'strelka2' in tools
-  
-  // flag with --exome if exome
 
   script:
   options = ""
   if(params.exome) options = "--exome"
+
+  intervals = wgsIntervals
+  if(params.exome) {
+    if(target == 'agilent') intervals = agilentTargets
+    if(target == 'idt') intervals = idtTargets
+  }
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
+    --callRegions ${intervals} \
     --referenceFasta ${genomeFile} \
     --indelCandidates ${mantaCSI} \
     --tumorBam ${bamTumor} \
@@ -699,9 +725,13 @@ def defineReferenceMap() {
     'msiSensorList'    : checkParamReturnFile("msiSensorList"),
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
+    'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
     'idtTargets' : checkParamReturnFile("idtTargets"),
+    'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
-    'wgsTargets' : checkParamReturnFile("wgsTargets")
+    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'wgsTargets' : checkParamReturnFile("wgsTargets"),
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (!params.test) {
