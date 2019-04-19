@@ -36,6 +36,11 @@ X       0       155270560
 Y       0       59373566
 ```
 
+Generate the `bed` file of "callable" regions as such:
+``` shell
+gatk IntervalListToBed --INPUT b37_wgs_calling_regions.v1.interval_list --OUTPUT b37_wgs_calling_regions.v1.bed
+```
+
 ### Exome capture platform
 Currently supporting:
 - __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent
