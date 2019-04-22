@@ -18,16 +18,17 @@
 ================================================================================
 */
 
-tsvPath = ''
-if (params.sample) tsvPath = params.sample
+if (params.mapping) mappingPath = params.mapping
+if (params.pairing) pairingPath = params.pairing
 
 referenceMap = defineReferenceMap()
 
 fastqFiles = Channel.empty()
 
-tsvFile = file(tsvPath)
+mappingFile = file(mappingPath)
+pairingfile = file(pairingPath)
 
-fastqFiles = extractFastq(tsvFile) 
+fastqFiles = extractFastq(mappingFile) 
 
 // Duplicate channel
 fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
@@ -46,7 +47,7 @@ process FastP {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2 from fastPFiles
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastPFiles
 
   output:
     file("*.html") into fastPResults 
@@ -62,7 +63,7 @@ process AlignReads {
   tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
   input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2 from fastqFiles
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
@@ -261,7 +262,8 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBamForOutput
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
 
   script:
@@ -275,8 +277,75 @@ process RecalibrateBam {
   """
 }
 
+
+
 File file = new File("out.txt")
-recalibratedBamForOutput.subscribe { Object obj ->
+
+pairing = extractPairing(pairingfile)
+pairingTumor =  pairing.map({ it.put("sampleId", it.remove('tumorId')); it })
+
+(mappingT, mappingN) = recalibratedBamForOutput.into(2)
+
+mergedchannel =
+    convertResultToMap(mappingT)
+    .concat(pairingTumor)
+    .groupBy( {item -> item.sampleId } )
+    .flatMap({item ->
+        item.findResults { sampleId, entries ->
+            mergedItem = [:]
+            mergedItem.tumorId = sampleId
+            entries.each { entry ->
+                entry.each { key, val ->
+                    if(key == "sampleId") return;
+                    if(key == "normalId") {
+                        mergedItem['sampleId'] = val
+                    }
+                    else if(key == 'bam') {
+                        mergedItem['tumorBam'] = val
+                    }
+                    else if(key == 'bai') {
+                        mergedItem['tumorBai'] = val
+                    }
+                    else {
+                        mergedItem[key] = val
+                    }
+                }
+            }
+            if (mergedItem.size() == 4) {
+                return mergedItem
+            }
+        }
+    })
+
+mergedchannel2 =
+    mergedchannel
+    .concat(convertResultToMap(mappingN))
+    .groupBy( {item -> item.sampleId } )
+    .flatMap({item ->
+        item.findResults { sampleId, entries ->
+            mergedItem = [:]
+            mergedItem.normalId = sampleId
+            entries.each { entry ->
+                entry.each { key, val ->
+                    if(key == "sampleId") return;
+                    if(key == 'bam') {
+                        mergedItem['normalBam'] = val
+                    }
+                    else if(key == 'bai') {
+                        mergedItem['normalBai'] = val
+                    }
+                    else {
+                        mergedItem[key] = val
+                    }
+                }
+            }
+            if (mergedItem.size() == 6) {
+                return mergedItem
+            }
+        }
+    })
+
+mergedchannel2.subscribe { Object obj ->
     file.withWriterAppend{ out ->
       out.println "${obj.toString()};"
     }
@@ -345,21 +414,47 @@ def debug(channel) {
   }
 }
 
+def extractPairing(tsvFile) {
+  Channel.from(tsvFile)
+  .splitCsv(sep: '\t')
+  .map { row ->
+    def idTumor = row[0]
+    def idNormal = row[1]
+    ['idTumor':idTumor, 'idNormal':idNormal]
+  }
+}
+
+def convertResultToMap(result) {
+  result.map{
+    row ->
+    def sampleId = row[0]
+    def bam = row[1]
+    def bai = row[1]
+    ['sampleId':sampleId, 'bam':bam, 'bai':bai]
+  }
+}
+
 def extractFastq(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    VaporwareUtils.checkNumberOfItem(row, 4)
+    VaporwareUtils.checkNumberOfItem(row, 6)
     def idSample = row[0]
     def lane = row[1]
-    def fastqFile1 = VaporwareUtils.returnFile(row[2])
+    def assay = row[2]
+    def targetFile = row[3]
+    targetFile = ""
+    if ( targetFile ) {
+      targetFile = VaporwareUtils.returnFile(targetFile)
+    }
+    def fastqFile1 = VaporwareUtils.returnFile(row[4])
     def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = VaporwareUtils.returnFile(row[3])
+    def fastqFile2 = VaporwareUtils.returnFile(row[5])
     def sizeFastqFile2 = fastqFile2.size()
 
     VaporwareUtils.checkFileExtension(fastqFile1,".fastq.gz")
     VaporwareUtils.checkFileExtension(fastqFile2,".fastq.gz")
 
-    [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2]
+    [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
   }
 }
