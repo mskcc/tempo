@@ -249,6 +249,7 @@ process CombineMutect2Vcf {
 
   output:
     file("${outfile}") into mutect2CombinedVcfOutput
+    file("${outfile}.tbi") into mutect2CombinedVcfOutputIndex
 
   when: 'mutect2' in tools
 
@@ -267,6 +268,8 @@ process CombineMutect2Vcf {
     --samples ${idNormal},${idTumor} \
     --output-type z \
     --output-file ${outfile}
+
+  tabix --preset vcf ${outfile}
   """
 }
 
@@ -332,6 +335,7 @@ process RunManta {
 }
 
 // --- Run Strelka2
+
 process RunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -437,38 +441,16 @@ process MergeDellyAndManta {
 }
 
 // --- Process Mutect2 and Strelka2 VCFs
-(sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
 
-process CombineChannel {
+( sampleIdsForStrelkaMerge, bamFiles ) = bamFiles.into(2)
+
+process MergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
 
-  input:
-    file(mutect2combinedVCF) from mutect2CombinedVcfOutput
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
-    set file(strelkaIndels), file(strelkaIndelsTBI) from strelkaOutputIndels
-    set file(strelkaSNV), file(strelkaSNVTBI) from strelkaOutputSNVs
-
-  output:
-    set file(mutect2combinedVCF), file(strelkaIndels), file(strelkaSNV) into vcfOutputSet
-
-  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
-
-  script:
-  """
-  echo 'placeholder process to make a channel containing vcf data'
-  """
-}
-
-(sampleIdsForBcfToolsFilterNorm, sampleIdsForBcfToolsMerge, bamFiles) = bamFiles.into(3)
-
-process RunBcfToolsFilterNorm {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_output"
-
-  input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilterNorm
-    each file(vcf) from vcfOutputSet.flatten()
+  input: 
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForStrelkaMerge
+    set file(strelkaIndels), file(strelkaIndelsIndex) from strelkaOutputIndels
+    set file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutputSNVs
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -476,54 +458,52 @@ process RunBcfToolsFilterNorm {
     ])
 
   output:
-    file("*filtered.norm.vcf.gz") into vcfFilterNormOutput
+    set file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
-
-  outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.norm.vcf.gz')
+  when: 'manta' in tools && 'strelka2' in tools
 
   script:
+  prefix = "${strelkaIndels}".replaceFirst(".vcf.gz", "")
+  outfile = "${prefix}.filtered.vcf.gz"
   """
-  tabix --preset vcf ${vcf}
-
-  bcftools filter \
-    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
-    --output-type z \
-    ${vcf} | \
+  echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
+  
+  bcftools concat \
+    --allow-overlaps \
+    ${strelkaIndels} ${strelkaSNVs} | \
+  bcftools reheader \
+    --samples samples.txt | \
+  bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
+    --check-ref s \
     --output-type z \
     --output ${outfile}
+
+  tabix --preset vcf ${outfile}
   """
 }
 
-process RunBcfToolsMerge {
+/*
+(sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
+
+process CombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output"
-
   input:
-    file('*.vcf.gz') from vcfFilterNormOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsMerge
+    file(mutect2combinedVCF) from mutect2CombinedVcfOutput
+    file(mutect2combinedVCFIndex) from mutect2CombinedVcfOutputIndex
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
+    set file(strelkaVCF), file(strelkaVCFIndex) from strelkaOutput
 
   output:
-    file("*filtered.norm.merge.vcf") into vcfMergedOutput
+    set file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), strelka(VCFIndex) into vcfOutputSet
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
 
   script:
   """
-  for f in *.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
-
-  bcftools merge \
-    --force-samples \
-    --merge none \
-    --output-type v \
-    --output ${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf \
-    *.vcf.gz
+  echo 'placeholder process to make a channel containing vcf data'
   """
 }
 
@@ -565,7 +545,7 @@ process RunVcf2Maf {
     --output-maf ${outfile} \
     --ref-fasta ${genomeFile}
   """
-}
+}*/
 
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
