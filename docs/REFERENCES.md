@@ -6,9 +6,9 @@
 [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/gatk-legacy-bundles/b37).
 
 ### SNV and indel calling
-For genomes, use [`bed` file of "callable"](https://github.mskcc/vaporware/docs/INTERVALS.md#genome) regions from GATK's bundle.
+For genomes, use [`bed` file of "callable"](https://github.mskcc/vaporware/blob/master/docs/INTERVALS.md#genome) regions from GATK's bundle.
 
-For exomes, use `bed` file corresponding to the platform used for target capture, see [documentation on intervals](https://github.mskcc/vaporware/docs/INTERVALS.md#exome-capture-platform).
+For exomes, use `bed` file corresponding to the platform used for target capture, see [documentation on intervals](https://github.mskcc/vaporware/blob/master/docs/INTERVALS.md#exome-capture-platform).
 
 
 ### Structural variant calling
