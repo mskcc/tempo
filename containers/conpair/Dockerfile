@@ -2,14 +2,14 @@ FROM alpine:3.8
 
 LABEL authors="Nikhil Kumar (kumarn1@mskcc.org), Evan Biederstedt (evan.biederstedt@gmail.com)" \
       version.image="1.0.0" \
-      version.conpair="0.3.1" \
+      version.conpair="0.3.3" \
       version.alpine="3.8" \
       version.gatk="4.1.1.0" \
       source.gatk="https://github.com/broadinstitute/gatk/releases/download/4.1.1.0/gatk-4.1.1.0.zip" \
-      source.conpair="https://github.com/mskcc/Conpair/releases/tag/0.3.1" \
+      source.conpair="https://github.com/mskcc/Conpair/releases/tag/0.3.3" \
       source.r="https://pkgs.alpinelinux.org/package/edge/community/x86/R"      
 
-ENV CONPAIR_VERSION 0.3.1
+ENV CONPAIR_VERSION 0.3.3
 ENV GATK_VERSION 4.1.1.0
 
 
