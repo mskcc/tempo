@@ -214,19 +214,18 @@ process RunMutect2Filter {
   output:
     file("*filtered.vcf.gz") into mutect2FilteredOutput
     file("*filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
+    file("*Mutect2FilteringStats.tsv") into mutect2Stats
 
   when: 'mutect2' in tools
 
-  outfile="${mutect2Vcf}".replaceFirst('vcf.gz', 'filtered.vcf.gz')
-
-  // this process also creates a *.tsv file that you can place write to any path with --stats argument
-
   script:
+  prefix = "${mutect2Vcf}".replaceFirst('.vcf.gz', '')
   """
   gatk --java-options -Xmx8g \
     FilterMutectCalls \
     --variant ${mutect2Vcf} \
-    --output ${outfile}
+    --stats ${prefix}.Mutect2FilteringStats.tsv \
+    --output ${prefix}.filtered.vcf.gz
   """
 }
 
@@ -239,8 +238,14 @@ process CombineMutect2Vcf {
 
   input:
     file(mutect2Vcf) from mutect2FilteredOutput.collect()
-    file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect()
+    file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect() 
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
 
   output:
     file("${outfile}") into mutect2CombinedVcfOutput
@@ -251,11 +256,15 @@ process CombineMutect2Vcf {
 
   script:
   """
-  # Add norm?
   bcftools concat \
     --allow-overlaps \
     ${mutect2Vcf} | \
-    bcftools sort \
+  bcftools sort | \
+  bcftools norm \
+    --fasta-ref ${genomeFile} \
+    --check-ref s | \
+  bcftools view \
+    --samples ${idNormal},${idTumor} \
     --output-type z \
     --output-file ${outfile}
   """
@@ -340,12 +349,12 @@ process RunStrelka2 {
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
-      ])
+    ])
     set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
-      ])
+    ])
 
   output:
     set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
