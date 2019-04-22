@@ -1,6 +1,6 @@
 # Contents
 
-1. [References](https://github.mskcc/vaporware/docs/REFERENCES.md)
-  1. [Intervals](https://github.mskcc/vaporware/docs/INTERVALS.md)
+1. [References](https://github.mskcc/vaporware/blob/master/docs/REFERENCES.md)
+  1. [Intervals](https://github.mskcc/vaporware/blob/master/docs/INTERVALS.md)
 2. ...
 3. ...
