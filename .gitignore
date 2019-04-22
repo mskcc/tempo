@@ -13,3 +13,6 @@ nf.*
 *.tsv
 *.html
 *.txt
+*.pdf
+*.gz
+*.bam.*
