@@ -39,7 +39,7 @@ RUN wget https://github.com/broadinstitute/gatk/releases/download/4.1.1.0/gatk-4
     && cp gatk-${GATK_VERSION}/gatk-package-${GATK_VERSION}-local.jar /usr/bin/gatk.jar  \
     ## download and unzip conpair
     && cd /tmp && wget https://github.com/nygenome/Conpair/archive/v${CONPAIR_VERSION}.tar.gz \
-    && tar xvzf ${CONPAIR_VERSION}.tar.gz \
+    && tar xvzf v${CONPAIR_VERSION}.tar.gz \
     ## install conpair
     && mv /tmp/Conpair-${CONPAIR_VERSION} /usr/bin/conpair \
     ## clean up
