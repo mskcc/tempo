@@ -288,11 +288,13 @@ process RunManta {
   when: 'manta' in tools
   script:
   options = ""
+  callRegions = ""
   if(params.exome) options = "--exome"
+  if(!params.test) callRegions = "--callRegions ${svCallingIncludeRegions}"
   """
   configManta.py \
     ${options} \
-    --callRegions ${svCallingIncludeRegions} \
+    ${callRegions} \
     --referenceFasta ${genomeFile} \
     --normalBam ${bamNormal} \
     --tumorBam ${bamTumor} \
@@ -354,6 +356,7 @@ process RunStrelka2 {
 
   script:
   options = ""
+  callRegions = ""
   if(params.exome) options = "--exome"
 
   intervals = wgsIntervals
@@ -361,10 +364,11 @@ process RunStrelka2 {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
+  if(!params.test) callRegions = "--callRegions ${intervals}"
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
-    --callRegions ${intervals} \
+    ${callRegions} \
     --referenceFasta ${genomeFile} \
     --indelCandidates ${mantaCSI} \
     --tumorBam ${bamTumor} \
