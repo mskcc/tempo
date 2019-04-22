@@ -1,2 +1,2 @@
-1234N	1234N_M1	s3://testbucketcmo/example_data/fastq/P1_R1.fastq.gz	s3://testbucketcmo/example_data/fastq/P1_R2.fastq.gz
-1234T	1234T_M2	s3://testbucketcmo/example_data/fastq/P2_R1.fastq.gz	s3://testbucketcmo/example_data/fastq/P2_R2.fastq.gz
+1234N	1234N_M1	wes		s3://testbucketcmo/example_data/fastq/P1_R1.fastq.gz	s3://testbucketcmo/example_data/fastq/P1_R2.fastq.gz
+1234T	1234T_M2	wes		s3://testbucketcmo/example_data/fastq/P2_R1.fastq.gz	s3://testbucketcmo/example_data/fastq/P2_R2.fastq.gz

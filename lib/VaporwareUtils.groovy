@@ -1,7 +1,8 @@
-import static nextflow.Nextflow.file
+if( awscli ) {
+    import static nextflow.Nextflow.file
 import nextflow.Channel
 
-class SarekUtils {
+class VaporwareUtils {
 
   // Check file extension
   static def checkFileExtension(it, extension) {
@@ -22,6 +23,25 @@ class SarekUtils {
     }
     return true
   }
+
+  def defineReferenceMap() {
+  if (!(params.genome in params.genomes)) exit 1, "Genome ${params.genome} not found in configuration"
+  return [
+    'dbsnp'            : checkParamReturnFile("dbsnp"),
+    'dbsnpIndex'       : checkParamReturnFile("dbsnpIndex"),
+    // genome reference dictionary
+    'genomeDict'       : checkParamReturnFile("genomeDict"),
+    // FASTA genome reference
+    'genomeFile'       : checkParamReturnFile("genomeFile"),
+    // genome .fai file
+    'genomeIndex'      : checkParamReturnFile("genomeIndex"),
+    // BWA index files
+    'bwaIndex'         : checkParamReturnFile("bwaIndex"), 
+    // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
+    'knownIndels'      : checkParamReturnFile("knownIndels"),
+    'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+  ]
+}
 
   // Compare each parameter with a list of parameters
   static def checkParameterList(list, realList) {
@@ -110,14 +130,14 @@ class SarekUtils {
   static def checkReferenceMap(referenceMap) {
     referenceMap.every {
       referenceFile, fileToCheck ->
-      SarekUtils.checkRefExistence(referenceFile, fileToCheck)
+      VaporwareUtils.checkRefExistence(referenceFile, fileToCheck)
     }
   }
 
   // Loop through all the references files to check their existence
 
   static def checkRefExistence(referenceFile, fileToCheck) {
-    if (fileToCheck instanceof List) return fileToCheck.every{ SarekUtils.checkRefExistence(referenceFile, it) }
+    if (fileToCheck instanceof List) return fileToCheck.every{ VaporwareUtils.checkRefExistence(referenceFile, it) }
     def f = file(fileToCheck)
     // this is an expanded wildcard: we can assume all files exist
     if (f instanceof List && f.size() > 0) return true
@@ -129,6 +149,7 @@ class SarekUtils {
   }
 
   // Define map of directories
+  // Needs to be changed
   static def defineDirectoryMap(outDir) {
     return [
     'duplicateMarked'  : "${outDir}/Preprocessing/DuplicateMarked",
@@ -161,32 +182,20 @@ class SarekUtils {
     Channel.from(tsvFile)
       .splitCsv(sep: '\t')
       .map { row ->
-        SarekUtils.checkNumberOfItem(row, 6)
+        VaporwareUtils.checkNumberOfItem(row, 6)
         def idPatient = row[0]
         def gender    = row[1]
-        def status    = SarekUtils.returnStatus(row[2].toInteger())
+        def status    = VaporwareUtils.returnStatus(row[2].toInteger())
         def idSample  = row[3]
-        def bamFile   = SarekUtils.returnFile(row[4])
-        def baiFile   = SarekUtils.returnFile(row[5])
+        def bamFile   = VaporwareUtils.returnFile(row[4])
+        def baiFile   = VaporwareUtils.returnFile(row[5])
 
-        SarekUtils.checkFileExtension(bamFile,".bam")
-        SarekUtils.checkFileExtension(baiFile,".bai")
+        VaporwareUtils.checkFileExtension(bamFile,".bam")
+        VaporwareUtils.checkFileExtension(baiFile,".bai")
 
         if (mode == "germline") return [ idPatient, status, idSample, bamFile, baiFile ]
         else return [ idPatient, gender, status, idSample, bamFile, baiFile ]
       }
-  }
-
-  // Extract gender from Channel as it's only used for CNVs
-  static def extractGenders(channel) {
-    def genders = [:]
-    channel = channel.map{ it ->
-      def idPatient = it[0]
-      def gender = it[1]
-      genders[idPatient] = gender
-      [idPatient] + it[2..-1]
-    }
-    [genders, channel]
   }
 
   // Compare params to list of verified params
@@ -212,16 +221,6 @@ class SarekUtils {
   static def returnStatus(it) {
     if (!(it in [0, 1])) exit 1, "Status is not recognized in TSV file: ${it}, see --help for more information"
     return it
-  }
-
-  // Sarek ascii art
-  static def sarek_ascii() {
-    println "    ____        _____               _    "
-    println "  .' _  `.     / ____|             | |   "
-    println " /  |\\`-_ \\   | (___  ___  _ __ __ | | __"
-    println "|   | \\  `-|   \\___ \\/__ \\| ´__/ _\\| |/ /"
-    println " \\ |   \\  /    ____) | __ | | |  __|   < "
-    println "  `|____\\'    |_____/\\____|_|  \\__/|_|\\_\\"
   }
 
 }
