@@ -21,6 +21,8 @@
 if (params.mapping) mappingPath = params.mapping
 if (params.pairing) pairingPath = params.pairing
 
+outname = params.outname
+
 referenceMap = defineReferenceMap()
 
 fastqFiles = Channel.empty()
@@ -291,7 +293,7 @@ process GenerateOutput {
     val targetFile from targets.collect()
 
   exec:
-  File file = new File("out.txt")
+  File file = new File(outname)
   def mapping = []
   for (i = 0; i < sampleIds.size(); i++) {
     map = [:]
@@ -363,12 +365,22 @@ process GenerateOutput {
                 }
             }
         })
-  
-  mergedchannel2.subscribe { Object obj ->
-    file.withWriterAppend{ out ->
-      out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
+
+  if (workflow.profile == 'awsbatch') {
+    mergedchannel2.subscribe { Object obj ->
+      file.newWriter().withWriter { out ->
+        out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\ts3:/${obj['tumorBam']}\ts3:/${obj['normalBam']}\ts3:/${obj['tumorBai']}\ts3:/${obj['normalBai']}"
+      }
     }
   }
+  else {
+    mergedchannel2.subscribe { Object obj ->
+      file.newWriter().withWriter { out ->
+        out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
+      }
+    }
+  }
+
 }
 
 ignore_read_groups = Channel.from( true , false )
