@@ -46,5 +46,3 @@ RUN wget https://github.com/broadinstitute/gatk/releases/download/4.1.1.0/gatk-4
     && rm -rf /tmp/*
 
 ENV PYTHONNOUSERSITE set
-
-ENTRYPOINT ["/bin/sh"]
