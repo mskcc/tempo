@@ -12,3 +12,6 @@ nf.*
 *.bai
 *.html
 *.txt
+*.pdf
+*.gz
+*.bam.*
