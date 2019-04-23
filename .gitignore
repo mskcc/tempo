@@ -10,6 +10,8 @@ conf/awsbatch.config
 nf.*
 *.bam
 *.bai
-*.tsv
 *.html
 *.txt
+*.pdf
+*.gz
+*.bam.*
