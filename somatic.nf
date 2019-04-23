@@ -758,10 +758,10 @@ def extractBamFiles(tsvFile) {
     def target = row[1]
     def idTumor = row[2]
     def idNormal = row[3]
-    def bamTumor = VaporwareUtils.returnFile(row[3])
-    def bamNormal = VaporwareUtils.returnFile(row[4])
-    def baiTumor = VaporwareUtils.returnFile(row[5])
-    def baiNormal = VaporwareUtils.returnFile(row[6])
+    def bamTumor = VaporwareUtils.returnFile(row[4])
+    def bamNormal = VaporwareUtils.returnFile(row[5])
+    def baiTumor = VaporwareUtils.returnFile(row[6])
+    def baiNormal = VaporwareUtils.returnFile(row[7])
     VaporwareUtils.checkFileExtension(bamTumor,".bam")
     VaporwareUtils.checkFileExtension(bamNormal,".bam")
     VaporwareUtils.checkFileExtension(baiTumor,".bai")
