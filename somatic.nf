@@ -696,6 +696,16 @@ process RunHlaPolysolver {
   """
 }
 
+// --- Run Conpair
+
+(bamsForConpair, bamFiles) = bamFiles.into(2)
+
+process RunConpair {
+  tag {idTumor + "_vs_" + idNormal}
+
+
+}
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
