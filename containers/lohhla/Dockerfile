@@ -25,4 +25,4 @@ RUN conda config --add channels conda-forge
 RUN conda install lohhla
 RUN conda update lohhla
 
-ENTRYPOINT ["/bin/bash"]
+
