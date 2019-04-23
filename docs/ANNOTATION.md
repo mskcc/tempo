@@ -21,4 +21,12 @@ bgzip wgEncodeDacMapabilityConsensusExcludable.bed
 tabix --preset bed wgEncodeDacMapabilityConsensusExcludable.bed.gz
 ```
 
-Subsequently, [vcf2maf](https://github.com/mskcc/vcf2maf) is used to annotate functional effects of mutations as well as other metadata using [VEP](https://www.ensembl.org/vep).
+Subsequently, [vcf2maf](https://github.com/mskcc/vcf2maf) is used to annotate functional effects of mutations as well as other metadata using [VEP](https://www.ensembl.org/vep). The `--custom-enst` argument to vcf2maf takes a list of preferred gene transcript isoforms which to map mutations onto. We supply a consensus list of [`isoform_overrides_at_mskcc` and `isoform_overrides_uniprot`](https://github.com/mskcc/vcf2maf/tree/master/data), generated as such:
+``` r
+t1 = readr::read_tsv('isoform_overrides_at_mskcc')
+t2 = readr::read_tsv('isoform_overrides_uniprot')
+t2 %>%
+    dplyr::filter(gene_name %nin% t1$gene_name) %>%
+    dplyr::bind_rows(., t1) %>%
+    readr::write_tsv('isoforms')
+```
