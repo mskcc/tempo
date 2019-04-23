@@ -786,10 +786,6 @@ def defineReferenceMap() {
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
-    'repeatMasker'    : checkParamReturnFile("repeatMasker"),
-    'repeatMaskerIndex'    : checkParamReturnFile("repeatMaskerIndex"),
-    'mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist"),
-    'mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")
   ]
 
   if (!params.test) {
@@ -800,6 +796,11 @@ def defineReferenceMap() {
     result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
     // intervals file for spread-and-gather processes
     result_array << ['intervals'        : checkParamReturnFile("intervals")]
+    // files for CombineChannel, needed by bcftools annotate
+    result_array << ['repeatMasker'    : checkParamReturnFile("repeatMasker")]
+    result_array << ['repeatMaskerIndex'    : checkParamReturnFile("repeatMaskerIndex")]
+    result_array << ['mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist")]
+    result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
   }
   return result_array
 }
