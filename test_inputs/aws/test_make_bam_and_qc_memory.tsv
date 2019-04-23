@@ -1,0 +1,4 @@
+1234N	1234N_M1	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R1.fastq.gz	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R2.fastq.gz
+1234T	1234T_M2	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R1.fastq.gz	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R2.fastq.gz
+1235N	1234T_M3	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R1.fastq.gz	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R2.fastq.gz
+1235T	1234T_M4	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R1.fastq.gz	s3://testbucketcmo/wgs_samples/DS-GCT-01S/DS-GCT-01S_CTGAAGCT_HG5MCCCXX_L007_001.R2.fastq.gz
