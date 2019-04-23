@@ -214,19 +214,18 @@ process RunMutect2Filter {
   output:
     file("*filtered.vcf.gz") into mutect2FilteredOutput
     file("*filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
+    file("*Mutect2FilteringStats.tsv") into mutect2Stats
 
   when: 'mutect2' in tools
 
-  outfile="${mutect2Vcf}".replaceFirst('vcf.gz', 'filtered.vcf.gz')
-
-  // this process also creates a *.tsv file that you can place write to any path with --stats argument
-
   script:
+  prefix = "${mutect2Vcf}".replaceFirst('.vcf.gz', '')
   """
   gatk --java-options -Xmx8g \
     FilterMutectCalls \
     --variant ${mutect2Vcf} \
-    --output ${outfile}
+    --stats ${prefix}.Mutect2FilteringStats.tsv \
+    --output ${prefix}.filtered.vcf.gz
   """
 }
 
@@ -239,11 +238,18 @@ process CombineMutect2Vcf {
 
   input:
     file(mutect2Vcf) from mutect2FilteredOutput.collect()
-    file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect()
+    file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect() 
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
 
   output:
     file("${outfile}") into mutect2CombinedVcfOutput
+    file("${outfile}.tbi") into mutect2CombinedVcfOutputIndex
 
   when: 'mutect2' in tools
 
@@ -251,13 +257,19 @@ process CombineMutect2Vcf {
 
   script:
   """
-  # Add norm?
   bcftools concat \
     --allow-overlaps \
     ${mutect2Vcf} | \
-    bcftools sort \
+  bcftools sort | \
+  bcftools norm \
+    --fasta-ref ${genomeFile} \
+    --check-ref s | \
+  bcftools view \
+    --samples ${idNormal},${idTumor} \
     --output-type z \
     --output-file ${outfile}
+
+  tabix --preset vcf ${outfile}
   """
 }
 
@@ -323,6 +335,7 @@ process RunManta {
 }
 
 // --- Run Strelka2
+
 process RunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -340,12 +353,12 @@ process RunStrelka2 {
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
-      ])
+    ])
     set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
-      ])
+    ])
 
   output:
     set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
@@ -428,38 +441,16 @@ process MergeDellyAndManta {
 }
 
 // --- Process Mutect2 and Strelka2 VCFs
-(sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
 
-process CombineChannel {
+( sampleIdsForStrelkaMerge, bamFiles ) = bamFiles.into(2)
+
+process MergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
 
-  input:
-    file(mutect2combinedVCF) from mutect2CombinedVcfOutput
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
-    set file(strelkaIndels), file(strelkaIndelsTBI) from strelkaOutputIndels
-    set file(strelkaSNV), file(strelkaSNVTBI) from strelkaOutputSNVs
-
-  output:
-    set file(mutect2combinedVCF), file(strelkaIndels), file(strelkaSNV) into vcfOutputSet
-
-  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
-
-  script:
-  """
-  echo 'placeholder process to make a channel containing vcf data'
-  """
-}
-
-(sampleIdsForBcfToolsFilterNorm, sampleIdsForBcfToolsMerge, bamFiles) = bamFiles.into(3)
-
-process RunBcfToolsFilterNorm {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_output"
-
-  input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilterNorm
-    each file(vcf) from vcfOutputSet.flatten()
+  input: 
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForStrelkaMerge
+    set file(strelkaIndels), file(strelkaIndelsIndex) from strelkaOutputIndels
+    set file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutputSNVs
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -467,54 +458,116 @@ process RunBcfToolsFilterNorm {
     ])
 
   output:
-    file("*filtered.norm.vcf.gz") into vcfFilterNormOutput
+    set file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
-
-  outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.norm.vcf.gz')
+  when: 'manta' in tools && 'strelka2' in tools
 
   script:
+  prefix = "${strelkaIndels}".replaceFirst(".vcf.gz", "")
+  outfile = "${prefix}.filtered.vcf.gz"
   """
-  tabix --preset vcf ${vcf}
-
-  bcftools filter \
-    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
-    --output-type z \
-    ${vcf} | \
+  echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
+  
+  bcftools concat \
+    --allow-overlaps \
+    ${strelkaIndels} ${strelkaSNVs} | \
+  bcftools reheader \
+    --samples samples.txt | \
+  bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
+    --check-ref s \
     --output-type z \
     --output ${outfile}
+
+  tabix --preset vcf ${outfile}
   """
 }
 
-process RunBcfToolsMerge {
+( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
+
+process CombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output"
-
   input:
-    file('*.vcf.gz') from vcfFilterNormOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsMerge
+    file(mutect2combinedVCF) from mutect2CombinedVcfOutput
+    file(mutect2combinedVCFIndex) from mutect2CombinedVcfOutputIndex
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
+    set file(strelkaVCF), file(strelkaVCFIndex) from strelkaOutput
+    set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
+      referenceMap.repeatMasker,
+      referenceMap.repeatMaskerIndex,
+      referenceMap.mapabilityBlacklist,
+      referenceMap.mapabilityBlacklistIndex
+    ])
 
   output:
-    file("*filtered.norm.merge.vcf") into vcfMergedOutput
+    file("${idTumor}.union.pass.vcf") into vcfMergedOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
 
   script:
+  isec_dir = "${idTumor}.isec"
   """
-  for f in *.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
+  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
+  echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
+  echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
 
-  bcftools merge \
-    --force-samples \
-    --merge none \
+  bcftools isec \
+    --output-type z \
+    --prefix ${isec_dir} \
+    ${mutect2combinedVCF} ${strelkaVCF}
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0002.vcf.gz \
+    --mark-sites \"+Mutect2;Strelka2\" \
+    --output-type z \
+    --output ${isec_dir}/0002.annot.vcf.gz \
+    ${isec_dir}/0002.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0000.vcf.gz \
+    --mark-sites +MuTect2 \
+    --output-type z \
+    --output ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0000.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0001.vcf.gz \
+    --mark-sites +Strelka2 \
+    --output-type z \
+    --output ${isec_dir}/0001.annot.vcf.gz \
+    ${isec_dir}/0001.vcf.gz
+
+  tabix --preset vcf ${isec_dir}/0000.annot.vcf.gz
+  tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
+  tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
+
+  bcftools concat \
+    --allow-overlaps \
+    ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0001.annot.vcf.gz \
+    ${isec_dir}/0002.annot.vcf.gz | \
+  bcftools sort | \
+  bcftools annotate \
+    --header-lines vcf.rm.header \
+    --annotations ${repeatMasker} \
+    --columns CHROM,FROM,TO,RepeatMasker | \
+  bcftools annotate \
+    --header-lines vcf.map.header \
+    --annotations ${mapabilityBlacklist} \
+    --columns CHROM,FROM,TO,EncodeDacMapability \
     --output-type v \
-    --output ${idTumor}_${idNormal}.mutect2.strelka2.filtered.norm.merge.vcf \
-    *.vcf.gz
+    --output ${idTumor}.union.vcf
+
+  bcftools filter \
+    --include 'FILTER=\"PASS\"' \
+    --output-type v \
+    --output ${idTumor}.union.pass.vcf \
+    ${idTumor}.union.vcf
   """
 }
 
@@ -732,7 +785,7 @@ def defineReferenceMap() {
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
   ]
 
   if (!params.test) {
@@ -743,6 +796,11 @@ def defineReferenceMap() {
     result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
     // intervals file for spread-and-gather processes
     result_array << ['intervals'        : checkParamReturnFile("intervals")]
+    // files for CombineChannel, needed by bcftools annotate
+    result_array << ['repeatMasker'    : checkParamReturnFile("repeatMasker")]
+    result_array << ['repeatMaskerIndex'    : checkParamReturnFile("repeatMaskerIndex")]
+    result_array << ['mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist")]
+    result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
   }
   return result_array
 }
