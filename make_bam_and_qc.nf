@@ -67,7 +67,7 @@ process AlignReads {
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
-    set idSample, lane, file("${lane}.bam") into (unsortedBam)
+    set idSample, lane, file("${lane}.bam"), assay, targetFile into (unsortedBam)
 
   script:
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
@@ -83,10 +83,10 @@ process SortBAM {
   tag {lane}
 
   input:
-    set idSample, lane, file("${lane}.bam") from unsortedBam
+    set idSample, lane, file("${lane}.bam"), assay, targetFile from unsortedBam
 
   output:
-    set idSample, lane, file("${lane}.sorted.bam") into (sortedBam, sortedBamDebug)
+    set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into (sortedBam, sortedBamDebug)
 
   script:
   // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
@@ -108,14 +108,14 @@ groupedBamDebug = Channel.create()
 sortedBam.groupTuple(by:[0,1])
   .choice(singleBam, groupedBam) {it[1].size() > 1 ? 1 : 0}
 singleBam = singleBam.map {
-  idSample, lane, bam ->
-  [idSample, bam]
+  idSample, lane, bam, assay, targetFile ->
+  [idSample, bam, assay, targetFile]
 }
 sortedBamDebug.groupTuple(by:[0,1])
   .choice(singleBamDebug, groupedBamDebug) {it[1].size() > 1 ? 1 : 0}
 singleBamDebug = singleBamDebug.map {
-  idSample, lane, bam ->
-  [idSample, bam]
+  idSample, lane, bam, assay, targetFile ->
+  [idSample, bam, assay, targetFile]
 }
 
 if (params.debug) {
@@ -127,10 +127,10 @@ process MergeBams {
   tag {idSample}
 
   input:
-    set idSample, lane, file(bam) from groupedBam
+    set idSample, lane, file(bam), assay, targetFile from groupedBam
 
   output:
-    set idSample, lane, file("${idSample}.merged.bam") into (mergedBam, mergedBamDebug)
+    set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile into (mergedBam, mergedBamDebug)
 
   script:
   """
@@ -170,11 +170,11 @@ process MarkDuplicates {
    publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idSample, lane, file("${idSample}.merged.bam") from mergedBam
+    set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
 
   output:
-    set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane into duplicateMarkedBams
-    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai") into markDuplicatesTSV
+    set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
+    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), assay, targetFile into markDuplicatesTSV
     file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
@@ -191,9 +191,9 @@ process MarkDuplicates {
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    bam, bai, idSample, lane ->
+    bam, bai, idSample, lane, assay, targetFile ->
     tag = bam.baseName.tokenize('.')[0]
-    [idSample, bam, bai]
+    [idSample, bam, bai, assay, targetFile]
 }
 
 (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
@@ -214,7 +214,7 @@ process CreateRecalibrationTable {
   tag {idSample}
 
   input:
-    set idSample, file(bam), file(bai) from mdBam 
+    set idSample, file(bam), file(bai), assay, targetFile from mdBam 
 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
       referenceMap.genomeFile,
@@ -228,7 +228,7 @@ process CreateRecalibrationTable {
 
   output:
     set idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table") into recalibrationTableTSV
+    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
   script:
   known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
@@ -253,7 +253,7 @@ process RecalibrateBam {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idSample, file(bam), file(bai), file(recalibrationReport) from recalibrationTable
+    set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
@@ -262,11 +262,13 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
-    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
+    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
     val idSample into currentSample
     file("${idSample}.recal.bam") into currentBam
     file("${idSample}.recal.bai") into currentBai
+    val assay into assays
+    val targetFile into targets
 
   script:
   """
@@ -283,15 +285,17 @@ process GenerateOutput {
 
   input:
     val sampleIds from currentSample.collect()
-    file(bams) from currentBam.collect()
-    file(bais) from currentBai.collect()
+    val bams from currentBam.collect()
+    val bais from currentBai.collect()
+    val assay from assays.collect()
+    val targetFile from targets.collect()
 
   exec:
   File file = new File("out.txt")
   def mapping = []
   for (i = 0; i < sampleIds.size(); i++) {
     map = [:]
-    mapping << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i]]
+    mapping << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i], 'assay': assay[i], 'target': targetFile[i]]
   }
   mapping = Channel.from(mapping)
   
@@ -308,25 +312,25 @@ process GenerateOutput {
         .flatMap({item ->
             item.findResults { sampleId, entries ->
                 mergedItem = [:]
-                mergedItem.tumorId = entries.sampleId
+                mergedItem.tumorId = sampleId
                 entries.each { entry ->
                     entry.each { key, val ->
-                        if(key == 'sampleId') return;
-                        if(key == 'normalId') {
-                            mergedItem['sampleId'] = val
+                        if(key == "sampleId") return;
+                        if(key == "normalId") {
+                            mergedItem["sampleId"] = val
                         }
-                        else if(key == 'bam') {
+                        else if(key == "bam") {
                             mergedItem['tumorBam'] = val
                         }
-                        else if(key == 'bai') {
-                            mergedItem['tumorBai'] = val
+                        else if(key == "bai") {
+                            mergedItem["tumorBai"] = val
                         }
                         else {
                             mergedItem[key] = val
                         }
                     }
                 }
-                if (mergedItem.size() == 4) {
+                if (mergedItem.size() == 6 ) {
                     return mergedItem
                 }
             }
@@ -339,7 +343,7 @@ process GenerateOutput {
         .flatMap({item ->
             item.findResults { sampleId, entries ->
                 mergedItem = [:]
-                mergedItem.normalId = entries.sampleId
+                mergedItem.normalId = sampleId
                 entries.each { entry ->
                     entry.each { key, val ->
                         if(key == 'sampleId') return;
@@ -354,7 +358,7 @@ process GenerateOutput {
                         }
                     }
                 }
-                if (mergedItem.size() == 6) {
+                if (mergedItem.size() == 8) {
                     return mergedItem
                 }
             }
@@ -362,7 +366,7 @@ process GenerateOutput {
   
   mergedchannel2.subscribe { Object obj ->
     file.withWriterAppend{ out ->
-      out.println "${obj['normalId'][0]}\t${obj['normalBam']}\t${obj['normalBai']}\t${obj['tumorId'][0]}\t${obj['tumorBam']}\t${obj['tumorBai']}"
+      out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
     }
   }
 }
@@ -376,7 +380,7 @@ process Alfred {
   
   input:
     each ignore_rg from ignore_read_groups
-    set idSample, file(bam), file(bai) from recalibratedBam
+    set idSample, file(bam), file(bai), assay, targetFile from recalibratedBam
 
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
