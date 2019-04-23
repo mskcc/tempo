@@ -107,13 +107,13 @@ singleBam = Channel.create()
 singleBamDebug = Channel.create()
 groupedBam = Channel.create()
 groupedBamDebug = Channel.create()
-sortedBam.groupTuple(by:[0,1])
+sortedBam.groupTuple(by:[0])
   .choice(singleBam, groupedBam) {it[1].size() > 1 ? 1 : 0}
 singleBam = singleBam.map {
   idSample, lane, bam, assay, targetFile ->
   [idSample, bam, assay, targetFile]
 }
-sortedBamDebug.groupTuple(by:[0,1])
+sortedBamDebug.groupTuple(by:[0])
   .choice(singleBamDebug, groupedBamDebug) {it[1].size() > 1 ? 1 : 0}
 singleBamDebug = singleBamDebug.map {
   idSample, lane, bam, assay, targetFile ->
