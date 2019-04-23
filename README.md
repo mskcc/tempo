@@ -57,7 +57,7 @@ Directory where remote Singularity images are stored. When using a computing clu
 * Do the following for LSF on juno:
 
 ```
-nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile juno
+nextflow run make_bam_and_qc.nf --mapping test_inputs/lsf/test_make_bam_and_qc.tsv --pairing test_inputs/lsf/test_make_bam_and_qc_pairing.tsv -profile juno
 ```
 
 #### For submitting via AWS Batch
@@ -67,7 +67,7 @@ In order to run pipeline on `AWS Batch`, you first must create your `Compute Env
 * When you build your compute environment and create configuration file do the following:
 
 ```
-nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
+nextflow run make_bam_and_qc.nf --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
 ```
 
 #### Local, Docker, and Singularity
@@ -79,13 +79,13 @@ The default parameters are for local use WITHOUT containers
 * For Docker use, do the following:
 
 ```
-nextflow run make_bam_and_qc.nf --sample samples.tsv -profile docker
+nextflow run make_bam_and_qc.nf --mapping mapping.tsv --pairing pairing.tsv -profile docker
 ```
 
 * For Singularity use, do the following:
 
 ```
-nextflow run make_bam_and_qc.nf --sample samples.tsv -profile singularity
+nextflow run make_bam_and_qc.nf --mapping mapping.tsv --pairing pairing.tsv -profile singularity
 ```
 
 ## Components
@@ -102,28 +102,34 @@ They are found in `${params.outDir}/VariantCalling/<tool_name>`
 
 Variables used in pipeline:
 
-`patientId`: Patient Id
-
-`gender`: XX or XY 
-
-`status`: 0 - Normal 1 - Tumor
+### Mapping file:
 
 `sample`: Sample Id
 
 `lane`: if sample is multiplexed
 
+`assay`: exome or genome
+
+`target`: target file
+
 `fastq1`: Path to first pair of fastq
 
 `fastq2`: Path to second pair of fastq
 
+### Pairing file:
+
+`normalId`: normal sampleId
+
+`tumorId` : tumor sampleId
+
 Execution on lsf:
 ```
-nextflow run make_bam_and_qc.nf --sample test_inputs/lsf/test_make_bam_and_qc.tsv -profile juno --outDir $PWD
+nextflow run make_bam_and_qc.nf --mapping test_inputs/lsf/test_make_bam_and_qc.tsv --pairing test_inputs/lsf/test_make_bam_and_qc_pairing.tsv -profile juno --outDir $PWD
 ```
 
 Execution on aws:
 ```
-nextflow run make_bam_and_qc.nf --sample test_inputs/aws/test_make_bam_and_qc.tsv -profile awsbatch
+nextflow run make_bam_and_qc.nf --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
 ```
 
 * `bwa mem` -- alignment
@@ -172,6 +178,10 @@ https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.2/org_bro
    -O output.bam
  
  ```
+
+ ### Outputs:
+
+ `make_bam_and_qc.nf` outputs `make_bam_output.tsv` which can be used as input for `somatic.nf`. You can change the name of the output file using `--outname filename.tsv` parametar.
 
 ### Bioinformatic Components for the Variant Calling Script
 
