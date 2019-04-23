@@ -811,21 +811,19 @@ def extractBamFiles(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    SarekUtils.checkNumberOfItem(row, 8)
+    VaporwareUtils.checkNumberOfItem(row, 8)
     def assay = row[0]
     def target = row[1]
     def idTumor = row[2]
     def idNormal = row[3]
-    def bamTumor = SarekUtils.returnFile(row[4])
-    def bamNormal = SarekUtils.returnFile(row[5])
-    def baiTumor = SarekUtils.returnFile(row[6])
-    def baiNormal = SarekUtils.returnFile(row[7])
-
-    SarekUtils.checkFileExtension(bamTumor,".bam")
-    SarekUtils.checkFileExtension(bamNormal,".bam")
-    SarekUtils.checkFileExtension(baiTumor,".bai")
-    SarekUtils.checkFileExtension(baiNormal,".bai")
-
+    def bamTumor = VaporwareUtils.returnFile(row[4])
+    def bamNormal = VaporwareUtils.returnFile(row[5])
+    def baiTumor = VaporwareUtils.returnFile(row[6])
+    def baiNormal = VaporwareUtils.returnFile(row[7])
+    VaporwareUtils.checkFileExtension(bamTumor,".bam")
+    VaporwareUtils.checkFileExtension(bamNormal,".bam")
+    VaporwareUtils.checkFileExtension(baiTumor,".bai")
+    VaporwareUtils.checkFileExtension(baiNormal,".bai")
     [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
   }
 }
