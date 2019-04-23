@@ -3,7 +3,7 @@
 ## GRCh37
 
 ### SNVs and indels
-Basic sequence annotation of merged `vcf` files from the individual variants callers is carried out in two steps. First, the combined `vcf` is annotated with information from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html). These files are retrieved from the [UCSC genome browser](https://genome.ucsc.edu) and parsed as such:
+Basic annotation of merged `vcf` files from the individual variants callers is carried out in two steps. First, the combined `vcf` is annotated with information from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html). These files are retrieved from the [UCSC genome browser](https://genome.ucsc.edu) and parsed as such:
 
 ``` shell
 wget http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz
