@@ -484,8 +484,7 @@ process MergeStrelka2Vcfs {
   """
 }
 
-/*
-(sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
+( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
 
 process CombineChannel {
   tag {idTumor + "_vs_" + idNormal}
@@ -495,15 +494,80 @@ process CombineChannel {
     file(mutect2combinedVCFIndex) from mutect2CombinedVcfOutputIndex
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
     set file(strelkaVCF), file(strelkaVCFIndex) from strelkaOutput
+    set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
+      referenceMap.repeatMasker,
+      referenceMap.repeatMaskerIndex,
+      referenceMap.mapabilityBlacklist,
+      referenceMap.mapabilityBlacklistIndex
+    ])
 
   output:
-    set file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), strelka(VCFIndex) into vcfOutputSet
+    file("${idTumor}.union.pass.vcf") into vcfMergedOutput
 
   when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
 
   script:
+  isec_dir = "${idTumor}.isec"
   """
-  echo 'placeholder process to make a channel containing vcf data'
+  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
+  echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
+  echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
+
+  bcftools isec \
+    --output-type z \
+    --prefix ${isec_dir} \
+    ${mutect2combinedVCF} ${strelkaVCF}
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0002.vcf.gz \
+    --mark-sites \"+Mutect2;Strelka2\" \
+    --output-type z \
+    --output ${isec_dir}/0002.annot.vcf.gz \
+    ${isec_dir}/0002.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0000.vcf.gz \
+    --mark-sites +MuTect2 \
+    --output-type z \
+    --output ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0000.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0001.vcf.gz \
+    --mark-sites +Strelka2 \
+    --output-type z \
+    --output ${isec_dir}/0001.annot.vcf.gz \
+    ${isec_dir}/0001.vcf.gz
+
+  tabix --preset vcf ${isec_dir}/0000.annot.vcf.gz
+  tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
+  tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
+
+  bcftools concat \
+    --allow-overlaps \
+    ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0001.annot.vcf.gz \
+    ${isec_dir}/0002.annot.vcf.gz | \
+  bcftools sort | \
+  bcftools annotate \
+    --header-lines vcf.rm.header \
+    --annotations ${repeatMasker} \
+    --columns CHROM,FROM,TO,RepeatMasker | \
+  bcftools annotate \
+    --header-lines vcf.map.header \
+    --annotations ${mapabilityBlacklist} \
+    --columns CHROM,FROM,TO,EncodeDacMapability \
+    --output-type v \
+    --output ${idTumor}.union.vcf
+
+  bcftools filter \
+    --include 'FILTER=\"PASS\"' \
+    --output-type v \
+    --output ${idTumor}.union.pass.vcf \
+    ${idTumor}.union.vcf
   """
 }
 
@@ -545,7 +609,7 @@ process RunVcf2Maf {
     --output-maf ${outfile} \
     --ref-fasta ${genomeFile}
   """
-}*/
+}
 
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
@@ -721,7 +785,11 @@ def defineReferenceMap() {
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
+    'repeatMasker'    : checkParamReturnFile("repeatMasker"),
+    'repeatMaskerIndex'    : checkParamReturnFile("repeatMaskerIndex"),
+    'mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist"),
+    'mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")
   ]
 
   if (!params.test) {
