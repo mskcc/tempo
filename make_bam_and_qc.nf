@@ -262,9 +262,11 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBamForOutput
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai") into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai") into recalibratedBamTSV
+    val idSample into currentSample
+    file("${idSample}.recal.bam") into currentBam
+    file("${idSample}.recal.bai") into currentBai
 
   script:
   """
@@ -277,78 +279,92 @@ process RecalibrateBam {
   """
 }
 
+process GenerateOutput {
 
+  input:
+    val sampleIds from currentSample.collect()
+    file(bams) from currentBam.collect()
+    file(bais) from currentBai.collect()
 
-File file = new File("out.txt")
+  exec:
+  File file = new File("out.txt")
+  def mapping = []
+  for (i = 0; i < sampleIds.size(); i++) {
+    map = [:]
+    mapping << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i]]
+  }
+  mapping = Channel.from(mapping)
+  
+  pairing = extractPairing(pairingfile)
+  pairing = Channel.from(pairing)
+  pairingTumor = pairing.map({ it.put("sampleId", it.remove('tumorId')); it })
 
-pairing = extractPairing(pairingfile)
-pairingTumor =  pairing.map({ it.put("sampleId", it.remove('tumorId')); it })
+  (mapping, mappingT, mappingN) = mapping.into(3)
 
-(mappingT, mappingN) = recalibratedBamForOutput.into(2)
-
-mergedchannel =
-    convertResultToMap(mappingT)
-    .concat(pairingTumor)
-    .groupBy( {item -> item.sampleId } )
-    .flatMap({item ->
-        item.findResults { sampleId, entries ->
-            mergedItem = [:]
-            mergedItem.tumorId = sampleId
-            entries.each { entry ->
-                entry.each { key, val ->
-                    if(key == "sampleId") return;
-                    if(key == "normalId") {
-                        mergedItem['sampleId'] = val
-                    }
-                    else if(key == 'bam') {
-                        mergedItem['tumorBam'] = val
-                    }
-                    else if(key == 'bai') {
-                        mergedItem['tumorBai'] = val
-                    }
-                    else {
-                        mergedItem[key] = val
-                    }
-                }
-            }
-            if (mergedItem.size() == 4) {
-                return mergedItem
-            }
-        }
-    })
-
-mergedchannel2 =
-    mergedchannel
-    .concat(convertResultToMap(mappingN))
-    .groupBy( {item -> item.sampleId } )
-    .flatMap({item ->
-        item.findResults { sampleId, entries ->
-            mergedItem = [:]
-            mergedItem.normalId = sampleId
-            entries.each { entry ->
-                entry.each { key, val ->
-                    if(key == "sampleId") return;
-                    if(key == 'bam') {
-                        mergedItem['normalBam'] = val
-                    }
-                    else if(key == 'bai') {
-                        mergedItem['normalBai'] = val
-                    }
-                    else {
-                        mergedItem[key] = val
+  mergedchannel =
+        mappingT
+        .concat(pairingTumor)
+        .groupBy( { item -> item.sampleId } )
+        .flatMap({item ->
+            item.findResults { sampleId, entries ->
+                mergedItem = [:]
+                mergedItem.tumorId = entries.sampleId
+                entries.each { entry ->
+                    entry.each { key, val ->
+                        if(key == 'sampleId') return;
+                        if(key == 'normalId') {
+                            mergedItem['sampleId'] = val
+                        }
+                        else if(key == 'bam') {
+                            mergedItem['tumorBam'] = val
+                        }
+                        else if(key == 'bai') {
+                            mergedItem['tumorBai'] = val
+                        }
+                        else {
+                            mergedItem[key] = val
+                        }
                     }
                 }
+                if (mergedItem.size() == 4) {
+                    return mergedItem
+                }
             }
-            if (mergedItem.size() == 6) {
-                return mergedItem
-            }
-        }
-    })
+        })
 
-mergedchannel2.subscribe { Object obj ->
+    mergedchannel2 =
+        mergedchannel
+        .concat(mappingN)
+        .groupBy( {item -> item.sampleId } )
+        .flatMap({item ->
+            item.findResults { sampleId, entries ->
+                mergedItem = [:]
+                mergedItem.normalId = entries.sampleId
+                entries.each { entry ->
+                    entry.each { key, val ->
+                        if(key == 'sampleId') return;
+                        if(key == 'bam') {
+                            mergedItem['normalBam'] = val
+                        }
+                        else if(key == 'bai') {
+                            mergedItem['normalBai'] = val
+                        }
+                        else {
+                            mergedItem[key] = val
+                        }
+                    }
+                }
+                if (mergedItem.size() == 6) {
+                    return mergedItem
+                }
+            }
+        })
+  
+  mergedchannel2.subscribe { Object obj ->
     file.withWriterAppend{ out ->
-      out.println "${obj.toString()};"
+      out.println "${obj['normalId'][0]}\t${obj['normalBam']}\t${obj['normalBai']}\t${obj['tumorId'][0]}\t${obj['tumorBam']}\t${obj['tumorBai']}"
     }
+  }
 }
 
 ignore_read_groups = Channel.from( true , false )
@@ -415,13 +431,15 @@ def debug(channel) {
 }
 
 def extractPairing(tsvFile) {
+  res = []
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    def idTumor = row[0]
-    def idNormal = row[1]
-    ['idTumor':idTumor, 'idNormal':idNormal]
+    def idNormal = row[0]
+    def idTumor = row[1]
+    res << ['tumorId':idTumor, 'normalId':idNormal]
   }
+  return res;
 }
 
 def convertResultToMap(result) {
@@ -429,7 +447,7 @@ def convertResultToMap(result) {
     row ->
     def sampleId = row[0]
     def bam = row[1]
-    def bai = row[1]
+    def bai = row[2]
     ['sampleId':sampleId, 'bam':bam, 'bai':bai]
   }
 }

@@ -1,5 +1,4 @@
-if( awscli ) {
-    import static nextflow.Nextflow.file
+import static nextflow.Nextflow.file
 import nextflow.Channel
 
 class VaporwareUtils {
