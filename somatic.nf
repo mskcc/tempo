@@ -59,10 +59,11 @@ process DellyCall {
 
   input:
     each svType from svTypes
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
-    set file(genomeFile), file(genomeIndex) from Channel.value([
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
+    set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
-      referenceMap.genomeIndex
+      referenceMap.genomeIndex,
+      referenceMap.svCallingExcludeRegions
     ])
 
   output:
@@ -75,6 +76,7 @@ process DellyCall {
   delly call \
     --svtype ${svType} \
     --genome ${genomeFile} \
+    --exclude ${svCallingExcludeRegions} \
     --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
     ${bamTumor} ${bamNormal}
   """
@@ -113,18 +115,27 @@ process DellyFilter {
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
 process CreateScatteredIntervals {
-  tag {intervals.fileName}
+  tag {idTumor + "_vs_" + idNormal}
 
   // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals"
 
   input:
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(intervals) from Channel.value([
-      referenceMap.genomeFile, 
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
       referenceMap.genomeIndex,
-      referenceMap.genomeDict,
-      referenceMap.intervals
+      referenceMap.genomeDict
       ])
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
+    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets,
+      referenceMap.wgsTargets
+      ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex,
+      referenceMap.wgsTargetsIndex
+      ])
 
   output:
     file('intervals/*.interval_list') into bedIntervals mode flatten
@@ -132,6 +143,11 @@ process CreateScatteredIntervals {
   when: "mutect2" in tools
 
   script:
+  intervals = wgsIntervals
+  if(params.exome) {
+    if(target == 'agilent') intervals = agilentTargets
+    if(target == 'idt') intervals = idtTargets
+  }
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
@@ -157,7 +173,7 @@ process RunMutect2 {
   // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -224,7 +240,7 @@ process CombineMutect2Vcf {
   input:
     file(mutect2Vcf) from mutect2FilteredOutput.collect()
     file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect()
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
 
   output:
     file("${outfile}") into mutect2CombinedVcfOutput
@@ -254,10 +270,14 @@ process RunManta {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
+    ])
+    set file(svCallingIncludeRegions), file(svCallingIncludeRegionsIndex) from Channel.value([
+      referenceMap.svCallingIncludeRegions,
+      referenceMap.svCallingIncludeRegionsIndex
     ])
 
   output:
@@ -266,11 +286,14 @@ process RunManta {
     set file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: 'manta' in tools
-
-  // flag with --exome if exome
   script:
+  options = ""
+  if(params.exome) options = "--exome"
+
   """
   configManta.py \
+    ${options} \
+    --callRegions ${svCallingIncludeRegions} \
     --referenceFasta ${genomeFile} \
     --normalBam ${bamNormal} \
     --tumorBam ${bamTumor} \
@@ -306,25 +329,43 @@ process RunStrelka2 {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
     set file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict
     ])
+    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets,
+      referenceMap.wgsTargets
+      ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex,
+      referenceMap.wgsTargetsIndex
+      ])
 
   output:
     set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
     set file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutputSNVs
 
   when: 'manta' in tools && 'strelka2' in tools
-  
-  // flag with --exome if exome
 
   script:
+  options = "" 
+  if(params.exome) options = "--exome"
+
+  intervals = wgsIntervals
+  if(params.exome) {
+    if(target == 'agilent') intervals = agilentTargets
+    if(target == 'idt') intervals = idtTargets
+  }
   """
   configureStrelkaSomaticWorkflow.py \
+    ${options} \
+    --callRegions ${intervals} \
     --referenceFasta ${genomeFile} \
     --indelCandidates ${mantaCSI} \
     --tumorBam ${bamTumor} \
@@ -358,7 +399,7 @@ process MergeDellyAndManta {
   input:
     file(dellyFilterData) from dellyFilterOutput.collect()
     file(mantaData) from mantaOutput.collect()
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
 
   output:
     file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
@@ -394,7 +435,7 @@ process CombineChannel {
 
   input:
     file(mutect2combinedVCF) from mutect2CombinedVcfOutput
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
     set file(strelkaIndels), file(strelkaIndelsTBI) from strelkaOutputIndels
     set file(strelkaSNV), file(strelkaSNVTBI) from strelkaOutputSNVs
 
@@ -417,7 +458,7 @@ process RunBcfToolsFilterNorm {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_output"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilterNorm
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilterNorm
     each file(vcf) from vcfOutputSet.flatten()
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
@@ -454,7 +495,7 @@ process RunBcfToolsMerge {
 
   input:
     file('*.vcf.gz') from vcfFilterNormOutput.collect()
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsMerge
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsMerge
 
   output:
     file("*filtered.norm.merge.vcf") into vcfMergedOutput
@@ -486,7 +527,7 @@ process RunVcf2Maf {
 
   input:
     file(vcfMerged) from vcfMergedOutput
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -526,11 +567,11 @@ process DoSnpPileup {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSnpPileup
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSnpPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
-    set sequenceType, idTumor, idNormal, file("${output_filename}") into SnpPileup
+    set assay, target, idTumor, idNormal, file("${output_filename}") into SnpPileup
 
   when: 'facets' in tools
 
@@ -553,7 +594,7 @@ process DoFacets {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
 
   input:
-    set sequenceType, idTumor, idNormal, file(snpPileupFile) from SnpPileup
+    set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
     file("*.*") into FacetsOutput
@@ -596,7 +637,7 @@ process RunMsiSensor {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -629,7 +670,7 @@ process RunHlaPolysolver {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver"
 
   input:
-    set sequenceType, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
 
   output:
     file("output/*") into hlaOutput
@@ -682,6 +723,16 @@ def defineReferenceMap() {
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+    'msiSensorList'    : checkParamReturnFile("msiSensorList"),
+    'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
+    'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
+    'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
+    'idtTargets' : checkParamReturnFile("idtTargets"),
+    'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
+    'agilentTargets' : checkParamReturnFile("agilentTargets"),
+    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'wgsTargets' : checkParamReturnFile("wgsTargets"),
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (!params.test) {
@@ -690,8 +741,6 @@ def defineReferenceMap() {
     result_array << ['vepCache'                 : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
-    // MSI Sensor
-    result_array << ['msiSensorList'    : checkParamReturnFile("msiSensorList")]
     // intervals file for spread-and-gather processes
     result_array << ['intervals'        : checkParamReturnFile("intervals")]
   }
@@ -700,24 +749,25 @@ def defineReferenceMap() {
 
 def extractBamFiles(tsvFile) {
   // Channeling the TSV file containing FASTQ.
-  // Format is: "idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
+  // Format is: "assay targets idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    SarekUtils.checkNumberOfItem(row, 7)
-    def sequenceType = row[0]
-    def idTumor = row[1]
-    def idNormal = row[2]
-    def bamTumor = SarekUtils.returnFile(row[3])
-    def bamNormal = SarekUtils.returnFile(row[4])
-    def baiTumor = SarekUtils.returnFile(row[5])
-    def baiNormal = SarekUtils.returnFile(row[6])
+    SarekUtils.checkNumberOfItem(row, 8)
+    def assay = row[0]
+    def target = row[1]
+    def idTumor = row[2]
+    def idNormal = row[3]
+    def bamTumor = SarekUtils.returnFile(row[4])
+    def bamNormal = SarekUtils.returnFile(row[5])
+    def baiTumor = SarekUtils.returnFile(row[6])
+    def baiNormal = SarekUtils.returnFile(row[7])
 
     SarekUtils.checkFileExtension(bamTumor,".bam")
     SarekUtils.checkFileExtension(bamNormal,".bam")
     SarekUtils.checkFileExtension(baiTumor,".bai")
     SarekUtils.checkFileExtension(baiNormal,".bai")
 
-    [ sequenceType, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
+    [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
   }
 }
