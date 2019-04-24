@@ -521,7 +521,7 @@ process CombineChannel {
   bcftools annotate \
     --header-lines vcf.header \
     --annotations ${isec_dir}/0002.vcf.gz \
-    --mark-sites \"+Mutect2;Strelka2\" \
+    --mark-sites \"+MuTect2;Strelka2\" \
     --output-type z \
     --output ${isec_dir}/0002.annot.vcf.gz \
     ${isec_dir}/0002.vcf.gz
@@ -581,13 +581,12 @@ process RunVcf2Maf {
   input:
     file(vcfMerged) from vcfMergedOutput
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
-      referenceMap.vcf2mafFilterVcf,
-      referenceMap.vcf2mafFilterVcfIndex,
-      referenceMap.vepCache
+      referenceMap.vepCache,
+      referenceMap.isoforms
     ])
 
   output:
@@ -600,14 +599,20 @@ process RunVcf2Maf {
   script:
   """
   perl /opt/vcf2maf.pl \
-    --input-vcf ${vcfMerged} \
-    --tumor-id ${idTumor} \
-    --normal-id ${idNormal} \
+    --maf-center MSKCC-CMO \
     --vep-path /opt/vep/src/ensembl-vep \
     --vep-data ${vepCache} \
-    --filter-vcf ${vcf2mafFilterVcf} \
+    --vep-forks 10 \
+    --tumor-id ${idTumor} \
+    --normal-id ${idNormal} \
+    --vcf-tumor-id ${idTumor} \
+    --vcf-normal-id ${idNormal} \
+    --input-vcf ${vcfMerged} \
+    --ref-fasta ${genomeFile} \
+    --retain-info MuTect2,Strelka2,RepeatMasker,EncodeDacMapability \
+    --custom-enst ${isoforms} \
     --output-maf ${outfile} \
-    --ref-fasta ${genomeFile}
+    --filter-vcf 0
   """
 }
 
@@ -789,8 +794,6 @@ def defineReferenceMap() {
   ]
 
   if (!params.test) {
-    result_array << ['vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf")]
-    result_array << ['vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex")]
     result_array << ['vepCache'                 : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
@@ -801,6 +804,8 @@ def defineReferenceMap() {
     result_array << ['repeatMaskerIndex'    : checkParamReturnFile("repeatMaskerIndex")]
     result_array << ['mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist")]
     result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
+    // isoforms needed by vcf2maf
+    result_array << ['isoforms' : checkParamReturnFile("isoforms")]
   }
   return result_array
 }
