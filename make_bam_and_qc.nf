@@ -111,13 +111,13 @@ sortedBam.groupTuple(by:[0])
   .choice(singleBam, groupedBam) {it[1].size() > 1 ? 1 : 0}
 singleBam = singleBam.map {
   idSample, lane, bam, assay, targetFile ->
-  [idSample, bam, assay, targetFile]
+  [idSample, lane, bam, assay, targetFile]
 }
 sortedBamDebug.groupTuple(by:[0])
   .choice(singleBamDebug, groupedBamDebug) {it[1].size() > 1 ? 1 : 0}
 singleBamDebug = singleBamDebug.map {
   idSample, lane, bam, assay, targetFile ->
-  [idSample, bam, assay, targetFile]
+  [idSample, lane, bam, assay, targetFile]
 }
 
 if (params.debug) {
