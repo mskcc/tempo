@@ -754,6 +754,98 @@ process RunHlaPolysolver {
   """
 }
 
+// --- Run Conpair
+
+(bamsForConpair, bamFiles) = bamFiles.into(2)
+
+process RunConpair {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/conpair"
+
+  input:
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForConpair
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    file("*.pileup") into conpairPileup
+    file("*.txt") into conpairOutput
+
+  when: 'conpair' in tools
+
+  script:
+  gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
+  conpairPath = "/usr/bin/conpair"
+
+  // These marker files are in the conpair container
+  markersBed = ""
+  markersTxt = ""
+
+  if(params.genome == "GRCh37") {
+    markersBed = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.bed"
+    markersTxt = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.txt"
+  }
+  else {
+    markersBed = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.bed"
+    markersTxt = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.txt"
+  }
+
+  mem = 0
+  if(params.mem_per_core) {
+    mem = task.memory.toString().split(" ")[0].toInteger() - 1
+  }
+  else {
+    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+  }
+
+  javaMem = "${mem}g"
+
+  """
+  # Make pileup files
+  ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
+    --gatk=${gatkPath} \
+    --bam=${bamTumor} \
+    --markers=${markersBed} \
+    --reference=${genomeFile} \
+    --xmx_java=${javaMem} \
+    --outfile="${idTumor}.pileup"
+
+  ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
+    --gatk=${gatkPath} \
+    --bam=${bamNormal} \
+    --markers=${markersBed} \
+    --reference=${genomeFile} \
+    --xmx_java=${javaMem} \
+    --outfile="${idNormal}.pileup"
+
+  # Make pairing file
+  echo "${idNormal}\t${idTumor}" > pairing.txt
+
+
+  # Verify concordances
+  ${conpairPath}/scripts/verify_concordances.py \
+    --tumor_pileup="${idTumor}.pileup" \
+    --normal_pileup="${idNormal}.pileup" \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --normal_homozygous_markers_only \
+    --outpre="${idTumor}.${idNormal}.conpair"
+
+  
+  ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
+    --tumor_pileup="${idTumor}.pileup" \
+    --normal_pileup="${idNormal}.pileup" \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --outpre="${idTumor}.${idNormal}.conpair"
+    
+  """
+}
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
