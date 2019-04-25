@@ -30,16 +30,47 @@ fastqFiles = Channel.empty()
 mappingFile = file(mappingPath)
 pairingfile = file(pairingPath)
 
-fastqFiles = extractFastq(mappingFile) 
+fastqFiles = extractFastq(mappingFile)
 
 // Duplicate channel
-fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
+fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles; fastqGrouping; fastqGrouping1; fastqGrouping2 }
 
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
 ================================================================================
 */
+
+groupedBy1 = Channel.create()
+lanes = Channel.create()
+fastqsFile1 = Channel.create()
+fastqsFile2 = Channel.create()
+
+process GroupInputs {
+
+  output:
+    val lanes into lanes
+    val fastqsFile1Group into fastqsFile1
+    val fastqsFile2Group into fastqsFile2
+  
+  exec:
+    //groupedBy0 = Channel.create()
+    //groupedBy0 = fastqGrouping.groupTuple(by:[0]) //.map({ println(it); it })
+    // groupedBy1 = groupedBy0.groupTuple(by:[1]) //.map({ println(it); it })
+
+    fastqGrouping.groupTuple(by:[0]).groupTuple(by:[1]).map { entry ->
+        return entry[1][0]
+    }.set{ laneGroup }
+
+    fastqGrouping1.groupTuple(by:[0]).groupTuple(by:[1]).map { entry ->
+        return entry[2][0]
+    }.set{ fastqsFile1Group }
+
+    fastqGrouping2.groupTuple(by:[0]).groupTuple(by:[1]).map { entry ->
+        return entry[4][0]
+    }.set{ fastqsFile2Group }
+
+}
 
 // FastP - FastP on lane pairs, R1/R2
 
@@ -49,8 +80,11 @@ process FastP {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastPFiles
-
+    // set idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assays, targetFiles from groupedBy1
+    each lane from lanes
+    each fastqFile1 from fastqsFile1
+    each fastqFile2 from fastqsFile2
+    
   output:
     file("*.html") into fastPResults 
 
