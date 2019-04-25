@@ -773,7 +773,7 @@ process RunConpair {
 
   output:
     file("*.pileup") into conpairPileup
-//    file("*.txt") into conpairOutput
+    file("*.txt") into conpairOutput
 
   when: 'conpair' in tools
 
@@ -812,7 +812,7 @@ process RunConpair {
     --markers=${markersBed} \
     --reference=${genomeFile} \
     --xmx_java=${javaMem} \
-    --outfile="${bamTumor.baseName}.pileup"
+    --outfile="${idTumor}.pileup"
 
   ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
     --gatk=${gatkPath} \
@@ -820,8 +820,29 @@ process RunConpair {
     --markers=${markersBed} \
     --reference=${genomeFile} \
     --xmx_java=${javaMem} \
-    --outfile="${bamNormal.baseName}.pileup"
+    --outfile="${idNormal}.pileup"
 
+  # Make pairing file
+  echo "${idNormal}\t${idTumor}" > pairing.txt
+
+
+  # Verify concordances
+  ${conpairPath}/scripts/verify_concordances.py \
+    --tumor_pileup="${idTumor}.pileup" \
+    --normal_pileup="${idNormal}.pileup" \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --normal_homozygous_markers_only \
+    --outpre="${idTumor}.${idNormal}.conpair"
+
+  
+  ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
+    --tumor_pileup="${idTumor}.pileup" \
+    --normal_pileup="${idNormal}.pileup" \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --outpre="${idTumor}.${idNormal}.conpair"
+    
   """
 }
 
