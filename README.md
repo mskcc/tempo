@@ -1,6 +1,6 @@
-## Vaporware pipeline
+# Vaporware 
 
-Pipeline for processing WES/WGS FASTQs into analysis-ready BAMs using GATK4 best practices, built using Nextflow domain specific language. 
+WES/WGS pipeline using [Nextflow framework](https://github.com/nextflow-io/nextflow)
 
 See Nextflow documention here: 
 https://www.nextflow.io/
@@ -8,15 +8,16 @@ https://www.nextflow.io/
 Inspiration from `Sarek` at the NBIS and SciLifeLab in Sweden:
 https://github.com/SciLifeLab/Sarek
 
-Vaporware containes several pipeline scripts (make_bam_and_qc.nf, somatic.nf). Detalied explanation for each step is provided bellow.
+Vaporware contains several pipeline scripts (`make_bam_and_qc.nf`, `somatic.nf`, `germline.nf`). A detalied explanation for each step is provided below.
 
-### Setup instructions
+## Setup instructions
 
 Clone the repository as `vaporware`:
 
 ```
 git clone https://github.com/mskcc/vaporware.git vaporware
 cd vaporware
+git submodule update --recursive --remote    ## pull all remote submodules
 ```
 
 Install `Nextflow` within this subdirectory if the Nextflow executable `nextflow` isn't in your PATH:
@@ -25,11 +26,11 @@ Install `Nextflow` within this subdirectory if the Nextflow executable `nextflow
 curl -s https://get.nextflow.io | bash 
 ```
 
-This installs Nextflow within the `vaporware` (the current directory). 
+This installs Nextflow within the subdirectory `vaporware`.
 
-Optionally, move the `nextflow` file to a directory accessible by your $PATH variable in order to avoid remembering and typing the full path to `nextflow` each time.
+Optionally, move the `nextflow` file to a directory accessible by your `$PATH` variable in order to avoid remembering and typing the full path to `nextflow` each time.
 
-#### Executing the scripts
+## Executing the scripts
 
 Command for running nextflow
 
@@ -37,21 +38,29 @@ Command for running nextflow
 nextflow run <nextflow_script> --sample <samples_tsv>
 ```
 
-nextflow_script - make_bam_and_qc.nf or somatic.nf
-samples_tsv - samples - description how to create .tsv input files is provided below in steps section for each component of the pipeline
+`<nextflow_script>` - e.g. `make_bam_and_qc.nf` or `somatic.nf`
+`<samples_tsv>` - sample file
 
-#### For submitting via LSF on juno
+### For submitting via LSF on juno
 
-**NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. This is not a random subdirectory. 
-
+**NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. 
 In order to get this working, use e.g. 
 `export NXF_SINGULARITY_CACHEDIR=$HOME/.singularity`
 
 See here for details: https://www.nextflow.io/docs/latest/config.html
 
+We recommend users use `singularity/3.1.1`, i.e. 
+
+```
+$ module load  singularity/3.1.1
+$ which singularity
+/opt/local/singularity/3.1.1/bin/singularity
+```
+
 ```
 NXF_SINGULARITY_CACHEDIR:
-Directory where remote Singularity images are stored. When using a computing cluster it must be a shared folder accessible from all computing nodes.
+Directory where remote Singularity images are stored. 
+When using a computing cluster it must be a shared folder accessible from all computing nodes.
 ```
 
 * Do the following for LSF on juno:
@@ -60,7 +69,7 @@ Directory where remote Singularity images are stored. When using a computing clu
 nextflow run make_bam_and_qc.nf --mapping test_inputs/lsf/test_make_bam_and_qc.tsv --pairing test_inputs/lsf/test_make_bam_and_qc_pairing.tsv -profile juno
 ```
 
-#### For submitting via AWS Batch
+### For submitting via AWS Batch
 
 In order to run pipeline on `AWS Batch`, you first must create your `Compute Environment` and `Configuration File` as described [here](aws_cf_scripts/README.md).
  
@@ -70,7 +79,7 @@ In order to run pipeline on `AWS Batch`, you first must create your `Compute Env
 nextflow run make_bam_and_qc.nf --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
 ```
 
-#### Local, Docker, and Singularity
+### Local, Docker, and Singularity
 
 **NOTE:** To being able to run locally you need to provide reference files from `conf/references.config` and create `samples.tsv` as described in `Bioinformatic Components for the Make Bam and QC Script` section below.
 
@@ -522,13 +531,3 @@ output_prefix = "${idTumor}_${idNormal}"
 msisensor msi -d "${msiSensorList}" -t "${bamTumor}" -n "${bamNormal}" -o "${output_prefix}"
 ```
 
-#### `lumpyexpress` -- Structural Variant Caller
-
-https://github.com/arq5x/lumpy-sv
-
-```
-output_filename=${idTumor}_${idNormal}.lumpyexpress.vcf
-lumpyexpress \
-  -B ${bamTumor},${bamNormal} \
-  -o "\${output_filename}"
-```
