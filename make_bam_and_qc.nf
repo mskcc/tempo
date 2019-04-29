@@ -32,44 +32,21 @@ pairingfile = file(pairingPath)
 
 fastqFiles = extractFastq(mappingFile)
 
-// Duplicate channel
-fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles; fastqGrouping; fastqGrouping1; fastqGrouping2 }
-
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
 ================================================================================
 */
 
-groupedBy1 = Channel.create()
-lanes = Channel.create()
-fastqsFile1 = Channel.create()
-fastqsFile2 = Channel.create()
 
-process GroupInputs {
+fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets) }.set { groupedFastqs }
 
-  output:
-    val lanes into lanes
-    val fastqsFile1Group into fastqsFile1
-    val fastqsFile2Group into fastqsFile2
-  
-  exec:
-    //groupedBy0 = Channel.create()
-    //groupedBy0 = fastqGrouping.groupTuple(by:[0]) //.map({ println(it); it })
-    // groupedBy1 = groupedBy0.groupTuple(by:[1]) //.map({ println(it); it })
+groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
+fastPFiles = fastPFiles.transpose()
+fastqFiles = fastqFiles.transpose()
 
-    fastqGrouping.groupTuple(by:[0]).groupTuple(by:[1]).map { entry ->
-        return entry[1][0]
-    }.set{ laneGroup }
-
-    fastqGrouping1.groupTuple(by:[0]).groupTuple(by:[1]).map { entry ->
-        return entry[2][0]
-    }.set{ fastqsFile1Group }
-
-    fastqGrouping2.groupTuple(by:[0]).groupTuple(by:[1]).map { entry ->
-        return entry[4][0]
-    }.set{ fastqsFile2Group }
-
+if (params.debug) {
+  debug(groupedFastqsDebug)
 }
 
 // FastP - FastP on lane pairs, R1/R2
@@ -80,14 +57,12 @@ process FastP {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    // set idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assays, targetFiles from groupedBy1
-    each lane from lanes
-    each fastqFile1 from fastqsFile1
-    each fastqFile2 from fastqsFile2
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
     
   output:
     file("*.html") into fastPResults 
 
+  script:
   """
   fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
   """
@@ -137,27 +112,8 @@ process SortBAM {
   """
 }
 
-singleBam = Channel.create()
-singleBamDebug = Channel.create()
-groupedBam = Channel.create()
-groupedBamDebug = Channel.create()
-sortedBam.groupTuple(by:[0])
-  .choice(singleBam, groupedBam) {it[1].size() > 1 ? 1 : 0}
-singleBam = singleBam.map {
-  idSample, lane, bam, assay, targetFile ->
-  [idSample, lane, bam, assay, targetFile]
-}
-sortedBamDebug.groupTuple(by:[0])
-  .choice(singleBamDebug, groupedBamDebug) {it[1].size() > 1 ? 1 : 0}
-singleBamDebug = singleBamDebug.map {
-  idSample, lane, bam, assay, targetFile ->
-  [idSample, lane, bam, assay, targetFile]
-}
-
-if (params.debug) {
-  debug(groupedBamDebug);
-  debug(singleBamDebug);
-}   
+sortedBam.groupTuple().set { groupedBam }
+groupedBam.into { groupedBamDebug; groupedBam }
 
 process MergeBams {
   tag {idSample}
@@ -175,27 +131,7 @@ process MergeBams {
 }
 
 if (params.debug) {
-  debug(mergedBamDebug);
-}
-
-if (params.verbose) singleBam = singleBam.view {
-  "Single BAM:\n\
-  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
-  File  : [${it[2].fileName}]"
-}
-
-if (params.verbose) mergedBam = mergedBam.view {
-  "Merged BAM:\n\
-  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
-  File  : [${it[2]}]"
-}
-
-mergedBam = mergedBam.mix(singleBam)
-
-if (params.verbose) mergedBam = mergedBam.view {
-  "BAM for MarkDuplicates:\n\
-  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
-  File  : [${it[2]}]"
+  debug(groupedBamDebug);
 }
 
 // GATK MarkDuplicates
