@@ -79,11 +79,11 @@ In order to run pipeline on `AWS Batch`, you first must create your `Compute Env
 nextflow run make_bam_and_qc.nf --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
 ```
 
-## Local, Docker, and Singularity
+## Docker and Singularity
 
-**NOTE:** To being able to run locally you need to provide reference files from `conf/references.config` and create `samples.tsv` as described in `Bioinformatic Components for the Make Bam and QC Script` section below.
+**NOTE:** To being able to run locally you need to provide reference files from `conf/references.config` and create `samples.tsv` as described in the wiki page [Bioinformatic components](https://github.com/mskcc/vaporware/wiki/Bioinformatic-Components)
 
-The default parameters are for local use WITHOUT containers
+The default parameters are for local-use *WITHOUT* containers
 
 * For Docker use, do the following:
 
