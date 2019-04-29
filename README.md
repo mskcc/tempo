@@ -1,6 +1,6 @@
 # Vaporware 
 
-WES/WGS pipeline using [Nextflow framework](https://github.com/nextflow-io/nextflow)
+CMO WES/WGS pipeline using [Nextflow framework](https://github.com/nextflow-io/nextflow)
 
 See Nextflow documention here: 
 https://www.nextflow.io/
@@ -44,8 +44,7 @@ nextflow run <nextflow_script> --sample <samples_tsv>
 
 ### For submitting via LSF on juno
 
-**NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. 
-In order to get this working, use e.g. 
+**NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. Use e.g. 
 `export NXF_SINGULARITY_CACHEDIR=$HOME/.singularity`
 
 See here for details: https://www.nextflow.io/docs/latest/config.html
