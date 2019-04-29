@@ -38,8 +38,9 @@ Command for running nextflow
 nextflow run <nextflow_script> --sample <samples_tsv>
 ```
 
-`<nextflow_script>` - e.g. `make_bam_and_qc.nf` or `somatic.nf`
-`<samples_tsv>` - sample file
+* `<nextflow_script>` - e.g. `make_bam_and_qc.nf` or `somatic.nf`
+
+* `<samples_tsv>` - sample file
 
 ### For submitting via LSF on juno
 
@@ -523,7 +524,7 @@ directory = "."
 
 https://github.com/ding-lab/msisensor
 
-msiSensorList is defined in `references.config
+msiSensorList is defined in `references.config`
 
 ```
 output_prefix = "${idTumor}_${idNormal}"
