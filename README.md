@@ -17,7 +17,6 @@ Clone the repository as `vaporware`:
 ```
 git clone https://github.com/mskcc/vaporware.git vaporware
 cd vaporware
-git submodule update --recursive --remote    ## pull all remote submodules
 ```
 
 Install `Nextflow` within this subdirectory if the Nextflow executable `nextflow` isn't in your PATH:
