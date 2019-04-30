@@ -90,10 +90,9 @@ process DellyFilter {
   input:
     set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
-
   output:
-    file("*.filter.bcf") into dellyFilterOutput
-    file("*.filter.bcf.csi") into dellyFilterIndexedOutput
+    file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
+    file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyFilterIndexedOutput
 
   when: 'delly' in tools
 
@@ -246,7 +245,6 @@ process CombineMutect2Vcf {
       referenceMap.genomeDict
     ])
 
-
   output:
     file("${outfile}") into mutect2CombinedVcfOutput
     file("${outfile}.tbi") into mutect2CombinedVcfOutputIndex
@@ -263,7 +261,9 @@ process CombineMutect2Vcf {
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
-    --check-ref s | \
+    --check-ref s \
+    --multiallelics -both | \
+  bcftools norm --rm-dup all | \
   bcftools view \
     --samples ${idNormal},${idTumor} \
     --output-type z \
@@ -405,7 +405,7 @@ process RunStrelka2 {
 ( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
 
 process MergeDellyAndManta {
-  tag { idTumor + "_" + idNormal }
+  tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output"
 
@@ -574,7 +574,7 @@ process CombineChannel {
 (sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
 
 process RunVcf2Maf {
-  tag { idTumor + "_" + idNormal }
+  tag {idTumor + "_" + idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations"
 
@@ -761,10 +761,10 @@ process RunHlaPolysolver {
 process RunConpair {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/conpair"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair"
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForConpair
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForConpair
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -772,8 +772,8 @@ process RunConpair {
     ])
 
   output:
-    file("*.pileup") into conpairPileup
-    file("*.txt") into conpairOutput
+    file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
+    file("${idTumor}.${idNormal}.concordance.txt"), file("${idTumor}.${idNormal}.contamination.txt") into conpairOutput
 
   when: 'conpair' in tools
 
@@ -812,7 +812,7 @@ process RunConpair {
     --markers=${markersBed} \
     --reference=${genomeFile} \
     --xmx_java=${javaMem} \
-    --outfile="${idTumor}.pileup"
+    --outfile="${idTumor}.pileup
 
   ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
     --gatk=${gatkPath} \
@@ -820,29 +820,26 @@ process RunConpair {
     --markers=${markersBed} \
     --reference=${genomeFile} \
     --xmx_java=${javaMem} \
-    --outfile="${idNormal}.pileup"
+    --outfile=${idNormal}.pileup
 
   # Make pairing file
   echo "${idNormal}\t${idTumor}" > pairing.txt
 
-
-  # Verify concordances
+  # Verify concordance
   ${conpairPath}/scripts/verify_concordances.py \
-    --tumor_pileup="${idTumor}.pileup" \
-    --normal_pileup="${idNormal}.pileup" \
+    --tumor_pileup=${idTumor}.pileup \
+    --normal_pileup=${idNormal}.pileup \
     --markers=${markersTxt} \
     --pairing=pairing.txt \
     --normal_homozygous_markers_only \
-    --outpre="${idTumor}.${idNormal}.conpair"
+    --outpre=${idTumor}.${idNormal}
 
-  
   ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
-    --tumor_pileup="${idTumor}.pileup" \
-    --normal_pileup="${idNormal}.pileup" \
+    --tumor_pileup=${idTumor}.pileup \
+    --normal_pileup=${idNormal}.pileup \
     --markers=${markersTxt} \
     --pairing=pairing.txt \
-    --outpre="${idTumor}.${idNormal}.conpair"
-    
+    --outpre=${idTumor}.${idNormal}
   """
 }
 
