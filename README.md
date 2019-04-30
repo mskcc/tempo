@@ -102,4 +102,8 @@ The following links to the wiki provide greater details:
 
 * [Bioinformatic components](https://github.com/mskcc/vaporware/wiki/Bioinformatic-Components)
 * [Building an AWS Batch Environment](https://github.com/mskcc/vaporware/wiki/Building-AWS-Batch-Compute-Environment)
+* [Reference Files](https://github.com/mskcc/vaporware/wiki/Reference-Files)
+* [Genomic Intervals](https://github.com/mskcc/vaporware/wiki/Genomic-Intervals)
+* [Variant Annotation](https://github.com/mskcc/vaporware/wiki/Variant-Annotation)
+
 
