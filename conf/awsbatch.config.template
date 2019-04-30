@@ -17,6 +17,8 @@ executor {
 process {
   queue = <AWS-BATCH-QUEUE-ARN>
   scratch = '/scratch'
+  errorStrategy 'retry'
+  maxRetries 3
 }
 
 params {
