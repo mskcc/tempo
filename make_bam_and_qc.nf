@@ -30,16 +30,24 @@ fastqFiles = Channel.empty()
 mappingFile = file(mappingPath)
 pairingfile = file(pairingPath)
 
-fastqFiles = extractFastq(mappingFile) 
-
-// Duplicate channel
-fastqFiles.into { fastqFiles; fastQCFiles; fastPFiles }
+fastqFiles = extractFastq(mappingFile)
 
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
 ================================================================================
 */
+
+
+fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets) }.set { groupedFastqs }
+
+groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
+fastPFiles = fastPFiles.transpose()
+fastqFiles = fastqFiles.transpose()
+
+if (params.debug) {
+  debug(groupedFastqsDebug)
+}
 
 // FastP - FastP on lane pairs, R1/R2
 
@@ -49,11 +57,12 @@ process FastP {
   publishDir params.outDir, mode: params.publishDirMode
 
   input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastPFiles
-
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
+    
   output:
     file("*.html") into fastPResults 
 
+  script:
   """
   fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
   """
@@ -103,27 +112,8 @@ process SortBAM {
   """
 }
 
-singleBam = Channel.create()
-singleBamDebug = Channel.create()
-groupedBam = Channel.create()
-groupedBamDebug = Channel.create()
-sortedBam.groupTuple(by:[0])
-  .choice(singleBam, groupedBam) {it[1].size() > 1 ? 1 : 0}
-singleBam = singleBam.map {
-  idSample, lane, bam, assay, targetFile ->
-  [idSample, lane, bam, assay, targetFile]
-}
-sortedBamDebug.groupTuple(by:[0])
-  .choice(singleBamDebug, groupedBamDebug) {it[1].size() > 1 ? 1 : 0}
-singleBamDebug = singleBamDebug.map {
-  idSample, lane, bam, assay, targetFile ->
-  [idSample, lane, bam, assay, targetFile]
-}
-
-if (params.debug) {
-  debug(groupedBamDebug);
-  debug(singleBamDebug);
-}   
+sortedBam.groupTuple().set { groupedBam }
+groupedBam.into { groupedBamDebug; groupedBam }
 
 process MergeBams {
   tag {idSample}
@@ -141,27 +131,7 @@ process MergeBams {
 }
 
 if (params.debug) {
-  debug(mergedBamDebug);
-}
-
-if (params.verbose) singleBam = singleBam.view {
-  "Single BAM:\n\
-  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
-  File  : [${it[2].fileName}]"
-}
-
-if (params.verbose) mergedBam = mergedBam.view {
-  "Merged BAM:\n\
-  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
-  File  : [${it[2]}]"
-}
-
-mergedBam = mergedBam.mix(singleBam)
-
-if (params.verbose) mergedBam = mergedBam.view {
-  "BAM for MarkDuplicates:\n\
-  ID    : Sample: ${it[0]}\tLane: ${it[1]}\t\n\
-  File  : [${it[2]}]"
+  debug(groupedBamDebug);
 }
 
 // GATK MarkDuplicates
