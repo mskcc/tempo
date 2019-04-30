@@ -402,7 +402,7 @@ process RunStrelka2 {
 
 // --- Process Delly and Manta VCFs 
 
-( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
+(sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
 
 process MergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
@@ -442,7 +442,7 @@ process MergeDellyAndManta {
 
 // --- Process Mutect2 and Strelka2 VCFs
 
-( sampleIdsForStrelkaMerge, bamFiles ) = bamFiles.into(2)
+(sampleIdsForStrelkaMerge, bamFiles) = bamFiles.into(2)
 
 process MergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
@@ -772,8 +772,8 @@ process RunConpair {
     ])
 
   output:
-    file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    file("${idTumor}.${idNormal}.concordance.txt"), file("${idTumor}.${idNormal}.contamination.txt") into conpairOutput
+    set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
+    set file("${idTumor}.${idNormal}.concordance.txt"), file("${idTumor}.${idNormal}.contamination.txt") into conpairOutput
 
   when: 'conpair' in tools
 
