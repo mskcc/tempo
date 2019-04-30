@@ -5,8 +5,8 @@
 
 aws.region = <AWS-REGION> 
 aws.client.storageEncryption = <STORAGE-ENCRYPTION>
-aws.mountPoint = '/scratch'
-workDir = <AWS-S3-WORKDIR> 
+aws.batch.volumes = ['/scratch']
+workDir = <AWS-S3-WORKDIR>
 outDir = <AWS-S3-OUTDIR>
 
 executor {
