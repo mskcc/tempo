@@ -442,23 +442,40 @@ def extractFastq(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    VaporwareUtils.checkNumberOfItem(row, 6)
+    checkNumberOfItem(row, 6)
     def idSample = row[0]
     def lane = row[1]
     def assay = row[2]
     def targetFile = row[3]
     targetFile = ""
     if ( targetFile ) {
-      targetFile = VaporwareUtils.returnFile(targetFile)
+      targetFile = returnFile(targetFile)
     }
-    def fastqFile1 = VaporwareUtils.returnFile(row[4])
+    def fastqFile1 = returnFile(row[4])
     def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = VaporwareUtils.returnFile(row[5])
+    def fastqFile2 = returnFile(row[5])
     def sizeFastqFile2 = fastqFile2.size()
 
-    VaporwareUtils.checkFileExtension(fastqFile1,".fastq.gz")
-    VaporwareUtils.checkFileExtension(fastqFile2,".fastq.gz")
+    checkFileExtension(fastqFile1,".fastq.gz")
+    checkFileExtension(fastqFile2,".fastq.gz")
 
     [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
   }
 }
+
+  // Check file extension
+  def checkFileExtension(it, extension) {
+    if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
+  }
+
+  // Check if a row has the expected number of item
+  def checkNumberOfItem(row, number) {
+    if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
+    return true
+  }
+
+  // Return file if it exists
+  def returnFile(it) {
+    if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
+    return file(it)
+  }
