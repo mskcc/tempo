@@ -812,7 +812,7 @@ process RunConpair {
     --markers=${markersBed} \
     --reference=${genomeFile} \
     --xmx_java=${javaMem} \
-    --outfile="${idTumor}.pileup
+    --outfile=${idTumor}.pileup
 
   ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
     --gatk=${gatkPath} \
