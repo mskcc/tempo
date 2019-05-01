@@ -143,7 +143,7 @@ process CreateScatteredIntervals {
 
   script:
   intervals = wgsIntervals
-  if(params.ngsType == "exome") {
+  if(params.assayType == "exome") {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -300,7 +300,7 @@ process RunManta {
   when: 'manta' in tools
   script:
   options = ""
-  if(params.ngsType == "exome") options = "--exome"
+  if(params.assayType == "exome") options = "--exome"
 
   """
   configManta.py \
@@ -368,10 +368,10 @@ process RunStrelka2 {
 
   script:
   options = "" 
-  if(params.ngsType == "exome") options = "--exome"
+  if(params.assayType == "exome") options = "--exome"
 
   intervals = wgsIntervals
-  if(params.ngsType == "exome") {
+  if(params.assayType == "exome") {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
