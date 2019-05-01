@@ -6,6 +6,7 @@
 aws.region = <AWS-REGION> 
 aws.client.storageEncryption = <STORAGE-ENCRYPTION>
 aws.batch.volumes = ['/scratch']
+// aws.mountPoint = '/scratch'
 workDir = <AWS-S3-WORKDIR>
 outDir = <AWS-S3-OUTDIR>
 
@@ -18,7 +19,7 @@ process {
   queue = <AWS-BATCH-QUEUE-ARN>
   scratch = '/scratch'
   errorStrategy 'retry'
-  maxRetries 3
+  maxRetries 99
 }
 
 params {
