@@ -1,2 +1,12 @@
-1234N	1234N_M1	exome		/juno/work/pi/cmopipeline/data/fastq/P1_R1.fastq.gz	/juno/work/pi/cmopipeline/data/fastq/P1_R2.fastq.gz
-1234T	1234T_M2	exome		/juno/work/pi/cmopipeline/data/fastq/P2_R1.fastq.gz	/juno/work/pi/cmopipeline/data/fastq/P2_R2.fastq.gz
+1234N	1234N_L001	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
+1234N	1234N_L002	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L002_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L002_R2_xxx.fastq.gz
+1234N	1234N_L004	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L004_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L004_R2_xxx.fastq.gz
+1234N	1234N_L007	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L007_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L007_R2_xxx.fastq.gz
+1234N	1234N_L008	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L008_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L008_R2_xxx.fastq.gz
+1234T	1234T_L001	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L001_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L001_R2_xxx.fastq.gz
+1234T	1234T_L002	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L002_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L002_R2_xxx.fastq.gz
+1234T	1234T_L003	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L003_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L003_R2_xxx.fastq.gz
+1234T	1234T_L005	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L005_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L005_R2_xxx.fastq.gz
+1234T	1234T_L006	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L006_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L006_R2_xxx.fastq.gz
+1234T	1234T_L007	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L007_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/tumor/tiny_t_L007_R2_xxx.fastq.gz
+1235N	1235N_L001	exome	agilent	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz	/juno/work/pi/cmopipeline/data/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
