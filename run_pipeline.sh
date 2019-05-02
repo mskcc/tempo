@@ -51,7 +51,7 @@ done
 
 
 
-if [ "$NEXTFLOW" = "" ] || [ "$ANALYSIS" = "" ] || [ "$MAPPING" = "" ] || [ "$PAIRING" = "" ];
+if [ "$NEXTFLOW" = "" ] || [ "$ANALYSIS" = "" ] || [ "$MAPPING" = "" ] || [ "$PAIRING" = "" ] || [ "$PROFILE" = "" ];
 then
     help
 fi
@@ -60,7 +60,6 @@ if [[ -n $1 ]]; then
     echo "Last line of file specified as non-opt/last argument:"
     tail -1 $1
 fi
-
 
 if [ "$ANALYSIS" = "make_bam" ]; 
 then
