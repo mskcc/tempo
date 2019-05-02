@@ -134,7 +134,7 @@ process CreateScatteredIntervals {
 
   script:
   intervals = wgsIntervals
-  if(params.exome) {
+  if(params.assayType == "exome") {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -247,7 +247,7 @@ process RunManta {
   // flag with --exome if exome
   script:
   options = ""
-  if (params.exome) options = "--exome"
+  if (params.assayType == "exome") options = "--exome"
   """
   configManta.py \
     ${options} \
@@ -307,10 +307,10 @@ process RunStrelka2 {
   
   script:
   options = ""
-  if (params.exome) options = "--exome"
+  if (params.assayType == "exome") options = "--exome"
 
   intervals = wgsIntervals
-  if(params.exome) {
+  if(params.assayType == "exome") {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -594,20 +594,37 @@ def extractBamFiles(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    VaporwareUtils.checkNumberOfItem(row, 8)
+    checkNumberOfItem(row, 8)
     def assay = row[0]
     def target = row[1]
     def idTumor = row[2]
     def idNormal = row[3]
-    def bamTumor = VaporwareUtils.returnFile(row[4])
-    def bamNormal = VaporwareUtils.returnFile(row[5])
-    def baiTumor = VaporwareUtils.returnFile(row[6])
-    def baiNormal = VaporwareUtils.returnFile(row[7])
+    def bamTumor = returnFile(row[4])
+    def bamNormal = returnFile(row[5])
+    def baiTumor = returnFile(row[6])
+    def baiNormal = returnFile(row[7])
 
-    VaporwareUtils.checkFileExtension(bamTumor,".bam")
-    VaporwareUtils.checkFileExtension(bamNormal,".bam")
-    VaporwareUtils.checkFileExtension(baiTumor,".bai")
-    VaporwareUtils.checkFileExtension(baiNormal,".bai")
+    checkFileExtension(bamTumor,".bam")
+    checkFileExtension(bamNormal,".bam")
+    checkFileExtension(baiTumor,".bai")
+    checkFileExtension(baiNormal,".bai")
     [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
   }
+}
+
+// Check file extension
+def checkFileExtension(it, extension) {
+  if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
+}
+
+// Check if a row has the expected number of item
+def checkNumberOfItem(row, number) {
+  if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
+    return true
+}
+
+// Return file if it exists
+def returnFile(it) {
+  if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
+    return file(it)
 }
