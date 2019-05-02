@@ -90,10 +90,9 @@ process DellyFilter {
   input:
     set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
-
   output:
-    file("*.filter.bcf") into dellyFilterOutput
-    file("*.filter.bcf.csi") into dellyFilterIndexedOutput
+    file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
+    file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyFilterIndexedOutput
 
   when: 'delly' in tools
 
@@ -131,7 +130,7 @@ process CreateScatteredIntervals {
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -144,7 +143,7 @@ process CreateScatteredIntervals {
 
   script:
   intervals = wgsIntervals
-  if(params.exome) {
+  if(params.assayType == "exome") {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -246,7 +245,6 @@ process CombineMutect2Vcf {
       referenceMap.genomeDict
     ])
 
-
   output:
     file("${outfile}") into mutect2CombinedVcfOutput
     file("${outfile}.tbi") into mutect2CombinedVcfOutputIndex
@@ -263,7 +261,9 @@ process CombineMutect2Vcf {
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
-    --check-ref s | \
+    --check-ref s \
+    --multiallelics -both | \
+  bcftools norm --rm-dup all | \
   bcftools view \
     --samples ${idNormal},${idTumor} \
     --output-type z \
@@ -300,7 +300,7 @@ process RunManta {
   when: 'manta' in tools
   script:
   options = ""
-  if(params.exome) options = "--exome"
+  if(params.assayType == "exome") options = "--exome"
 
   """
   configManta.py \
@@ -368,10 +368,10 @@ process RunStrelka2 {
 
   script:
   options = "" 
-  if(params.exome) options = "--exome"
+  if(params.assayType == "exome") options = "--exome"
 
   intervals = wgsIntervals
-  if(params.exome) {
+  if(params.assayType == "exome") {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -402,10 +402,10 @@ process RunStrelka2 {
 
 // --- Process Delly and Manta VCFs 
 
-( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
+(sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
 
 process MergeDellyAndManta {
-  tag { idTumor + "_" + idNormal }
+  tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output"
 
@@ -442,7 +442,7 @@ process MergeDellyAndManta {
 
 // --- Process Mutect2 and Strelka2 VCFs
 
-( sampleIdsForStrelkaMerge, bamFiles ) = bamFiles.into(2)
+(sampleIdsForStrelkaMerge, bamFiles) = bamFiles.into(2)
 
 process MergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
@@ -574,7 +574,7 @@ process CombineChannel {
 (sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
 
 process RunVcf2Maf {
-  tag { idTumor + "_" + idNormal }
+  tag {idTumor + "_" + idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations"
 
@@ -754,6 +754,95 @@ process RunHlaPolysolver {
   """
 }
 
+// --- Run Conpair
+
+(bamsForConpair, bamFiles) = bamFiles.into(2)
+
+process RunConpair {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair"
+
+  input:
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForConpair
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
+    set file("${idTumor}.${idNormal}.concordance.txt"), file("${idTumor}.${idNormal}.contamination.txt") into conpairOutput
+
+  when: 'conpair' in tools
+
+  script:
+  gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
+  conpairPath = "/usr/bin/conpair"
+
+  // These marker files are in the conpair container
+  markersBed = ""
+  markersTxt = ""
+
+  if(params.genome == "GRCh37") {
+    markersBed = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.bed"
+    markersTxt = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.txt"
+  }
+  else {
+    markersBed = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.bed"
+    markersTxt = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.txt"
+  }
+
+  mem = 0
+  if(params.mem_per_core) {
+    mem = task.memory.toString().split(" ")[0].toInteger() - 1
+  }
+  else {
+    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+  }
+
+  javaMem = "${mem}g"
+
+  """
+  # Make pileup files
+  ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
+    --gatk=${gatkPath} \
+    --bam=${bamTumor} \
+    --markers=${markersBed} \
+    --reference=${genomeFile} \
+    --xmx_java=${javaMem} \
+    --outfile=${idTumor}.pileup
+
+  ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
+    --gatk=${gatkPath} \
+    --bam=${bamNormal} \
+    --markers=${markersBed} \
+    --reference=${genomeFile} \
+    --xmx_java=${javaMem} \
+    --outfile=${idNormal}.pileup
+
+  # Make pairing file
+  echo "${idNormal}\t${idTumor}" > pairing.txt
+
+  # Verify concordance
+  ${conpairPath}/scripts/verify_concordances.py \
+    --tumor_pileup=${idTumor}.pileup \
+    --normal_pileup=${idNormal}.pileup \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --normal_homozygous_markers_only \
+    --outpre=${idTumor}.${idNormal}
+
+  ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
+    --tumor_pileup=${idTumor}.pileup \
+    --normal_pileup=${idNormal}.pileup \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --outpre=${idTumor}.${idNormal}
+  """
+}
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
@@ -816,19 +905,36 @@ def extractBamFiles(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
   .map { row ->
-    VaporwareUtils.checkNumberOfItem(row, 8)
+    checkNumberOfItem(row, 8)
     def assay = row[0]
     def target = row[1]
     def idTumor = row[2]
     def idNormal = row[3]
-    def bamTumor = VaporwareUtils.returnFile(row[4])
-    def bamNormal = VaporwareUtils.returnFile(row[5])
-    def baiTumor = VaporwareUtils.returnFile(row[6])
-    def baiNormal = VaporwareUtils.returnFile(row[7])
-    VaporwareUtils.checkFileExtension(bamTumor,".bam")
-    VaporwareUtils.checkFileExtension(bamNormal,".bam")
-    VaporwareUtils.checkFileExtension(baiTumor,".bai")
-    VaporwareUtils.checkFileExtension(baiNormal,".bai")
+    def bamTumor = returnFile(row[4])
+    def bamNormal = returnFile(row[5])
+    def baiTumor = returnFile(row[6])
+    def baiNormal = returnFile(row[7])
+    checkFileExtension(bamTumor,".bam")
+    checkFileExtension(bamNormal,".bam")
+    checkFileExtension(baiTumor,".bai")
+    checkFileExtension(baiNormal,".bai")
     [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
   }
+}
+
+// Check file extension
+def checkFileExtension(it, extension) {
+  if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
+}
+
+// Check if a row has the expected number of item
+def checkNumberOfItem(row, number) {
+  if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
+    return true
+}
+
+// Return file if it exists
+def returnFile(it) {
+  if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
+    return file(it)
 }
