@@ -50,7 +50,7 @@ if (params.debug) {
 }
 
 // FastP - FastP on lane pairs, R1/R2
-
+/*
 process FastP {
   tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
@@ -67,7 +67,7 @@ process FastP {
   fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
   """
 }
-
+*/
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
