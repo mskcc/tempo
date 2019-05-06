@@ -217,6 +217,8 @@ process CombineHaplotypecallerVcf {
   bcftools sort \
     --output-type z \
     --output-file ${outfile}
+
+  tabix --preset vcf ${outfile}
   """
 }
 
