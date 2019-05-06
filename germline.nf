@@ -203,6 +203,7 @@ process CombineHaplotypecallerVcf {
 
   output:
     file("${outfile}") into haplotypecallerCombinedVcfOutput
+    file("${outfile}.tbi") into haplotypecallerCombinedVcfOutputIndex
 
   when: 'haplotypecaller' in tools
 
@@ -300,8 +301,8 @@ process RunStrelka2 {
       ])
 
   output:
-    file("*.vcf.gz") into strelkaOutput
-    file("*.vcf.gz.tbi") into strelkaIndexedOutput
+    set file("*_genome.vcf.gz"), file("*_genome.vcf.gz.tbi") into strelkaOutputGenome
+    set file("*_variants.vcf.gz"), file("*_variants.vcf.gz.tbi") into strelkaOutputVariants
 
   when: 'strelka2' in tools
   
@@ -333,6 +334,48 @@ process RunStrelka2 {
   """
 }
 
+(sampleIdsForStrelkaMerge, bamFiles) = bamFiles.into(2)
+
+process MergeStrelka2Vcfs {
+  tag {idTumor + "_vs_" + idNormal}
+
+  input: 
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForStrelkaMerge
+    set file(strelkaGenome), file(strelkaGenomeIndex) from strelkaOutputGenome
+    set file(strelkaVariants), file(strelkaVariantsIndex) from strelkaOutputVariants
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    set file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutput
+
+  when: 'strelka2' in tools
+
+  script:
+  prefix = "${strelkaGenome}".replaceFirst(".vcf.gz", "")
+  outfile = "${prefix}.filtered.vcf.gz"
+  """
+  echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
+  
+  bcftools concat \
+    --allow-overlaps \
+    ${strelkaGenome} ${strelkaVariants} | \
+  bcftools reheader \
+    --samples samples.txt | \
+  bcftools sort | \
+  bcftools norm \
+    --fasta-ref ${genomeFile} \
+    --check-ref s \
+    --output-type z \
+    --output ${outfile}
+
+  tabix --preset vcf ${outfile}
+  """
+}
+
 ( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
 
 process CombineChannel {
@@ -340,8 +383,15 @@ process CombineChannel {
 
   input:
     file(haplotypecallercombinedVCF) from haplotypecallerCombinedVcfOutput
+    file(haplotypecallercombinedVCFIndex) from haplotypecallerCombinedVcfOutputIndex
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
-    file(strelkaFile) from strelkaOutput
+    set file(strelkaVCF), file(strelkaVCFIndex) from strelkaOutput
+    set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
+      referenceMap.repeatMasker,
+      referenceMap.repeatMaskerIndex,
+      referenceMap.mapabilityBlacklist,
+      referenceMap.mapabilityBlacklistIndex
+    ])
 
   output:
     set file(haplotypecallercombinedVCF), file(strelkaFile) into vcfOutputSet
@@ -350,73 +400,67 @@ process CombineChannel {
 
   script:
   """
-  echo 'placeholder process to make a channel containing vcf data'
+  isec_dir = "${idTumor}.isec"
   """
-}
+  echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
+  echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
+  echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
 
-(sampleIdsForBcfToolsFilterNorm, sampleIdsForBcfToolsMerge, bamFiles) = bamFiles.into(3)
-
-process RunBcfToolsFilterNorm {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_output"
-
-  input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilterNorm
-    each file(vcf) from vcfOutputSet.flatten()
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict
-    ])
-
-  output:
-    file("*filtered.norm.vcf.gz") into vcfFilterNormOutput
-
-  when: "strelka2" in tools && "haplotypecaller" in tools
-
-  outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.norm.vcf.gz')
-
-  script:
-  """
-  tabix --preset vcf ${vcf}
-  bcftools filter \
-    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+  bcftools isec \
     --output-type z \
-    ${vcf} | \
-  bcftools norm \
-    --fasta-ref ${genomeFile} \
+    --prefix ${isec_dir} \
+    ${mutect2combinedVCF} ${strelkaVCF}
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0002.vcf.gz \
+    --mark-sites \"+HaplotypeCaller;Strelka2\" \
     --output-type z \
-    --output ${outfile}
-  """
-}
+    --output ${isec_dir}/0002.annot.vcf.gz \
+    ${isec_dir}/0002.vcf.gz
 
-process RunBcfToolsMerge {
-  tag {idTumor + "_vs_" + idNormal}
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0000.vcf.gz \
+    --mark-sites +HaplotypeCaller \
+    --output-type z \
+    --output ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0000.vcf.gz
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_merged_output"
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0001.vcf.gz \
+    --mark-sites +Strelka2 \
+    --output-type z \
+    --output ${isec_dir}/0001.annot.vcf.gz \
+    ${isec_dir}/0001.vcf.gz
 
-  input:
-    file('*.vcf.gz') from vcfFilterNormOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsMerge
+  tabix --preset vcf ${isec_dir}/0000.annot.vcf.gz
+  tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
+  tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
 
-  output:
-    file("*filtered.norm.merge.vcf") into vcfMergedOutput
-
-  when: "strelka2" in tools && "haplotypecaller" in tools
-
-  script:
-  """
-  for f in *.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
-  bcftools merge \
-    --force-samples \
-    --merge none \
+  bcftools concat \
+    --allow-overlaps \
+    ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0001.annot.vcf.gz \
+    ${isec_dir}/0002.annot.vcf.gz | \
+  bcftools sort | \
+  bcftools annotate \
+    --header-lines vcf.rm.header \
+    --annotations ${repeatMasker} \
+    --columns CHROM,FROM,TO,RepeatMasker | \
+  bcftools annotate \
+    --header-lines vcf.map.header \
+    --annotations ${mapabilityBlacklist} \
+    --columns CHROM,FROM,TO,EncodeDacMapability \
     --output-type v \
-    --output ${idNormal}.haplotypecaller.strelka2.filtered.norm.merge.vcf \
-    *.vcf.gz
+    --output ${idTumor}.union.vcf
+
+  bcftools filter \
+    --include 'FILTER=\"PASS\"' \
+    --output-type v \
+    --output ${idTumor}.union.pass.vcf \
+    ${idTumor}.union.vcf
   """
 }
 
@@ -430,13 +474,12 @@ process RunVcf2Maf {
   input:
     file(vcfMerged) from vcfMergedOutput
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vcf2mafFilterVcf), file(vcf2mafFilterVcfIndex), file(vepCache) from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
-      referenceMap.vcf2mafFilterVcf,
-      referenceMap.vcf2mafFilterVcfIndex,
-      referenceMap.vepCache
+      referenceMap.vepCache,
+      referenceMap.isoforms
     ])
 
   output:
@@ -450,14 +493,20 @@ process RunVcf2Maf {
   script:
   """
   perl /opt/vcf2maf.pl \
-    --input-vcf ${vcfMerged} \
-    --tumor-id ${idNormal} \
-    --normal-id ${idNormal} \
+    --maf-center MSKCC-CMO \
     --vep-path /opt/vep/src/ensembl-vep \
     --vep-data ${vepCache} \
-    --filter-vcf ${vcf2mafFilterVcf} \
+    --vep-forks 10 \
+    --tumor-id ${idNormal} \
+    --normal-id ${idNormal} \
+    --vcf-tumor-id ${idNormal} \
+    --vcf-normal-id ${idNormal} \
+    --input-vcf ${vcfMerged} \
+    --ref-fasta ${genomeFile} \
+    --retain-info HaplotypeCaller,Strelka2,RepeatMasker,EncodeDacMapability \
+    --custom-enst ${isoforms} \
     --output-maf ${outfile} \
-    --ref-fasta ${genomeFile}
+    --filter-vcf 0
   """
 }
 
