@@ -200,6 +200,11 @@ process CombineHaplotypecallerVcf {
     file(haplotypecallerVcf) from haplotypecallerOutput.collect()
     file(haplotypecallerVcfIndex) from haplotypecallerIndexedOutput.collect()
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForHaplotypecallerCombine
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
 
   output:
     file("${outfile}") into haplotypecallerCombinedVcfOutput
