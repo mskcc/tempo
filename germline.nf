@@ -220,7 +220,6 @@ process CombineHaplotypecallerVcf {
     --check-ref s \
     --multiallelics -both | \
   bcftools norm --rm-dup all \
-    --samples ${idNormal},${idTumor} \
     --output z \
     --output-file ${outfile}
 
