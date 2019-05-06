@@ -394,12 +394,11 @@ process CombineChannel {
     ])
 
   output:
-    set file(haplotypecallercombinedVCF), file(strelkaFile) into vcfOutputSet
+    file("${idTumor}.union.pass.vcf") into vcfMergedOutput
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools
 
-  script:
-  """
+  script:  
   isec_dir = "${idTumor}.isec"
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
@@ -409,7 +408,7 @@ process CombineChannel {
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
-    ${mutect2combinedVCF} ${strelkaVCF}
+    ${haplotypecallercombinedVCF} ${strelkaVCF}
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -624,15 +623,18 @@ def defineReferenceMap() {
   ]
 
   if (!params.test) {
-    result_array << ['vcf2mafFilterVcf'         : checkParamReturnFile("vcf2mafFilterVcf")]
-    result_array << ['vcf2mafFilterVcfIndex'    : checkParamReturnFile("vcf2mafFilterVcfIndex")]
     result_array << ['vepCache'                 : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf'        : checkParamReturnFile("facetsVcf")]
-    // MSI Sensor
-    result_array << ['msiSensorList'    : checkParamReturnFile("msiSensorList")]
     // intervals file for spread-and-gather processes
     result_array << ['intervals'        : checkParamReturnFile("intervals")]
+    // files for CombineChannel, needed by bcftools annotate
+    result_array << ['repeatMasker'    : checkParamReturnFile("repeatMasker")]
+    result_array << ['repeatMaskerIndex'    : checkParamReturnFile("repeatMaskerIndex")]
+    result_array << ['mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist")]
+    result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
+    // isoforms needed by vcf2maf
+    result_array << ['isoforms' : checkParamReturnFile("isoforms")]
   }
   return result_array
 }
