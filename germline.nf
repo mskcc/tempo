@@ -225,8 +225,8 @@ process CombineHaplotypecallerVcf {
     --check-ref s \
     --multiallelics -both | \
   bcftools norm --rm-dup all \
-    --output z \
-    --output-file ${outfile}
+    --output-type z \
+    --output ${outfile}
 
   tabix --preset vcf ${outfile}
   """
