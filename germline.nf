@@ -214,8 +214,14 @@ process CombineHaplotypecallerVcf {
   bcftools concat \
     --allow-overlaps \
     ${haplotypecallerVcf} | \
-  bcftools sort \
-    --output-type z \
+  bcftools sort | \
+  bcftools norm \
+    --fasta-ref ${genomeFile} \
+    --check-ref s \
+    --multiallelics -both | \
+  bcftools norm --rm-dup all \
+    --samples ${idNormal},${idTumor} \
+    --output z \
     --output-file ${outfile}
 
   tabix --preset vcf ${outfile}
