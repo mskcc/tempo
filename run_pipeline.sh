@@ -70,3 +70,8 @@ if [ "$ANALYSIS" = "somatic" ];
 then
     eval $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE && $NEXTFLOW run somatic.nf --sample make_bam_output.tsv -profile $PROFILE
 fi
+
+if [ "$ANALYSIS" = "germline" ];
+then
+    eval $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE && $NEXTFLOW run germline.nf --sample make_bam_output.tsv -profile $PROFILE
+fi
