@@ -370,7 +370,7 @@ process MergeStrelka2Vcfs {
   prefix = "${strelkaGenome}".replaceFirst(".vcf.gz", "")
   outfile = "${prefix}.filtered.vcf.gz"
   """
-  echo -e 'TUMOR ${idNormal}\\nNORMAL ${idNormal}' > samples.txt
+  echo -e 'NORMAL ${idNormal}' > samples.txt
   
   bcftools concat \
     --allow-overlaps \
