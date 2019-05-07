@@ -54,7 +54,7 @@ if (params.debug) {
 process FastP {
   tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
-  publishDir params.outDir, mode: params.publishDirMode
+  publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
 
   input:
     set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
@@ -139,7 +139,7 @@ if (params.debug) {
 process MarkDuplicates {
   tag {idSample}
 
-   publishDir params.outDir, mode: params.publishDirMode
+   publishDir "${params.outDir}/MarkDup/${idSample}", mode: params.publishDirMode
 
   input:
     set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
@@ -226,7 +226,7 @@ debug(recalibrationTableDebug)
 process RecalibrateBam {
   tag {idSample}
 
-  publishDir params.outDir, mode: params.publishDirMode
+  publishDir "${params.outDir}/BQSR/${idSample}", mode: params.publishDirMode
 
   input:
     set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
@@ -360,7 +360,7 @@ ignore_read_groups = Channel.from( true , false )
 process Alfred {
   tag {idSample}
 
-  publishDir params.outDir, mode: params.publishDirMode
+  publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
   
   input:
     each ignore_rg from ignore_read_groups
