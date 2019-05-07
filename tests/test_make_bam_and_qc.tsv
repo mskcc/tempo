@@ -10,3 +10,4 @@
 1234T	1234T_L006	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L006_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L006_R2_xxx.fastq.gz
 1234T	1234T_L007	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L007_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L007_R2_xxx.fastq.gz
 1235N	1235N_L001	exome	agilent	test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
+1235T	1235T_L001	exome	agilent12	test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
