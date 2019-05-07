@@ -12,7 +12,7 @@ function help () {
   echo "    run_pipeline.sh --nextflow=</path/to/nextflow> --analysis=<analysis> --mapping=/path/to/mapping_file.tsv --pairing=/path/to/pairing_file.tsv"
   echo "Options:"
   echo "    -n --nextflow: path to nextflow executable"
-  echo "    -a --analysis: somatic or germline"
+  echo "    -a --analysis: make_bam, somatic, germline"
   echo "    -m --mapping: mapping file"
   echo "    -p --pairing: pairing file"
   echo "    -pr --profile: profile"
