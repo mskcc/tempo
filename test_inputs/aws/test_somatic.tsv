@@ -1,1 +1,2 @@
+ASSAY	TARGET	TUMOR_ID	NORMAL_ID	TUMOR_BAM	NORMAL_BAM	TUMOR_BAI	NORMAL_BAI
 exome	agilent	Seq02	Seq01	s3://testbucketcmo/example_data/bam/tumor_sample.sorted.md.bqsr.bam	s3://testbucketcmo/example_data/bam/normal_sample.sorted.md.bqsr.bam	s3://testbucketcmo/example_data/bam/tumor_sample.sorted.md.bqsr.bam.bai	s3://testbucketcmo/example_data/bam/normal_sample.sorted.md.bqsr.bam.bai

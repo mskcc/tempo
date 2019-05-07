@@ -1,1 +1,2 @@
+ASSAY	TARGET	TUMOR_ID	NORMAL_ID	TUMOR_BAM	NORMAL_BAM	TUMOR_BAI	NORMAL_BAI
 exome	agilent	Seq02	Seq01	/juno/work/pi/cmopipeline/data/uncategorized/re-run/tumor_sample.sorted.md.bqsr.bam	/juno/work/pi/cmopipeline/data/uncategorized/re-run/normal_sample.sorted.md.bqsr.bam	/juno/work/pi/cmopipeline/data/uncategorized/re-run/tumor_sample.sorted.md.bqsr.bam.bai	/juno/work/pi/cmopipeline/data/uncategorized/re-run/normal_sample.sorted.md.bqsr.bam.bai
