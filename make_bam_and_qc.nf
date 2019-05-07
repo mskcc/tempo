@@ -45,10 +45,6 @@ groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
 fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
 
-if (params.debug) {
-  debug(groupedFastqsDebug)
-}
-
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
@@ -111,10 +107,6 @@ process MergeBams {
   """
 }
 
-if (params.debug) {
-  debug(groupedBamDebug);
-}
-
 // GATK MarkDuplicates
 
 process MarkDuplicates {
@@ -149,20 +141,8 @@ duplicateMarkedBams = duplicateMarkedBams.map {
     [idSample, bam, bai, assay, targetFile]
 }
 
-(mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
-/*
-if (params.verbose) mdBamToJoin = mdBamToJoin.view {
-  "MD Bam to Join BAM:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[3].fileName}]"
-}
+(mdBam, mdBamToJoin, mdDebug) = duplicateMarkedBams.into(3)
 
-if (params.verbose) mdBam = mdBam.view {
-  "BAM for MarkDuplicates:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[3].fileName}]"
-}
-*/
 process CreateRecalibrationTable {
   tag {idSample}
 
@@ -200,6 +180,8 @@ process CreateRecalibrationTable {
 
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
+(recalibrationTable, recalibrationTableDebug) = recalibrationTable.into(2)
+
 process RecalibrateBam {
   tag {idSample}
 
@@ -217,11 +199,11 @@ process RecalibrateBam {
   output:
     set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
-    val idSample into currentSample
+    set idSample into currentSample
     file("${idSample}.recal.bam") into currentBam
     file("${idSample}.recal.bai") into currentBai
-    val assay into assays
-    val targetFile into targets
+    set assay into assays
+    set targetFile into targets
 
   script:
   """
@@ -245,38 +227,37 @@ process GenerateOutput {
 
   exec:
   File file = new File(outname)
-  def mapping = []
+  def mapping_arr = []
   for (i = 0; i < sampleIds.size(); i++) {
     map = [:]
-    mapping << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i], 'assay': assay[i], 'target': targetFile[i]]
+    mapping_arr << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i], 'assay': assay[i], 'target': targetFile[i]]
   }
-  mapping = Channel.from(mapping)
-  
+  mapping = Channel.from(mapping_arr)
   pairing = extractPairing(pairingfile)
-  pairing = Channel.from(pairing)
-  pairingTumor = pairing.map({ it.put("sampleId", it.remove('tumorId')); it })
+  pairingT = Channel.from(pairing)
+  pairingTumor = pairingT.map({ it.put("sampleId", it.remove('normalId')); it })
 
-  (mapping, mappingT, mappingN) = mapping.into(3)
+  (mappingT, mappingN) = mapping.into(2)
 
   mergedchannel =
-        mappingT
-        .concat(pairingTumor)
+        pairingTumor
+        .concat(mappingT)
         .groupBy( { item -> item.sampleId } )
         .flatMap({item ->
             item.findResults { sampleId, entries ->
                 mergedItem = [:]
-                mergedItem.tumorId = sampleId
+                mergedItem.normalId = sampleId
                 entries.each { entry ->
                     entry.each { key, val ->
                         if(key == "sampleId") return;
-                        if(key == "normalId") {
+                        if(key == "tumorId") {
                             mergedItem["sampleId"] = val
                         }
                         else if(key == "bam") {
-                            mergedItem['tumorBam'] = val
+                            mergedItem['normalBam'] = val
                         }
                         else if(key == "bai") {
-                            mergedItem["tumorBai"] = val
+                            mergedItem["normalBai"] = val
                         }
                         else {
                             mergedItem[key] = val
@@ -287,24 +268,20 @@ process GenerateOutput {
                     return mergedItem
                 }
             }
-        })
-
-    mergedchannel2 =
-        mergedchannel
-        .concat(mappingN)
+        }).concat(mappingN)
         .groupBy( {item -> item.sampleId } )
         .flatMap({item ->
             item.findResults { sampleId, entries ->
                 mergedItem = [:]
-                mergedItem.normalId = sampleId
+                mergedItem.tumorId = sampleId
                 entries.each { entry ->
                     entry.each { key, val ->
                         if(key == 'sampleId') return;
                         if(key == 'bam') {
-                            mergedItem['normalBam'] = val
+                            mergedItem['tumorBam'] = val
                         }
                         else if(key == 'bai') {
-                            mergedItem['normalBai'] = val
+                            mergedItem['tumorBai'] = val
                         }
                         else {
                             mergedItem[key] = val
@@ -318,20 +295,19 @@ process GenerateOutput {
         })
 
   if (workflow.profile == 'awsbatch') {
-    mergedchannel2.subscribe { Object obj ->
-      file.newWriter().withWriter { out ->
+    mergedchannel.subscribe { Object obj ->
+      file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\ts3:/${obj['tumorBam']}\ts3:/${obj['normalBam']}\ts3:/${obj['tumorBai']}\ts3:/${obj['normalBai']}"
       }
     }
   }
   else {
-    mergedchannel2.subscribe { Object obj ->
-      file.newWriter().withWriter { out ->
+    mergedchannel.subscribe { Object obj ->
+      file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
       }
     }
   }
-
 }
 
 // FastP - FastP on lane pairs, R1/R2
@@ -429,16 +405,6 @@ def extractPairing(tsvFile) {
   return res;
 }
 
-def convertResultToMap(result) {
-  result.map{
-    row ->
-    def sampleId = row[0]
-    def bam = row[1]
-    def bai = row[2]
-    ['sampleId':sampleId, 'bam':bam, 'bai':bai]
-  }
-}
-
 def extractFastq(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t')
@@ -448,10 +414,6 @@ def extractFastq(tsvFile) {
     def lane = row[1]
     def assay = row[2]
     def targetFile = row[3]
-    targetFile = ""
-    if ( targetFile ) {
-      targetFile = returnFile(targetFile)
-    }
     def fastqFile1 = returnFile(row[4])
     def sizeFastqFile1 = fastqFile1.size()
     def fastqFile2 = returnFile(row[5])
