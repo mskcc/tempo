@@ -49,25 +49,6 @@ if (params.debug) {
   debug(groupedFastqsDebug)
 }
 
-// FastP - FastP on lane pairs, R1/R2
-/*
-process FastP {
-  tag {lane}   // The tag directive allows you to associate each process executions with a custom label
-
-  publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
-
-  input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
-    
-  output:
-    file("*.html") into fastPResults 
-
-  script:
-  """
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
-  """
-}
-*/
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
@@ -352,6 +333,26 @@ process GenerateOutput {
   }
 
 }
+
+// FastP - FastP on lane pairs, R1/R2
+
+process FastP {
+  tag {lane}   // The tag directive allows you to associate each process executions with a custom label
+
+  publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
+
+  input:
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
+    
+  output:
+    file("*.html") into fastPResults 
+
+  script:
+  """
+  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+  """
+}
+
 
 ignore_read_groups = Channel.from( true , false )
 
