@@ -55,7 +55,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process DellyCall {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
   input:
     each svType from svTypes
@@ -85,7 +85,7 @@ process DellyCall {
 process DellyFilter {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
@@ -116,7 +116,7 @@ process DellyFilter {
 process CreateScatteredIntervals {
   tag {idTumor + "_vs_" + idNormal}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals"
+  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
@@ -169,7 +169,7 @@ if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal + "_" + intervalBed.baseName}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
+  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
@@ -205,7 +205,7 @@ process RunMutect2 {
 process RunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
@@ -233,7 +233,7 @@ process RunMutect2Filter {
 process CombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     file(mutect2Vcf) from mutect2FilteredOutput.collect()
@@ -279,7 +279,7 @@ process CombineMutect2Vcf {
 process RunManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -339,7 +339,7 @@ process RunManta {
 process RunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
@@ -407,7 +407,7 @@ process RunStrelka2 {
 process MergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
 
   input:
     file(dellyFilterData) from dellyFilterOutput.collect()
@@ -574,9 +574,9 @@ process CombineChannel {
 (sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
 
 process RunVcf2Maf {
-  tag {idTumor + "_" + idNormal}
+  tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations"
+  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
 
   input:
     file(vcfMerged) from vcfMergedOutput
@@ -622,7 +622,7 @@ process RunVcf2Maf {
 process DoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSnpPileup
@@ -649,7 +649,7 @@ process DoSnpPileup {
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
@@ -692,7 +692,7 @@ process DoFacets {
 process RunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
@@ -725,7 +725,7 @@ process RunMsiSensor {
 process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
@@ -761,7 +761,7 @@ process RunHlaPolysolver {
 process RunConpair {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForConpair
