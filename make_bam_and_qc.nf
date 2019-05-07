@@ -395,10 +395,10 @@ def debug(channel) {
 def extractPairing(tsvFile) {
   res = []
   Channel.from(tsvFile)
-  .splitCsv(sep: '\t')
+  .splitCsv(sep: '\t', header: true)
   .map { row ->
-    def idNormal = row[0]
-    def idTumor = row[1]
+    def idNormal = row.NORMAL_ID
+    def idTumor = row.TUMOR_ID
     res << ['tumorId':idTumor, 'normalId':idNormal]
   }
   return res;
@@ -406,16 +406,16 @@ def extractPairing(tsvFile) {
 
 def extractFastq(tsvFile) {
   Channel.from(tsvFile)
-  .splitCsv(sep: '\t')
+  .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 6)
-    def idSample = row[0]
-    def lane = row[1]
-    def assay = row[2]
-    def targetFile = row[3]
-    def fastqFile1 = returnFile(row[4])
+    def idSample = row.SAMPLE
+    def lane = row.LANE
+    def assay = row.ASSAY
+    def targetFile = row.TARGET
+    def fastqFile1 = returnFile(row.FASTQ_PE1)
     def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = returnFile(row[5])
+    def fastqFile2 = returnFile(row.FASTQ_PE2)
     def sizeFastqFile2 = fastqFile2.size()
 
     checkFileExtension(fastqFile1,".fastq.gz")
