@@ -592,18 +592,17 @@ def extractBamFiles(tsvFile) {
   // Channeling the TSV file containing FASTQ.
   // Format is: "assay targets idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
   Channel.from(tsvFile)
-  .splitCsv(sep: '\t')
+  .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 8)
-    def assay = row[0]
-    def target = row[1]
-    def idTumor = row[2]
-    def idNormal = row[3]
-    def bamTumor = returnFile(row[4])
-    def bamNormal = returnFile(row[5])
-    def baiTumor = returnFile(row[6])
-    def baiNormal = returnFile(row[7])
-
+    def assay = row.ASSAY
+    def target = row.TARGET
+    def idTumor = row.TUMOR_ID
+    def idNormal = row.NORMAL_ID
+    def bamTumor = returnFile(row.TUMOR_BAM)
+    def bamNormal = returnFile(row.NORMAL_BAM)
+    def baiTumor = returnFile(row.TUMOR_BAI)
+    def baiNormal = returnFile(row.NORMAL_BAI)
     checkFileExtension(bamTumor,".bam")
     checkFileExtension(bamNormal,".bam")
     checkFileExtension(baiTumor,".bai")
