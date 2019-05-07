@@ -370,7 +370,7 @@ process MergeStrelka2Vcfs {
   prefix = "${strelkaGenome}".replaceFirst(".vcf.gz", "")
   outfile = "${prefix}.filtered.vcf.gz"
   """
-  echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
+  echo -e 'TUMOR ${idNormal}\\nNORMAL ${idNormal}' > samples.txt
   
   bcftools concat \
     --allow-overlaps \
@@ -465,13 +465,13 @@ process CombineChannel {
     --annotations ${mapabilityBlacklist} \
     --columns CHROM,FROM,TO,EncodeDacMapability \
     --output-type v \
-    --output ${idTumor}.union.vcf
+    --output ${idNormal}.union.vcf
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
-    --output ${idTumor}.union.pass.vcf \
-    ${idTumor}.union.vcf
+    --output ${idNormal}.union.pass.vcf \
+    ${idNormal}.union.vcf
   """
 }
 
