@@ -45,10 +45,6 @@ groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
 fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
 
-if (params.debug) {
-  debug(groupedFastqsDebug)
-}
-
 // FastP - FastP on lane pairs, R1/R2
 
 process FastP {
@@ -130,10 +126,6 @@ process MergeBams {
   """
 }
 
-if (params.debug) {
-  debug(groupedBamDebug);
-}
-
 // GATK MarkDuplicates
 
 process MarkDuplicates {
@@ -168,20 +160,8 @@ duplicateMarkedBams = duplicateMarkedBams.map {
     [idSample, bam, bai, assay, targetFile]
 }
 
-(mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
-/*
-if (params.verbose) mdBamToJoin = mdBamToJoin.view {
-  "MD Bam to Join BAM:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[3].fileName}]"
-}
+(mdBam, mdBamToJoin, mdDebug) = duplicateMarkedBams.into(3)
 
-if (params.verbose) mdBam = mdBam.view {
-  "BAM for MarkDuplicates:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[3].fileName}]"
-}
-*/
 process CreateRecalibrationTable {
   tag {idSample}
 
@@ -220,8 +200,6 @@ process CreateRecalibrationTable {
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
 (recalibrationTable, recalibrationTableDebug) = recalibrationTable.into(2)
-
-debug(recalibrationTableDebug)
 
 process RecalibrateBam {
   tag {idSample}
@@ -276,9 +254,9 @@ process GenerateOutput {
   mapping = Channel.from(mapping_arr)
   pairing = extractPairing(pairingfile)
   pairingT = Channel.from(pairing)
-  pairingTumor = pairingT.map({ it.put("sampleId", it.remove('tumorId')); it })
+  pairingTumor = pairingT.map({ it.put("sampleId", it.remove('normalId')); it })
 
-  (mapping, mappingT, mappingN) = mapping.into(3)
+  (mappingT, mappingN) = mapping.into(2)
 
   mergedchannel =
         pairingTumor
@@ -287,18 +265,18 @@ process GenerateOutput {
         .flatMap({item ->
             item.findResults { sampleId, entries ->
                 mergedItem = [:]
-                mergedItem.tumorId = sampleId
+                mergedItem.normalId = sampleId
                 entries.each { entry ->
                     entry.each { key, val ->
                         if(key == "sampleId") return;
-                        if(key == "normalId") {
+                        if(key == "tumorId") {
                             mergedItem["sampleId"] = val
                         }
                         else if(key == "bam") {
-                            mergedItem['tumorBam'] = val
+                            mergedItem['normalBam'] = val
                         }
                         else if(key == "bai") {
-                            mergedItem["tumorBai"] = val
+                            mergedItem["normalBai"] = val
                         }
                         else {
                             mergedItem[key] = val
@@ -309,24 +287,20 @@ process GenerateOutput {
                     return mergedItem
                 }
             }
-        })
-
-    mergedchannel2 =
-        mergedchannel
-        .concat(mappingN)
+        }).concat(mappingN)
         .groupBy( {item -> item.sampleId } )
         .flatMap({item ->
             item.findResults { sampleId, entries ->
                 mergedItem = [:]
-                mergedItem.normalId = sampleId
+                mergedItem.tumorId = sampleId
                 entries.each { entry ->
                     entry.each { key, val ->
                         if(key == 'sampleId') return;
                         if(key == 'bam') {
-                            mergedItem['normalBam'] = val
+                            mergedItem['tumorBam'] = val
                         }
                         else if(key == 'bai') {
-                            mergedItem['normalBai'] = val
+                            mergedItem['tumorBai'] = val
                         }
                         else {
                             mergedItem[key] = val
@@ -340,14 +314,14 @@ process GenerateOutput {
         })
 
   if (workflow.profile == 'awsbatch') {
-    mergedchannel2.subscribe { Object obj ->
+    mergedchannel.subscribe { Object obj ->
       file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\ts3:/${obj['tumorBam']}\ts3:/${obj['normalBam']}\ts3:/${obj['tumorBai']}\ts3:/${obj['normalBai']}"
       }
     }
   }
   else {
-    mergedchannel2.subscribe { Object obj ->
+    mergedchannel.subscribe { Object obj ->
       file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
       }
@@ -439,10 +413,6 @@ def extractFastq(tsvFile) {
     def lane = row[1]
     def assay = row[2]
     def targetFile = row[3]
-    targetFile = ""
-    if ( targetFile ) {
-      targetFile = returnFile(targetFile)
-    }
     def fastqFile1 = returnFile(row[4])
     def sizeFastqFile1 = fastqFile1.size()
     def fastqFile2 = returnFile(row[5])
