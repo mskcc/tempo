@@ -406,12 +406,12 @@ process CombineChannel {
     ])
 
   output:
-    file("${idTumor}.union.pass.vcf") into vcfMergedOutput
+    file("${idNormal}.union.pass.vcf") into vcfMergedOutput
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools
 
   script:  
-  isec_dir = "${idTumor}.isec"
+  isec_dir = "${idNormal}.isec"
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
