@@ -219,6 +219,10 @@ process CreateRecalibrationTable {
 
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
+(recalibrationTable, recalibrationTableDebug) = recalibrationTable.into(2)
+
+debug(recalibrationTableDebug)
+
 process RecalibrateBam {
   tag {idSample}
 
@@ -236,11 +240,11 @@ process RecalibrateBam {
   output:
     set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
-    val idSample into currentSample
+    set idSample into currentSample
     file("${idSample}.recal.bam") into currentBam
     file("${idSample}.recal.bai") into currentBai
-    val assay into assays
-    val targetFile into targets
+    set assay into assays
+    set targetFile into targets
 
   script:
   """
@@ -264,22 +268,21 @@ process GenerateOutput {
 
   exec:
   File file = new File(outname)
-  def mapping = []
+  def mapping_arr = []
   for (i = 0; i < sampleIds.size(); i++) {
     map = [:]
-    mapping << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i], 'assay': assay[i], 'target': targetFile[i]]
+    mapping_arr << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i], 'assay': assay[i], 'target': targetFile[i]]
   }
-  mapping = Channel.from(mapping)
-  
+  mapping = Channel.from(mapping_arr)
   pairing = extractPairing(pairingfile)
-  pairing = Channel.from(pairing)
-  pairingTumor = pairing.map({ it.put("sampleId", it.remove('tumorId')); it })
+  pairingT = Channel.from(pairing)
+  pairingTumor = pairingT.map({ it.put("sampleId", it.remove('tumorId')); it })
 
   (mapping, mappingT, mappingN) = mapping.into(3)
 
   mergedchannel =
-        mappingT
-        .concat(pairingTumor)
+        pairingTumor
+        .concat(mappingT)
         .groupBy( { item -> item.sampleId } )
         .flatMap({item ->
             item.findResults { sampleId, entries ->
@@ -338,19 +341,18 @@ process GenerateOutput {
 
   if (workflow.profile == 'awsbatch') {
     mergedchannel2.subscribe { Object obj ->
-      file.newWriter().withWriter { out ->
+      file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\ts3:/${obj['tumorBam']}\ts3:/${obj['normalBam']}\ts3:/${obj['tumorBai']}\ts3:/${obj['normalBai']}"
       }
     }
   }
   else {
     mergedchannel2.subscribe { Object obj ->
-      file.newWriter().withWriter { out ->
+      file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
       }
     }
   }
-
 }
 
 ignore_read_groups = Channel.from( true , false )
@@ -426,16 +428,6 @@ def extractPairing(tsvFile) {
     res << ['tumorId':idTumor, 'normalId':idNormal]
   }
   return res;
-}
-
-def convertResultToMap(result) {
-  result.map{
-    row ->
-    def sampleId = row[0]
-    def bam = row[1]
-    def bai = row[2]
-    ['sampleId':sampleId, 'bam':bam, 'bai':bai]
-  }
 }
 
 def extractFastq(tsvFile) {
