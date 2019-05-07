@@ -1,3 +1,4 @@
+SAMPLE	LANE	ASSAY	TARGET	FASTQ_PE1	FASTQ_PE2
 BRCA_00067-N	BRCA_00067-N-S10_L004	exome	agilent	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-N_IGO_06208_30/BRCA-00067-N_IGO_06208_30_S10_L004_R1_001.fastq.gz	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-N_IGO_06208_30/BRCA-00067-N_IGO_06208_30_S10_L004_R2_001.fastq.gz
 BRCA_00067-T	BRCA_00067-T-S25_L006	exome	agilent	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-T_IGO_06208_1/BRCA-00067-T_IGO_06208_1_S25_L006_R1_001.fastq.gz	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-T_IGO_06208_1/BRCA-00067-T_IGO_06208_1_S25_L006_R2_001.fastq.gz
 BRCA_00067-T	BRCA_00067-T-S25_L007	exome	agilent	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-T_IGO_06208_1/BRCA-00067-T_IGO_06208_1_S25_L007_R1_001.fastq.gz	s3://testbucketcmo/wes_samples/Sample_BRCA-00067-T_IGO_06208_1/BRCA-00067-T_IGO_06208_1_S25_L007_R2_001.fastq.gz
