@@ -370,13 +370,9 @@ process MergeStrelka2Vcfs {
   prefix = "${strelkaGenome}".replaceFirst(".vcf.gz", "")
   outfile = "${prefix}.filtered.vcf.gz"
   """
-  echo -e 'NORMAL ${idNormal}' > samples.txt
-  
   bcftools concat \
     --allow-overlaps \
     ${strelkaGenome} ${strelkaVariants} | \
-  bcftools reheader \
-    --samples samples.txt | \
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
