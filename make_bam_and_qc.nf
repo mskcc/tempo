@@ -313,6 +313,10 @@ process GenerateOutput {
             }
         })
 
+  file.newWriter().withWriter { w ->
+    w << "ASSAY\tTARGET\tTUMOR_ID\tNORMAL_ID\tTUMOR_BAM\tNORMAL_BAM\tTUMOR_BAI\tNORMAL_BAI\n"
+  }
+
   if (workflow.profile == 'awsbatch') {
     mergedchannel.subscribe { Object obj ->
       file.withWriterAppend { out ->
