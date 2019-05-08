@@ -773,7 +773,7 @@ process RunConpair {
 
   output:
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    set file("${idTumor}.${idNormal}.concordance.txt"), file("${idTumor}.${idNormal}.contamination.txt") into conpairOutput
+    set file("${idTumor}.${idNormal}_concordance.txt"), file("${idTumor}.${idNormal}_contamination.txt") into conpairOutput
 
   when: 'conpair' in tools
 
