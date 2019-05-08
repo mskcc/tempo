@@ -158,7 +158,7 @@ if (params.verbose) bamsForHaplotypecallerIntervals = bamsForHaplotypecallerInte
 }
 
 process RunHaplotypecaller {
-  tag {idTumor + "_vs_" + idNormal + "_" + intervalBed.baseName}
+  tag {idNormal + "_" + intervalBed.baseName}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
@@ -192,7 +192,7 @@ process RunHaplotypecaller {
 (sampleIdsForHaplotypecallerCombine, bamFiles) = bamFiles.into(2)
 
 process CombineHaplotypecallerVcf {
-  tag {idTumor + "_vs_" + idNormal}
+  tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
@@ -236,7 +236,7 @@ process CombineHaplotypecallerVcf {
 (bamsForManta, bamsForStrelka, bamFiles) = bamFiles.into(3)
 
 process RunManta {
-  tag {idTumor + "_vs_" + idNormal}
+  tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta"
 
@@ -290,7 +290,7 @@ process RunManta {
 
 // --- Run Strelka2
 process RunStrelka2 {
-  tag {idTumor + "_vs_" + idNormal}
+  tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2"
 
@@ -313,8 +313,7 @@ process RunStrelka2 {
       ])
 
   output:
-    set file("*_genome.vcf.gz"), file("*_genome.vcf.gz.tbi") into strelkaOutputGenome
-    set file("*_variants.vcf.gz"), file("*_variants.vcf.gz.tbi") into strelkaOutputVariants
+    set file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutput
 
   when: 'strelka2' in tools
   
@@ -339,55 +338,15 @@ process RunStrelka2 {
     --mode local \
     --jobs ${task.cpus}
 
-  mv Strelka/results/variants/genome.*.vcf.gz Strelka_${idNormal}_genome.vcf.gz
-  mv Strelka/results/variants/genome.*.vcf.gz.tbi Strelka_${idNormal}_genome.vcf.gz.tbi
   mv Strelka/results/variants/variants.vcf.gz Strelka_${idNormal}_variants.vcf.gz
   mv Strelka/results/variants/variants.vcf.gz.tbi Strelka_${idNormal}_variants.vcf.gz.tbi
   """
 }
 
-(sampleIdsForStrelkaMerge, bamFiles) = bamFiles.into(2)
-
-process MergeStrelka2Vcfs {
-  tag {idTumor + "_vs_" + idNormal}
-
-  input: 
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForStrelkaMerge
-    set file(strelkaGenome), file(strelkaGenomeIndex) from strelkaOutputGenome
-    set file(strelkaVariants), file(strelkaVariantsIndex) from strelkaOutputVariants
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict
-    ])
-
-  output:
-    set file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutput
-
-  when: 'strelka2' in tools
-
-  script:
-  prefix = "${strelkaGenome}".replaceFirst(".vcf.gz", "")
-  outfile = "${prefix}.filtered.vcf.gz"
-  """
-  bcftools concat \
-    --allow-overlaps \
-    ${strelkaGenome} ${strelkaVariants} | \
-  bcftools sort | \
-  bcftools norm \
-    --fasta-ref ${genomeFile} \
-    --check-ref s \
-    --output-type z \
-    --output ${outfile}
-
-  tabix --preset vcf ${outfile}
-  """
-}
-
-( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
+(sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
 
 process CombineChannel {
-  tag {idTumor + "_vs_" + idNormal}
+  tag {idNormal}
 
   input:
     file(haplotypecallercombinedVCF) from haplotypecallerCombinedVcfOutput
@@ -474,7 +433,7 @@ process CombineChannel {
 (sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
 
 process RunVcf2Maf {
-  tag { idTumor + "_" + idNormal }
+  tag {idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
@@ -522,7 +481,7 @@ process RunVcf2Maf {
 ( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
 
 process MergeDellyAndManta {
-  tag { idNormal }
+  tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_merged_output"
 
@@ -560,7 +519,7 @@ process MergeDellyAndManta {
 ( sampleIdsForBcfToolsFilter, bamFiles ) = bamFiles.into(2)
 
 process RunBcfToolsFilterOnDellyManta {
-  tag {idTumor + "_vs_" + idNormal}
+  tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_output"
 
