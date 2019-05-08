@@ -29,17 +29,6 @@ This installs Nextflow within the subdirectory `vaporware`.
 
 Optionally, move the `nextflow` file to a directory accessible by your `$PATH` variable in order to avoid remembering and typing the full path to `nextflow` each time.
 
-## Executing the scripts
-
-Command for running nextflow
-
-```
-nextflow run <nextflow_script> --sample <samples_tsv>
-```
-
-* `<nextflow_script>` - e.g. `make_bam_and_qc.nf` or `somatic.nf`
-
-* `<samples_tsv>` - sample file
 
 ## For submitting via LSF on juno
 
