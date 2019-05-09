@@ -523,16 +523,17 @@ process CombineChannel {
     --annotations ${isec_dir}/0002.vcf.gz \
     --mark-sites \"+MuTect2;Strelka2\" \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
+    --output ${isec_dir}/0002.tmp.vcf.gz \
     ${isec_dir}/0002.vcf.gz
 
+  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
+
   bcftools annotate \
-    --header-lines vcf.header \
-    --annotations ${isec_dir}/0000.vcf.gz \
-    --mark-sites +MuTect2 \
+    --annotations ${isec_dir}/0003.vcf.gz \
+    --columns FORMAT \
     --output-type z \
-    --output ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0000.vcf.gz
+    --output ${isec_dir}/0002.annot.vcf.gz \
+    ${isec_dir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -548,6 +549,7 @@ process CombineChannel {
 
   bcftools concat \
     --allow-overlaps \
+    --rm-dups all \
     ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0001.annot.vcf.gz \
     ${isec_dir}/0002.annot.vcf.gz | \
