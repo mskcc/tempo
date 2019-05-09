@@ -530,6 +530,14 @@ process CombineChannel {
     ${mutect2combinedVCF} ${strelkaVCF}
 
   bcftools annotate \
+    --annotations ${isec_dir}/0003.vcf.gz \
+    --include 'FILTER!=\"PASS\"' \
+    --mark-sites \"+Strelka2FAIL\" \
+    -k \
+    --output-type z \
+    --output ${isec_dir}/0003.annot.vcf.gz
+
+  bcftools annotate \
     --header-lines vcf.header \
     --annotations ${isec_dir}/0002.vcf.gz \
     --mark-sites \"+MuTect2;Strelka2\" \
@@ -538,10 +546,11 @@ process CombineChannel {
     ${isec_dir}/0002.vcf.gz
 
   tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.vcf.gz \
-    --columns =FILTER,+FORMAT \
+    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --columns +FILTER,+FORMAT,Strelka2FAIL \
     --output-type z \
     --output ${isec_dir}/0002.annot.vcf.gz \
     ${isec_dir}/0002.tmp.vcf.gz
