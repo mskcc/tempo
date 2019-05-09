@@ -512,7 +512,6 @@ process CombineChannel {
   echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
-  echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
 
   bcftools isec \
     --output-type z \
@@ -535,14 +534,6 @@ process CombineChannel {
     --output-type z \
     --output ${isec_dir}/0002.annot.vcf.gz \
     ${isec_dir}/0002.tmp.vcf.gz
-
-  bcftools annotate \
-    --header-lines vcf.header \
-    --annotations ${isec_dir}/0000.vcf.gz \
-    --mark-sites +MuTect2 \
-    --output-type z \
-    --output ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0000.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -571,22 +562,14 @@ process CombineChannel {
     --header-lines vcf.map.header \
     --annotations ${mapabilityBlacklist} \
     --columns CHROM,FROM,TO,EncodeDacMapability \
-    --output-type z \
-    --output ${idTumor}.union.vcf.gz
-
-  bcftools annotate \
-    --header-lines vcf.pon.header \
-    --annotations ${pon} \
-    --columns PoN:=AC \
-    --output-type z \
-    --output ${idTumor}.union.pon.vcf.gz \
-    ${idTumor}.union.vcf.gz
+    --output-type v \
+    --output ${idTumor}.union.vcf
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
     --output ${idTumor}.union.pass.vcf \
-    ${idTumor}.union.pon.vcf.gz
+    ${idTumor}.union.vcf
   """
 }
 
