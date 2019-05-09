@@ -541,7 +541,7 @@ process CombineChannel {
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
-    --columns =FILTER,+FORMAT \
+    --columns FORMAT \
     --output-type z \
     --output ${isec_dir}/0002.annot.vcf.gz \
     ${isec_dir}/0002.tmp.vcf.gz
