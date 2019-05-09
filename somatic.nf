@@ -593,7 +593,7 @@ process CombineChannel {
 (sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
 
 process RunVcf2Maf {
-  tag {idTumor + "_" + idNormal}
+  tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations"
 
