@@ -535,7 +535,8 @@ process CombineChannel {
     --mark-sites \"+Strelka2FAIL\" \
     -k \
     --output-type z \
-    --output ${isec_dir}/0003.annot.vcf.gz
+    --output ${isec_dir}/0003.annot.vcf.gz \
+    ${isec_dir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
