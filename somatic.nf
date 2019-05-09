@@ -55,7 +55,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process DellyCall {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
   input:
     each svType from svTypes
@@ -85,15 +85,14 @@ process DellyCall {
 process DellyFilter {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
-
   output:
-    file("*.filter.bcf") into dellyFilterOutput
-    file("*.filter.bcf.csi") into dellyFilterIndexedOutput
+    file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
+    file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyFilterIndexedOutput
 
   when: 'delly' in tools
 
@@ -117,7 +116,7 @@ process DellyFilter {
 process CreateScatteredIntervals {
   tag {idTumor + "_vs_" + idNormal}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals"
+  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
@@ -144,7 +143,7 @@ process CreateScatteredIntervals {
 
   script:
   intervals = wgsIntervals
-  if(params.exome) {
+  if(params.assayType == "exome") {
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -170,7 +169,7 @@ if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal + "_" + intervalBed.baseName}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
+  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
@@ -206,7 +205,7 @@ process RunMutect2 {
 process RunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
@@ -234,7 +233,7 @@ process RunMutect2Filter {
 process CombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     file(mutect2Vcf) from mutect2FilteredOutput.collect()
@@ -245,7 +244,6 @@ process CombineMutect2Vcf {
       referenceMap.genomeIndex,
       referenceMap.genomeDict
     ])
-
 
   output:
     file("${outfile}") into mutect2CombinedVcfOutput
@@ -263,7 +261,9 @@ process CombineMutect2Vcf {
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
-    --check-ref s | \
+    --check-ref s \
+    --multiallelics -both | \
+  bcftools norm --rm-dup all | \
   bcftools view \
     --samples ${idNormal},${idTumor} \
     --output-type z \
@@ -279,7 +279,7 @@ process CombineMutect2Vcf {
 process RunManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -300,7 +300,7 @@ process RunManta {
   when: 'manta' in tools
   script:
   options = ""
-  if(params.exome) options = "--exome"
+  if(params.assayType == "exome") options = "--exome"
 
   """
   configManta.py \
@@ -339,7 +339,7 @@ process RunManta {
 process RunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
@@ -367,14 +367,14 @@ process RunStrelka2 {
   when: 'manta' in tools && 'strelka2' in tools
 
   script:
-  options = "" 
+  options = ""
   intervals = wgsIntervals
-  if(params.exome) {
+  if(params.assayType == "exome") {
     options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
-  }
-
+   }
+   
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
@@ -402,12 +402,12 @@ process RunStrelka2 {
 
 // --- Process Delly and Manta VCFs 
 
-( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
+(sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
 
 process MergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
 
   input:
     file(dellyFilterData) from dellyFilterOutput.collect()
@@ -442,7 +442,7 @@ process MergeDellyAndManta {
 
 // --- Process Mutect2 and Strelka2 VCFs
 
-( sampleIdsForStrelkaMerge, bamFiles ) = bamFiles.into(2)
+(sampleIdsForStrelkaMerge, bamFiles) = bamFiles.into(2)
 
 process MergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
@@ -595,7 +595,7 @@ process CombineChannel {
 process RunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations"
+  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
 
   input:
     file(vcfMerged) from vcfMergedOutput
@@ -641,7 +641,7 @@ process RunVcf2Maf {
 process DoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSnpPileup
@@ -668,7 +668,7 @@ process DoSnpPileup {
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
@@ -711,7 +711,7 @@ process DoFacets {
 process RunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
@@ -744,7 +744,7 @@ process RunMsiSensor {
 process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
@@ -780,7 +780,7 @@ process RunHlaPolysolver {
 process RunConpair {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForConpair
@@ -791,8 +791,8 @@ process RunConpair {
     ])
 
   output:
-    file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    file("${idTumor}.${idNormal}.concordance.txt"), file("${idTumor}.${idNormal}.contamination.txt") into conpairOutput
+    set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
+    set file("${idTumor}.${idNormal}_concordance.txt"), file("${idTumor}.${idNormal}_contamination.txt") into conpairOutput
 
   when: 'conpair' in tools
 
@@ -831,7 +831,7 @@ process RunConpair {
     --markers=${markersBed} \
     --reference=${genomeFile} \
     --xmx_java=${javaMem} \
-    --outfile="${idTumor}.pileup
+    --outfile=${idTumor}.pileup
 
   ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
     --gatk=${gatkPath} \
@@ -922,21 +922,38 @@ def extractBamFiles(tsvFile) {
   // Channeling the TSV file containing FASTQ.
   // Format is: "assay targets idTumor idNormal bamTumor bamNormal baiTumor baiNormal"
   Channel.from(tsvFile)
-  .splitCsv(sep: '\t')
+  .splitCsv(sep: '\t', header: true)
   .map { row ->
-    VaporwareUtils.checkNumberOfItem(row, 8)
-    def assay = row[0]
-    def target = row[1]
-    def idTumor = row[2]
-    def idNormal = row[3]
-    def bamTumor = VaporwareUtils.returnFile(row[4])
-    def bamNormal = VaporwareUtils.returnFile(row[5])
-    def baiTumor = VaporwareUtils.returnFile(row[6])
-    def baiNormal = VaporwareUtils.returnFile(row[7])
-    VaporwareUtils.checkFileExtension(bamTumor,".bam")
-    VaporwareUtils.checkFileExtension(bamNormal,".bam")
-    VaporwareUtils.checkFileExtension(baiTumor,".bai")
-    VaporwareUtils.checkFileExtension(baiNormal,".bai")
+    checkNumberOfItem(row, 8)
+    def assay = row.ASSAY
+    def target = row.TARGET
+    def idTumor = row.TUMOR_ID
+    def idNormal = row.NORMAL_ID
+    def bamTumor = returnFile(row.TUMOR_BAM)
+    def bamNormal = returnFile(row.NORMAL_BAM)
+    def baiTumor = returnFile(row.TUMOR_BAI)
+    def baiNormal = returnFile(row.NORMAL_BAI)
+    checkFileExtension(bamTumor,".bam")
+    checkFileExtension(bamNormal,".bam")
+    checkFileExtension(baiTumor,".bai")
+    checkFileExtension(baiNormal,".bai")
     [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
   }
+}
+
+// Check file extension
+def checkFileExtension(it, extension) {
+  if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
+}
+
+// Check if a row has the expected number of item
+def checkNumberOfItem(row, number) {
+  if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
+    return true
+}
+
+// Return file if it exists
+def returnFile(it) {
+  if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
+    return file(it)
 }
