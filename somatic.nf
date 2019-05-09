@@ -558,7 +558,7 @@ process CombineChannel {
 
   bcftools concat \
     --allow-overlaps \
-    --rm-header \
+    --rm-dups all \
     ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0001.annot.vcf.gz \
     ${isec_dir}/0002.annot.vcf.gz | \
