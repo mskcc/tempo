@@ -516,10 +516,10 @@ process CombineChannel {
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   if(params.exome) {
-    pon = wesPon
+    pon = wesPoN
   }
   """
-  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
+  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2Fail,Number=0,Type=Flag,Description=\"Variant was called failed by Strelka2\">" > vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
   echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
@@ -530,6 +530,15 @@ process CombineChannel {
     ${mutect2combinedVCF} ${strelkaVCF}
 
   bcftools annotate \
+    --annotations ${isec_dir}/0003.vcf.gz \
+    --include 'FILTER!=\"PASS\"' \
+    --mark-sites \"+Strelka2FAIL\" \
+    -k \
+    --output-type z \
+    --output ${isec_dir}/0003.annot.vcf.gz \
+    ${isec_dir}/0003.vcf.gz
+
+  bcftools annotate \
     --header-lines vcf.header \
     --annotations ${isec_dir}/0002.vcf.gz \
     --mark-sites \"+MuTect2;Strelka2\" \
@@ -538,10 +547,11 @@ process CombineChannel {
     ${isec_dir}/0002.vcf.gz
 
   tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.vcf.gz \
-    --columns FORMAT \
+    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --columns +FILTER,+FORMAT,Strelka2FAIL \
     --output-type z \
     --output ${isec_dir}/0002.annot.vcf.gz \
     ${isec_dir}/0002.tmp.vcf.gz
