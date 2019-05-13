@@ -515,8 +515,8 @@ process CombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  if(params.exome) {
-    pon = wesPoN
+  if (params.assayType == 'exome') {
+    pon = exomePoN
   }
   """
   echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2Fail,Number=0,Type=Flag,Description=\"Variant was called failed by Strelka2\">" > vcf.header
@@ -537,6 +537,14 @@ process CombineChannel {
     --output-type z \
     --output ${isec_dir}/0003.annot.vcf.gz \
     ${isec_dir}/0003.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0000.vcf.gz \
+    --mark-sites +MuTect2 \
+    --output-type z \
+    --output ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0000.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -585,6 +593,8 @@ process CombineChannel {
     --columns CHROM,FROM,TO,EncodeDacMapability \
     --output-type z \
     --output ${idTumor}.union.vcf.gz
+
+  tabix --preset vcf ${idTumor}.union.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.pon.header \
@@ -910,7 +920,7 @@ def defineReferenceMap() {
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (!params.test) {
@@ -926,6 +936,11 @@ def defineReferenceMap() {
     result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
     // isoforms needed by vcf2maf
     result_array << ['isoforms' : checkParamReturnFile("isoforms")]
+    // PON files
+    result_array << ['exomePoN' : checkParamReturnFile("exomePoN")]
+    result_array << ['exomePoNIndex' : checkParamReturnFile("exomePoNIndex")]
+    result_array << ['wgsPoN' : checkParamReturnFile("wgsPoN")]
+    result_array << ['wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")]
   }
   return result_array
 }
