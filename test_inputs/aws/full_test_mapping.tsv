@@ -1,0 +1,3 @@
+SAMPLE	LANE	ASSAY	TARGET	FASTQ_PE1	FASTQ_PE2
+DU874145-N	DU874145-N_L001	exome	agilent	s3://testbucketcmo/example_data/fastq/DU874145-N/DU874145-N_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/example_data/fastq/DU874145-N/DU874145-N_IGO_00000_TEST_L001_R2_001.fastq.gz
+DU874145-T	DU874145-N_L001	exome	agilent	s3://testbucketcmo/example_data/fastq/DU874145-T/DU874145-T_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/example_data/fastq/DU874145-T/DU874145-T_IGO_00000_TEST_L001_R2_001.fastq.gz
