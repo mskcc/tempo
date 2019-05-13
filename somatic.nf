@@ -515,8 +515,8 @@ process CombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  if(params.exome) {
-    pon = wesPoN
+  if (params.assayType == 'exome') {
+    pon = exomePoN
   }
   """
   echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2Fail,Number=0,Type=Flag,Description=\"Variant was called failed by Strelka2\">" > vcf.header
@@ -593,6 +593,8 @@ process CombineChannel {
     --columns CHROM,FROM,TO,EncodeDacMapability \
     --output-type z \
     --output ${idTumor}.union.vcf.gz
+
+  tabix --preset vcf ${idTumor}.union.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.pon.header \
@@ -919,6 +921,10 @@ def defineReferenceMap() {
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
+    'exomePoN' : checkParamReturnFile("exomePoN"),
+    'exomePoNIndex' : checkParamReturnFile("exomePoNIndex"),
+    'wgsPoN' : checkParamReturnFile("wgsPoN"),
+    'wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")
   ]
 
   if (!params.test) {
