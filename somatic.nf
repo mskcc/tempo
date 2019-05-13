@@ -540,6 +540,14 @@ process CombineChannel {
 
   bcftools annotate \
     --header-lines vcf.header \
+    --annotations ${isec_dir}/0000.vcf.gz \
+    --mark-sites +MuTect2 \
+    --output-type z \
+    --output ${isec_dir}/0000.annot.vcf.gz \
+    ${isec_dir}/0000.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
     --annotations ${isec_dir}/0002.vcf.gz \
     --mark-sites \"+MuTect2;Strelka2\" \
     --output-type z \
