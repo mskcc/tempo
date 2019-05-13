@@ -3,8 +3,9 @@ import json
 from subprocess import Popen, PIPE
 
 
-def execute_test(name, command):
+def execute_test(name, test):
     print("Running test %s" % name)
+    command = test.get('command')
     print("Command: %s" % command)
     proc = Popen(command, stdout=PIPE, universal_newlines=True)
     for line in proc.stdout:
