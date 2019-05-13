@@ -920,11 +920,7 @@ def defineReferenceMap() {
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
-    'exomePoN' : checkParamReturnFile("exomePoN"),
-    'exomePoNIndex' : checkParamReturnFile("exomePoNIndex"),
-    'wgsPoN' : checkParamReturnFile("wgsPoN"),
-    'wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (!params.test) {
@@ -940,6 +936,11 @@ def defineReferenceMap() {
     result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
     // isoforms needed by vcf2maf
     result_array << ['isoforms' : checkParamReturnFile("isoforms")]
+    // PON files
+    result_array << ['exomePoN' : checkParamReturnFile("exomePoN")]
+    result_array << ['exomePoNIndex' : checkParamReturnFile("exomePoNIndex")]
+    result_array << ['wgsPoN' : checkParamReturnFile("wgsPoN")]
+    result_array << ['wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")]
   }
   return result_array
 }
