@@ -268,7 +268,9 @@ process GenerateOutput {
                     return mergedItem
                 }
             }
-        }).concat(mappingN)
+        })
+        
+        mergedchannel2 = mergedchannel.concat(mappingN)
         .groupBy( {item -> item.sampleId } )
         .flatMap({item ->
             item.findResults { sampleId, entries ->
@@ -299,14 +301,14 @@ process GenerateOutput {
   }
 
   if (workflow.profile == 'awsbatch') {
-    mergedchannel.subscribe { Object obj ->
+    mergedchannel2.subscribe { Object obj ->
       file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\ts3:/${obj['tumorBam']}\ts3:/${obj['normalBam']}\ts3:/${obj['tumorBai']}\ts3:/${obj['normalBai']}"
       }
     }
   }
   else {
-    mergedchannel.subscribe { Object obj ->
+    mergedchannel2.subscribe { Object obj ->
       file.withWriterAppend { out ->
         out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
       }
