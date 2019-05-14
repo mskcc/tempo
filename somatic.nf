@@ -367,14 +367,14 @@ process RunStrelka2 {
   when: 'manta' in tools && 'strelka2' in tools
 
   script:
-  options = "" 
-  if(params.assayType == "exome") options = "--exome"
-
+  options = ""
   intervals = wgsIntervals
   if(params.assayType == "exome") {
+    options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
-  }
+   }
+   
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
@@ -500,6 +500,12 @@ process CombineChannel {
       referenceMap.mapabilityBlacklist,
       referenceMap.mapabilityBlacklistIndex
     ])
+    set file(exomePoN), file(wgsPoN), file(exomePoNIndex), file(wgsPoNIndex) from Channel.value([
+      referenceMap.exomePoN,
+      referenceMap.wgsPoN,
+      referenceMap.exomePoNIndex,
+      referenceMap.wgsPoNIndex
+    ])
 
   output:
     file("${idTumor}.union.pass.vcf") into vcfMergedOutput
@@ -508,10 +514,15 @@ process CombineChannel {
 
   script:
   isec_dir = "${idTumor}.isec"
+  pon = wgsPoN
+  if (params.assayType == 'exome') {
+    pon = exomePoN
+  }
   """
-  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
+  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2Fail,Number=0,Type=Flag,Description=\"Variant was called failed by Strelka2\">" > vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
+  echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
 
   bcftools isec \
     --output-type z \
@@ -519,12 +530,13 @@ process CombineChannel {
     ${mutect2combinedVCF} ${strelkaVCF}
 
   bcftools annotate \
-    --header-lines vcf.header \
-    --annotations ${isec_dir}/0002.vcf.gz \
-    --mark-sites \"+MuTect2;Strelka2\" \
+    --annotations ${isec_dir}/0003.vcf.gz \
+    --include 'FILTER!=\"PASS\"' \
+    --mark-sites \"+Strelka2FAIL\" \
+    -k \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
-    ${isec_dir}/0002.vcf.gz
+    --output ${isec_dir}/0003.annot.vcf.gz \
+    ${isec_dir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -533,6 +545,24 @@ process CombineChannel {
     --output-type z \
     --output ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0000.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0002.vcf.gz \
+    --mark-sites \"+MuTect2;Strelka2\" \
+    --output-type z \
+    --output ${isec_dir}/0002.tmp.vcf.gz \
+    ${isec_dir}/0002.vcf.gz
+
+  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
+
+  bcftools annotate \
+    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --columns +FILTER,+FORMAT,Strelka2FAIL \
+    --output-type z \
+    --output ${isec_dir}/0002.annot.vcf.gz \
+    ${isec_dir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -548,6 +578,7 @@ process CombineChannel {
 
   bcftools concat \
     --allow-overlaps \
+    --rm-dups all \
     ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0001.annot.vcf.gz \
     ${isec_dir}/0002.annot.vcf.gz | \
@@ -560,14 +591,24 @@ process CombineChannel {
     --header-lines vcf.map.header \
     --annotations ${mapabilityBlacklist} \
     --columns CHROM,FROM,TO,EncodeDacMapability \
-    --output-type v \
-    --output ${idTumor}.union.vcf
+    --output-type z \
+    --output ${idTumor}.union.vcf.gz
+
+  tabix --preset vcf ${idTumor}.union.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.pon.header \
+    --annotations ${pon} \
+    --columns PoN:=AC \
+    --output-type z \
+    --output ${idTumor}.union.pon.vcf.gz \
+    ${idTumor}.union.vcf.gz
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
     --output ${idTumor}.union.pass.vcf \
-    ${idTumor}.union.vcf
+    ${idTumor}.union.pon.vcf.gz
   """
 }
 
@@ -609,7 +650,7 @@ process RunVcf2Maf {
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info MuTect2,Strelka2,RepeatMasker,EncodeDacMapability \
+    --retain-info MuTect2,Strelka2,RepeatMasker,EncodeDacMapability,PoN \
     --custom-enst ${isoforms} \
     --output-maf ${outfile} \
     --filter-vcf 0
@@ -879,7 +920,7 @@ def defineReferenceMap() {
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (!params.test) {
@@ -895,6 +936,11 @@ def defineReferenceMap() {
     result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
     // isoforms needed by vcf2maf
     result_array << ['isoforms' : checkParamReturnFile("isoforms")]
+    // PON files
+    result_array << ['exomePoN' : checkParamReturnFile("exomePoN")]
+    result_array << ['exomePoNIndex' : checkParamReturnFile("exomePoNIndex")]
+    result_array << ['wgsPoN' : checkParamReturnFile("wgsPoN")]
+    result_array << ['wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")]
   }
   return result_array
 }
