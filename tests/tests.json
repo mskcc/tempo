@@ -1,7 +1,7 @@
 {
     "test_make_bam_and_qc": {
         "command": ["./nextflow", "run", "make_bam_and_qc.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test"],
-        "checks": [{"type": "checkFile", "filename": "make_bam_output.tsv", "checksum": "bf2fbb1559a0669f6f41c469ccbd5bb4ae6788640a71d514b88925bb3699506b"}, {"type": "checkExitCode", "expected": 0}]
+        "checks": [{"type": "checkNumberOfLines", "filename": "make_bam_output.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
     },
     "test_delly": {
         "command": ["./nextflow", "run", "somatic.nf", "--sample", "tests/test_somatic.tsv", "-profile", "test", "--tools", "delly", "--test"],

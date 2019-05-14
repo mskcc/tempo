@@ -21,13 +21,23 @@ def execute_test(name, test):
             successful, msg = check_exit_code(exit_code, check['expected'])
         elif check['type'] == 'checkFile':
             successful, msg = check_file(check['filename'], check['checksum'])
+        elif check['type'] == 'checkNumberOfLines':
+            successful, msg = check_number_of_lines(check['filename'], check['num_lines']) 
         if not successful:
                 passed = False
                 err_msg += "%s " % msg
     return passed, err_msg
 
 
-def check_file(filename, checksum):
+def check_number_of_lines(filename, num):
+    num_lines = sum(1 for line in open(filename))
+    if num_lines == num:
+        return True, ""
+    else:
+        return False, "Expected number of lines %s, got %s" % (num, num_lines)
+
+
+def check_file_checksum(filename, checksum):
     with open(filename,"rb") as f:
         bytes = f.read() # read entire file as bytes
         readable_hash = hashlib.sha256(bytes).hexdigest();
