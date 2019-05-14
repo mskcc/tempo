@@ -18,4 +18,4 @@ nf.*
 *.gz
 *.bam.*
 *.tsv
-
+Result/
