@@ -320,7 +320,7 @@ process RunManta {
 
   output:
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
-    set idTumor, idNormal, target, file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools
   script:
@@ -360,7 +360,6 @@ process RunManta {
 }
 
 mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
-mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 
 dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
 
@@ -404,8 +403,9 @@ process MergeDellyAndManta {
   """
 }
 
-/*
 // --- Run Strelka2
+
+mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 
 process RunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
@@ -413,7 +413,7 @@ process RunStrelka2 {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(mantaCSI), file(mantaCSIi) from mantaToStrelka
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -431,8 +431,7 @@ process RunStrelka2 {
     ])
 
   output:
-    set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
-    set file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutputSNVs
+    set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput mode flatten
 
   when: 'manta' in tools && 'strelka2' in tools
 
@@ -470,17 +469,17 @@ process RunStrelka2 {
   """
 }
 
-// --- Process Mutect2 and Strelka2 VCFs
+strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 
-(sampleIdsForStrelkaMerge, bamFiles) = bamFiles.into(2)
+// --- Process Mutect2 and Strelka2 VCFs
 
 process MergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
 
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+
   input: 
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForStrelkaMerge
-    set file(strelkaIndels), file(strelkaIndelsIndex) from strelkaOutputIndels
-    set file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutputSNVs
+    set idTumor, idNormal, target, file(strelkaIndels), file(strelkaIndelsIndex), file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -488,12 +487,12 @@ process MergeStrelka2Vcfs {
     ])
 
   output:
-    set file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutput
+    set idTumor, idNormal, target, file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutputMerged
 
   when: 'manta' in tools && 'strelka2' in tools
 
   script:
-  prefix = "${strelkaIndels}".replaceFirst(".vcf.gz", "")
+  prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
   outfile = "${prefix}.filtered.vcf.gz"
   """
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
