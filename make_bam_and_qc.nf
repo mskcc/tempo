@@ -30,6 +30,8 @@ fastqFiles = Channel.empty()
 mappingFile = file(mappingPath)
 pairingfile = file(pairingPath)
 
+pairingT = extractPairing(pairingfile)
+
 fastqFiles = extractFastq(mappingFile)
 
 /*
@@ -197,11 +199,11 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2, recalibratedBamForDebug
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
     set idSample into currentSample
-    file("${idSample}.recal.bam") into currentBam
-    file("${idSample}.recal.bai") into currentBai
+    set file("${idSample}.recal.bam") into currentBam
+    set file("${idSample}.recal.bai") into currentBai
     set assay into assays
     set targetFile into targets
 
@@ -216,102 +218,71 @@ process RecalibrateBam {
   """
 }
 
-process GenerateOutput {
+recalibratedBamForOutput.combine(pairingT)
+                        .filter { item -> // only keep combinations where sample is same as tumor pair sample
+                          def sampleID = item[0]
+                          def sampleBam = item[1]
+                          def sampleBai = item[2]
+                          def assay = item[3]
+                          def target = item[4]
+                          def tumorID = item[5]
+                          def normalID = item[6]
+                          sampleID == tumorID
+                        }.map { item -> // re-order the elements
+                          def sampleID = item[0]
+                          def sampleBam = item[1]
+                          def sampleBai = item[2]
+                          def assay = item[3][0]
+                          def target = item[4][0]
+                          def tumorID = item[5]
+                          def normalID = item[6]
+                          def tumorBam = sampleBam
+                          def tumorBai = sampleBai
 
-  input:
-    val sampleIds from currentSample.collect()
-    val bams from currentBam.collect()
-    val bais from currentBai.collect()
-    val assay from assays.collect()
-    val targetFile from targets.collect()
+                          return [ assay, target, tumorID, normalID, tumorBam, tumorBai ]
+                        }.combine(recalibratedBamForOutput2)
+                        .filter { item ->
+                          def assay = item[0]
+                          def target = item[1]
+                          def tumorID = item[2]
+                          def normalID = item[3]
+                          def tumorBam = item[4]
+                          def tumorBai = item[5]
+                          def sampleID = item[6]
+                          def normalBam = item[7]
+                          def normalBai = item[8]
+                          sampleID == normalID
+                        }.map { item -> // re-order the elements
+                          def assay = item[0]
+                          def target = item[1]
+                          def tumorID = item[2]
+                          def normalID = item[3]
+                          def tumorBam = item[4]
+                          def tumorBai = item[5]
+                          def sampleID = item[6]
+                          def normalBam = item[7]
+                          def normalBai = item[8]
 
-  exec:
-  File file = new File(outname)
-  def mapping_arr = []
-  for (i = 0; i < sampleIds.size(); i++) {
-    map = [:]
-    mapping_arr << ['sampleId': sampleIds[i], 'bam': bams[i], 'bai': bais[i], 'assay': assay[i], 'target': targetFile[i]]
-  }
-  mapping = Channel.from(mapping_arr)
-  pairing = extractPairing(pairingfile)
-  pairingT = Channel.from(pairing)
-  pairingTumor = pairingT.map({ it.put("sampleId", it.remove('normalId')); it })
+                          return [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
+                        }
+                        .set { result }
 
-  (mappingT, mappingN) = mapping.into(2)
-
-  mergedchannel =
-        pairingTumor
-        .concat(mappingT)
-        .groupBy( { item -> item.sampleId } )
-        .flatMap({item ->
-            item.findResults { sampleId, entries ->
-                mergedItem = [:]
-                mergedItem.normalId = sampleId
-                entries.each { entry ->
-                    entry.each { key, val ->
-                        if(key == "sampleId") return;
-                        if(key == "tumorId") {
-                            mergedItem["sampleId"] = val
-                        }
-                        else if(key == "bam") {
-                            mergedItem['normalBam'] = val
-                        }
-                        else if(key == "bai") {
-                            mergedItem["normalBai"] = val
-                        }
-                        else {
-                            mergedItem[key] = val
-                        }
-                    }
-                }
-                if (mergedItem.size() == 6 ) {
-                    return mergedItem
-                }
-            }
-        })
-        
-        mergedchannel2 = mergedchannel.concat(mappingN)
-        .groupBy( {item -> item.sampleId } )
-        .flatMap({item ->
-            item.findResults { sampleId, entries ->
-                mergedItem = [:]
-                mergedItem.tumorId = sampleId
-                entries.each { entry ->
-                    entry.each { key, val ->
-                        if(key == 'sampleId') return;
-                        if(key == 'bam') {
-                            mergedItem['tumorBam'] = val
-                        }
-                        else if(key == 'bai') {
-                            mergedItem['tumorBai'] = val
-                        }
-                        else {
-                            mergedItem[key] = val
-                        }
-                    }
-                }
-                if (mergedItem.size() == 8) {
-                    return mergedItem
-                }
-            }
-        })
-
-  file.newWriter().withWriter { w ->
+File file = new File(outname)
+file.newWriter().withWriter { w ->
     w << "ASSAY\tTARGET\tTUMOR_ID\tNORMAL_ID\tTUMOR_BAM\tNORMAL_BAM\tTUMOR_BAI\tNORMAL_BAI\n"
-  }
+}
 
-  if (workflow.profile == 'awsbatch') {
-    mergedchannel2.subscribe { Object obj ->
+if (workflow.profile == 'awsbatch') {
+    result.subscribe { Object obj ->
       file.withWriterAppend { out ->
-        out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\ts3:/${obj['tumorBam']}\ts3:/${obj['normalBam']}\ts3:/${obj['tumorBai']}\ts3:/${obj['normalBai']}"
-      }
+        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\ts3:/${obj[4]}\ts3:/${obj[5]}\ts3:/${obj[6]}\ts3:/${obj[7]}"
     }
   }
+}
   else {
-    mergedchannel2.subscribe { Object obj ->
+    result.subscribe { Object obj ->
       file.withWriterAppend { out ->
-        out.println "${obj['assay']}\t${obj['target']}\t${obj['tumorId']}\t${obj['normalId']}\t${obj['tumorBam']}\t${obj['normalBam']}\t${obj['tumorBai']}\t${obj['normalBai']}"
-      }
+        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[4]}\t${obj[5]}\t${obj[6]}\t${obj[7]}"
     }
   }
 }
@@ -400,15 +371,11 @@ def debug(channel) {
 }
 
 def extractPairing(tsvFile) {
-  res = []
   Channel.from(tsvFile)
   .splitCsv(sep: '\t', header: true)
   .map { row ->
-    def idNormal = row.NORMAL_ID
-    def idTumor = row.TUMOR_ID
-    res << ['tumorId':idTumor, 'normalId':idNormal]
+    [row.NORMAL_ID, row.TUMOR_ID]
   }
-  return res;
 }
 
 def extractFastq(tsvFile) {
