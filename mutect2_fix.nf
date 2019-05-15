@@ -140,9 +140,6 @@ agilentIList = agilentIntervals.map{ n -> [ "agilent", n ] }
 idtIList = idtIntervals.map{ n -> [ "idt", n ] }
 wgsIList = wgsIntervals.map{ n -> [ "wgs", n ] }
 
-//bamList = bamList.map{ println(it); it}
-//agilentIList.map{ println(it); it}
-
 ( aBamList, iBamList, wBamList ) = bamList.into(3)
 
 aMergedChannel = aBamList.combine(agilentIList, by: 0).unique() 
@@ -151,59 +148,13 @@ wMergedChannel = wBamList.combine(wgsIList, by: 0).unique()
 
 mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
-mergedChannel.map { println(it); it } 
-
-/*
-void AppendIntervals(bamList, agilentIList, idtIList, wgsIList) { 
-
-  ArrayList myList = new ArrayList();
-
-  println "${bamList}"
-  println "${agilentIList}"
-  println "${idtIList}"
-  println "${wgsIList}"
-
-//  for(int i = 0; i < bamList.length(); i++) {
-//    targetType = bamList[i][1]
-//    if(targetType == "agilent") {
-//      myList = AddToList(myList, agilentIList)
-//    }
-//  }  
-//  Channel.from(myList).map{ println(it); it }
-
-}
-
-ArrayList AddToList(myList, iList){
-
-  for(int i = 0; i < iList.length(); i++) {
-    system.out.println(iList[i])
-    myList.add(iList[i])
-  }
-  return myList
-}
-
-AppendIntervals(bamList,agilentIList,idtIList,wgsIList)
-
-//bamsForMutect2IntervalsCreation.combine(bedIntervals).set { bamsForMutect2Intervals }
-
-
-process CombineIntervalsWithBams {
-
-  input:
-    file("agilent*") from agilentIntervals.flatten()
-    file("id*t") from idtIntervals.flatten()
-    file("wgs*") from wgsIntervals.flatten()
-
-}
-
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMutect2Intervals
-    each file(intervalBed) from bedIntervals
+    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
