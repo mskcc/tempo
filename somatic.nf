@@ -361,6 +361,46 @@ process RunManta {
 
 mantaOutput = mantaOutput.groupTuple(by: [0,1,2]).map { println(it); it }
 mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2]).map { println(it); it }
+/*
+// --- Process Delly and Manta VCFs 
+
+(sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
+
+process MergeDellyAndManta {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
+
+  input:
+    file(dellyFilterData) from dellyFilterOutput.collect()
+    file(mantaData) from mantaOutput.collect()
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
+
+  output:
+    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
+
+  when: 'manta' in tools && 'delly' in tools
+
+  script:
+  """ 
+  for f in *.bcf
+  do 
+    bcftools view --output-type z \$f > \${f%.bcf}.vcf.gz
+  done
+
+  for f in *.vcf.gz
+  do
+    tabix --preset vcf \$f
+  done
+
+  bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type v \
+    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf \
+    *.vcf.gz
+  """
+}
 
 /*
 // --- Run Strelka2
@@ -425,46 +465,6 @@ process RunStrelka2 {
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz
   mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
-  """
-}
-
-// --- Process Delly and Manta VCFs 
-
-(sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
-
-process MergeDellyAndManta {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
-
-  input:
-    file(dellyFilterData) from dellyFilterOutput.collect()
-    file(mantaData) from mantaOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
-
-  output:
-    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
-
-  when: 'manta' in tools && 'delly' in tools
-
-  script:
-  """ 
-  for f in *.bcf
-  do 
-    bcftools view --output-type z \$f > \${f%.bcf}.vcf.gz
-  done
-
-  for f in *.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
-
-  bcftools merge \
-    --force-samples \
-    --merge none \
-    --output-type v \
-    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf \
-    *.vcf.gz
   """
 }
 
