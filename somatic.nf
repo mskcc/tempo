@@ -91,7 +91,7 @@ process DellyFilter {
     set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf"), file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyFilterOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
 
   when: 'delly' in tools
 
@@ -319,8 +319,8 @@ process RunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput
-    set idTumor, idNormal, target, file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
+    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
+    set idTumor, idNormal, target, file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools
   script:
@@ -359,9 +359,13 @@ process RunManta {
   """
 }
 
-mantaOutput = mantaOutput.groupTuple(by: [0,1,2]).map { println(it); it }
-mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2]).map { println(it); it }
-/*
+mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
+mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
+
+dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
+
+dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
+
 // --- Process Delly and Manta VCFs 
 
 (sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
@@ -372,9 +376,7 @@ process MergeDellyAndManta {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
 
   input:
-    file(dellyFilterData) from dellyFilterOutput.collect()
-    file(mantaData) from mantaOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
+    set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
 
   output:
     file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
