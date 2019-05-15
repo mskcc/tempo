@@ -84,7 +84,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${agilentTargets} \
-    --scatter-count 30 \
+    --scatter-count 3 \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output agilent
 
@@ -97,7 +97,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${idtTargets} \
-    --scatter-count 30 \
+    --scatter-count 3 \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output idt
 
@@ -110,7 +110,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${wgsIntervals} \
-    --scatter-count 30 \
+    --scatter-count 3 \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
 
