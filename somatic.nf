@@ -116,7 +116,7 @@ process DellyFilter {
 process CreateScatteredIntervals {
   tag {idTumor + "_vs_" + idNormal}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
@@ -137,42 +137,42 @@ process CreateScatteredIntervals {
       ])
 
   output:
-    file('intervals/*.interval_list') into bedIntervals mode flatten
+    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) into bamsForMutect2IntervalsCreation
+    file("${idTumor}_${idNormal}-scatter/intervals/*.interval_list") into bedIntervals mode flatten
 
-  when: "mutect2" in tools
+  when: "mutect2" in tools && "createintervals" in tools
 
   script:
   intervals = wgsIntervals
   if(params.assayType == "exome") {
-    if(target == 'agilent') intervals = agilentTargets
-    if(target == 'idt') intervals = idtTargets
+    if(target == 'agilent') {
+      intervals = agilentTargets
+    }
+    else if (target == 'idt') {
+      intervals = idtTargets
+    }
   }
   """
+  mkdir ${idTumor}_${idNormal}-scatter 
+
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${intervals} \
     --scatter-count 30 \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output intervals
+    --output ${idTumor}_${idNormal}-scatter/intervals
   """
 }
 
-(bamsForMutect2, bamFiles) = bamFiles.into(2)
-bamsForMutect2Intervals = bamsForMutect2.spread(bedIntervals)
-
-if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
-  "BAMs for Mutect2 with Intervals:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
-}
+//bamsForMutect2IntervalsCreation.combine(bedIntervals).set { bamsForMutect2Intervals }
 
 process RunMutect2 {
-  tag {idTumor + "_vs_" + idNormal + "_" + intervalBed.baseName}
+  tag {idTumor + "_vs_" + idNormal}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
+    set idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2IntervalsCreation.combine(bedIntervals)
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -182,7 +182,7 @@ process RunMutect2 {
   output:
     set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
 
-  when: 'mutect2' in tools
+  when: 'mutect2' in tools && "run" in tools
 
   // insert right call regions below
 
@@ -205,17 +205,18 @@ process RunMutect2 {
 process RunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
 
   output:
+    set idTumor, idNormal into sampleIdsForMutect2Combine
     file("*filtered.vcf.gz") into mutect2FilteredOutput
     file("*filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
     file("*Mutect2FilteringStats.tsv") into mutect2Stats
 
-  when: 'mutect2' in tools
+  when: 'mutect2' in tools && "filter" in tools
 
   script:
   prefix = "${mutect2Vcf}".replaceFirst('.vcf.gz', '')
@@ -228,8 +229,6 @@ process RunMutect2Filter {
   """
 }
 
-(sampleIdsForMutect2Combine, bamFiles) = bamFiles.into(2)
-
 process CombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -238,7 +237,7 @@ process CombineMutect2Vcf {
   input:
     file(mutect2Vcf) from mutect2FilteredOutput.collect()
     file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect() 
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
+    set idTumor, idNormal from sampleIdsForMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -249,7 +248,7 @@ process CombineMutect2Vcf {
     file("${outfile}") into mutect2CombinedVcfOutput
     file("${outfile}.tbi") into mutect2CombinedVcfOutputIndex
 
-  when: 'mutect2' in tools
+  when: 'mutect2' in tools && "combine" in tools
 
   outfile="${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
 

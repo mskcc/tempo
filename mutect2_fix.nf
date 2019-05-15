@@ -77,7 +77,7 @@ process CreateScatteredIntervals {
     file("idt*.interval_list") into idtIntervals mode flatten
     file("wgs*.interval_list") into wgsIntervals mode flatten
 
-  when: "mutect2" in tools && "createintervals" in tools
+  when: "mutect2" in tools
 
   script:
   """
@@ -124,6 +124,8 @@ process CreateScatteredIntervals {
 
 ( bamsForMutect2Intervals, bamFiles ) = bamFiles.into(2)
 
+//Flipping assay and target in bamList so that it can be combined with the intervals
+//Could probably get away with leaving it second and combining, below, by: 1
 bamList = bamsForMutect2Intervals
   .map { row ->
     def assay = row[0]
@@ -151,7 +153,7 @@ mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
@@ -162,9 +164,9 @@ process RunMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
 
-  when: 'mutect2' in tools && "run" in tools
+  when: 'mutect2' in tools
 
   script:
   """
@@ -181,20 +183,17 @@ process RunMutect2 {
     --output ${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz
   """
 }
-/*
+
 process RunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
+    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
 
   output:
-    set idTumor, idNormal into sampleIdsForMutect2Combine
-    file("*filtered.vcf.gz") into mutect2FilteredOutput
-    file("*filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
-    file("*Mutect2FilteringStats.tsv") into mutect2Stats
+    set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
 
   when: 'mutect2' in tools && "filter" in tools
 
@@ -209,15 +208,15 @@ process RunMutect2Filter {
   """
 }
 
+forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
+
 process CombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    file(mutect2Vcf) from mutect2FilteredOutput.collect()
-    file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect() 
-    set idTumor, idNormal from sampleIdsForMutect2Combine
+    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -225,8 +224,7 @@ process CombineMutect2Vcf {
     ])
 
   output:
-    file("${outfile}") into mutect2CombinedVcfOutput
-    file("${outfile}.tbi") into mutect2CombinedVcfOutputIndex
+    set file("${outfile}"), file("${outfile}.tbi") into mutect2CombinedVcfOutput
 
   when: 'mutect2' in tools && 'combine' in tools
 
@@ -251,7 +249,7 @@ process CombineMutect2Vcf {
   tabix --preset vcf ${outfile}
   """
 }
-*/
+
 /*
 ================================================================================
 =                               AWESOME FUNCTIONS                             =
