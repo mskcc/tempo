@@ -126,27 +126,15 @@ process CreateScatteredIntervals {
 
 //Flipping assay and target in bamList so that it can be combined with the intervals
 //Could probably get away with leaving it second and combining, below, by: 1
-bamList = bamsForMutect2Intervals
-  .map { row ->
-    def assay = row[0]
-    def target = row[1]
-    def idTumor = row[2]
-    def idNormal = row[3]
-    def bamTumor = returnFile(row[4])
-    def bamNormal = returnFile(row[5])
-    def baiTumor = returnFile(row[6])
-    def baiNormal = returnFile(row[7])
-    [ target, assay, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
-  }
-agilentIList = agilentIntervals.map{ n -> [ "agilent", n ] }
-idtIList = idtIntervals.map{ n -> [ "idt", n ] }
-wgsIList = wgsIntervals.map{ n -> [ "wgs", n ] }
+agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
+idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
+wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
 
-( aBamList, iBamList, wBamList ) = bamList.into(3)
+( aBamList, iBamList, wBamList ) = bamsForMutect2Intervals.into(3)
 
-aMergedChannel = aBamList.combine(agilentIList, by: 0).unique() 
-bMergedChannel = iBamList.combine(idtIList, by: 0).unique() 
-wMergedChannel = wBamList.combine(wgsIList, by: 0).unique() 
+aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
+bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
+wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
 
 mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
@@ -156,7 +144,7 @@ process RunMutect2 {
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
