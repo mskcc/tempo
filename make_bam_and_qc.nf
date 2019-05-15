@@ -276,16 +276,16 @@ if (workflow.profile == 'awsbatch') {
     result.subscribe { Object obj ->
       file.withWriterAppend { out ->
         out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\ts3:/${obj[4]}\ts3:/${obj[5]}\ts3:/${obj[6]}\ts3:/${obj[7]}"
-      }
     }
   }
+}
   else {
     result.subscribe { Object obj ->
       file.withWriterAppend { out ->
         out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[4]}\t${obj[5]}\t${obj[6]}\t${obj[7]}"
-      }
     }
   }
+}
 
 // FastP - FastP on lane pairs, R1/R2
 
