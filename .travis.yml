@@ -9,7 +9,7 @@ services:
   - docker
 
 before_install:
-  - curl -fsSL get.nextflow.io | bash
+  - export NXF_VER=19.03.0-edge && curl -fsSL get.nextflow.io | bash 
   - chmod +x nextflow
   - wget -O test-data.tar.gz "https://drive.google.com/uc?export=download&id=1xduBYILSi60JjpmT4yVl_cP1yFGYi0QP"
   - tar -xzvf test-data.tar.gz 
