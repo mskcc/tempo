@@ -198,13 +198,16 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 
 mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
+mergedChannel = mergedChannel.map { println(it); it }
+
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
+    // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
+    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -513,16 +516,16 @@ process MergeStrelka2Vcfs {
   """
 }
 
-( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
+mutect2CombinedVcfOutput.println()
+strelkaOutputMerged.println()
 /*
+mutectStrelkaChannel = mutect2CombinedVcfOutput.combine( strelkaOutputMerged, by: [0,1,2] ).unique()
+
 process CombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    file(mutect2combinedVCF) from mutect2CombinedVcfOutput
-    file(mutect2combinedVCFIndex) from mutect2CombinedVcfOutputIndex
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
-    set file(strelkaVCF), file(strelkaVCFIndex) from strelkaOutput
+    set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
       referenceMap.repeatMasker,
       referenceMap.repeatMaskerIndex,
@@ -642,7 +645,7 @@ process CombineChannel {
 }
 
 (sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
-
+/*
 process RunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
