@@ -60,7 +60,7 @@ process DellyCall {
     ])
 
   output:
-    set idTumor, idNormal, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutput
+    set idTumor, idNormal, target, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutput
 
   when: 'delly' in tools
 
@@ -81,12 +81,12 @@ process DellyFilter {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
-    set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
+    set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
 
   output:
-    file("*.filter.bcf") into dellyFilterOutput
-    file("*.filter.bcf.csi") into dellyFilterIndexedOutput
+    set idTumor, idNormal, target, file("*.filter.bcf") into dellyFilterOutput
+
 
   when: 'delly' in tools
 
@@ -105,12 +105,11 @@ process DellyFilter {
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
 process CreateScatteredIntervals {
-  tag {idNormal}
+  tag { idNormal }
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/intervals"
+  //publishDir "${params.outDir}/intervals", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -121,35 +120,71 @@ process CreateScatteredIntervals {
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
       ])
 
   output:
-    file('intervals/*.interval_list') into bedIntervals mode flatten
+    file("agilent*.interval_list") into agilentIntervals mode flatten
+    file("idt*.interval_list") into idtIntervals mode flatten
+    file("wgs*.interval_list") into wgsIntervals mode flatten
 
   when: "haplotypecaller" in tools
 
   script:
-  intervals = wgsIntervals
-  if(params.assayType == "exome") {
-    if(target == 'agilent') intervals = agilentTargets
-    if(target == 'idt') intervals = idtTargets
-  }
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
-    --intervals ${intervals} \
-    --scatter-count 30 \
+    --intervals ${agilentTargets} \
+    --scatter-count 3 \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output intervals
+    --output agilent
+  for i in agilent/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i agilent-\$BASENAME
+  done
+  gatk SplitIntervals \
+    --reference ${genomeFile} \
+    --intervals ${idtTargets} \
+    --scatter-count 3 \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --output idt
+  for i in idt/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i idt-\$BASENAME
+  done
+  gatk SplitIntervals \
+    --reference ${genomeFile} \
+    --intervals ${wgsIntervals} \
+    --scatter-count 3 \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --output wgs 
+  for i in wgs/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i wgs-\$BASENAME
+  done
   """
 }
 
 (bamsForHaplotypecaller, bamFiles) = bamFiles.into(2)
-bamsForHaplotypecallerIntervals = bamsForHaplotypecaller.spread(bedIntervals)
+
+//Associating interval_list files with BAM files, putting them into one channel
+agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
+idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
+wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
+
+( aBamList, iBamList, wBamList ) = bamsForHaplotypecaller.into(3)
+
+aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
+bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
+wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
+
+mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
 if (params.verbose) bamsForHaplotypecallerIntervals = bamsForHaplotypecallerIntervals.view {
   "BAMs for Haplotypecaller with Intervals:\n\
@@ -163,7 +198,8 @@ process RunHaplotypecaller {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForHaplotypecallerIntervals
+    // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
+    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -171,8 +207,7 @@ process RunHaplotypecaller {
     ])
 
   output:
-    file("*.vcf.gz") into haplotypecallerOutput
-    file("*.vcf.gz.tbi") into haplotypecallerIndexedOutput
+    set idTumor, idNormal, target, file("*.vcf.gz"), file("*.vcf.gz.tbi") into haplotypecallerOutput mode flatten
 
   when: 'haplotypecaller' in tools
 
@@ -189,7 +224,8 @@ process RunHaplotypecaller {
   """
 }
 
-(sampleIdsForHaplotypecallerCombine, bamFiles) = bamFiles.into(2)
+//Formatting the channel to be keyed by idTumor, idNormal, and target
+haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
 
 process CombineHaplotypecallerVcf {
   tag {idNormal}
@@ -197,9 +233,7 @@ process CombineHaplotypecallerVcf {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
-    file(haplotypecallerVcf) from haplotypecallerOutput.collect()
-    file(haplotypecallerVcfIndex) from haplotypecallerIndexedOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForHaplotypecallerCombine
+    set idTumor, idNormal, target, file(haplotypecallerVcf), file(haplotypecallerVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -207,8 +241,7 @@ process CombineHaplotypecallerVcf {
     ])
 
   output:
-    file("${outfile}") into haplotypecallerCombinedVcfOutput
-    file("${outfile}.tbi") into haplotypecallerCombinedVcfOutputIndex
+    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcfOutput
 
   when: 'haplotypecaller' in tools
 
@@ -252,8 +285,7 @@ process RunManta {
     ])
 
   output:
-    file("*.vcf.gz") into mantaOutput
-    file("*.vcf.gz.tbi") into mantaIndexedOutput
+    set idTumor, idNormal, target, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput mode flatten
 
   when: 'manta' in tools
 
@@ -313,7 +345,7 @@ process RunStrelka2 {
       ])
 
   output:
-    set file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutput
+    set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutput
 
   when: 'strelka2' in tools
   
@@ -343,16 +375,17 @@ process RunStrelka2 {
   """
 }
 
-(sampleIdsForCombineChannel, bamFiles) = bamFiles.into(2)
+// Join HaploTypeCaller and Strelka outputs 
+
+hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
+
+haplotypecallerStrelkaChannel = hcv.combine(strelkaOutput, by: [0,1,2]).unique()
 
 process CombineChannel {
   tag {idNormal}
 
   input:
-    file(haplotypecallercombinedVCF) from haplotypecallerCombinedVcfOutput
-    file(haplotypecallercombinedVCFIndex) from haplotypecallerCombinedVcfOutputIndex
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
-    set file(strelkaVCF), file(strelkaVCFIndex) from strelkaOutput
+    set idTumor, idNormal, target, file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from haplotypecallerStrelkaChannel
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
       referenceMap.repeatMasker,
       referenceMap.repeatMaskerIndex,
@@ -361,7 +394,7 @@ process CombineChannel {
     ])
 
   output:
-    file("${idNormal}.union.pass.vcf") into vcfMergedOutput
+    set idTumor, idNormal, target, file("${idNormal}.union.pass.vcf") into vcfMergedOutput
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools
 
@@ -438,7 +471,7 @@ process RunVcf2Maf {
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
   input:
-    file(vcfMerged) from vcfMergedOutput
+    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
@@ -477,7 +510,7 @@ process RunVcf2Maf {
 }
 
 // --- Process Delly and Manta VCFs 
-
+/*
 ( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
 
 process MergeDellyAndManta {
