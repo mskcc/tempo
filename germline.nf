@@ -48,7 +48,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process DellyCall {
   tag {idNormal + '_' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
     each svType from svTypes
@@ -78,7 +78,7 @@ process DellyCall {
 process DellyFilter {
   tag {idNormal + '_' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
     set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
@@ -102,8 +102,6 @@ process DellyFilter {
 }
 
 // --- Run Haplotypecaller
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
-
 process CreateScatteredIntervals {
   tag { idNormal }
 
@@ -195,7 +193,7 @@ if (params.verbose) bamsForHaplotypecallerIntervals = bamsForHaplotypecallerInte
 process RunHaplotypecaller {
   tag {idNormal + "_" + intervalBed.baseName}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
@@ -230,7 +228,7 @@ haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
 process CombineHaplotypecallerVcf {
   tag {idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
     set idTumor, idNormal, target, file(haplotypecallerVcf), file(haplotypecallerVcfIndex) from haplotypecallerOutput
@@ -271,7 +269,7 @@ process CombineHaplotypecallerVcf {
 process RunManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta"
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta"
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -324,7 +322,7 @@ process RunManta {
 process RunStrelka2 {
   tag {idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2"
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2"
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
@@ -463,7 +461,6 @@ process CombineChannel {
   """
 }
 
-(sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
 
 process RunVcf2Maf {
   tag {idNormal}
@@ -472,7 +469,6 @@ process RunVcf2Maf {
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -519,7 +515,7 @@ dellyMantaChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
 process MergeDellyAndManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_merged_output"
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_merged_output"
 
   input:
     set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannel
@@ -550,12 +546,10 @@ process MergeDellyAndManta {
   """
 }
 
-( sampleIdsForBcfToolsFilter, bamFiles ) = bamFiles.into(2)
-
 process RunBcfToolsFilterOnDellyManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_output"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
   input:
     set idTumor, idNormal, target, file(vcf) from vcfDellyMantaMergedOutput
