@@ -114,7 +114,7 @@ process DellyFilter {
 
 process CreateScatteredIntervals {
 
-  publishDir "${params.outDir}/intervals", mode: params.publishDirMode
+  //publishDir "${params.outDir}/intervals", mode: params.publishDirMode
 
   input:
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -263,7 +263,7 @@ forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
 process CombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
@@ -306,7 +306,7 @@ process CombineMutect2Vcf {
 process RunManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -373,7 +373,7 @@ dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).u
 process MergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
@@ -411,7 +411,7 @@ mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 process RunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -477,7 +477,7 @@ strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 process MergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input: 
     set idTumor, idNormal, target, file(strelkaIndels), file(strelkaIndelsIndex), file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutput
@@ -535,7 +535,7 @@ process CombineChannel {
     ])
 
   output:
-    file("${idTumor}.union.pass.vcf") into vcfMergedOutput
+    set idTumor, idNormal, target, file("${idTumor}.union.pass.vcf") into vcfMergedOutput
 
   when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
 
@@ -639,16 +639,13 @@ process CombineChannel {
   """
 }
 
-(sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
-/*
 process RunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
 
   input:
-    file(vcfMerged) from vcfMergedOutput
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
+    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -683,7 +680,7 @@ process RunVcf2Maf {
     --filter-vcf 0
   """
 }
-*/
+
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
