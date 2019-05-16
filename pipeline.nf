@@ -267,26 +267,26 @@ recalibratedBamForOutput.combine(pairingT)
                         }
                         .set { result }
 
-result.into { resultTsv; inputSomatic }
-
-File file = new File(outname)
-file.newWriter().withWriter { w ->
-    w << "ASSAY\tTARGET\tTUMOR_ID\tNORMAL_ID\tTUMOR_BAM\tNORMAL_BAM\tTUMOR_BAI\tNORMAL_BAI\n"
-}
-
-if (workflow.profile == 'awsbatch') {
-    resultTsv.subscribe { Object obj ->
-      file.withWriterAppend { out ->
-        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\ts3:/${obj[4]}\ts3:/${obj[5]}\ts3:/${obj[6]}\ts3:/${obj[7]}"
+  result.into { resultTsv; bamFiles }
+  
+  File file = new File(outname)
+  file.newWriter().withWriter { w ->
+      w << "ASSAY\tTARGET\tTUMOR_ID\tNORMAL_ID\tTUMOR_BAM\tNORMAL_BAM\tTUMOR_BAI\tNORMAL_BAI\n"
+  }
+  
+  if (workflow.profile == 'awsbatch') {
+      resultTsv.subscribe { Object obj ->
+        file.withWriterAppend { out ->
+          out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\ts3:/${obj[4]}\ts3:/${obj[5]}\ts3:/${obj[6]}\ts3:/${obj[7]}"
+        }
       }
     }
-  }
-else {
-  resultTsv.subscribe { Object obj ->
-    file.withWriterAppend { out ->
-      out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[4]}\t${obj[5]}\t${obj[6]}\t${obj[7]}"
+  else {
+    resultTsv.subscribe { Object obj ->
+      file.withWriterAppend { out ->
+        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[4]}\t${obj[5]}\t${obj[6]}\t${obj[7]}"
+      }
     }
-  }
 }
 
 // FastP - FastP on lane pairs, R1/R2
@@ -343,7 +343,7 @@ process Alfred {
 */
 
 
-(bamFilesForMsiSensor, inputSomatic) = inputSomatic.into(2)
+(bamFilesForMsiSensor, bamFiles) = bamFiles.into(2)
 
 // MSI Sensor
 
@@ -378,7 +378,7 @@ process RunMsiSensor {
 }
 
 // --- Run FACETS
-(bamFilesForSnpPileup, inputSomatic) = inputSomatic.into(2)
+(bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
 process DoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
@@ -447,7 +447,7 @@ process DoFacets {
   """
 }
 
-(bamsForHlaPolysolver, inputSomatic) = inputSomatic.into(2)
+(bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
 
 process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
@@ -483,7 +483,7 @@ process RunHlaPolysolver {
 
 // --- Run Conpair
 
-(bamsForConpair, inputSomatic) = inputSomatic.into(2)
+(bamsForConpair, bamFiles) = bamFiles.into(2)
 
 process RunConpair {
   tag {idTumor + "_vs_" + idNormal}
@@ -569,6 +569,8 @@ process RunConpair {
     --outpre=${idTumor}.${idNormal}
   """
 }
+
+
 
 
 /*
