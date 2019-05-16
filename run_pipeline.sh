@@ -1,10 +1,20 @@
 #!/bin/bash
 
+trap _term SIGINT
+
 NEXTFLOW=""
 ANALYSIS=""
 MAPPING=""
 PAIRING=""
 PROFILE=""
+
+
+_term() {
+  echo "Killing nextflow process" 
+  kill -TERM "$make_bam_pid" 2>/dev/null
+  kill -TERM "$somatic_pid" 2>/dev/null
+  kill -TERM "$germline_pid" 2>/dev/null
+}
 
 
 function help () {
@@ -18,6 +28,7 @@ function help () {
   echo "    -pr --profile: profile"
   exit 1
 }
+
 
 for i in "$@"
 do
@@ -49,7 +60,7 @@ case $i in
 esac
 done
 
-
+FAIL=0
 
 if [ "$NEXTFLOW" = "" ] || [ "$ANALYSIS" = "" ] || [ "$MAPPING" = "" ] || [ "$PAIRING" = "" ] || [ "$PROFILE" = "" ];
 then
@@ -61,17 +72,91 @@ if [[ -n $1 ]]; then
     tail -1 $1
 fi
 
+echo "RUNNING with" $($NEXTFLOW -v)
+
 if [ "$ANALYSIS" = "make_bam" ]; 
 then
-    eval $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE
+    echo "Starting MAKE_BAM_AND_QC analysis"
+    echo "Starting make_bam_and_qc.nf step"
+    eval $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE &
+    make_bam_pid=$!
+    echo "Started make_bam_and_qc.nf. You can track progress in make_bam_and_qc.log"
+    wait $make_bam_pid || let "FAIL+=1"
+    if [ "$FAIL" == "0" ];
+    then
+        echo "Step make_bam_and_qc COMPLETED"
+    else
+        echo "STEP: make_bam_and_qc FAILED. You can see log in make_bam_and_qc.log"
+        exit 1
+    fi
 fi
 
-if [ "$ANALYSIS" = "somatic" ]; 
+if [ "$ANALYSIS" = "germline" ]; 
 then
-    eval $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE && $NEXTFLOW run somatic.nf --sample make_bam_output.tsv -profile $PROFILE
+    echo "Starting GERMLINE analysis"
+    echo "Starting make_bam_and_qc.nf step"
+    $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE > make_bam_and_qc.log &
+    make_bam_pid=$!
+    echo "Started make_bam_and_qc.nf. You can track progress in make_bam_and_qc.log"
+    wait $make_bam_pid || let "FAIL+=1"
+    if [ "$FAIL" == "0" ];
+    then
+        echo "Step make_bam_and_qc COMPLETED"
+        echo "Starting somatic.nf step"
+        $NEXTFLOW run somatic.nf --sample make_bam_output.tsv -profile $PROFILE > somatic.log &
+        somatic_pid=$!
+        echo "Started somatic.nf. You can track progress in somatic.log"
+        echo "Starting germline.nf step"
+        $NEXTFLOW run germline.nf --sample make_bam_output.tsv -profile $PROFILE > germline.log &
+        germline_pid=$!
+        echo "Started germline.nf. You can track progress in germline.log"
+        wait $somatic_pid || let "FAIL+=1"
+        if [ "$FAIL" == "0" ];
+        then
+            echo "Step somatic COMPLETED"
+        else
+            echo "Step somatic FAILED. You can see log in somatic.log"
+            exit 1
+        fi
+        wait $germline_pid || let "FAIL+=1"
+        if [ "$FAIL" == "0" ];
+        then
+            echo "Step germline COMPLETED"
+        else
+            echo "Step germline FAILED. You can see log in make_bam_and_qc.log"
+            exit 1
+        fi
+    else
+        echo "STEP: make_bam_and_qc FAILED. You can see log in make_bam_and_qc.log"
+        exit 1
+    fi
 fi
 
-if [ "$ANALYSIS" = "germline" ];
+if [ "$ANALYSIS" = "somatic" ];
 then
-    eval $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE && $NEXTFLOW run germline.nf --sample make_bam_output.tsv -profile $PROFILE
+    echo "Starting SOMATIC analysis"
+    echo "Starting make_bam_and_qc.nf step"
+    $NEXTFLOW run make_bam_and_qc.nf --mapping $MAPPING --pairing $PAIRING -profile $PROFILE > make_bam_and_qc.log &
+    make_bam_pid=$!
+    echo "Started make_bam_and_qc.nf. You can track progress in make_bam_and_qc.log"
+    wait $make_bam_pid || let "FAIL+=1"
+    if [ "$FAIL" == "0" ];
+    then
+        echo "Step make_bam_and_qc COMPLETED"
+        echo "Starting somatic.nf step"
+        $NEXTFLOW run somatic.nf --sample make_bam_output.tsv -profile $PROFILE > somatic.log &
+        somatic_pid=$!
+        echo "Started somatic.nf. You can track progress in somatic.log"
+        wait $somatic_pid || let "FAIL+=1"
+        if [ "$FAIL" == "0" ];
+        then
+            echo "Step somatic COMPLETED"
+        else
+            echo "Step somatic FAILED. You can see log in somatic.log"
+            exit 1
+        fi
+    else
+        echo "STEP: make_bam_and_qc FAILED. You can see log in make_bam_and_qc.log"
+        exit 1
+    fi
 fi
