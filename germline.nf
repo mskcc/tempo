@@ -482,7 +482,7 @@ process RunVcf2Maf {
     ])
 
   output:
-    file("*.maf") into mafFile
+    set idTumor, idNormal, target, file("*.maf") into mafFile
 
   when: "strelka2" in tools && "haplotypecaller" in tools
 
