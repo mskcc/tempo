@@ -198,8 +198,6 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 
 mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
-mergedChannel = mergedChannel.map { println(it); it }
-
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -516,9 +514,6 @@ process MergeStrelka2Vcfs {
   """
 }
 
-mutect2CombinedVcfOutput.println()
-strelkaOutputMerged.println()
-/*
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine( strelkaOutputMerged, by: [0,1,2] ).unique()
 
 process CombineChannel {
@@ -547,7 +542,7 @@ process CombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  if (params.assayType == 'exome') {
+  if (target != 'wgs') {
     pon = exomePoN
   }
   """
