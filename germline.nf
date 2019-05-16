@@ -285,7 +285,7 @@ process RunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz"), file("*.vcf.gz.tbi") into mantaOutput mode flatten
+    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
 
   when: 'manta' in tools
 
@@ -510,8 +510,11 @@ process RunVcf2Maf {
 }
 
 // --- Process Delly and Manta VCFs 
-/*
-( sampleIdsForDellyMantaMerge, bamFiles ) = bamFiles.into(2)
+
+mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
+dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
+
+dellyMantaChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
 
 process MergeDellyAndManta {
   tag {idNormal}
@@ -519,12 +522,10 @@ process MergeDellyAndManta {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_merged_output"
 
   input:
-    file(dellyFilterData) from dellyFilterOutput.collect()
-    file(mantaData) from mantaOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
+    set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannel
 
   output:
-    file("*.merge.vcf.gz") into vcfDellyMantaMergedOutput
+    set idTumor, idNormal, target, file("*.merge.vcf.gz") into vcfDellyMantaMergedOutput
 
   when: 'manta' in tools && 'delly' in tools
 
@@ -557,8 +558,7 @@ process RunBcfToolsFilterOnDellyManta {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_output"
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForBcfToolsFilter
-    file(vcf) from vcfDellyMantaMergedOutput
+    set idTumor, idNormal, target, file(vcf) from vcfDellyMantaMergedOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -566,7 +566,7 @@ process RunBcfToolsFilterOnDellyManta {
     ])
 
   output:
-    file("*filtered.vcf.gz") into vcfFilterDellyMantaOutput
+    set idTumor, idNormal, target, file("*filtered.vcf.gz") into vcfFilterDellyMantaOutput
 
   when: "manta" in tools && "delly" in tools
 
