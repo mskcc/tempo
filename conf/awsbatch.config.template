@@ -12,15 +12,15 @@ outDir = <AWS-S3-OUTDIR>
 
 executor {
   name = 'awsbatch'
-  queueSize = 500
+  queueSize = 5000
   awscli = '/home/ec2-user/miniconda/bin/aws'
 }
 
 process {
   queue = <AWS-BATCH-QUEUE-ARN>
   scratch = '/scratch'
-  errorStrategy = 'retry'
-  maxErrors = 3
+  errorStrategy = errorStrategy { task.exitStatus == 130 & task.attempt < 10 ? 'retry' : 'ignore' }
+  maxErrors = 9
 }
 
 params {
