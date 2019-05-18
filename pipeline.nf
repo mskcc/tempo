@@ -477,7 +477,7 @@ process SomaticDellyCall {
 
 // --- Run Mutect2
 
-process SomaticRunMutect2 {
+process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
@@ -512,7 +512,7 @@ process SomaticRunMutect2 {
   """
 }
 
-process SomaticRunMutect2Filter {
+process RunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
@@ -963,7 +963,7 @@ process SomaticRunVcf2Maf {
 
 // MSI Sensor
 
-process SomaticRunMsiSensor {
+process RunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor", mode: params.publishDirMode
@@ -1023,7 +1023,7 @@ process SomaticDoSnpPileup {
   """
 }
 
-process SomaticDoFacets {
+process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
@@ -1065,7 +1065,7 @@ process SomaticDoFacets {
 
 (bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
 
-process SomaticRunHlaPolysolver {
+process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
@@ -1101,7 +1101,7 @@ process SomaticRunHlaPolysolver {
 
 (bamsForConpair, bamFiles) = bamFiles.into(2)
 
-process SomaticRunConpair {
+process RunConpair {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair", mode: params.publishDirMode
