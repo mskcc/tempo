@@ -423,7 +423,7 @@ bMergedChannel = iBamList.combine(idtIList, by: 1).unique()
 wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
 
 // These will go into mutect2 and haplotypecaller
-aMergedChannel.concat( bMergedChannel, wMergedChannel).into { mergedChannelSomatic, mergedChannelGermline }
+( mergedChannelSomatic, mergedChannelGermline  ) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
 
 /*
 ================================================================================
