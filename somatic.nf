@@ -4,22 +4,22 @@
 ================================================================================
 --------------------------------------------------------------------------------
  Processes overview
- - dellyCall
- - dellyFilter
+ - SomaticDellyCall
+ - SomaticDellyFilter
  - CreateIntervalBeds
- - runMutect2
- - indexVCF
- - runMutect2Filter
- - combineMutect2VCF
- - runManta
- - runStrelka
- - combineChannel
- - runBCFToolsFilterNorm
- - runBCFToolsMerge
- - runVCF2MAF
- - doSNPPileup
- - doFacets
- - runMsiSensor
+ - SomaticRunMutect2
+ - SomaticRunMutect2Filter
+ - SomaticCombineMutect2VCF
+ - SomaticRunManta
+ - SomaticRunStrelka
+ - SomaticCombineChannel
+ - SomaticRunBCFToolsFilterNorm
+ - SomaticRunBCFToolsMerge
+ - SomaticRunVCF2MAF
+ - SomaticDoSNPPileup
+ - SomaticDoFacets
+ - SomaticRunMsiSensor
+ - SomaticRunConpair
 */
 
 
@@ -52,7 +52,7 @@ tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} 
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
 
-process DellyCall {
+process SomaticDellyCall {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
@@ -82,7 +82,7 @@ process DellyCall {
   """
 }
 
-process DellyFilter {
+process SomaticDellyFilter {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
@@ -198,7 +198,7 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 
 mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
-process RunMutect2 {
+process SomaticRunMutect2 {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
@@ -233,7 +233,7 @@ process RunMutect2 {
   """
 }
 
-process RunMutect2Filter {
+process SomaticRunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
@@ -260,7 +260,7 @@ process RunMutect2Filter {
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
 
-process CombineMutect2Vcf {
+process SomaticCombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
@@ -303,7 +303,7 @@ process CombineMutect2Vcf {
 // --- Run Manta
 (bamsForManta, bamsForStrelka, bamFiles) = bamFiles.into(3)
 
-process RunManta {
+process SomaticRunManta {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
@@ -370,7 +370,7 @@ dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).u
 
 (sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
 
-process MergeDellyAndManta {
+process SomaticMergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
@@ -408,7 +408,7 @@ process MergeDellyAndManta {
 
 mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 
-process RunStrelka2 {
+process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
@@ -474,7 +474,7 @@ strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 
 // --- Process Mutect2 and Strelka2 VCFs
 
-process MergeStrelka2Vcfs {
+process SomaticMergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
@@ -516,7 +516,7 @@ process MergeStrelka2Vcfs {
 
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine( strelkaOutputMerged, by: [0,1,2] ).unique()
 
-process CombineChannel {
+process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
@@ -639,7 +639,7 @@ process CombineChannel {
   """
 }
 
-process RunVcf2Maf {
+process SomaticRunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
@@ -684,7 +684,7 @@ process RunVcf2Maf {
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
-process DoSnpPileup {
+process SomaticDoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
@@ -711,7 +711,7 @@ process DoSnpPileup {
   """
 }
 
-process DoFacets {
+process SomaticDoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
@@ -754,7 +754,7 @@ process DoFacets {
 // --- Run MSIsensor
 (bamsForMsiSensor, bamFiles) = bamFiles.into(2)
 
-process RunMsiSensor {
+process SomaticRunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor", mode: params.publishDirMode
@@ -787,7 +787,7 @@ process RunMsiSensor {
 // --- Run HLA Polysolver 
 (bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
 
-process RunHlaPolysolver {
+process SomaticRunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
@@ -823,7 +823,7 @@ process RunHlaPolysolver {
 
 (bamsForConpair, bamFiles) = bamFiles.into(2)
 
-process RunConpair {
+process SomaticRunConpair {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/qc/conpair", mode: params.publishDirMode
