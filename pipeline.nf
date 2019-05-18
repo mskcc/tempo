@@ -34,6 +34,9 @@ pairingT = extractPairing(pairingfile)
 
 fastqFiles = extractFastq(mappingFile)
 
+runGermline = params.germline
+runSomatic = params.somatic
+
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
@@ -364,8 +367,6 @@ process CreateScatteredIntervals {
     file("idt*.interval_list") into idtIntervals mode flatten
     file("wgs*.interval_list") into wgsIntervals mode flatten
 
-  // when: "mutect2" in tools
-
   script:
   """
   gatk SplitIntervals \
@@ -453,7 +454,7 @@ process SomaticDellyCall {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
 
-  // when: 'delly' in tools
+  when: 'delly' in tools && runSomatic
 
   script:
   """
@@ -493,7 +494,7 @@ process SomaticRunMutect2 {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
 
-  // when: 'mutect2' in tools
+  when: 'mutect2' in tools && runSomatic
 
   script:
   """
@@ -522,7 +523,7 @@ process SomaticRunMutect2Filter {
   output:
     set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
 
-  // when: 'mutect2' in tools
+  when: 'mutect2' in tools && runSomatic
 
   script:
   prefix = "${mutect2Vcf}".replaceFirst('.vcf.gz', '')
@@ -554,7 +555,7 @@ process SomaticCombineMutect2Vcf {
   output:
     set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into mutect2CombinedVcfOutput
 
-  // when: 'mutect2' in tools
+  when: 'mutect2' in tools && runSomatic
 
   script:
   outfile="${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
@@ -600,7 +601,8 @@ process SomaticRunManta {
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
-  // when: 'manta' in tools
+  when: 'manta' in tools && runSomatic
+
   script:
   options = ""
   if(params.assayType == "exome") options = "--exome"
@@ -658,7 +660,7 @@ process SomaticMergeDellyAndManta {
   output:
     file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
 
-  // when: 'manta' in tools && 'delly' in tools
+  when: 'manta' in tools && 'delly' in tools && runSomatic
 
   script:
   """ 
@@ -711,7 +713,7 @@ process SomaticRunStrelka2 {
   output:
     set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput mode flatten
 
-  // when: 'manta' in tools && 'strelka2' in tools
+  when: 'manta' in tools && 'strelka2' in tools && runSomatic
 
   script:
   options = ""
@@ -767,7 +769,7 @@ process SomaticMergeStrelka2Vcfs {
   output:
     set idTumor, idNormal, target, file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutputMerged
 
-  // when: 'manta' in tools && 'strelka2' in tools
+  when: 'manta' in tools && 'strelka2' in tools && runSomatic
 
   script:
   prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
@@ -814,7 +816,7 @@ process SomaticCombineChannel {
   output:
     set idTumor, idNormal, target, file("${idTumor}.union.pass.vcf") into vcfMergedOutput
 
-  // when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
+  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools && runSomatic
 
   script:
   isec_dir = "${idTumor}.isec"
@@ -934,7 +936,7 @@ process SomaticRunVcf2Maf {
   output:
     file("*.maf") into mafFile
 
-  // when: "mutect2" in tools && "manta" in tools && "strelka2" in tools  
+  // when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic 
 
   script:
   outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
@@ -978,7 +980,7 @@ process SomaticRunMsiSensor {
   output:
     file("${output_prefix}*") into msiOutput 
 
-  // when: "msisensor" in tools
+  when: "msisensor" in tools && runSomatic
 
   script:
   output_prefix = "${idTumor}_${idNormal}"
@@ -1006,7 +1008,7 @@ process SomaticDoSnpPileup {
   output:
     set assay, target, idTumor, idNormal, file("${output_filename}") into SnpPileup
 
-  // when: 'facets' in tools
+  when: 'facets' in tools && runSomatic
 
   script:
   output_filename = idTumor + "_" + idNormal + ".snppileup.dat.gz"
@@ -1032,7 +1034,7 @@ process SomaticDoFacets {
   output:
     file("*.*") into FacetsOutput
 
-  // when: 'facets' in tools
+  when: 'facets' in tools && runSomatic
 
   script:
   snp_pileup_prefix = idTumor + "_" + idNormal
@@ -1074,7 +1076,7 @@ process SomaticRunHlaPolysolver {
   output:
     file("output/*") into hlaOutput
 
-  // when: "hla" in tools
+  when: "hla" in tools && runSomatic
   
   script:
   outDir = "output"
@@ -1116,7 +1118,7 @@ process SomaticRunConpair {
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
     set file("${idTumor}.${idNormal}_concordance.txt"), file("${idTumor}.${idNormal}_contamination.txt") into conpairOutput
 
-  // when: 'conpair' in tools
+  when: 'conpair' in tools && runSomatic
 
   script:
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
@@ -1207,7 +1209,7 @@ process GermlineRunHaplotypecaller {
   output:
     set idTumor, idNormal, target, file("*.vcf.gz"), file("*.vcf.gz.tbi") into haplotypecallerOutput mode flatten
 
-  // when: 'haplotypecaller' in tools
+  when: 'haplotypecaller' in tools && runGermline
 
   script:
   """
@@ -1241,7 +1243,7 @@ process GermlineCombineHaplotypecallerVcf {
   output:
     set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcfOutput
 
-  // when: 'haplotypecaller' in tools 
+  when: 'haplotypecaller' in tools && runGermline 
 
   script:
   outfile="${idNormal}.haplotypecaller.filtered.vcf.gz"
@@ -1284,7 +1286,7 @@ process GermlineRunManta {
   output:
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutputGermline mode flatten
 
-  // when: 'manta' in tools
+  when: 'manta' in tools && runGermline
 
   // flag with --exome if exome
   script:
@@ -1344,7 +1346,7 @@ process GermlineRunStrelka2 {
   output:
     set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutputGermline
 
-  // when: 'strelka2' in tools
+  when: 'strelka2' in tools && runGermline
   
   script:
   options = ""
@@ -1393,7 +1395,7 @@ process GermlineCombineChannel {
   output:
     set idTumor, idNormal, target, file("${idNormal}.union.pass.vcf") into vcfMergedOutputGermline
 
-  // when: 'strelka2' in tools && 'haplotypecaller' in tools
+  when: 'strelka2' in tools && 'haplotypecaller' in tools && runGermline
 
   script:  
   isec_dir = "${idNormal}.isec"
@@ -1479,7 +1481,7 @@ process GermlineRunVcf2Maf {
   output:
     set idTumor, idNormal, target, file("*.maf") into mafFileGermline
 
-  // when: "strelka2" in tools && "haplotypecaller" in tools 
+  when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
@@ -1523,7 +1525,7 @@ process GermlineDellyCall {
   output:
     set idTumor, idNormal, target, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutputGermline
 
-  when: 'delly' in tools
+  when: 'delly' in tools && runGermline
 
   script:
   """
@@ -1549,7 +1551,7 @@ process GermlineDellyFilter {
     set idTumor, idNormal, target, file("*.filter.bcf") into dellyFilterOutputGermline
 
 
-  when: 'delly' in tools
+  when: 'delly' in tools && runGermline
 
   outfile="${dellyBcf}".replaceFirst(".bcf",".filter.bcf")
 
@@ -1578,7 +1580,7 @@ process GermlineMergeDellyAndManta {
   output:
     set idTumor, idNormal, target, file("*.merge.vcf.gz") into vcfDellyMantaMergedOutputGermline
 
-  // when: 'manta' in tools && 'delly' in tools
+  when: 'manta' in tools && 'delly' in tools && runGermline
 
   script:
   """ 
@@ -1617,7 +1619,7 @@ process GermlineRunBcfToolsFilterOnDellyManta {
   output:
     set idTumor, idNormal, target, file("*filtered.vcf.gz") into vcfFilterDellyMantaOutputGermline
 
-  // when: "manta" in tools && "delly" in tools
+  when: "manta" in tools && "delly" in tools && runGermline
 
   script:
   outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.vcf.gz')
