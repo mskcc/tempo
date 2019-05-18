@@ -336,56 +336,6 @@ process Alfred {
 
 }
 
-/*
-================================================================================
-=                                SOMATIC PIPELINE                              =
-================================================================================
-*/
-tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
-
-// --- Run Delly
-svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
-(bamsForDelly, bamFiles) = bamFiles.into(2)
-
-process SomaticDellyCall {
-  tag {idTumor + "_vs_" + idNormal + '_' + svType}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
-
-  input:
-    each svType from svTypes
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
-    set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.svCallingExcludeRegions
-    ])
-
-  output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
-
-  // when: 'delly' in tools
-
-  script:
-  """
-  delly call \
-    --svtype ${svType} \
-    --genome ${genomeFile} \
-    --exclude ${svCallingExcludeRegions} \
-    --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
-    ${bamTumor} ${bamNormal}
-
-  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
-
-  delly filter \
-    --filter somatic \
-    --samples samples.tsv \
-    --outfile ${idTumor}_vs_${idNormal}_${svType}.filter.bcf \
-    ${idTumor}_vs_${idNormal}_${svType}.bcf
-  """
-}
-
-// --- Run Mutect2
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
 process CreateScatteredIntervals {
@@ -459,20 +409,72 @@ process CreateScatteredIntervals {
   """
 }
 
-( bamsForMutect2Intervals, bamFiles ) = bamFiles.into(2)
+( bamsForIntervals, bamFiles ) = bamFiles.into(2)
 
 //Associating interval_list files with BAM files, putting them into one channel
 agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
 idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
 wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
 
-( aBamList, iBamList, wBamList ) = bamsForMutect2Intervals.into(3)
+( aBamList, iBamList, wBamList ) = bamsForIntervals.into(3)
 
 aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
 bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
 wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
 
-mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
+// These will go into mutect2 and haplotypecaller
+aMergedChannel.concat( bMergedChannel, wMergedChannel).into { mergedChannelSomatic, mergedChannelGermline }
+
+/*
+================================================================================
+=                                SOMATIC PIPELINE                              =
+================================================================================
+*/
+tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
+
+// --- Run Delly
+svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
+(bamsForDelly, bamFiles) = bamFiles.into(2)
+
+process SomaticDellyCall {
+  tag {idTumor + "_vs_" + idNormal + '_' + svType}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
+
+  input:
+    each svType from svTypes
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
+    set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.svCallingExcludeRegions
+    ])
+
+  output:
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
+
+  // when: 'delly' in tools
+
+  script:
+  """
+  delly call \
+    --svtype ${svType} \
+    --genome ${genomeFile} \
+    --exclude ${svCallingExcludeRegions} \
+    --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
+    ${bamTumor} ${bamNormal}
+
+  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
+
+  delly filter \
+    --filter somatic \
+    --samples samples.tsv \
+    --outfile ${idTumor}_vs_${idNormal}_${svType}.filter.bcf \
+    ${idTumor}_vs_${idNormal}_${svType}.bcf
+  """
+}
+
+// --- Run Mutect2
 
 process SomaticRunMutect2 {
   tag {idTumor + "_vs_" + idNormal}
@@ -481,7 +483,7 @@ process SomaticRunMutect2 {
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
+    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1019,7 +1021,7 @@ process SomaticDoSnpPileup {
   """
 }
 
-process DoFacets {
+process SomaticDoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
@@ -1061,7 +1063,7 @@ process DoFacets {
 
 (bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
 
-process RunHlaPolysolver {
+process SomaticRunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
@@ -1183,6 +1185,11 @@ process SomaticRunConpair {
 }
 
 
+/*
+================================================================================
+=                                GERMLINE PIPELINE                              =
+================================================================================
+*/
 
 
 /*
