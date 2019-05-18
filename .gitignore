@@ -11,7 +11,11 @@ nf.*
 *.bam
 *.bai
 *.html
+*.html.*
 *.txt
+*.txt.*
 *.pdf
 *.gz
 *.bam.*
+*.tsv
+Result/
