@@ -684,7 +684,7 @@ process SomaticRunVcf2Maf {
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
-process SomaticDoSnpPileup {
+process DoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
