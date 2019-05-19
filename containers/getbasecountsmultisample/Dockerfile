@@ -8,9 +8,6 @@ LABEL maintainer="Nikhil Kumar (kumarn1@mskcc.org)" \
 
 ENV GET_BASE_COUNTS_MULTI_SAMPLE_VERSION 1.2.2
 
-COPY runscript.sh /usr/bin/runscript.sh
-COPY run_test.sh /run_test.sh
-
 RUN apk add --update \
       # for wget
             && apk add ca-certificates openssl \
