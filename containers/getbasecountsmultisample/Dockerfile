@@ -1,7 +1,7 @@
 FROM alpine:3.8
 
 LABEL maintainer="Nikhil Kumar (kumarn1@mskcc.org)" \
-      version.image="1.0.0" \
+      version.image="1.2.2" \     ## naming the image after the software version
       version.getBaseCountsMultiSample="1.2.2" \
       version.alpine="3.8" \
       source.getBaseCountsMultiSample="https://github.com/zengzheng123/GetBaseCountsMultiSample/releases/tag/v1.2.2"
