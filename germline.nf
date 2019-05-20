@@ -4,15 +4,15 @@
 ================================================================================
 --------------------------------------------------------------------------------
  Processes overview
- - DellyCall
- - DellyFilter
+ - GermlineDellyCall
+ - GermlineDellyFilter
  - CreateIntervalBeds
- - RunHaplotypecaller
- - RunManta
- - RunStrelka
- - RunBcfToolsFilterNorm
- - RunBcfToolsMerge
- - RunVcf2Maf
+ - GermlineRunHaplotypecaller
+ - GermlineRunManta
+ - GermlineRunStrelka
+ - GermlineRunBcfToolsFilterNorm
+ - GermlineRunBcfToolsMerge
+ - GermlineRunVcf2Maf
 */
 
 
@@ -42,17 +42,16 @@ bamFiles = extractBamFiles(tsvFile)
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
 // --- Run Delly
-svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
-(bamsForDelly, bamFiles) = bamFiles.into(2)
+(bamsForDellyGermline, bamFiles) = bamFiles.into(2)
 
-process DellyCall {
+process GermlineDellyCall {
   tag {idNormal + '_' + svType}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
-    each svType from svTypes
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
+    each svType from Channel.from("DUP", "BND", "DEL", "INS", "INV")
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDellyGermline
     set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -60,7 +59,7 @@ process DellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutput
+    set idTumor, idNormal, target, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutputGermline
 
   when: 'delly' in tools
 
@@ -75,17 +74,17 @@ process DellyCall {
   """
 }
 
-process DellyFilter {
+process GermlineDellyFilter {
   tag {idNormal + '_' + svType}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
-    set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
+    set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutputGermline
 
 
   output:
-    set idTumor, idNormal, target, file("*.filter.bcf") into dellyFilterOutput
+    set idTumor, idNormal, target, file("*.filter.bcf") into dellyFilterOutputGermline
 
 
   when: 'delly' in tools
@@ -182,7 +181,7 @@ aMergedChannel = aBamList.combine(agilentIList, by: 1).unique()
 bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
 wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
 
-mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
+mergedChannelGermline = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
 if (params.verbose) bamsForHaplotypecallerIntervals = bamsForHaplotypecallerIntervals.view {
   "BAMs for Haplotypecaller with Intervals:\n\
@@ -190,14 +189,14 @@ if (params.verbose) bamsForHaplotypecallerIntervals = bamsForHaplotypecallerInte
   File  : [${it[4].fileName}]"
 }
 
-process RunHaplotypecaller {
+process GermlineRunHaplotypecaller {
   tag {idNormal + "_" + intervalBed.baseName}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel
+    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -225,7 +224,7 @@ process RunHaplotypecaller {
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
 
-process CombineHaplotypecallerVcf {
+process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
@@ -264,15 +263,15 @@ process CombineHaplotypecallerVcf {
 }
 
 // --- Run Manta
-(bamsForManta, bamsForStrelka, bamFiles) = bamFiles.into(3)
+(bamsForMantaGermline, bamsForStrelkaGermline, bamFiles) = bamFiles.into(3)
 
-process RunManta {
+process GermlineRunManta {
   tag {idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta"
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -283,7 +282,7 @@ process RunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
+    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutputGermline mode flatten
 
   when: 'manta' in tools
 
@@ -319,13 +318,13 @@ process RunManta {
 }
 
 // --- Run Strelka2
-process RunStrelka2 {
+process GermlineRunStrelka2 {
   tag {idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2"
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelkaGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -379,7 +378,7 @@ hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
 
 haplotypecallerStrelkaChannel = hcv.combine(strelkaOutput, by: [0,1,2]).unique()
 
-process CombineChannel {
+process GermlineCombineChannel {
   tag {idNormal}
 
   input:
@@ -392,7 +391,7 @@ process CombineChannel {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.union.pass.vcf") into vcfMergedOutput
+    set idTumor, idNormal, target, file("${idNormal}.union.pass.vcf") into vcfMergedOutputGermline
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools
 
@@ -462,13 +461,13 @@ process CombineChannel {
 }
 
 
-process RunVcf2Maf {
+process GermlineRunVcf2Maf {
   tag {idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
   input:
-    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput
+    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutputGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -507,21 +506,21 @@ process RunVcf2Maf {
 
 // --- Process Delly and Manta VCFs 
 
-mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
-dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
+mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2])
+dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2])
 
-dellyMantaChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
+dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2]).unique()
 
-process MergeDellyAndManta {
+process GermlineMergeDellyAndManta {
   tag {idNormal}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/vcf_merged_output"
 
   input:
-    set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannel
+    set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannelGermline
 
   output:
-    set idTumor, idNormal, target, file("*.merge.vcf.gz") into vcfDellyMantaMergedOutput
+    set idTumor, idNormal, target, file("*.merge.vcf.gz") into vcfDellyMantaMergedOutputGermline
 
   when: 'manta' in tools && 'delly' in tools
 
@@ -546,13 +545,13 @@ process MergeDellyAndManta {
   """
 }
 
-process RunBcfToolsFilterOnDellyManta {
+process GermlineRunBcfToolsFilterOnDellyManta {
   tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
   input:
-    set idTumor, idNormal, target, file(vcf) from vcfDellyMantaMergedOutput
+    set idTumor, idNormal, target, file(vcf) from vcfDellyMantaMergedOutputGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -560,7 +559,7 @@ process RunBcfToolsFilterOnDellyManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*filtered.vcf.gz") into vcfFilterDellyMantaOutput
+    set idTumor, idNormal, target, file("*filtered.vcf.gz") into vcfFilterDellyMantaOutputGermline
 
   when: "manta" in tools && "delly" in tools
 
