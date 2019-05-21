@@ -4,22 +4,22 @@
 ================================================================================
 --------------------------------------------------------------------------------
  Processes overview
- - dellyCall
- - dellyFilter
+ - SomaticDellyCall
+ - SomaticDellyFilter
  - CreateIntervalBeds
- - runMutect2
- - indexVCF
- - runMutect2Filter
- - combineMutect2VCF
- - runManta
- - runStrelka
- - combineChannel
- - runBCFToolsFilterNorm
- - runBCFToolsMerge
- - runVCF2MAF
- - doSNPPileup
- - doFacets
- - runMsiSensor
+ - RunMutect2
+ - RunMutect2Filter
+ - SomaticCombineMutect2VCF
+ - SomaticRunManta
+ - SomaticRunStrelka
+ - SomaticCombineChannel
+ - SomaticRunBCFToolsFilterNorm
+ - SomaticRunBCFToolsMerge
+ - SomaticRunVCF2MAF
+ - SomaticDoSNPPileup
+ - DoFacets
+ - RunMsiSensor
+ - RunConpair
 */
 
 
@@ -52,7 +52,7 @@ tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} 
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
 
-process DellyCall {
+process SomaticDellyCall {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
@@ -67,7 +67,7 @@ process DellyCall {
     ])
 
   output:
-    set idTumor, idNormal, svType, file("${idTumor}_vs_${idNormal}_${svType}.bcf"), file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyCallOutput
+    set idTumor, idNormal, target, svType, file("${idTumor}_vs_${idNormal}_${svType}.bcf"), file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyCallOutput
 
   when: 'delly' in tools
 
@@ -82,17 +82,16 @@ process DellyCall {
   """
 }
 
-process DellyFilter {
+process SomaticDellyFilter {
   tag {idTumor + "_vs_" + idNormal + '_' + svType}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
+    set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
 
   output:
-    file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
-    file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyFilterIndexedOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
 
   when: 'delly' in tools
 
@@ -114,12 +113,10 @@ process DellyFilter {
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
 process CreateScatteredIntervals {
-  tag {idTumor + "_vs_" + idNormal}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/intervals", mode: params.publishDirMode
+  //publishDir "${params.outDir}/intervals", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForIntervalBeds
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -137,42 +134,78 @@ process CreateScatteredIntervals {
       ])
 
   output:
-    file('intervals/*.interval_list') into bedIntervals mode flatten
+    file("agilent*.interval_list") into agilentIntervals mode flatten
+    file("idt*.interval_list") into idtIntervals mode flatten
+    file("wgs*.interval_list") into wgsIntervals mode flatten
 
   when: "mutect2" in tools
 
   script:
-  intervals = wgsIntervals
-  if(params.assayType == "exome") {
-    if(target == 'agilent') intervals = agilentTargets
-    if(target == 'idt') intervals = idtTargets
-  }
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
-    --intervals ${intervals} \
-    --scatter-count 30 \
+    --intervals ${agilentTargets} \
+    --scatter-count 3 \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output intervals
+    --output agilent
+
+  for i in agilent/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i agilent-\$BASENAME
+  done
+
+  gatk SplitIntervals \
+    --reference ${genomeFile} \
+    --intervals ${idtTargets} \
+    --scatter-count 3 \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --output idt
+
+  for i in idt/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i idt-\$BASENAME
+  done
+
+  gatk SplitIntervals \
+    --reference ${genomeFile} \
+    --intervals ${wgsIntervals} \
+    --scatter-count 3 \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --output wgs 
+
+  for i in wgs/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i wgs-\$BASENAME
+  done
   """
 }
 
-(bamsForMutect2, bamFiles) = bamFiles.into(2)
-bamsForMutect2Intervals = bamsForMutect2.spread(bedIntervals)
+( bamsForMutect2Intervals, bamFiles ) = bamFiles.into(2)
 
-if (params.verbose) bamsForMutect2Intervals = bamsForMutect2Intervals.view {
-  "BAMs for Mutect2 with Intervals:\n\
-  ID    : ${it[0]}\tStatus: ${it[1]}\tSample: ${it[2]}\n\
-  File  : [${it[4].fileName}]"
-}
+//Associating interval_list files with BAM files, putting them into one channel
+agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
+idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
+wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
+
+( aBamList, iBamList, wBamList ) = bamsForMutect2Intervals.into(3)
+
+aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
+bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
+wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
+
+mergedChannel = aMergedChannel.concat( bMergedChannel, wMergedChannel)
 
 process RunMutect2 {
-  tag {idTumor + "_vs_" + idNormal + "_" + intervalBed.baseName}
+  tag {idTumor + "_vs_" + idNormal}
 
-  // publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from bamsForMutect2Intervals
+    // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
+    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannel 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -180,11 +213,9 @@ process RunMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
 
   when: 'mutect2' in tools
-
-  // insert right call regions below
 
   script:
   """
@@ -205,15 +236,13 @@ process RunMutect2 {
 process RunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
+    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
 
   output:
-    file("*filtered.vcf.gz") into mutect2FilteredOutput
-    file("*filtered.vcf.gz.tbi") into mutect2FilteredOutputIndex
-    file("*Mutect2FilteringStats.tsv") into mutect2Stats
+    set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
 
   when: 'mutect2' in tools
 
@@ -228,17 +257,16 @@ process RunMutect2Filter {
   """
 }
 
-(sampleIdsForMutect2Combine, bamFiles) = bamFiles.into(2)
+//Formatting the channel to be keyed by idTumor, idNormal, and target
+forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
 
-process CombineMutect2Vcf {
+process SomaticCombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    file(mutect2Vcf) from mutect2FilteredOutput.collect()
-    file(mutect2VcfIndex) from mutect2FilteredOutputIndex.collect() 
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForMutect2Combine
+    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -246,8 +274,7 @@ process CombineMutect2Vcf {
     ])
 
   output:
-    file("${outfile}") into mutect2CombinedVcfOutput
-    file("${outfile}.tbi") into mutect2CombinedVcfOutputIndex
+    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into mutect2CombinedVcfOutput
 
   when: 'mutect2' in tools
 
@@ -276,10 +303,10 @@ process CombineMutect2Vcf {
 // --- Run Manta
 (bamsForManta, bamsForStrelka, bamFiles) = bamFiles.into(3)
 
-process RunManta {
+process SomaticRunManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -293,9 +320,8 @@ process RunManta {
     ])
 
   output:
-    file("*.vcf.gz") into mantaOutput
-    file("*.vcf.gz.tbi") into mantaIndexedOutput
-    set file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
+    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools
   script:
@@ -334,16 +360,61 @@ process RunManta {
   """
 }
 
-// --- Run Strelka2
+mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
 
-process RunStrelka2 {
+dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
+
+dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
+
+// --- Process Delly and Manta VCFs 
+
+(sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
+
+process SomaticMergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelka
-    set file(mantaCSI), file(mantaCSIi) from mantaToStrelka
+    set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
+
+  output:
+    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
+
+  when: 'manta' in tools && 'delly' in tools
+
+  script:
+  """ 
+  for f in *.bcf
+  do 
+    bcftools view --output-type z \$f > \${f%.bcf}.vcf.gz
+  done
+
+  for f in *.vcf.gz
+  do
+    tabix --preset vcf \$f
+  done
+
+  bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type v \
+    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf \
+    *.vcf.gz
+  """
+}
+
+// --- Run Strelka2
+
+mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
+
+process SomaticRunStrelka2 {
+  tag {idTumor + "_vs_" + idNormal}
+
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -361,8 +432,7 @@ process RunStrelka2 {
     ])
 
   output:
-    set file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi") into strelkaOutputIndels
-    set file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutputSNVs
+    set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput mode flatten
 
   when: 'manta' in tools && 'strelka2' in tools
 
@@ -400,57 +470,17 @@ process RunStrelka2 {
   """
 }
 
-// --- Process Delly and Manta VCFs 
-
-(sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
-
-process MergeDellyAndManta {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
-
-  input:
-    file(dellyFilterData) from dellyFilterOutput.collect()
-    file(mantaData) from mantaOutput.collect()
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForDellyMantaMerge
-
-  output:
-    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
-
-  when: 'manta' in tools && 'delly' in tools
-
-  script:
-  """ 
-  for f in *.bcf
-  do 
-    bcftools view --output-type z \$f > \${f%.bcf}.vcf.gz
-  done
-
-  for f in *.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
-
-  bcftools merge \
-    --force-samples \
-    --merge none \
-    --output-type v \
-    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf \
-    *.vcf.gz
-  """
-}
+strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 
 // --- Process Mutect2 and Strelka2 VCFs
 
-(sampleIdsForStrelkaMerge, bamFiles) = bamFiles.into(2)
-
-process MergeStrelka2Vcfs {
+process SomaticMergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
 
+  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+
   input: 
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForStrelkaMerge
-    set file(strelkaIndels), file(strelkaIndelsIndex) from strelkaOutputIndels
-    set file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutputSNVs
+    set idTumor, idNormal, target, file(strelkaIndels), file(strelkaIndelsIndex), file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -458,12 +488,12 @@ process MergeStrelka2Vcfs {
     ])
 
   output:
-    set file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutput
+    set idTumor, idNormal, target, file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutputMerged
 
   when: 'manta' in tools && 'strelka2' in tools
 
   script:
-  prefix = "${strelkaIndels}".replaceFirst(".vcf.gz", "")
+  prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
   outfile = "${prefix}.filtered.vcf.gz"
   """
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
@@ -484,16 +514,13 @@ process MergeStrelka2Vcfs {
   """
 }
 
-( sampleIdsForCombineChannel, bamFiles ) = bamFiles.into(2)
+mutectStrelkaChannel = mutect2CombinedVcfOutput.combine( strelkaOutputMerged, by: [0,1,2] ).unique()
 
-process CombineChannel {
+process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    file(mutect2combinedVCF) from mutect2CombinedVcfOutput
-    file(mutect2combinedVCFIndex) from mutect2CombinedVcfOutputIndex
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForCombineChannel
-    set file(strelkaVCF), file(strelkaVCFIndex) from strelkaOutput
+    set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
       referenceMap.repeatMasker,
       referenceMap.repeatMaskerIndex,
@@ -508,14 +535,14 @@ process CombineChannel {
     ])
 
   output:
-    file("${idTumor}.union.pass.vcf") into vcfMergedOutput
+    set idTumor, idNormal, target, file("${idTumor}.union.pass.vcf") into vcfMergedOutput
 
   when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
 
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  if (params.assayType == 'exome') {
+  if (target != 'wgs') {
     pon = exomePoN
   }
   """
@@ -612,16 +639,13 @@ process CombineChannel {
   """
 }
 
-(sampleIdsForVcf2Maf, bamFiles) = bamFiles.into(2)
-
-process RunVcf2Maf {
+process SomaticRunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
 
   input:
-    file(vcfMerged) from vcfMergedOutput
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from sampleIdsForVcf2Maf
+    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput 
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
