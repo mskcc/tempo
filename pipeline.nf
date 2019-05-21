@@ -298,8 +298,6 @@ else {
 
 process FastP {
 
-  queue: 'arn:aws:batch:us-east-1:474622381158:job-queue/small_jobs' // test submitting small jobs to different queues
-
   tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
   publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
