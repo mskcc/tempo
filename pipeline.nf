@@ -99,6 +99,8 @@ process SortBAM {
 sortedBam.groupTuple().set { groupedBam }
 groupedBam.into { groupedBamDebug; groupedBam }
 
+// MergeBams
+
 process MergeBams {
   tag {idSample}
 
@@ -150,6 +152,8 @@ duplicateMarkedBams = duplicateMarkedBams.map {
 
 (mdBam, mdBamToJoin, mdDebug) = duplicateMarkedBams.into(3)
 
+// GATK BaseRecalibrator , CreateRecalibrationTable
+
 process CreateRecalibrationTable {
   tag {idSample}
 
@@ -188,6 +192,8 @@ process CreateRecalibrationTable {
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
 (recalibrationTable, recalibrationTableDebug) = recalibrationTable.into(2)
+
+// GATK ApplyBQSR, RecalibrateBAM
 
 process RecalibrateBam {
   tag {idSample}
@@ -317,6 +323,8 @@ process FastP {
 
 ignore_read_groups = Channel.from( true , false )
 
+// Alfred, BAM QC
+
 process Alfred {
   tag {idSample}
 
@@ -343,6 +351,8 @@ process Alfred {
 }
 
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
+
+// GATK SplitIntervals, CreateScatteredIntervals
 
 process CreateScatteredIntervals {
 
@@ -434,6 +444,8 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 =                                SOMATIC PIPELINE                              =
 ================================================================================
 */
+
+// parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
 // --- Run Delly
@@ -515,6 +527,8 @@ process RunMutect2 {
   """
 }
 
+// GATK FilterMutectCalls, RunMutect2Filter
+
 process RunMutect2Filter {
   tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
 
@@ -541,6 +555,8 @@ process RunMutect2Filter {
 
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
+
+// Combine Mutect2 VCFs, bcftools
 
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
@@ -642,6 +658,9 @@ process SomaticRunManta {
   """
 }
 
+// Put manta output and delly output into the same channel so they can be processed together in the group key
+// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+
 mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
 
 dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
@@ -651,6 +670,8 @@ dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).u
 // --- Process Delly and Manta VCFs 
 
 (sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
+
+// Merge VCFs, Delly and Manta
 
 process SomaticMergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
@@ -798,6 +819,8 @@ process SomaticMergeStrelka2Vcfs {
 
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine( strelkaOutputMerged, by: [0,1,2] ).unique()
 
+// Combined Somatic VCFs
+
 process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -921,6 +944,8 @@ process SomaticCombineChannel {
   """
 }
 
+// run VCF2MAF, somatic
+
 process SomaticRunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -1026,6 +1051,8 @@ process DoSnpPileup {
   """
 }
 
+// FACETS
+
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -1067,6 +1094,8 @@ process DoFacets {
 }
 
 (bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
+
+// Run HLA Polysolver
 
 process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
@@ -1195,6 +1224,8 @@ process RunConpair {
 ================================================================================
 */
 
+// GATK HaplotypeCaller
+
 process GermlineRunHaplotypecaller {
   tag {idNormal + "_" + intervalBed.baseName}
 
@@ -1229,6 +1260,8 @@ process GermlineRunHaplotypecaller {
 
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
+
+// merge VCFs, GATK HaplotypeCaller
 
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
@@ -1377,7 +1410,7 @@ process GermlineRunStrelka2 {
   """
 }
 
-// Join HaploTypeCaller and Strelka outputs 
+// Join HaploTypeCaller and Strelka outputs,  bcftools
 
 hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
 
@@ -1465,6 +1498,7 @@ process GermlineCombineChannel {
   """
 }
 
+// vcf2maf, germline calls
 
 process GermlineRunVcf2Maf {
   tag {idNormal}
@@ -1541,6 +1575,8 @@ process GermlineDellyCall {
   """
 }
 
+// filter germline Delly calls, bcftools
+
 process GermlineDellyFilter {
   tag {idNormal + '_' + svType}
 
@@ -1566,6 +1602,9 @@ process GermlineDellyFilter {
     ${dellyBcf}
   """
 }
+
+// Put manta output and delly output into the same channel so they can be processed together in the group key
+// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
 
 mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2])
 dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2])
@@ -1605,6 +1644,8 @@ process GermlineMergeDellyAndManta {
     *.vcf.gz
   """
 }
+
+// filter Delly & Manta via bcftools
 
 process GermlineRunBcfToolsFilterOnDellyManta {
   tag {idNormal}
