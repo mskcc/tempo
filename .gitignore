@@ -17,5 +17,4 @@ nf.*
 *.pdf
 *.gz
 *.bam.*
-*.tsv
 Result/
