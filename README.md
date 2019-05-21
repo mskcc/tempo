@@ -8,7 +8,7 @@ https://www.nextflow.io/
 Inspiration from `Sarek` at the NBIS and SciLifeLab in Sweden:
 https://github.com/SciLifeLab/Sarek
 
-Vaporware contains several pipeline scripts (`make_bam_and_qc.nf`, `somatic.nf`, `germline.nf`). A detalied explanation for each step is provided below.
+Vaporware contains several pipeline scripts (`pipeline.nf`, `make_bam_and_qc.nf`, `somatic.nf`, `germline.nf`). A detalied explanation for each step is provided below.
 
 ## Setup instructions
 
@@ -54,7 +54,7 @@ When using a computing cluster it must be a shared folder accessible from all co
 * Do the following for LSF on juno:
 
 ```
-nextflow run make_bam_and_qc.nf --mapping test_inputs/lsf/test_make_bam_and_qc.tsv --pairing test_inputs/lsf/test_make_bam_and_qc_pairing.tsv -profile juno
+nextflow run pipeline.nf --somatic --germline --mapping test_inputs/lsf/test_make_bam_and_qc.tsv --pairing test_inputs/lsf/test_make_bam_and_qc_pairing.tsv -profile juno
 ```
 
 ## For submitting via AWS Batch
@@ -64,7 +64,7 @@ In order to run pipeline on `AWS Batch`, you first must create your `Compute Env
 * When you build your compute environment and create configuration file do the following:
 
 ```
-nextflow run make_bam_and_qc.nf --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
+nextflow run pipeline.nf --somatic --germline --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
 ```
 
 ## Docker and Singularity
@@ -76,13 +76,13 @@ The default parameters are for local-use *WITHOUT* containers
 * For Docker use, do the following:
 
 ```
-nextflow run make_bam_and_qc.nf --mapping mapping.tsv --pairing pairing.tsv -profile docker
+nextflow run pipeline.nf --somatic --germline --mapping mapping.tsv --pairing pairing.tsv -profile docker
 ```
 
 * For Singularity use, do the following:
 
 ```
-nextflow run make_bam_and_qc.nf --mapping mapping.tsv --pairing pairing.tsv -profile singularity
+nextflow run pipeline.nf --somatic --germline --mapping mapping.tsv --pairing pairing.tsv -profile singularity
 ```
 
 ## Components 
