@@ -66,6 +66,8 @@ process AlignReads {
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     
   """
+  set -e
+  set -o pipefail
   bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
   """
 }
@@ -295,6 +297,7 @@ else {
 // FastP - FastP on lane pairs, R1/R2
 
 process FastP {
+
   tag {lane}   // The tag directive allows you to associate each process executions with a custom label
 
   publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
