@@ -12,6 +12,7 @@ outDir = <AWS-S3-OUTDIR>
 
 executor {
   name = 'awsbatch'
+  queueSize = 5000
   awscli = '/home/ec2-user/miniconda/bin/aws'
 }
 
