@@ -18,7 +18,7 @@ Parameters:
     Description: Path for the scratch mount point in the instance
   ScratchVolumeSize:
     Type: Number
-    Default: 20
+    Default: 200
     Description: The initial size of the scratch volume
   AMIName:
     Type: String
@@ -80,7 +80,7 @@ Resources:
               command: yum install -y bzip2 wget && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && bash Miniconda3-latest-Linux-x86_64.sh -b -f -p /home/ec2-user/miniconda && /home/ec2-user/miniconda/bin/conda install -c conda-forge -y awscli && rm Miniconda3-latest-Linux-x86_64.sh
               cwd: /home/ec2-user
             10ConfigureMaxRequests:
-              command: /home/ec2-user/miniconda/bin/aws configure set default.s3.max_concurrent_requests 5
+              command: /home/ec2-user/miniconda/bin/aws configure set default.s3.max_concurrent_requests 1
             11ConfigureMaxBandwith:
               command: /home/ec2-user/miniconda/bin/aws configure set default.s3.max_bandwidth 50MB/s
             

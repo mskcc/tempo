@@ -114,6 +114,7 @@ Resources:
         MinvCpus: 0
         DesiredvCpus: 0
         MaxvCpus: 1024
+        # Ec2KeyPair: sinisa
         InstanceTypes:
           - optimal
         ImageId: !Ref AmiId
