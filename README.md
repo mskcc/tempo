@@ -96,7 +96,7 @@ nextflow run pipeline.nf --somatic --germline --mapping mapping.tsv --pairing pa
 
 * __View the Nextflow Log__: You can access the Nextflow cache metadata by running `nextflow log`. It contains information like TIMESTAMP, DURATION, and RUN_NAME, and a STATUS indicating a failed or successful run, among others. The values under RUN_NAME can also be submitted following the `-resume` flag to resume previously-run Nextflow jobs.
 
-* __Run/Skip specific tools:__ `pipeline.nf` lets you run only specific tools you want and skip others. The aforementioned `--somatic` and `--germline` flags already have a preset of tools to run, but you can limit this further by providing the `--tools` flag, followed by a comma-delimited string. For example, to use only DELLY for your somatic/germline runs, do `--somatic --germline --tools delly`; to use MuTect2, Manta, and Strelka2, do `--somatic --tools mutect2,manta,strelka2`.
+* __Run/Skip specific tools:__ `pipeline.nf` lets you run tools you want and skip others. The aforementioned `--somatic` and `--germline` flags already have a preset of tools to include during a run, but you can limit this further by providing the `--tools` flag, followed by a comma-delimited string. For example, to use only DELLY for your somatic/germline runs, do `--somatic --germline --tools delly`; to use MuTect2, Manta, and Strelka2, do `--somatic --tools mutect2,manta,strelka2`.
 
 ## Components 
 
