@@ -1,32 +1,48 @@
-FROM frolvlad/alpine-glibc:alpine-3.9
+FROM ubuntu:18.04
 
-LABEL maintainer="Nikhil Kumar (kumarn1@mskcc.org)" \
-      version.image="1.0.0" \
-      version.delly="0.7.7" \
-      version.htslib="1.6" \
-      version.bcftools="1.6" \
-      version.samtools="1.6" \
-      version.alpine="3.8" \
-      source.delly="https://github.com/dellytools/delly/releases/tag/v0.7.7" \
-      source.htslib="https://github.com/samtools/htslib/releases/tag/1.6" \
-      source.bcftools="https://github.com/samtools/bcftools/releases/tag/1.6" \
-      source.samtools="https://github.com/samtools/samtools/releases/tag/1.6"
+LABEL maintainer="Sinisa Ivkovic (ivkovics@mskcc.org)" \
+      version.ubuntu="18.04" \
+      version.delly="0.8.1" \
+      version.htslib="1.9"
 
-ENV DELLY_VERSION v0.8.1
+# set the environment variables
+ENV delly_version 0.8.1
+ENV htslib_version 1.9
 
+# run update
+RUN apt-get update -y && apt-get install -y \
+    libnss-sss \
+    curl \
+    less \
+    vim  \
+    wget \
+    unzip \
+    build-essential \
+    libboost-all-dev \
+    zlib1g-dev \
+    libncurses5-dev \
+    libncursesw5-dev \
+    libnss-sss \
+    libbz2-dev \
+    liblzma-dev \
+    bzip2 \
+    libcurl4-openssl-dev
 
-# set environment
-ENV BOOST_ROOT /usr
-ENV SEQTK_ROOT /opt/htslib
+# install htslib
+WORKDIR /usr/local/bin/
+RUN curl -SL https://github.com/samtools/htslib/releases/download/${htslib_version}/htslib-${htslib_version}.tar.bz2 \
+    > /usr/local/bin/htslib-${htslib_version}.tar.bz2
+RUN tar -xjf /usr/local/bin/htslib-${htslib_version}.tar.bz2 -C /usr/local/bin/
+RUN cd /usr/local/bin/htslib-${htslib_version}/ && ./configure
+RUN cd /usr/local/bin/htslib-${htslib_version}/ && make
+RUN cd /usr/local/bin/htslib-${htslib_version}/ && make install
+ENV LD_LIBRARY_PATH /usr/local/bin/htslib-${htslib_version}/
 
-RUN apk add --update --no-cache ncurses \
-    && apk add --virtual=deps --update --no-cache ncurses-dev musl-dev git g++ make zlib-dev \
-    && apk add bash build-base asciidoc bzip2-dev xz-dev boost-dev \
-    && cd /opt \
-    # install delly
-    && cd /opt \
-    && git clone --recursive https://github.com/dellytools/delly.git -b ${DELLY_VERSION} \
-    && cd /opt/delly/ \
-    && make all \
-    && install -p /opt/delly/src/delly /usr/local/bin/ 
-
+# install delly
+WORKDIR /usr/local/bin
+RUN wget https://github.com/dellytools/delly/archive/v${delly_version}.zip
+RUN unzip v${delly_version}.zip
+WORKDIR /usr/local/bin/delly-${delly_version}
+RUN make all
+WORKDIR /usr/local/bin
+RUN ln -s /usr/local/bin/delly-0.8.1/src/delly /usr/local/bin/delly
