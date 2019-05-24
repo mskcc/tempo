@@ -24,6 +24,8 @@ RUN apk add --update \
         && apk add cairo cairo-dev libxt-dev libxml2-dev font-xfree86-type1 \
     # download and install R
         && apk add R R-dev \
+    # change permissions for /tmp; still doesn't resolve R warnings
+        && chmod  777 -R /tmp \
     # download and unzip facets, facets-suite, pctGCdata
         && cd /tmp \
 	    && wget https://github.com/mskcc/facets-suite/archive/${FACETS_SUITE_VERSION}.tar.gz -O facets-suite-${FACETS_SUITE_VERSION}.tar.gz \
@@ -53,7 +55,7 @@ RUN apk add --update \
                 && sed -i "s/opt\/common\/CentOS_6-dev\/R\/R-3.2.2\//usr\//g" *.R \
             # copy execs to /usr/bin/facets-suite
                 && mkdir -p /usr/bin/facets-suite/ \
-                && cp /tmp/facets-suite-${FACETS_SUITE_VERSION}/* /usr/bin/facets-suite/ \
+                && cp -r /tmp/facets-suite-${FACETS_SUITE_VERSION}/* /usr/bin/facets-suite/ \
     # clean up
         && rm -rf /var/cache/apk/* /tmp/*
 
