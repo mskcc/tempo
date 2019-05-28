@@ -655,7 +655,7 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    file("*.maf") into mafFile
+    set idTumor, idNormal, target, file("*.maf") into mafFile
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools 
 
@@ -906,6 +906,40 @@ process RunConpair {
     --pairing=pairing.txt \
     --outpre=${idTumor}.${idNormal}
   """
+}
+
+process RunMutationSignatures {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutation_signatures", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(maf) from mafFile
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    file("*.maf") into mutSigOutput
+
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
+
+  script:
+  """
+  python /mutation-signatures/make_trinuc_maf.py \
+    ${genomeFile} \
+    ${maf} \
+    ${idTumor}_${idNormal}.trinuc.maf
+
+  python /mutation-signatures/main.py \
+    /mutation-signatures/Stratton_signatures30.txt \
+    ${idTumor}_${idNormal}.trinuc.maf \
+    ${idTumor}_${idNormal}.mutsig.maf
+  
+  """
+
 }
 
 /*
