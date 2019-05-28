@@ -1234,7 +1234,7 @@ process RunMutationSignatures {
   output:
     file("*.maf") into mutSigOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
 
   script:
   """
