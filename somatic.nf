@@ -690,7 +690,7 @@ process DoSnpPileup {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamFilesForSnpPileup
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
@@ -942,14 +942,19 @@ process RunMutationSignatures {
   """
 }
 
+FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
+
+mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
+
+FacetsMafFileCombine = FacetsOutput.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+
 process DoMafAnno {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(purityRdata), file(facetsFiles) from FacetsOutput
-    set idTumor, idNormal, target, file(maf) from mafFileForMafAnno
+    set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_${idNormal}.maf") into MafAnnoOutput
@@ -960,7 +965,7 @@ process DoMafAnno {
   mapFile = "${idTumor}_${idNormal}.map"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purityRdata.baseName}" >> ${mapFile}
+  echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
 
   /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_${idNormal}.maf  
   """
