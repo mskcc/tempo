@@ -6,7 +6,7 @@ If there are any questions or comments, you are welcome to (raise an issue)[http
 ## Table of contents
 1. [Usage](usage.md)
 2. [Reference files](reference-files.md)
-  - [Intervals](intervals.md)
+  * [Intervals](intervals.md)
 4. [Variant annotation and filtering](variant-annotation-and-filtering.md)
-  - [Panel of normals for exomes](wes-panel-of-normals.md)
+  * [Panel of normals for exomes](wes-panel-of-normals.md)
 5. ...
