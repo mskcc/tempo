@@ -1062,7 +1062,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    file("*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("*purity.Rdata"), file("*.*") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1218,13 +1218,15 @@ process RunConpair {
   """
 }
 
+( mafFileForMafAnno, mafFileForMutSig ) = mafFile.into(2)
+
 process RunMutationSignatures {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutation_signatures", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(maf) from mafFile
+    set idTumor, idNormal, target, file(maf) from mafFileForMutSig
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1249,7 +1251,35 @@ process RunMutationSignatures {
     ${idTumor}_${idNormal}.mutsig.maf
 
   """
+}
 
+FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
+
+mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
+
+FacetsMafFileCombine = FacetsOutput.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+
+process DoMafAnno {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
+
+  output:
+    set idTumor, idNormal, target, file("${idTumor}_${idNormal}.maf") into MafAnnoOutput
+
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
+
+  script:
+  mapFile = "${idTumor}_${idNormal}.map"
+  """
+  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
+  echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
+
+  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_${idNormal}.maf  
+  """
 }
 
 /*
