@@ -798,7 +798,7 @@ process RunHlaPolysolver {
   output:
     file("output/*") into hlaOutput
 
-  when: "hla" in tools
+  when: "polysolver" in tools
   
   script:
   outDir = "output"
