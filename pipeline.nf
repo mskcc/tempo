@@ -1108,7 +1108,7 @@ process RunHlaPolysolver {
   output:
     file("output/*") into hlaOutput
 
-  when: "hla" in tools && runSomatic
+  when: "polysolver" in tools && runSomatic
   
   script:
   outDir = "output"
