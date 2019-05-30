@@ -12,12 +12,14 @@ ENV VCF2MAF_VERSION 1.6.17
 WORKDIR /tmp
 
 USER root
-RUN apt-get update 
 
-# install samtools
+# Install samtools
 RUN apt-get update && \
     apt-get install --yes \
-    libncurses5-dev vcftools libbz2-dev liblzma-dev && \
+    libncurses5-dev \
+    vcftools \
+    libbz2-dev \
+    liblzma-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -40,7 +42,7 @@ RUN curl -L -o tmp2.tar.gz https://github.com/samtools/bcftools/releases/downloa
     cd .. && \
     rm -rf *
 
-# install vcf2maf
+# Install vcf2maf
 WORKDIR /opt/
 
 RUN curl -ksSL -o tmp.tar.gz https://github.com/mskcc/vcf2maf/archive/v${VCF2MAF_VERSION}.tar.gz && \
@@ -48,3 +50,8 @@ RUN curl -ksSL -o tmp.tar.gz https://github.com/mskcc/vcf2maf/archive/v${VCF2MAF
     rm tmp.tar.gz && \
     chmod +x *.pl
 
+# Install R with depencies
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+    r-base-core r-base-dev && \
+    R -e "install.packages('data.table', dependencies = TRUE, repos = 'http://cran.rstudio.com')"

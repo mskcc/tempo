@@ -863,7 +863,9 @@ process SomaticCombineChannel {
     gnomad =gnomadWesVcf
   }
   """
-  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\">" > vcf.header
+  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">" > vcf.header
+  echo -e "##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" >> vcf.header
+  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\"> >> vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
   echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
@@ -958,7 +960,7 @@ process SomaticCombineChannel {
     -r ${genomeFile} \
     -o ${idTumor}.union.annot.vcf -
   
-  filter-script.py ${idTumor}.union.annot.vcf
+  filter-vcf.py ${idTumor}.union.annot.vcf
 
   mv ${idTumor}.union.annot.filter.vcf ${idTumor}_vs_${idNormal}.vcf
 
@@ -988,12 +990,12 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.maf") into mafFile
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf"), file("${idTumor}_vs_${idNormal}.unfiltered.maf") into mafFile
 
   // when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic 
 
   script:
-  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".maf")
+  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
@@ -1010,12 +1012,13 @@ process SomaticRunVcf2Maf {
     --custom-enst ${isoforms} \
     --output-maf ${outfile} \
     --filter-vcf 0
+
+  filter-maf.R ${outfile}
   """
 }
 
-(bamFilesForMsiSensor, bamFiles) = bamFiles.into(2)
-
 // MSI Sensor
+(bamFilesForMsiSensor, bamFiles) = bamFiles.into(2)
 
 process RunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
@@ -1244,7 +1247,7 @@ process RunConpair {
   """
 }
 
-( mafFileForMafAnno, mafFileForMutSig ) = mafFile.into(2)
+(mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
 
 process RunMutationSignatures {
   tag {idTumor + "_vs_" + idNormal}
@@ -1260,22 +1263,16 @@ process RunMutationSignatures {
     ])
 
   output:
-    file("*.maf") into mutSigOutput
+    file("${idTumor}_${idNormal}.mutsig.txt") into mutSigOutput
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
 
   script:
   """
-  python /mutation-signatures/make_trinuc_maf.py \
-    ${genomeFile} \
-    ${maf} \
-    ${idTumor}_${idNormal}.trinuc.maf
-
   python /mutation-signatures/main.py \
     /mutation-signatures/Stratton_signatures30.txt \
-    ${idTumor}_${idNormal}.trinuc.maf \
-    ${idTumor}_${idNormal}.mutsig.maf
-
+    ${idTumor}_vs_${idNormal}.maf \
+    ${idTumor}_vs_${idNormal}.mutsig.txt
   """
 }
 
@@ -1294,7 +1291,7 @@ process DoMafAnno {
     set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_${idNormal}.maf") into MafAnnoOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
@@ -1304,7 +1301,7 @@ process DoMafAnno {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_${idNormal}.maf  
+  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf  
   """
 }
 
