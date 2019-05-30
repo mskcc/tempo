@@ -38,7 +38,7 @@ The `pipeline.nf` script takes a mapping and pairing file to perform BAM preproc
 We recommend users use `singularity/3.1.1`, i.e. 
 
 ```
-$ module load  singularity/3.1.1
+$ module load singularity/3.1.1
 $ which singularity
 /opt/local/singularity/3.1.1/bin/singularity
 ```
@@ -54,10 +54,10 @@ Directory where remote Singularity images are stored.
 When using a computing cluster it must be a shared folder accessible from all computing nodes.
 ```
 
-* Do the following for LSF on juno:
+* Execute the following for LSF on juno, setting the output directory to `test_output` (below) or another subdirectory
 
 ```
-nextflow run pipeline.nf --somatic --germline --mapping test_inputs/lsf/test_make_bam_and_qc.tsv --pairing test_inputs/lsf/test_make_bam_and_qc_pairing.tsv -profile juno
+nextflow run pipeline.nf --somatic --germline --outDir test_output --mapping test_inputs/lsf/test_make_bam_and_qc.tsv --pairing test_inputs/lsf/test_make_bam_and_qc_pairing.tsv -profile juno
 ```
 
 ## For submitting via AWS Batch
@@ -67,7 +67,7 @@ In order to run pipeline on `AWS Batch`, you first must create your `Compute Env
 * When you build your compute environment and create configuration file do the following:
 
 ```
-nextflow run pipeline.nf --somatic --germline --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
+nextflow run pipeline.nf --somatic --germline --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile 
 ```
 
 ## Docker and Singularity
