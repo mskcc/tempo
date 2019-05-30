@@ -1093,22 +1093,22 @@ process DoFacets {
   """
 }
 
-(bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
+(bamsForPolysolver, bamFiles) = bamFiles.into(2)
 
-// Run HLA Polysolver
+// Run Polysolver
 
 process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/polysolver", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
     file("output/*") into hlaOutput
 
-  when: "hla" in tools && runSomatic
+  when: "polysolver" in tools && runSomatic
   
   script:
   outDir = "output"
@@ -1125,7 +1125,7 @@ process RunHlaPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
+  ${outDir} ||  echo "Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
   """
 }
 

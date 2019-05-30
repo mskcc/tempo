@@ -784,21 +784,21 @@ process RunMsiSensor {
   """
 }
 
-// --- Run HLA Polysolver 
-(bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
+// --- Run Polysolver 
+(bamsForPolysolver, bamFiles) = bamFiles.into(2)
 
-process RunHlaPolysolver {
+process RunPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/polysolver", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
     file("output/*") into hlaOutput
 
-  when: "hla" in tools
+  when: "polysolver" in tools
   
   script:
   outDir = "output"
