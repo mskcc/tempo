@@ -521,6 +521,10 @@ process SomaticCombineChannel {
 
   input:
     set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
+    set file(genomeFile), file(genomeIndex) from Channel.value([
+      referenceMap.genomeFile
+      referenceMap.genomeIndex
+    ])
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
       referenceMap.repeatMasker,
       referenceMap.repeatMaskerIndex,
@@ -533,20 +537,28 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex
     ])
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+      referenceMap.gnomadWesVcf,
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
+    ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}.union.pass.vcf") into vcfMergedOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
 
-  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
+  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools && runSomatic
 
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
+  gnomad = gnomadWgsVcf
   if (target != 'wgs') {
     pon = exomePoN
+    gnomad =gnomadWesVcf
   }
   """
-  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2Fail,Number=0,Type=Flag,Description=\"Variant was called failed by Strelka2\">" > vcf.header
+  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\">" > vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
   echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
@@ -559,7 +571,7 @@ process SomaticCombineChannel {
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
     --include 'FILTER!=\"PASS\"' \
-    --mark-sites \"+Strelka2FAIL\" \
+    --mark-sites \"+Strelka2FILTER\" \
     -k \
     --output-type z \
     --output ${isec_dir}/0003.annot.vcf.gz \
@@ -586,7 +598,7 @@ process SomaticCombineChannel {
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.annot.vcf.gz \
-    --columns +FILTER,+FORMAT,Strelka2FAIL \
+    --columns +FORMAT,Strelka2FILTER \
     --output-type z \
     --output ${isec_dir}/0002.annot.vcf.gz \
     ${isec_dir}/0002.tmp.vcf.gz
@@ -624,25 +636,39 @@ process SomaticCombineChannel {
   tabix --preset vcf ${idTumor}.union.vcf.gz
 
   bcftools annotate \
+    --annotations ${gnomad} \
+    --columns INFO \
+    --output-type z \
+    --output ${idTumor}.union.gnomad.vcf.gz \
+    ${idTumor}.union.vcf.gz
+
+  tabix ${idTumor}.union.gnomad.vcf.gz
+
+  bcftools annotate \
     --header-lines vcf.pon.header \
     --annotations ${pon} \
-    --columns PoN:=AC \
-    --output-type z \
-    --output ${idTumor}.union.pon.vcf.gz \
-    ${idTumor}.union.vcf.gz
+    --columns PoN:=AC_Het \
+    ${idTumor}.union.gnomad.vcf.gz | \
+    vt annotate_indels \
+    -r ${genomeFile} \
+    -o ${idTumor}.union.annot.vcf -
+  
+  filter-script.py ${idTumor}.union.annot.vcf
+
+  mv ${idTumor}.union.annot.filter.vcf ${idTumor}_vs_${idNormal}.vcf
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
-    --output ${idTumor}.union.pass.vcf \
-    ${idTumor}.union.pon.vcf.gz
+    --output ${idTumor}_vs_${idNormal}.pass.vcf \
+    ${idTumor}_vs_${idNormal}.vcf
   """
 }
 
 process SomaticRunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput 
@@ -657,11 +683,10 @@ process SomaticRunVcf2Maf {
   output:
     set idTumor, idNormal, target, file("*.maf") into mafFile
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools 
-
-  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+  // when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic 
 
   script:
+  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".maf")
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
@@ -674,7 +699,7 @@ process SomaticRunVcf2Maf {
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info MuTect2,Strelka2,RepeatMasker,EncodeDacMapability,PoN \
+    --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
     --custom-enst ${isoforms} \
     --output-maf ${outfile} \
     --filter-vcf 0
