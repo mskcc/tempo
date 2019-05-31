@@ -67,7 +67,7 @@ In order to run pipeline on `AWS Batch`, you first must create your `Compute Env
 * When you build your compute environment and create configuration file do the following:
 
 ```
-nextflow run pipeline.nf --somatic --germline --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile 
+nextflow run pipeline.nf --somatic --germline --mapping test_inputs/aws/test_make_bam_and_qc.tsv --pairing test_inputs/aws/test_make_bam_and_qc_pairing.tsv -profile awsbatch
 ```
 
 ## Docker and Singularity
