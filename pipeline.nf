@@ -827,7 +827,7 @@ process SomaticCombineChannel {
   input:
     set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
-      referenceMap.genomeFile
+      referenceMap.genomeFile,
       referenceMap.genomeIndex
     ])
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
@@ -860,15 +860,15 @@ process SomaticCombineChannel {
   gnomad = gnomadWgsVcf
   if (target != 'wgs') {
     pon = exomePoN
-    gnomad =gnomadWesVcf
+    gnomad = gnomadWesVcf
   }
   """
   echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">" > vcf.header
   echo -e "##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" >> vcf.header
-  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\"> >> vcf.header
-  echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
-  echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
-  echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
+  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\">" >> vcf.header
+  echo -e "##INFO=<ID=RepeatMasker,Number=1,Type=String,Description=\"RepeatMasker\">" > vcf.rm.header
+  echo -e "##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description=\"EncodeDacMapability\">" > vcf.map.header
+  echo -e "##INFO=<ID=PoN,Number=1,Type=Integer,Description=\"Count in panel of normals\">" > vcf.pon.header
 
   bcftools isec \
     --output-type z \
