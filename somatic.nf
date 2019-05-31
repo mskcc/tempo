@@ -522,7 +522,7 @@ process SomaticCombineChannel {
   input:
     set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
-      referenceMap.genomeFile
+      referenceMap.genomeFile,
       referenceMap.genomeIndex
     ])
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
@@ -547,7 +547,7 @@ process SomaticCombineChannel {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
 
-  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools && runSomatic
+  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
 
   script:
   isec_dir = "${idTumor}.isec"
@@ -555,15 +555,15 @@ process SomaticCombineChannel {
   gnomad = gnomadWgsVcf
   if (target != 'wgs') {
     pon = exomePoN
-    gnomad =gnomadWesVcf
+    gnomad = gnomadWesVcf
   }
   """
   echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">" > vcf.header
   echo -e "##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" >> vcf.header
-  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\"> >> vcf.header
-  echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
-  echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
-  echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
+  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\">" >> vcf.header
+  echo -e "##INFO=<ID=RepeatMasker,Number=1,Type=String,Description=\"RepeatMasker\">" > vcf.rm.header
+  echo -e "##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description=\"EncodeDacMapability\">" > vcf.map.header
+  echo -e "##INFO=<ID=PoN,Number=1,Type=Integer,Description=\"Count in panel of normals\">" > vcf.pon.header
 
   bcftools isec \
     --output-type z \
@@ -685,7 +685,7 @@ process SomaticRunVcf2Maf {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf"), file("${idTumor}_vs_${idNormal}.unfiltered.maf") into mafFile
 
-  // when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic 
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
   script:
   outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
