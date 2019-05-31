@@ -69,8 +69,6 @@ Resources:
               cwd: /home/ec2-user
             10ConfigureMaxRequests:
               command: /home/ec2-user/miniconda/bin/aws configure set default.s3.max_concurrent_requests 1
-            # 11ConfigureMaxBandwith:
-            #   command: /home/ec2-user/miniconda/bin/aws configure set default.s3.max_bandwidth 50MB/s
             
     Properties:
       ImageId: !Ref ImageId
