@@ -6,7 +6,9 @@
 aws.region = <AWS-REGION> 
 aws.client.storageEncryption = <STORAGE-ENCRYPTION>
 aws.batch.volumes = ['/scratch:/scratch:rw', '/root/.aws:/root/.aws:rw'] 
-aws.batch.maxParallelTransfers = 3 
+aws.batch.maxParallelTransfers = 1
+aws.batch.maxTransferAttempts = 4
+ 
 workDir = <AWS-S3-WORKDIR>
 outDir = <AWS-S3-OUTDIR>
 
