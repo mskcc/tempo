@@ -5,7 +5,7 @@
 
 aws.region = <AWS-REGION> 
 aws.client.storageEncryption = <STORAGE-ENCRYPTION>
-aws.batch.volumes = ['/scratch:/scratch:rw', '/root/.aws:/root/.aws:rw'] 
+aws.batch.volumes = ['/scratch:/scratch:rw']
 aws.batch.maxParallelTransfers = 1
 aws.batch.maxTransferAttempts = 4
  
