@@ -21,6 +21,11 @@
 if (params.mapping) mappingPath = params.mapping
 if (params.pairing) pairingPath = params.pairing
 
+if (!check_for_duplicated_rows(pairingPath)) {
+  println "ERROR: Duplicated row found in pairing file. Please fix the error and rerun the pipeline"
+  exit 1
+}
+
 outname = params.outname
 
 referenceMap = defineReferenceMap()
@@ -1838,19 +1843,27 @@ def extractFastq(tsvFile) {
   }
 }
 
-  // Check file extension
-  def checkFileExtension(it, extension) {
-    if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
-  }
+// Check file extension
+def checkFileExtension(it, extension) {
+  if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
+}
 
-  // Check if a row has the expected number of item
-  def checkNumberOfItem(row, number) {
-    if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
-    return true
-  }
+// Check if a row has the expected number of item
+def checkNumberOfItem(row, number) {
+  if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
+  return true
+}
 
-  // Return file if it exists
-  def returnFile(it) {
-    if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
-    return file(it)
+// Return file if it exists
+def returnFile(it) {
+  if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
+  return file(it)
+}
+
+def check_for_duplicated_rows(pairingFilePath) {
+  def entries = []
+  file( pairingFilePath ).eachLine { line ->
+    entries << line
   }
+  return entries.toSet().size() == entries.size()
+}
