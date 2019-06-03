@@ -14,5 +14,9 @@
     "test_msisensor": {
         "command": ["./nextflow", "run", "somatic.nf", "--sample", "tests/test_somatic.tsv", "-profile", "test", "--tools", "msisensor", "--test"],
         "checks": [{"type": "checkExitCode", "expected": 0}]
+    },
+    "test_pairing_file_validation": {
+        "command": ["./nextflow", "run", "make_bam_and_qc.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
+        "checks": [{"type": "checkExitCode", "expected": 1}]
     }
 }
