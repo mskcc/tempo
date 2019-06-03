@@ -520,7 +520,7 @@ process GermlineMergeDellyAndManta {
     set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannelGermline
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.delly.manta.merge.vcf.gz") into vcfDellyMantaMergedOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}.delly.manta.unfiltered.vcf.gz") into vcfDellyMantaMergedOutputGermline
 
   when: 'manta' in tools && 'delly' in tools
 
@@ -540,7 +540,7 @@ process GermlineMergeDellyAndManta {
     --force-samples \
     --merge none \
     --output-type z \
-    --output ${idNormal}.delly.manta.merge.vcf.gz \
+    --output ${idNormal}.delly.manta.unfiltered.vcf.gz \
     *.vcf.gz
   """
 }
@@ -559,21 +559,24 @@ process GermlineRunBcfToolsFilterOnDellyManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*filtered.vcf.gz") into vcfFilterDellyMantaOutputGermline
+    set idTumor, idNormal, target, file("${outfile}") into vcfFilterDellyMantaOutputGermline
 
   when: "manta" in tools && "delly" in tools
 
-  outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.vcf.gz')
+  outfile = "${vcf}".replaceFirst('.unfiltered.vcf.gz', '.vcf.gz')
 
   script:
   """
   tabix --preset vcf ${vcf}
 
   bcftools filter \
-    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --include 'FILTER=\"PASS\"' \
     --output-type z \
     --output ${outfile} \
-    ${vcf} 
+    ${vcf}
+
+  tabix --preset vcf ${outfile} 
   """
 }
 
