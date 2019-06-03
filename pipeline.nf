@@ -962,7 +962,7 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    file("*.maf") into mafFile
+    set idTumor, idNormal, target, file("*.maf") into mafFile
 
   // when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic 
 
@@ -1062,7 +1062,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    file("*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("*purity.Rdata"), file("*.*") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1093,22 +1093,22 @@ process DoFacets {
   """
 }
 
-(bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
+(bamsForPolysolver, bamFiles) = bamFiles.into(2)
 
-// Run HLA Polysolver
+// Run Polysolver
 
 process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/polysolver", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
     file("output/*") into hlaOutput
 
-  when: "hla" in tools && runSomatic
+  when: "polysolver" in tools && runSomatic
   
   script:
   outDir = "output"
@@ -1125,7 +1125,7 @@ process RunHlaPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
+  ${outDir} ||  echo "Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
   """
 }
 
@@ -1215,6 +1215,70 @@ process RunConpair {
     --markers=${markersTxt} \
     --pairing=pairing.txt \
     --outpre=${idTumor}.${idNormal}
+  """
+}
+
+( mafFileForMafAnno, mafFileForMutSig ) = mafFile.into(2)
+
+process RunMutationSignatures {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutation_signatures", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(maf) from mafFileForMutSig
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+
+  output:
+    file("*.maf") into mutSigOutput
+
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
+
+  script:
+  """
+  python /mutation-signatures/make_trinuc_maf.py \
+    ${genomeFile} \
+    ${maf} \
+    ${idTumor}_${idNormal}.trinuc.maf
+
+  python /mutation-signatures/main.py \
+    /mutation-signatures/Stratton_signatures30.txt \
+    ${idTumor}_${idNormal}.trinuc.maf \
+    ${idTumor}_${idNormal}.mutsig.maf
+
+  """
+}
+
+FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
+
+mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
+
+FacetsMafFileCombine = FacetsOutput.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+
+process DoMafAnno {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
+
+  output:
+    set idTumor, idNormal, target, file("${idTumor}_${idNormal}.maf") into MafAnnoOutput
+
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
+
+  script:
+  mapFile = "${idTumor}_${idNormal}.map"
+  """
+  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
+  echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
+
+  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_${idNormal}.maf  
   """
 }
 
