@@ -1,5 +1,10 @@
 #!/usr/bin/env Rscript
 
+# __author__  = "Philip Jonsson"
+# __email__   = "jonssonp@mskcc.org"
+# __version__ = "0.1.0"
+# __status__  = "Dev"
+
 suppressPackageStartupMessages({
     library(data.table)
 })
@@ -13,7 +18,7 @@ if (is.null(args) | length(args)<1) {
 
 maf = args[1]
 output1 = maf
-output2 = gsub('unfiltered.maf$', '.maf', maf)
+output2 = gsub('.unfiltered.maf$', '.maf', maf)
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -47,5 +52,5 @@ maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 filter_maf = maf[FILTER == 'PASS']
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
-fwrite(maf, output1)
-fwrite(filter_maf, output2)
+fwrite(maf, output1, sep = '\t')
+fwrite(filter_maf, output2, sep = '\t')

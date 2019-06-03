@@ -5,10 +5,10 @@
 Perform custom annotation of variants in VCF file, based on MuTect2 and Strelka2 variant calls and custom pre-processing.
 """
 
-__author__ = "Philip Jonsson"
-__email__ "jonssonp@mskcc.org"
+__author__  = "Philip Jonsson"
+__email__   = "jonssonp@mskcc.org"
 __version__ = "0.1.0"
-__status__ "Dev"
+__status__  = "Dev"
 
 import sys, os
 from pysam import VariantFile
