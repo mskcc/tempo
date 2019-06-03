@@ -1035,18 +1035,18 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${output_prefix}*") into msiOutput 
+    file("${outputPrefix}*") into msiOutput 
 
   when: "msisensor" in tools && runSomatic
 
   script:
-  output_prefix = "${idTumor}_${idNormal}"
+  outputPrefix = "${idTumor}_${idNormal}"
   """
   msisensor msi \
     -d "${msiSensorList}" \
     -t "${bamTumor}" \
     -n "${bamNormal}" \
-    -o "${output_prefix}"
+    -o "${outputPrefix}"
   """
 }
 
@@ -1063,19 +1063,19 @@ process DoSnpPileup {
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
-    set assay, target, idTumor, idNormal, file("${output_filename}") into SnpPileup
+    set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
 
   when: 'facets' in tools && runSomatic
 
   script:
-  output_filename = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
+  outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
   """
   snp-pileup \
     --count-orphans \
     --pseudo-snps 50 \
     --gzip \
     ${facetsVcf} \
-    ${output_filename} \
+    ${outfile} \
     ${bamTumor} ${bamNormal}
   """
 }
@@ -1141,8 +1141,8 @@ process RunHlaPolysolver {
   when: "hla" in tools && runSomatic
   
   script:
-  outDir = "output"
-  TMPDIR = "$outDir-nf-scratch"
+  outputDir = "."
+  TMPDIR = "${outputDir}-nf-scratch"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
   
@@ -1155,7 +1155,7 @@ process RunHlaPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
+  ${outputDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outputDir}/winners.hla.txt 
   """
 }
 
