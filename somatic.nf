@@ -826,12 +826,12 @@ process RunHlaPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
 
   output:
-    file("output/winners.hla.txt") into hlaOutput
+    file("${outDir}/winners.hla.txt") into hlaOutput
 
   when: "hla" in tools
   
   script:
-  outDir = "output"
+  outDir = "."
   TMPDIR = "$outDir-nf-scratch"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
