@@ -514,7 +514,7 @@ process SomaticMergeStrelka2Vcfs {
   """
 }
 
-mutectStrelkaChannel = mutect2CombinedVcfOutput.combine( strelkaOutputMerged, by: [0,1,2] ).unique()
+mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
 
 process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
@@ -683,7 +683,7 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf"), file("${idTumor}_vs_${idNormal}.unfiltered.maf") into mafFile
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
@@ -1031,7 +1031,7 @@ def defineReferenceMap() {
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
   ]
 
   if (!params.test) {
@@ -1052,6 +1052,11 @@ def defineReferenceMap() {
     result_array << ['exomePoNIndex' : checkParamReturnFile("exomePoNIndex")]
     result_array << ['wgsPoN' : checkParamReturnFile("wgsPoN")]
     result_array << ['wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")]
+    // gnomAD resources
+    result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
+    result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
+    result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
+    result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
   }
   return result_array
 }
