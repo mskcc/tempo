@@ -354,7 +354,7 @@ process SomaticRunManta {
   mv Manta/results/variants/diploidSV.vcf.gz.tbi \
     Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz.tbi
   mv Manta/results/variants/somaticSV.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz
+    ${idTumor}_vs_${idNormal}.somaticSV.vcf.gz
   mv Manta/results/variants/somaticSV.vcf.gz.tbi \
     Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz.tbi
   """
@@ -728,7 +728,7 @@ process DoSnpPileup {
   when: 'facets' in tools
 
   script:
-  output_filename = idTumor + "_" + idNormal + ".snppileup.dat.gz"
+  output_filename = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
   """
   snp-pileup \
     --count-orphans \
@@ -757,6 +757,7 @@ process DoFacets {
   snp_pileup_prefix = idTumor + "_" + idNormal
   counts_file = "${snpPileupFile}"
   genome_value = "hg19"
+  outputDir = "facets" + ${params.facets.R_lib} + "c" + ${params.facets.cval} + "pc" + ${params.facets.purity_cval}
   TAG = "${snp_pileup_prefix}"
   """
   /usr/bin/facets-suite/doFacets.R \
@@ -771,7 +772,7 @@ process DoFacets {
     --genome "${params.facets.genome}" \
     --counts_file "${counts_file}" \
     --TAG "${TAG}" \
-    --directory "${params.facets.directory}" \
+    --directory ${outputDir} \
     --R_lib "${params.facets.R_lib}" \
     --single_chrom "${params.facets.single_chrom}" \
     --ggplot2 "${params.facets.ggplot2}" \
@@ -819,13 +820,13 @@ process RunMsiSensor {
 process RunHlaPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/hla", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
 
   output:
-    file("output/*") into hlaOutput
+    file("output/winners.hla.txt") into hlaOutput
 
   when: "hla" in tools
   
@@ -844,7 +845,7 @@ process RunHlaPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
+  ${outDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
   """
 }
 
@@ -867,7 +868,7 @@ process RunConpair {
 
   output:
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    set file("${idTumor}.${idNormal}_concordance.txt"), file("${idTumor}.${idNormal}_contamination.txt") into conpairOutput
+    set file("${idTumor}_${idNormal}_concordance.txt"), file("${idTumor}_${idNormal}_contamination.txt") into conpairOutput
 
   when: 'conpair' in tools
 
@@ -926,14 +927,14 @@ process RunConpair {
     --markers=${markersTxt} \
     --pairing=pairing.txt \
     --normal_homozygous_markers_only \
-    --outpre=${idTumor}.${idNormal}
+    --outpre=${idTumor}_${idNormal}
 
   ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
     --tumor_pileup=${idTumor}.pileup \
     --normal_pileup=${idNormal}.pileup \
     --markers=${markersTxt} \
     --pairing=pairing.txt \
-    --outpre=${idTumor}.${idNormal}
+    --outpre=${idTumor}_${idNormal}
   """
 }
 
