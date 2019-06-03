@@ -1726,7 +1726,7 @@ process GermlineRunBcfToolsFilterOnDellyManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outfile}") into vcfFilterDellyMantaOutputGermline
+    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into vcfFilterDellyMantaOutputGermline
 
   when: "manta" in tools && "delly" in tools && runGermline
 
