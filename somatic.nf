@@ -750,7 +750,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    file("*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("*purity.Rdata"), file("*.*") into FacetsOutput
 
   when: 'facets' in tools
 
