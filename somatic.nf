@@ -744,41 +744,43 @@ process DoSnpPileup {
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
+    file("*.*") into FacetsOutput
 
   when: 'facets' in tools
 
   script:
-  tag = "${idTumor}_vs_${idNormal}"
-  countsFile = "${snpPileupFile}"
-  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
+  snp_pileup_prefix = idTumor + "_" + idNormal
+  counts_file = "${snpPileupFile}"
+  genome_value = "hg19"
+  TAG = "${snp_pileup_prefix}"
   """
   /usr/bin/facets-suite/doFacets.R \
-    --cval ${params.facets.cval} \
-    --snp_nbhd ${params.facets.snp_nbhd} \
-    --ndepth ${params.facets.ndepth} \
-    --min_nhet ${params.facets.min_nhet} \
-    --purity_cval ${params.facets.purity_cval} \
-    --purity_snp_nbhd ${params.facets.purity_snp_nbhd} \
-    --purity_ndepth ${params.facets.purity_ndepth} \
-    --purity_min_nhet ${params.facets.purity_min_nhet} \
-    --genome ${params.facets.genome} \
-    --counts_file ${countsFile} \
-    --TAG ${tag} \
-    --directory ${outputDir} \
-    --R_lib /usr/lib/R/library \
-    --single_chrom ${params.facets.single_chrom} \
-    --ggplot2 ${params.facets.ggplot2} \
-    --seed ${params.facets.seed} \
+    --cval "${params.facets.cval}" \
+    --snp_nbhd "${params.facets.snp_nbhd}" \
+    --ndepth "${params.facets.ndepth}" \
+    --min_nhet "${params.facets.min_nhet}" \
+    --purity_cval "${params.facets.purity_cval}" \
+    --purity_snp_nbhd "${params.facets.purity_snp_nbhd}" \
+    --purity_ndepth "${params.facets.purity_ndepth}" \
+    --purity_min_nhet "${params.facets.purity_min_nhet}" \
+    --genome "${params.facets.genome}" \
+    --counts_file "${counts_file}" \
+    --TAG "${TAG}" \
+    --directory "${params.facets.directory}" \
+    --R_lib "${params.facets.R_lib}" \
+    --single_chrom "${params.facets.single_chrom}" \
+    --ggplot2 "${params.facets.ggplot2}" \
+    --seed "${params.facets.seed}" \
     --tumor_id ${idTumor}
   """
 }
+
 
 // --- Run MSIsensor
 (bamsForMsiSensor, bamFiles) = bamFiles.into(2)
