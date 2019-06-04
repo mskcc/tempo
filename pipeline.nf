@@ -1842,7 +1842,7 @@ def extractPairing(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t', header: true)
   .map { row ->
-    [row.NORMAL_ID, row.TUMOR_ID]
+    [row.TUMOR_ID, row.NORMAL_ID]
   }
 }
 
