@@ -750,7 +750,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("*purity.Rdata"), file("*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
 
   when: 'facets' in tools
 
@@ -772,7 +772,7 @@ process DoFacets {
     --counts_file ${countsFile} \
     --TAG ${tag} \
     --directory ${outputDir} \
-    --R_lib ${params.facets.R_lib} \
+    --R_lib /usr/lib/R/library \
     --single_chrom ${params.facets.single_chrom} \
     --ggplot2 ${params.facets.ggplot2} \
     --seed ${params.facets.seed} \
