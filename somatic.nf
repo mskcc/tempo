@@ -760,23 +760,23 @@ process DoFacets {
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   /usr/bin/facets-suite/doFacets.R \
-    --cval "${params.facets.cval}" \
-    --snp_nbhd "${params.facets.snp_nbhd}" \
-    --ndepth "${params.facets.ndepth}" \
-    --min_nhet "${params.facets.min_nhet}" \
-    --purity_cval "${params.facets.purity_cval}" \
-    --purity_snp_nbhd "${params.facets.purity_snp_nbhd}" \
-    --purity_ndepth "${params.facets.purity_ndepth}" \
-    --purity_min_nhet "${params.facets.purity_min_nhet}" \
-    --genome "${params.facets.genome}" \
-    --counts_file "${countsFile}" \
-    --TAG "${tag}" \
+    --cval ${params.facets.cval} \
+    --snp_nbhd ${params.facets.snp_nbhd} \
+    --ndepth ${params.facets.ndepth} \
+    --min_nhet ${params.facets.min_nhet} \
+    --purity_cval ${params.facets.purity_cval} \
+    --purity_snp_nbhd ${params.facets.purity_snp_nbhd} \
+    --purity_ndepth ${params.facets.purity_ndepth} \
+    --purity_min_nhet ${params.facets.purity_min_nhet} \
+    --genome ${params.facets.genome} \
+    --counts_file ${countsFile} \
+    --TAG ${tag} \
     --directory ${outputDir} \
-    --R_lib "${params.facets.R_lib}" \
-    --single_chrom "${params.facets.single_chrom}" \
-    --ggplot2 "${params.facets.ggplot2}" \
-    --seed "${params.facets.seed}" \
-    --tumor_id "${idTumor}"
+    --R_lib ${params.facets.R_lib} \
+    --single_chrom ${params.facets.single_chrom} \
+    --ggplot2 ${params.facets.ggplot2} \
+    --seed ${params.facets.seed} \
+    --tumor_id ${idTumor}
   """
 }
 
