@@ -773,7 +773,7 @@ process DoFacets {
     --counts_file "${counts_file}" \
     --TAG "${TAG}" \
     --directory "${params.facets.directory}" \
-    --R_lib "${params.facets.R_lib}" \
+    --R_lib latest \
     --single_chrom "${params.facets.single_chrom}" \
     --ggplot2 "${params.facets.ggplot2}" \
     --seed "${params.facets.seed}" \
