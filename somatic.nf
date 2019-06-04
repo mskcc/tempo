@@ -355,7 +355,7 @@ process SomaticRunManta {
   mv Manta/results/variants/diploidSV.vcf.gz.tbi \
     Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz.tbi
   mv Manta/results/variants/somaticSV.vcf.gz \
-    ${idTumor}_vs_${idNormal}.somaticSV.vcf.gz
+    Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz
   mv Manta/results/variants/somaticSV.vcf.gz.tbi \
     Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz.tbi
   """
@@ -955,7 +955,7 @@ process RunMutationSignatures {
   output:
     file("${idTumor}_${idNormal}.mutsig.txt") into mutSigOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
 
   script:
   """
@@ -983,7 +983,7 @@ process DoMafAnno {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
