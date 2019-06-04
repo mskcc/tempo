@@ -757,7 +757,7 @@ process DoFacets {
   script:
   tag = idTumor + "_" + idNormal
   countsFile = "${snpPileupFile}"
-  outputDir = "facets" + ${params.facets.R_lib} + "c" + ${params.facets.cval} + "pc" + ${params.facets.purity_cval}
+  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   /usr/bin/facets-suite/doFacets.R \
     --cval "${params.facets.cval}" \
