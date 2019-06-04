@@ -381,11 +381,12 @@ process CreateScatteredIntervals {
     file("wgs*.interval_list") into wgsIntervals mode flatten
 
   script:
+  scatterCount = 10
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${agilentTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output agilent
 
@@ -398,7 +399,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${idtTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output idt
 
@@ -411,7 +412,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${wgsIntervals} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
 
