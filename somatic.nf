@@ -755,7 +755,7 @@ process DoFacets {
   when: 'facets' in tools
 
   script:
-  tag = idTumor + "_" + idNormal
+  tag = "${idTumor}_vs_${idNormal}"
   countsFile = "${snpPileupFile}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
