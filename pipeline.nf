@@ -1178,7 +1178,7 @@ process RunConpair {
 
   output:
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    set file("${idTumor}_${idNormal}.concordance.txt"), file("${idTumor}_${idNormal}.contamination.txt") into conpairOutput
+    set file("${idTumor}_${idNormal}_concordance.txt"), file("${idTumor}_${idNormal}_contamination.txt") into conpairOutput
 
   when: 'conpair' in tools && runSomatic
 
