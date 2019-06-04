@@ -424,14 +424,14 @@ process CreateScatteredIntervals {
   """
 }
 
-( bamsForIntervals, bamFiles ) = bamFiles.into(2)
+(bamsForIntervals, bamFiles) = bamFiles.into(2)
 
 //Associating interval_list files with BAM files, putting them into one channel
 agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
 idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
 wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
 
-( aBamList, iBamList, wBamList ) = bamsForIntervals.into(3)
+(aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
 
 aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
 bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
@@ -1137,17 +1137,17 @@ process RunHlaPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
 
   output:
-    file("output/winners.hla.txt") into hlaOutput
+    file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "hla" in tools && runSomatic
   
   script:
   outputDir = "."
-  TMPDIR = "${outputDir}-nf-scratch"
+  tmpDir = "${outputDir}-nf-scratch"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
   
-  sed -i "171s/TMP_DIR=.*/TMP_DIR=$TMPDIR/" shell_call_hla_type 
+  sed -i "171s/TMP_DIR=.*/TMP_DIR=${tmpDir}/" shell_call_hla_type 
 
   bash shell_call_hla_type \
   ${bamNormal} \
