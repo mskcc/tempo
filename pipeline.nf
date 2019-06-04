@@ -1056,7 +1056,7 @@ process RunMsiSensor {
 process DoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
@@ -1085,7 +1085,7 @@ process DoSnpPileup {
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
@@ -1178,7 +1178,7 @@ process RunConpair {
 
   output:
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    set file("${idTumor}_${idNormal}_concordance.txt"), file("${idTumor}_${idNormal}_contamination.txt") into conpairOutput
+    set file("${idTumor}_${idNormal}.concordance.txt"), file("${idTumor}_${idNormal}.contamination.txt") into conpairOutput
 
   when: 'conpair' in tools && runSomatic
 
