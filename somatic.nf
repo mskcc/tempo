@@ -759,6 +759,7 @@ process DoFacets {
   countsFile = "${snpPileupFile}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
+  mkdir ${outputDir}
   /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
     --snp_nbhd ${params.facets.snp_nbhd} \
