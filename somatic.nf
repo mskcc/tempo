@@ -947,14 +947,9 @@ process RunMutationSignatures {
 
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict
-    ])
 
   output:
-    file("${idTumor}_${idNormal}.mutsig.txt") into mutSigOutput
+    file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
 
