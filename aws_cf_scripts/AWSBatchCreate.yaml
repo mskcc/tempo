@@ -128,3 +128,4 @@ Outputs:
     Value: !Ref ComputeEnvironment
   JobQueueArn:
     Value: !Ref JobQueue
+
