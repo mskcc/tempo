@@ -755,11 +755,9 @@ process DoFacets {
   when: 'facets' in tools
 
   script:
-  snp_pileup_prefix = idTumor + "_" + idNormal
-  counts_file = "${snpPileupFile}"
-  genome_value = "hg19"
+  tag = idTumor + "_" + idNormal
+  countsFile = "${snpPileupFile}"
   outputDir = "facets" + ${params.facets.R_lib} + "c" + ${params.facets.cval} + "pc" + ${params.facets.purity_cval}
-  TAG = "${snp_pileup_prefix}"
   """
   /usr/bin/facets-suite/doFacets.R \
     --cval "${params.facets.cval}" \
@@ -771,14 +769,14 @@ process DoFacets {
     --purity_ndepth "${params.facets.purity_ndepth}" \
     --purity_min_nhet "${params.facets.purity_min_nhet}" \
     --genome "${params.facets.genome}" \
-    --counts_file "${counts_file}" \
-    --TAG "${TAG}" \
+    --counts_file "${countsFile}" \
+    --TAG "${tag}" \
     --directory ${outputDir} \
     --R_lib "${params.facets.R_lib}" \
     --single_chrom "${params.facets.single_chrom}" \
     --ggplot2 "${params.facets.ggplot2}" \
     --seed "${params.facets.seed}" \
-    --tumor_id ${idTumor}
+    --tumor_id "${idTumor}"
   """
 }
 
