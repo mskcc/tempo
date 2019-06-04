@@ -938,6 +938,55 @@ process RunConpair {
   """
 }
 
+
+// Run LOHHLA
+
+(bamsForLOHHLA, bamFiles) = bamFiles.into(2)
+
+process RunLOHHLA {
+  // HLA Polysolver might not generate output; we do not want pipeline to terminate in this case
+  //  errorStrategy 'ignore'
+  //  validExitStatus 0,1,2
+
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla"
+
+  input:
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForLOHHLA
+    file(facetsPurityOut) from facetsPurityOut
+    file(hlaPolysolverTxt) from hlaPolysolverTxt
+    set file(hlaFasta), file(hlaDat) from Channel.value([ referenceMap.hlaFasta, referenceMap.hlaDat ])
+
+  output:
+    file("*") into lohhlaOutput
+
+  when: 'lohhla' in tools && 'hla' in tools && 'facets' in tools
+
+  script:
+  """
+  cat ${hlaPolysolverTxt} | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
+
+  PURITY=\$(grep Purity ${facetsPurityOut} | grep -oP "[0-9\\.]+")
+  PLOIDY=\$(grep Ploidy ${facetsPurityOut} | grep -oP "[0-9\\.]+")
+  cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
+
+  Rscript /lohhla/LOHHLAscript.R \
+    --patientId ${idTumor} \
+    --normalBAMfile ${bamNormal} \
+    --tumorBAMfile ${bamTumor} \
+    --HLAfastaLoc ${hlaFasta} \
+    --HLAexonLoc ${hlaDat} \
+    --CopyNumLoc tumor_purity_ploidy.txt \
+    --hlaPath massaged.winners.hla.txt \
+    --gatkDir /picard \
+    --novoDir /novocraft
+  """
+}
+
+
+// Mutational Signatures, traditional Stratton, github.com/mskcc/mutational-signatures
+
 (mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
 
 process RunMutationSignatures {
