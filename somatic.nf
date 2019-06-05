@@ -939,7 +939,8 @@ process RunConpair {
   """
 }
 
-// Run M
+
+// --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
 (mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
 
