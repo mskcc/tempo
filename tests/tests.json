@@ -1,6 +1,6 @@
 {
     "test_make_bam_part_of_pipeline": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "--test", "-profile", "test"],
         "checks": [{"type": "checkNumberOfLines", "filename": "make_bam_output.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
     },
     "test_delly": {
