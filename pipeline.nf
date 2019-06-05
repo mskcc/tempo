@@ -1132,7 +1132,7 @@ process DoFacets {
 
 // Run Polysolver
 
-process RunHlaPolysolver {
+process RunPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/hla", mode: params.publishDirMode
@@ -1800,9 +1800,7 @@ def defineReferenceMap() {
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
-    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
-    'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex")
   ]
 
   if (!params.test) {
@@ -1826,6 +1824,8 @@ def defineReferenceMap() {
     // gnomAD resources
     result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
+    result_array << ['wgsTargets' : checkParamReturnFile("wgsTargets")]
+    result_array << ['wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")]
   }
   return result_array
 }
