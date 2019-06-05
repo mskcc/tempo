@@ -478,7 +478,7 @@ bMergedChannel = iBamList.combine(idtIList, by: 1).unique()
 wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
 
 // These will go into mutect2 and haplotypecaller
-( mergedChannelSomatic, mergedChannelGermline  ) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
+(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
 
 /*
 ================================================================================
@@ -1367,7 +1367,8 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz"), file("*.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.vcf.gz"),
+    file("${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into haplotypecallerOutput mode flatten
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1408,7 +1409,8 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script:
-  outfile="${idNormal}.haplotypecaller.filtered.vcf.gz"
+  outfile="${idNormal}.haplotypecaller.vcf.gz"
+
   """
   bcftools concat \
     --allow-overlaps \
@@ -1446,7 +1448,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutputGermline mode flatten
+    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
 
   when: 'manta' in tools && runGermline
 
@@ -1713,8 +1715,7 @@ process GermlineDellyFilter {
 
 
   output:
-    set idTumor, idNormal, target, file("*.filter.bcf") into dellyFilterOutputGermline
-
+    set idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilterOutputGermline
 
   when: 'delly' in tools && runGermline
 
@@ -1746,7 +1747,7 @@ process GermlineMergeDellyAndManta {
     set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannelGermline
 
   output:
-    set idTumor, idNormal, target, file("*.merge.vcf.gz") into vcfDellyMantaMergedOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}.delly.manta.unfiltered.vcf.gz") into vcfDellyMantaMergedOutputGermline
 
   when: 'manta' in tools && 'delly' in tools && runGermline
 
@@ -1766,7 +1767,7 @@ process GermlineMergeDellyAndManta {
     --force-samples \
     --merge none \
     --output-type z \
-    --output ${idNormal}.delly.manta.merge.vcf.gz \
+    --output ${idNormal}.delly.manta.unfiltered.vcf.gz \
     *.vcf.gz
   """
 }
@@ -1776,7 +1777,7 @@ process GermlineMergeDellyAndManta {
 process GermlineRunBcfToolsFilterOnDellyManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/structural_variants"
 
   input:
     set idTumor, idNormal, target, file(vcf) from vcfDellyMantaMergedOutputGermline
@@ -1787,20 +1788,24 @@ process GermlineRunBcfToolsFilterOnDellyManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*filtered.vcf.gz") into vcfFilterDellyMantaOutputGermline
+    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into vcfFilterDellyMantaOutputGermline
 
   when: "manta" in tools && "delly" in tools && runGermline
 
   script:
-  outfile = "${vcf}".replaceFirst('vcf.gz', 'filtered.vcf.gz')
+  outfile = "${vcf}".replaceFirst('.unfiltered.vcf.gz', '.vcf.gz')
+
   """
   tabix --preset vcf ${vcf}
 
   bcftools filter \
-    -r 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --include 'FILTER=\"PASS\"' \
     --output-type z \
     --output ${outfile} \
     ${vcf} 
+    
+  tabix --preset vcf ${outfile}
   """
 }
 
