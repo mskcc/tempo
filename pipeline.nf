@@ -848,11 +848,11 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex,
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
       referenceMap.gnomadWesVcfIndex,
-      referenceMap.gnomadWgsVcf,
-      referenceMap.gnomadWgsVcfIndex
+      referenceMap.gnomadWesVcf, // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
+      referenceMap.gnomadWesVcfIndex // TODO: REPLACE WHEN WE ADD gnomadWgsVcfIndex
     ])
 
   output:
@@ -863,7 +863,7 @@ process SomaticCombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  gnomad = gnomadWgsVcf
+  gnomad = gnomadWesVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
   if (target != 'wgs') {
     pon = exomePoN
     gnomad = gnomadWesVcf
@@ -1826,8 +1826,6 @@ def defineReferenceMap() {
     // gnomAD resources
     result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
-    result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
-    result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
   }
   return result_array
 }
