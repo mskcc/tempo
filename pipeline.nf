@@ -3,13 +3,48 @@
 /*
 ================================================================================
 --------------------------------------------------------------------------------
- Processes overview
+Processes overview:
+
+Alignment and QC
+----------------
  - AlignReads - Map reads with BWA mem output SAM
  - SortBAM - Sort BAM with samtools
  - MergeBam - Merge BAM for the same samples from different lanes
  - MarkDuplicates - Mark Duplicates with GATK4
  - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
  - RecalibrateBam - Recalibrate Bam with PrintReads
+
+Somatic Analysis
+----------------
+- SomaticDellyCall
+- SomaticDellyFilter
+- CreateIntervalBeds
+- RunMutect2
+- RunMutect2Filter
+- SomaticCombineMutect2VCF
+- SomaticRunManta
+- SomaticRunStrelka
+- SomaticCombineChannel
+- SomaticRunBCFToolsFilterNorm
+- SomaticRunBCFToolsMerge
+- SomaticRunVCF2MAF
+- SomaticDoSNPPileup
+- DoFacets
+- RunMsiSensor
+- RunConpair
+- RunMutationSignatures
+
+Germline Analysis
+-----------------
+- GermlineDellyCall
+- GermlineDellyFilter
+- CreateIntervalBeds
+- GermlineRunHaplotypecaller
+- GermlineRunManta
+- GermlineRunStrelka
+- GermlineRunBcfToolsFilterNorm
+- GermlineRunBcfToolsMerge
+- GermlineRunVcf2Maf
 */
 
 /*
@@ -1252,6 +1287,9 @@ process RunConpair {
     --outpre=${idTumor}_${idNormal}
   """
 }
+
+
+// --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
 (mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
 
