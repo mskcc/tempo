@@ -141,11 +141,12 @@ process CreateScatteredIntervals {
   when: "mutect2" in tools
 
   script:
+  scatterCount = 10
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${agilentTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output agilent
 
@@ -158,7 +159,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${idtTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output idt
 
@@ -171,7 +172,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${wgsIntervals} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
 
@@ -183,14 +184,14 @@ process CreateScatteredIntervals {
   """
 }
 
-( bamsForMutect2Intervals, bamFiles ) = bamFiles.into(2)
+(bamsForMutect2Intervals, bamFiles) = bamFiles.into(2)
 
 //Associating interval_list files with BAM files, putting them into one channel
 agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
 idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
 wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
 
-( aBamList, iBamList, wBamList ) = bamsForMutect2Intervals.into(3)
+(aBamList, iBamList, wBamList) = bamsForMutect2Intervals.into(3)
 
 aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
 bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
@@ -514,13 +515,17 @@ process SomaticMergeStrelka2Vcfs {
   """
 }
 
-mutectStrelkaChannel = mutect2CombinedVcfOutput.combine( strelkaOutputMerged, by: [0,1,2] ).unique()
+mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
 
 process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
     set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
+    set file(genomeFile), file(genomeIndex) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex
+    ])
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
       referenceMap.repeatMasker,
       referenceMap.repeatMaskerIndex,
@@ -533,23 +538,33 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex
     ])
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+      referenceMap.gnomadWesVcf,
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
+    ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}.union.pass.vcf") into vcfMergedOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
 
   when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
 
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
+  gnomad = gnomadWgsVcf
   if (target != 'wgs') {
     pon = exomePoN
+    gnomad = gnomadWesVcf
   }
   """
-  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">\n##INFO=<ID=Strelka2Fail,Number=0,Type=Flag,Description=\"Variant was called failed by Strelka2\">" > vcf.header
-  echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
-  echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
-  echo -e '##INFO=<ID=PoN,Number=1,Type=Integer,Description="Count in panel of normals">' > vcf.pon.header
+  echo -e "##INFO=<ID=MuTect2,Number=0,Type=Flag,Description=\"Variant was called by MuTect2\">" > vcf.header
+  echo -e "##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" >> vcf.header
+  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\">" >> vcf.header
+  echo -e "##INFO=<ID=RepeatMasker,Number=1,Type=String,Description=\"RepeatMasker\">" > vcf.rm.header
+  echo -e "##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description=\"EncodeDacMapability\">" > vcf.map.header
+  echo -e "##INFO=<ID=PoN,Number=1,Type=Integer,Description=\"Count in panel of normals\">" > vcf.pon.header
 
   bcftools isec \
     --output-type z \
@@ -559,7 +574,7 @@ process SomaticCombineChannel {
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
     --include 'FILTER!=\"PASS\"' \
-    --mark-sites \"+Strelka2FAIL\" \
+    --mark-sites \"+Strelka2FILTER\" \
     -k \
     --output-type z \
     --output ${isec_dir}/0003.annot.vcf.gz \
@@ -586,7 +601,7 @@ process SomaticCombineChannel {
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.annot.vcf.gz \
-    --columns +FILTER,+FORMAT,Strelka2FAIL \
+    --columns +FORMAT,Strelka2FILTER \
     --output-type z \
     --output ${isec_dir}/0002.annot.vcf.gz \
     ${isec_dir}/0002.tmp.vcf.gz
@@ -624,25 +639,39 @@ process SomaticCombineChannel {
   tabix --preset vcf ${idTumor}.union.vcf.gz
 
   bcftools annotate \
+    --annotations ${gnomad} \
+    --columns INFO \
+    --output-type z \
+    --output ${idTumor}.union.gnomad.vcf.gz \
+    ${idTumor}.union.vcf.gz
+
+  tabix ${idTumor}.union.gnomad.vcf.gz
+
+  bcftools annotate \
     --header-lines vcf.pon.header \
     --annotations ${pon} \
-    --columns PoN:=AC \
-    --output-type z \
-    --output ${idTumor}.union.pon.vcf.gz \
-    ${idTumor}.union.vcf.gz
+    --columns PoN:=AC_Het \
+    ${idTumor}.union.gnomad.vcf.gz | \
+    vt annotate_indels \
+    -r ${genomeFile} \
+    -o ${idTumor}.union.annot.vcf -
+  
+  filter-vcf.py ${idTumor}.union.annot.vcf
+
+  mv ${idTumor}.union.annot.filter.vcf ${idTumor}_vs_${idNormal}.vcf
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
-    --output ${idTumor}.union.pass.vcf \
-    ${idTumor}.union.pon.vcf.gz
+    --output ${idTumor}_vs_${idNormal}.pass.vcf \
+    ${idTumor}_vs_${idNormal}.vcf
   """
 }
 
 process SomaticRunVcf2Maf {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput 
@@ -655,13 +684,12 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.maf") into mafFile
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools 
-
-  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
   script:
+  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
@@ -674,10 +702,12 @@ process SomaticRunVcf2Maf {
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info MuTect2,Strelka2,RepeatMasker,EncodeDacMapability,PoN \
+    --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
     --custom-enst ${isoforms} \
     --output-maf ${outfile} \
     --filter-vcf 0
+
+  filter-maf.R ${outfile}
   """
 }
 
@@ -687,26 +717,26 @@ process SomaticRunVcf2Maf {
 process DoSnpPileup {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
-    set assay, target, idTumor, idNormal, file("${output_filename}") into SnpPileup
+    set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
 
   when: 'facets' in tools
 
   script:
-  output_filename = idTumor + "_" + idNormal + ".snppileup.dat.gz"
+  outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
   """
   snp-pileup \
     --count-orphans \
     --pseudo-snps 50 \
     --gzip \
     ${facetsVcf} \
-    ${output_filename} \
+    ${outfile} \
     ${bamTumor} ${bamNormal}
   """
 }
@@ -714,39 +744,39 @@ process DoSnpPileup {
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("*purity.Rdata"), file("*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
 
   when: 'facets' in tools
 
   script:
-  snp_pileup_prefix = idTumor + "_" + idNormal
-  counts_file = "${snpPileupFile}"
-  genome_value = "hg19"
-  TAG = "${snp_pileup_prefix}"
+  tag = "${idTumor}_vs_${idNormal}"
+  countsFile = "${snpPileupFile}"
+  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
+  mkdir ${outputDir}
   /usr/bin/facets-suite/doFacets.R \
-    --cval "${params.facets.cval}" \
-    --snp_nbhd "${params.facets.snp_nbhd}" \
-    --ndepth "${params.facets.ndepth}" \
-    --min_nhet "${params.facets.min_nhet}" \
-    --purity_cval "${params.facets.purity_cval}" \
-    --purity_snp_nbhd "${params.facets.purity_snp_nbhd}" \
-    --purity_ndepth "${params.facets.purity_ndepth}" \
-    --purity_min_nhet "${params.facets.purity_min_nhet}" \
-    --genome "${params.facets.genome}" \
-    --counts_file "${counts_file}" \
-    --TAG "${TAG}" \
-    --directory "${params.facets.directory}" \
-    --R_lib "${params.facets.R_lib}" \
-    --single_chrom "${params.facets.single_chrom}" \
-    --ggplot2 "${params.facets.ggplot2}" \
-    --seed "${params.facets.seed}" \
+    --cval ${params.facets.cval} \
+    --snp_nbhd ${params.facets.snp_nbhd} \
+    --ndepth ${params.facets.ndepth} \
+    --min_nhet ${params.facets.min_nhet} \
+    --purity_cval ${params.facets.purity_cval} \
+    --purity_snp_nbhd ${params.facets.purity_snp_nbhd} \
+    --purity_ndepth ${params.facets.purity_ndepth} \
+    --purity_min_nhet ${params.facets.purity_min_nhet} \
+    --genome ${params.facets.genome} \
+    --counts_file ${countsFile} \
+    --TAG ${tag} \
+    --directory ${outputDir} \
+    --R_lib /usr/lib/R/library \
+    --single_chrom ${params.facets.single_chrom} \
+    --ggplot2 ${params.facets.ggplot2} \
+    --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
   """
 }
@@ -769,44 +799,44 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${output_prefix}*") into msiOutput 
+    file("${outputPrefix}*") into msiOutput 
 
   when: "msisensor" in tools
 
   script:
-  output_prefix = "${idTumor}_${idNormal}"
+  outputPrefix = "${idTumor}_${idNormal}"
   """
   msisensor msi \
     -d "${msiSensorList}" \
     -t "${bamTumor}" \
     -n "${bamNormal}" \
-    -o "${output_prefix}"
+    -o "${outputPrefix}"
   """
 }
 
-// --- Run HLA Polysolver 
-(bamsForHlaPolysolver, bamFiles) = bamFiles.into(2)
+// --- Run Polysolver 
+(bamsForPolysolver, bamFiles) = bamFiles.into(2)
 
-process RunHlaPolysolver {
+process RunPolysolver {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/hla_polysolver", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/hla", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForHlaPolysolver
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
-    file("output/*") into hlaOutput
+    file("${outputDir}/winners.hla.txt") into hlaOutput
 
-  when: "hla" in tools
+  when: "polysolver" in tools
   
   script:
-  outDir = "output"
-  TMPDIR = "$outDir-nf-scratch"
+  outputDir = "."
+  tmpDir = "${outputDir}-nf-scratch"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
   
-  sed -i "171s/TMP_DIR=.*/TMP_DIR=$TMPDIR/" shell_call_hla_type 
+  sed -i "171s/TMP_DIR=.*/TMP_DIR=${tmpDir}/" shell_call_hla_type 
 
   bash shell_call_hla_type \
   ${bamNormal} \
@@ -815,7 +845,7 @@ process RunHlaPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outDir} ||  echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outDir}/winners.hla.txt 
+  ${outputDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outputDir}/winners.hla.txt 
   """
 }
 
@@ -838,7 +868,7 @@ process RunConpair {
 
   output:
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    set file("${idTumor}.${idNormal}_concordance.txt"), file("${idTumor}.${idNormal}_contamination.txt") into conpairOutput
+    set file("${idTumor}_${idNormal}_concordance.txt"), file("${idTumor}_${idNormal}_contamination.txt") into conpairOutput
 
   when: 'conpair' in tools
 
@@ -897,18 +927,18 @@ process RunConpair {
     --markers=${markersTxt} \
     --pairing=pairing.txt \
     --normal_homozygous_markers_only \
-    --outpre=${idTumor}.${idNormal}
+    --outpre=${idTumor}_${idNormal}
 
   ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
     --tumor_pileup=${idTumor}.pileup \
     --normal_pileup=${idNormal}.pileup \
     --markers=${markersTxt} \
     --pairing=pairing.txt \
-    --outpre=${idTumor}.${idNormal}
+    --outpre=${idTumor}_${idNormal}
   """
 }
 
-( mafFileForMafAnno, mafFileForMutSig ) = mafFile.into(2)
+(mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
 
 process RunMutationSignatures {
   tag {idTumor + "_vs_" + idNormal}
@@ -917,28 +947,18 @@ process RunMutationSignatures {
 
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict
-    ])
 
   output:
-    file("*.maf") into mutSigOutput
+    file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
 
   script:
   """
-  python /mutation-signatures/make_trinuc_maf.py \
-    ${genomeFile} \
-    ${maf} \
-    ${idTumor}_${idNormal}.trinuc.maf
-
   python /mutation-signatures/main.py \
     /mutation-signatures/Stratton_signatures30.txt \
-    ${idTumor}_${idNormal}.trinuc.maf \
-    ${idTumor}_${idNormal}.mutsig.maf 
+    ${idTumor}_vs_${idNormal}.maf \
+    ${idTumor}_vs_${idNormal}.mutsig.txt
   """
 }
 
@@ -957,9 +977,9 @@ process DoMafAnno {
     set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_${idNormal}.maf") into MafAnnoOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools 
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
@@ -967,7 +987,7 @@ process DoMafAnno {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_${idNormal}.maf  
+  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf  
   """
 }
 
@@ -1007,7 +1027,7 @@ def defineReferenceMap() {
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
   ]
 
   if (!params.test) {
@@ -1028,6 +1048,9 @@ def defineReferenceMap() {
     result_array << ['exomePoNIndex' : checkParamReturnFile("exomePoNIndex")]
     result_array << ['wgsPoN' : checkParamReturnFile("wgsPoN")]
     result_array << ['wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")]
+    // gnomAD resources
+    result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
+    result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
   }
   return result_array
 }
