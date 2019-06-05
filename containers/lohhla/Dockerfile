@@ -26,3 +26,13 @@ RUN conda install lohhla
 RUN conda update lohhla
 
 
+### the above installs all LOHHLA dependencies, e.g. samtools, picard, bedtools, Novalign, etc. 
+
+RUN rm /lohhla
+
+## download the mskcc repo of lohhla to run on Nextflow
+## only takes single TN pair
+## no working directory
+RUN git clone --single-branch --branch feature/work_with_Nexflow https://github.com/mskcc/lohhla.git
+
+
