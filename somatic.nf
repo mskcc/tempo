@@ -20,6 +20,7 @@
  - DoFacets
  - RunMsiSensor
  - RunConpair
+ - RunMutationSignatures
 */
 
 
@@ -937,6 +938,8 @@ process RunConpair {
     --outpre=${idTumor}_${idNormal}
   """
 }
+
+// Run M
 
 (mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
 
