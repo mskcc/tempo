@@ -1,4 +1,4 @@
-FROM ensemblorg/ensembl-vep
+FROM ensemblorg/ensembl-vep:release_96.0
 
 MAINTAINER C. Allan Bolipata <bolipatc@mskcc.org>
 
@@ -8,16 +8,20 @@ ENV PERL5LIB $VEP_PATH:/opt/lib/perl5:$PERL5LIB
 ENV SAMTOOLS_VERSION 1.9
 ENV BCFTOOLS_VERSION 1.9
 ENV VCF2MAF_VERSION 1.6.17
+ENV VEP_VERSION 96.0
 
 WORKDIR /tmp
 
 USER root
-RUN apt-get update 
+RUN apt-get update
 
-# install samtools
+# Install samtools
 RUN apt-get update && \
     apt-get install --yes \
-    libncurses5-dev vcftools libbz2-dev liblzma-dev && \
+    libncurses5-dev \
+    vcftools \
+    libbz2-dev \
+    liblzma-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -40,7 +44,7 @@ RUN curl -L -o tmp2.tar.gz https://github.com/samtools/bcftools/releases/downloa
     cd .. && \
     rm -rf *
 
-# install vcf2maf
+# Install vcf2maf
 WORKDIR /opt/
 
 RUN curl -ksSL -o tmp.tar.gz https://github.com/mskcc/vcf2maf/archive/v${VCF2MAF_VERSION}.tar.gz && \
@@ -48,3 +52,12 @@ RUN curl -ksSL -o tmp.tar.gz https://github.com/mskcc/vcf2maf/archive/v${VCF2MAF
     rm tmp.tar.gz && \
     chmod +x *.pl
 
+# Install R with depencies
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+    r-base-core r-base-dev && \
+    R -e "install.packages('data.table', dependencies = TRUE, repos = 'http://cran.rstudio.com')"
+
+# Add filter script
+COPY filter-maf.R /usr/bin
+RUN chmod +x /usr/bin/filter-maf.R

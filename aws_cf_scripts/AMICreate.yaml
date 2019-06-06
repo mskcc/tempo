@@ -18,7 +18,7 @@ Parameters:
     Description: Path for the scratch mount point in the instance
   ScratchVolumeSize:
     Type: Number
-    Default: 20
+    Default: 200
     Description: The initial size of the scratch volume
   AMIName:
     Type: String
@@ -64,21 +64,10 @@ Resources:
             03GetECSAdditions:
               command: wget https://aws-genomics-workflows.s3.amazonaws.com/artifacts/aws-ecs-additions.tgz && tar -xzf aws-ecs-additions.tgz
               cwd: /opt
-            04StopDocker:
-              command: service docker stop
-            05CreateDockerStorageConfig:
-              command: echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay2\"" > "/etc/sysconfig/docker-storage"
-            05RemoveDockerStorageCreateConfig:
-              command: rm /etc/sysconfig/docker-storage-setup
-            06CreateDaemonConfig:
-              command: echo "{\"data-root\":\"/scratch/docker\"}" > /etc/docker/daemon.json
-            07CreateDockerDir:
-              command: mkdir /scratch/docker
-            08StartDockerService:
-              command: service docker start
-            09InstallAWSCLI:
+            04InstallAWSCLI:
               command: yum install -y bzip2 wget && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && bash Miniconda3-latest-Linux-x86_64.sh -b -f -p /home/ec2-user/miniconda && /home/ec2-user/miniconda/bin/conda install -c conda-forge -y awscli && rm Miniconda3-latest-Linux-x86_64.sh
               cwd: /home/ec2-user
+
     Properties:
       ImageId: !Ref ImageId
       InstanceType: !Ref InstanceType
@@ -96,6 +85,12 @@ Resources:
           Ebs:
             VolumeType: gp2
             VolumeSize: !Ref ScratchVolumeSize
+            Encrypted:
+              Fn::If: [UseEncryptedVolume, true, false]
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 40
             Encrypted:
               Fn::If: [UseEncryptedVolume, true, false]
     CreationPolicy:
