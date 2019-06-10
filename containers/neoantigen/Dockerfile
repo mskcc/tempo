@@ -37,7 +37,6 @@ RUN cd /opt/netMHCpan-4.0/ \
     && rm data.Linux.tar.gz
 
 # Add neoantigen-dev
-COPY neoantigen-dev-0.0.1.tar.gz /tmp
 COPY neoantigen-docker.config /tmp
 
 RUN wget https://github.com/taylor-lab/neoantigen-dev/archive/0.0.1.tar.gz -O /tmp/neoantigen-dev-0.0.1.tar.gz \
