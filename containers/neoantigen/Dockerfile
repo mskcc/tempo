@@ -36,4 +36,11 @@ RUN cd /opt/netMHCpan-4.0/ \
     && gunzip -c data.Linux.tar.gz | tar xvf - \
     && rm data.Linux.tar.gz
 
+# Add neoantigen-dev
+COPY neoantigen-dev-0.0.1.tar.gz /tmp
+COPY neoantigen-docker.config /tmp
 
+RUN tar -xvf /tmp/neoantigen-dev-0.0.1.tar.gz -C /opt \
+    && cd /opt/neoantigen-dev-0.0.1/ \
+    && pip install -r requirements.txt \
+    && cp /tmp/neoantigen-docker.config .
