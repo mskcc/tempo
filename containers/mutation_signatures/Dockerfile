@@ -6,7 +6,8 @@ LABEL maintainer="Jason Hwee <hweej@mskcc.org>" \
     version.R="3.5.2" \
     version.python="2.7.5" \
     version.msig="0.19.7" \
-    source.msig="https://github.com/hweej/mutation-signatures.git"
+    ## source.msig="https://github.com/hweej/mutation-signatures.git"
+    source.msig="https://github.com/mskcc/mutation-signatures.git"
 
 RUN yum -y update \ 
     && yum -y install python2-devel \ 
@@ -24,7 +25,10 @@ RUN curl -O "https://bootstrap.pypa.io/get-pip.py" \
     && python get-pip.py
 
 # Fetch Mutation-signatures package
-RUN git clone --single-branch --branch feature/make-nice-for-docker https://github.com/hweej/mutation-signatures.git
+## transferred Jason's branch to github.com/mskcc
+## RUN git clone --single-branch --branch feature/make-nice-for-docker https://github.com/hweej/mutation-signatures.git
+
+RUN git clone --single-branch --branch feature/make-nice-for-docker https://github.com/mskcc/mutation-signatures.git  
 
 RUN pip install -r mutation-signatures/requirements.txt
 
