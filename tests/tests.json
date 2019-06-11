@@ -1,5 +1,5 @@
 {
-    "test_make_bam_and_qc": {
+    "test_make_bam_part": {
         "command": ["./nextflow", "run", "make_bam_and_qc.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test"],
         "checks": [{"type": "checkNumberOfLines", "filename": "make_bam_output.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
     },
