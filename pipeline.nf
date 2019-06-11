@@ -1176,7 +1176,7 @@ process RunHlaPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
-    file("${outputDir}/winners.hla.txt") into hlaOutput
+    set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "polysolver" in tools && runSomatic
   
@@ -1341,6 +1341,34 @@ process DoMafAnno {
   echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
 
   /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf  
+  """
+}
+
+mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
+
+hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
+
+process RunNeoantigen {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/neoantigen", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
+
+  output:
+    set idTumor, idNormal, target, file("neoantigen/*") into neoantigenOut
+
+  when: "neoantigen" in "tools"
+
+  script:
+  """
+  python /opt/neoantigen-dev-0.0.1/neoantigen.py \
+    --config_file /opt/neoantigen-dev-0.0.1/neoantigen-docker.config \
+    --sample_id ${idTumor} \
+    --hla_file ${polysolverFile} \
+    --maf_file ${mafFile} \
+    --output_dir neoantigen
   """
 }
 
