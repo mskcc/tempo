@@ -3,7 +3,7 @@ FROM continuumio/anaconda3:5.3.0
 LABEL authors="Evan Biederstedt (evan.biederstedt@gmail.com)" \
       version.image="1.0.0" \
       version.lohhla="1.0.0" \
-      source.msig="https://github.com/mskcc/lohhla/releases/tag/1.0.0"
+      source.lohhla="https://github.com/mskcc/lohhla/releases/tag/1.0.0"
 
 RUN conda create -n env python=3.6
 RUN echo "source activate env" > ~/.bashrc
