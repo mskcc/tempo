@@ -1,4 +1,4 @@
-FROM ensemblorg/ensembl-vep
+FROM ensemblorg/ensembl-vep:release_96.0
 
 MAINTAINER C. Allan Bolipata <bolipatc@mskcc.org>
 
@@ -8,10 +8,12 @@ ENV PERL5LIB $VEP_PATH:/opt/lib/perl5:$PERL5LIB
 ENV SAMTOOLS_VERSION 1.9
 ENV BCFTOOLS_VERSION 1.9
 ENV VCF2MAF_VERSION 1.6.17
+ENV VEP_VERSION 96.0
 
 WORKDIR /tmp
 
 USER root
+RUN apt-get update
 
 # Install samtools
 RUN apt-get update && \
@@ -55,3 +57,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     r-base-core r-base-dev && \
     R -e "install.packages('data.table', dependencies = TRUE, repos = 'http://cran.rstudio.com')"
+
+# Add filter script
+COPY filter-maf.R /usr/bin
+RUN chmod +x /usr/bin/filter-maf.R
