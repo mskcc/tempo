@@ -814,6 +814,7 @@ process SomaticRunStrelka2 {
   """
 }
 
+//Formatting the channel to be keyed by idTumor, idNormal, and target
 strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 
 // --- Process Mutect2 and Strelka2 VCFs
@@ -1176,7 +1177,7 @@ process RunPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForPolysolver
 
   output:
-    file("${outputDir}/winners.hla.txt") into hlaOutput
+    set assay, target, idTumor, idNormal, file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "polysolver" in tools && runSomatic
   
@@ -1290,20 +1291,33 @@ process RunConpair {
 
 
 
+
 // Run LOHHLA
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
 
+// *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
+
+//*.groupTuple(by: [0,1,2]) == formatting the channel to be keyed by idTumor, idNormal, and target
+
+FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
+
+hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  // 
+
+mergedChannelLOHHLA = bamsForLOHHLA.combine(FacetsOutput).combine(hlaOutput).unique()
+
+
 process RunLOHHLA {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForLOHHLA
-    file("*_purity.out") from FacetsOutput
-    file("winners.hla.txt") from hlaOutput
-    set file(hlaFasta), file(hlaDat) from Channel.value([ referenceMap.hlaFasta, referenceMap.hlaDat ])
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*_purity.out"), file("winners.hla.txt") from mergedChannelLOHHLA
+    set file(hlaFasta), file(hlaDat) from Channel.value([ 
+      referenceMap.hlaFasta, 
+      referenceMap.hlaDat
+    ])
 
   output:
     file("*") into lohhlaOutput
@@ -1358,7 +1372,8 @@ process RunMutationSignatures {
   """
 }
 
-FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
+// occurs above 
+// FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
