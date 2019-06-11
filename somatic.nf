@@ -939,20 +939,33 @@ process RunConpair {
   """
 }
 
+
 // Run LOHHLA
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
 
+// *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
+
+//*.groupTuple(by: [0,1,2]) == formatting the channel to be keyed by idTumor, idNormal, and target
+
+FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
+
+hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  // 
+
+mergedChannelLOHHLA = bamsForLOHHLA.combine(FacetsOutput).combine(hlaOutput).unique()
+
+
 process RunLOHHLA {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForLOHHLA
-    file("*_purity.out") from FacetsOutput
-    file("winners.hla.txt") from hlaOutput
-    set file(hlaFasta), file(hlaDat) from Channel.value([ referenceMap.hlaFasta, referenceMap.hlaDat ])
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*_purity.out"), file("winners.hla.txt") from mergedChannelLOHHLA
+    set file(hlaFasta), file(hlaDat) from Channel.value([ 
+      referenceMap.hlaFasta, 
+      referenceMap.hlaDat
+    ])
 
   output:
     file("*") into lohhlaOutput
