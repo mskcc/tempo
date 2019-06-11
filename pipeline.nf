@@ -883,12 +883,12 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex,
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex,
-      referenceMap.gnomadWesVcf, // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
-      referenceMap.gnomadWesVcfIndex // TODO: REPLACE WHEN WE ADD gnomadWgsVcfIndex
+      referenceMap.gnomadWesVcfIndex
     ])
+
+    // TODO: Add gnomadWgsVcf
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
@@ -1291,7 +1291,7 @@ process RunConpair {
 
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
-(mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
+(mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
 process RunMutationSignatures {
   tag {idTumor + "_vs_" + idNormal}
@@ -1344,6 +1344,7 @@ process DoMafAnno {
   """
 }
 
+(mafFileForNeoantigen, mafFile) = mafFile.into(2)
 mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
@@ -1359,7 +1360,7 @@ process RunNeoantigen {
   output:
     set idTumor, idNormal, target, file("neoantigen/*") into neoantigenOut
 
-  when: "neoantigen" in "tools"
+  when: "neoantigen" in tools
 
   script:
   """
