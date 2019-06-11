@@ -1296,15 +1296,17 @@ process RunConpair {
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
 
+(facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
+
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
 
 //*.groupTuple(by: [0,1,2]) == formatting the channel to be keyed by idTumor, idNormal, and target
 
-FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
+facetsForLOHHLA = facetsForLOHHLA.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
 
 hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  // 
 
-mergedChannelLOHHLA = bamsForLOHHLA.combine(FacetsOutput).combine(hlaOutput).unique()
+mergedChannelLOHHLA = bamsForLOHHLA.combine(facetsForLOHHLA).combine(hlaOutput).unique()
 
 
 process RunLOHHLA {
@@ -1373,7 +1375,8 @@ process RunMutationSignatures {
 }
 
 // occurs above 
-// FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
+
+FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
