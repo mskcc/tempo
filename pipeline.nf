@@ -1555,16 +1555,29 @@ process GermlineCombineChannel {
       referenceMap.mapabilityBlacklist,
       referenceMap.mapabilityBlacklistIndex
     ])
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+      referenceMap.gnomadWesVcf,
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
+    ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.union.pass.vcf") into vcfMergedOutputGermline
+    set idTumor, idNormal, target, file("${idTumor}.vcf.gz") into vcfMergedOutputGermline
 
-  when: 'strelka2' in tools && 'haplotypecaller' in tools && runGermline
+  when: 'strelka2' in tools && 'haplotypecaller' in tools
 
   script:  
   isec_dir = "${idNormal}.isec"
+  gnomad = gnomadWgsVcf
+  if (target != 'wgs') {
+    gnomad = gnomadWesVcf
+  }
+
   """
-  echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
+  echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
+  echo -e "##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" >> vcf.header
+  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\">" >> vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
 
@@ -1574,12 +1587,13 @@ process GermlineCombineChannel {
     ${haplotypecallercombinedVCF} ${strelkaVCF}
 
   bcftools annotate \
-    --header-lines vcf.header \
-    --annotations ${isec_dir}/0002.vcf.gz \
-    --mark-sites \"+HaplotypeCaller;Strelka2\" \
+    --annotations ${isec_dir}/0003.vcf.gz \
+    --include 'FILTER!=\"PASS\"' \
+    --mark-sites \"+Strelka2FILTER\" \
+    -k \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
-    ${isec_dir}/0002.vcf.gz
+    --output ${isec_dir}/0003.annot.vcf.gz \
+    ${isec_dir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -1588,6 +1602,24 @@ process GermlineCombineChannel {
     --output-type z \
     --output ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0000.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0002.vcf.gz \
+    --mark-sites \"+HaplotypeCaller;Strelka2\" \
+    --output-type z \
+    --output ${isec_dir}/0002.tmp.vcf.gz \
+    ${isec_dir}/0002.vcf.gz
+
+  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
+
+  bcftools annotate \
+    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --columns +FORMAT,Strelka2FILTER \
+    --output-type z \
+    --output ${isec_dir}/0002.annot.vcf.gz \
+    ${isec_dir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -1603,6 +1635,7 @@ process GermlineCombineChannel {
 
   bcftools concat \
     --allow-overlaps \
+    --rm-dups all \
     ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0001.annot.vcf.gz \
     ${isec_dir}/0002.annot.vcf.gz | \
@@ -1623,6 +1656,17 @@ process GermlineCombineChannel {
     --output-type v \
     --output ${idNormal}.union.pass.vcf \
     ${idNormal}.union.vcf
+
+  tabix --preset vcf ${idNormal}.union.pass.vcf
+
+  bcftools annotate \
+    --annotations ${gnomad} \
+    --columns INFO \
+    --output-type z \
+    --output ${idTumor}.union.gnomad.vcf.gz \
+    ${idNormal}.union.pass.vcf
+
+  mv ${idTumor}.union.gnomad.vcf.gz ${idTumor}.vcf.gz
   """
 }
 
