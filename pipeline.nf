@@ -1335,7 +1335,7 @@ process RunLOHHLA {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*_purity.out"), file("winners.hla.txt") from mergedChannelLOHHLA
+    set target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*_purity.out"), file("winners.hla.txt") from mergedChannelLOHHLA
     set file(hlaFasta), file(hlaDat) from Channel.value([ 
       referenceMap.hlaFasta, 
       referenceMap.hlaDat
