@@ -130,11 +130,12 @@ process CreateScatteredIntervals {
   when: "haplotypecaller" in tools
 
   script:
+  scatterCount = 10
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${agilentTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output agilent
   for i in agilent/*.interval_list;
@@ -145,7 +146,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${idtTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output idt
   for i in idt/*.interval_list;
@@ -156,7 +157,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${wgsIntervals} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
   for i in wgs/*.interval_list;
