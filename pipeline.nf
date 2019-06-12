@@ -1296,17 +1296,37 @@ process RunConpair {
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
 
+// Channel currently in order [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
+// re-order bamsForLOHHLA into idTumor, idNormal, and target, i.e. 
+// [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+
+bamsForLOHHLA = bamsForLOHHLA.map{ 
+  item -> 
+    def assay = item[0]
+    def target = item[1]
+    def tumorID = item[2]
+    def normalID = item[3]
+    def tumorBam = item[4]
+    def tumorBai = item[5]
+    def sampleID = item[6]
+    def normalBam = item[7]
+    def normalBai = item[8]
+
+    return [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+  }
+
+
 (facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
 
-//*.groupTuple(by: [0,1,2]) == formatting the channel to be keyed by idTumor, idNormal, and target
+//apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
 facetsForLOHHLA = facetsForLOHHLA.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
 
 hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  // 
 
-mergedChannelLOHHLA = bamsForLOHHLA.combine(facetsForLOHHLA).combine(hlaOutput).unique()
+mergedChannelLOHHLA = bamsForLOHHLA.combine(facetsForLOHHLA, by: [0,1,2]).combine(hlaOutput, by: [0,1,2]).unique()
 
 
 process RunLOHHLA {
@@ -1346,6 +1366,7 @@ process RunLOHHLA {
         --novoDir /novocraft
     """
 }
+
 
 
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
