@@ -10,48 +10,43 @@ __email__   = "jonssonp@mskcc.org"
 __version__ = "0.1.0"
 __status__  = "Dev"
 
+### Usage:
+### `$ filter-vcf.py input_filename.vcf`
+### Outputs `input_filename.filter.vcf`
+
 import sys, os
-from pysam import VariantFile
+from pysam import VariantFile   ## version >= 0.15.2
 from itertools import groupby
+
 
 vcf_in = VariantFile(sys.argv[1], "r")
 normal = vcf_in.header.samples[0]
 tumor = vcf_in.header.samples[1]
 
-# Add new headers
-# vcf_in.header.filters.add('multiallelic', None, None, 'Multiple alleles at same locus') # Note that MuTect2 already has a FILTER tag for this, we're hijacking that
+## Add new headers
 vcf_in.header.filters.add('multiallelic2', None, None, 'Multiple alleles at same locus') # Note that MuTect2 already has a FILTER tag for this, we're hijacking that
 vcf_in.header.filters.add('part_of_mnv', None, None, 'Variant is part of previous variant')
-# vcf_in.header.filters.add('short_repeat', None, None, 'Variant part of a short repeat')
 vcf_in.header.filters.add('strand_bias', None, None, 'Variant part of a short repeat') # Note that MuTect2 already has a FILTER tag for this, we're hijacking that
-# vcf_in.header.filters.add('caller_conflict', None, None, 'MuTect2 and Strelka2 provides conflicting FILTER flags for this variant')
-# vcf_in.header.info.add('Caller', 1, 'String', 'Comman-separated list of variant callers that called variant')
 vcf_in.header.info.add('Ref_Tri', 1, 'String', 'Normalize trinucleotide context of SNVs')
 
-
+## output by default `input_filename.filter.vcf`
 outfile = os.path.splitext(sys.argv[1])[0] + '.filter.vcf'
 vcf_out = VariantFile(outfile, "w", header = vcf_in.header)
 prev_var = None
+
 for var in vcf_in.fetch():
 
-    # Variant info
+    ## Variant info
     info = var.info.keys()
     pos = var.pos
     print(var.pos)
+
     ref = var.ref
     alt = var.alts[0]
     filter = var.filter.keys()
     new_flags = []
 
-    # Add caller tag
-    # caller = []
-    # if 'MuTect2' in info:
-    #     caller.append('MuTect2')
-    # if 'Strelka2' in info:
-    #     caller.append('Strelka2')
-    # var.info.__setitem__('Caller', ','.join(caller))
-
-    # Add normalized reference trinucleotide context
+    ## Add normalized reference trinucleotide context
     complement = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
 
     if len(ref) == len(alt) == 1:
@@ -60,8 +55,8 @@ for var in vcf_in.fetch():
             ref_tri = ''.join([complement[nt] for nt in ref_tri])[::-1]
         var.info.__setitem__('Ref_Tri', ref_tri)
 
-    # Check for variant substitutions that are part of the previous variant
-    # These are most likely (but not always?) Strelka2 calls that MuTect2 called as MNVs
+    ## Check for variant substitutions that are part of the previous variant
+    ## These are most likely (but not always?) Strelka2 calls that MuTect2 called as MNVs
     if prev_var is not None:
         prev_end = prev_var.pos + len(prev_var.alts[0]) - 1
         if pos == prev_end:
@@ -71,27 +66,8 @@ for var in vcf_in.fetch():
             if ref_match and alt_match:
                 new_flags.append('part_of_mnv')
         
-    # Check for likely artifacts in short repeats
-    # left_flank = var.info['FLANKSEQ'].split('[')[0][::-1]
-    # right_flank = var.info['FLANKSEQ'].split(']')[1]
-    # if len(alt) > len(ref): # insertion
-    #     alt_repeat = alt[1:]
-    # elif len(alt) < len(ref): # deletion
-    #     alt_repeat = ref[1:]
-    # else:
-    #     alt_repeat = alt
-
-    # right_flank = [right_flank[i:i+len(alt_repeat)] for i in range(0, len(right_flank), len(alt_repeat))]
-    # left_flank = [left_flank[i:i+len(alt_repeat)] for i in range(0, len(left_flank), len(alt_repeat))]
-    # right_flank = [(key, len(list(group))) for key, group in groupby(right_flank)]
-    # left_flank = [(key, len(list(group))) for key, group in groupby(left_flank)]
-    # rep_length = len(alt_repeat) * sum([bps[1] for bps in [left_flank[0], right_flank[0]] if bps[0] == alt_repeat])
-    
-    # if rep_length > 5:
-    #     new_flags.append('short_repeat') 
-
-    # Check for multiallelic Strelka2 calls
-    # Strelka2 does not produce multiallelic calls by itself but provides info on all alternate bases observed
+    ## Check for multiallelic2 Strelka2 calls
+    ## Strelka2 does not produce multiallelic calls by itself but provides info on all alternate bases observed
     if "Strelka2" in info and len(ref) == len(alt) == 1:
         alleles = { # what about indels from Strelka2?
             'A': var.samples[tumor]['AU'],
@@ -106,8 +82,8 @@ for var in vcf_in.fetch():
         if (tier1_other + tier2_other) >= alt_reads * 0.5:
             new_flags.append('multiallelic2')
     
-    # Add an additional strand-bias filer
-    # Only MuTect2 provides sufficient variant information for this
+    ## Add an additional strand-bias filer
+    ## Only MuTect2 provides sufficient variant information for this
     if "MuTect2" in info:
         t_fw = var.samples[tumor]['F1R2']
         t_rev = var.samples[tumor]['F2R1']
@@ -118,10 +94,7 @@ for var in vcf_in.fetch():
             if t_fw[0] > 10 and t_rev[0] > 10 or n_fw[0] > 10 and n_rev[0] > 10:
                 new_flags.append('strand_bias')
 
-    # Conflicting MuTect2 and Strelka2 filters
-    # if "PASS" in filter and "Strelka2FAIL" in info:
-    #     new_flags.append('caller_conflict')
-
+    ## Conflicting MuTect2 and Strelka2 filters
     if len(new_flags) > 0:
         if "PASS" in var.filter.keys():
             var.filter.clear()
