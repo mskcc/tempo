@@ -675,6 +675,9 @@ def defineReferenceMap() {
     result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
     // isoforms needed by vcf2maf
     result_array << ['isoforms' : checkParamReturnFile("isoforms")]
+    // gnomAD resources
+    result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
+    result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
   }
   return result_array
 }
