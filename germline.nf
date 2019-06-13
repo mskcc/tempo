@@ -203,8 +203,8 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.vcf.gz"),
-    file("${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
+    file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz") into haplotypecallerOutput mode flatten
 
   when: 'haplotypecaller' in tools
 
@@ -218,6 +218,39 @@ process GermlineRunHaplotypecaller {
     --intervals ${intervalBed} \
     --input ${bamNormal} \
     --output ${idNormal}_${intervalBed.baseName}.vcf.gz
+
+  gatk SelectVariants \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.vcf.gz \
+    --select-type-to-include SNP \
+    --output ${idNormal}_${intervalBed.baseName}.snps.vcf.gz
+
+  gatk SelectVariants \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.vcf.gz \
+    --select-type-to-include INDEL \
+    --output ${idNormal}_${intervalBed.baseName}.indels.vcf.gz
+
+  gatk VariantFiltration \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.snps.vcf.gz \
+    --filter-expression \"QD < 2.0\" --filter-name \"QD2\" \
+    --filter-expression \"QUAL < 30.0\" --filter-name \"QUAL30\" \
+    --filter-expression \"SOR > 3.0\" --filter-name \"SOR3\" \
+    --filter-expression \"FS > 60.0\" --filter-name \"FS60\" \
+    --filter-expression \"MQ < 40.0\" --filter-name \"MQ40\" \
+    --filter-expression \"MQRankSum < -12.5\" --filter-name \"MQRankSum-12.5\" \
+    --filter-expression \"ReadPosRankSum < -8.0\" --filter-name \"ReadPosRankSum-8\" \
+    --output ${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz
+
+  gatk VariantFiltration \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.indels.vcf.gz \
+    --filter-expression \"QD < 2.0\" --filter-name \"QD2\" \
+    --filter-expression \"QUAL < 30.0\" --filter-name \"QUAL30\" \
+    --filter-expression \"FS > 200.0\" --filter-name \"FS200\" \
+    --filter-expression \"ReadPosRankSum < -20.0\" --filter-name \"ReadPosRankSum-20\" \
+    --output ${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz
   """
 }
 
@@ -230,7 +263,7 @@ process GermlineCombineHaplotypecallerVcf {
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
-    set idTumor, idNormal, target, file(haplotypecallerVcf), file(haplotypecallerVcfIndex) from haplotypecallerOutput
+    set idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -248,7 +281,7 @@ process GermlineCombineHaplotypecallerVcf {
   """
   bcftools concat \
     --allow-overlaps \
-    ${haplotypecallerVcf} | \
+    ${haplotypecallerSnpVcf} ${haplotypecallerIndelVcf} | \
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
