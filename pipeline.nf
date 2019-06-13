@@ -90,10 +90,32 @@ groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
 fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
 
+
+// FastP - FastP on lane pairs, R1/R2
+
+process FastP {
+  tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
+
+
+  publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
+
+  input:
+    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
+
+  output:
+    file("*.html") into fastPResults
+
+  script:
+  """
+  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+  """
+}
+
+
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
-  tag {lane}   // The tag directive allows you to associate each process executions with a custom label
+  tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
   input:
     set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
@@ -115,7 +137,7 @@ process AlignReads {
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 
 process SortBAM {
-  tag {lane}
+  tag {idSample + "@" + lane}
 
   input:
     set idSample, lane, file("${lane}.bam"), assay, targetFile from unsortedBam
@@ -340,33 +362,12 @@ else {
   }
 }
 
-// FastP - FastP on lane pairs, R1/R2
-
-process FastP {
-
-  tag {lane}   // The tag directive allows you to associate each process executions with a custom label
-
-  publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
-
-  input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
-    
-  output:
-    file("*.html") into fastPResults 
-
-  script:
-  """
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
-  """
-}
-
-
 ignore_read_groups = Channel.from( true , false )
 
 // Alfred, BAM QC
 
 process Alfred {
-  tag {idSample}
+  tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
   publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
   
@@ -494,7 +495,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
 
 process SomaticDellyCall {
-  tag {idTumor + "_vs_" + idNormal + '_' + svType}
+  tag {idTumor + "_vs_" + idNormal + '@' + svType}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
@@ -508,7 +509,7 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}@${svType}.filter.bcf")  into dellyFilterOutput
 
   when: 'delly' in tools && runSomatic
 
@@ -518,7 +519,7 @@ process SomaticDellyCall {
     --svtype ${svType} \
     --genome ${genomeFile} \
     --exclude ${svCallingExcludeRegions} \
-    --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
+    --outfile ${idTumor}_vs_${idNormal}@${svType}.bcf \
     ${bamTumor} ${bamNormal}
 
   echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
@@ -526,15 +527,15 @@ process SomaticDellyCall {
   delly filter \
     --filter somatic \
     --samples samples.tsv \
-    --outfile ${idTumor}_vs_${idNormal}_${svType}.filter.bcf \
-    ${idTumor}_vs_${idNormal}_${svType}.bcf
+    --outfile ${idTumor}_vs_${idNormal}@${svType}.filter.bcf \
+    ${idTumor}_vs_${idNormal}@${svType}.bcf
   """
 }
 
 // --- Run Mutect2
 
 process RunMutect2 {
-  tag {idTumor + "_vs_" + idNormal}
+  tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName }
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
@@ -548,7 +549,7 @@ process RunMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}@${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}@${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
 
   when: 'mutect2' in tools && runSomatic
 
@@ -564,14 +565,14 @@ process RunMutect2 {
     --tumor-sample ${idTumor} \
     --input ${bamNormal} \
     --normal-sample ${idNormal} \
-    --output ${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz
+    --output ${idTumor}_vs_${idNormal}@${intervalBed.baseName}.vcf.gz
   """
 }
 
 // GATK FilterMutectCalls, RunMutect2Filter
 
 process RunMutect2Filter {
-  tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
+  tag { prefix }
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
 
@@ -1353,7 +1354,7 @@ process DoMafAnno {
 // GATK HaplotypeCaller
 
 process GermlineRunHaplotypecaller {
-  tag {idNormal + "_" + intervalBed.baseName}
+  tag {idNormal + "@" + intervalBed.baseName}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
@@ -1367,8 +1368,8 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.vcf.gz"),
-    file("${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set idTumor, idNormal, target, file("${idNormal}@${intervalBed.baseName}.vcf.gz"),
+    file("${idNormal}@${intervalBed.baseName}.vcf.gz.tbi") into haplotypecallerOutput mode flatten
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1381,7 +1382,7 @@ process GermlineRunHaplotypecaller {
     --reference ${genomeFile} \
     --intervals ${intervalBed} \
     --input ${bamNormal} \
-    --output ${idNormal}_${intervalBed.baseName}.vcf.gz
+    --output ${idNormal}@${intervalBed.baseName}.vcf.gz
   """
 }
 
@@ -1671,15 +1672,16 @@ process GermlineRunVcf2Maf {
 }
 
 // --- Process Delly and Manta VCFs 
+svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDellyGermline, bamFiles) = bamFiles.into(2)
 
 process GermlineDellyCall {
-  tag {idNormal + '_' + svType}
+  tag {idNormal + '@' + svType}
 
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
-    each svType from Channel.from("DUP", "BND", "DEL", "INS", "INV")
+    each svType from svTypes
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDellyGermline
     set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
@@ -1688,7 +1690,7 @@ process GermlineDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, svType, file("${idNormal}_${svType}.bcf"), file("${idNormal}_${svType}.bcf.csi") into dellyCallOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}@${svType}.filter.bcf") into dellyFilterOutputGermline
 
   when: 'delly' in tools && runGermline
 
@@ -1698,37 +1700,16 @@ process GermlineDellyCall {
     --svtype ${svType} \
     --genome ${genomeFile} \
     --exclude ${svCallingExcludeRegions} \
-    --outfile ${idNormal}_${svType}.bcf \
+    --outfile ${idNormal}@${svType}.bcf \
     ${bamNormal}
-  """
-}
 
-// filter germline Delly calls, bcftools
-
-process GermlineDellyFilter {
-  tag {idNormal + '_' + svType}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
-
-  input:
-    set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutputGermline
-
-
-  output:
-    set idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilterOutputGermline
-
-  when: 'delly' in tools && runGermline
-
-  outfile="${dellyBcf}".replaceFirst(".bcf",".filter.bcf")
-
-  script:
-  """
   delly filter \
     --filter germline \
-    --outfile ${outfile} \
-    ${dellyBcf}
+    --outfile ${idNormal}@${svType}.filter.bcf \
+    ${idNormal}@${svType}.bcf
   """
 }
+
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
