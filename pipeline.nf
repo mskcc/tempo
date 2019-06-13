@@ -509,7 +509,7 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}@${svType}.filter.bcf")  into dellyFilterOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
 
   when: 'delly' in tools && runSomatic
 
@@ -519,7 +519,7 @@ process SomaticDellyCall {
     --svtype ${svType} \
     --genome ${genomeFile} \
     --exclude ${svCallingExcludeRegions} \
-    --outfile ${idTumor}_vs_${idNormal}@${svType}.bcf \
+    --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
     ${bamTumor} ${bamNormal}
 
   echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
@@ -527,8 +527,8 @@ process SomaticDellyCall {
   delly filter \
     --filter somatic \
     --samples samples.tsv \
-    --outfile ${idTumor}_vs_${idNormal}@${svType}.filter.bcf \
-    ${idTumor}_vs_${idNormal}@${svType}.bcf
+    --outfile ${idTumor}_vs_${idNormal}_${svType}.filter.bcf \
+    ${idTumor}_vs_${idNormal}_${svType}.bcf
   """
 }
 
@@ -1368,8 +1368,8 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}@${intervalBed.baseName}.vcf.gz"),
-    file("${idNormal}@${intervalBed.baseName}.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.vcf.gz"),
+    file("${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into haplotypecallerOutput mode flatten
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1382,7 +1382,7 @@ process GermlineRunHaplotypecaller {
     --reference ${genomeFile} \
     --intervals ${intervalBed} \
     --input ${bamNormal} \
-    --output ${idNormal}@${intervalBed.baseName}.vcf.gz
+    --output ${idNormal}_${intervalBed.baseName}.vcf.gz
   """
 }
 
@@ -1690,7 +1690,7 @@ process GermlineDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}@${svType}.filter.bcf") into dellyFilterOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilterOutputGermline
 
   when: 'delly' in tools && runGermline
 
@@ -1700,13 +1700,13 @@ process GermlineDellyCall {
     --svtype ${svType} \
     --genome ${genomeFile} \
     --exclude ${svCallingExcludeRegions} \
-    --outfile ${idNormal}@${svType}.bcf \
+    --outfile ${idNormal}_${svType}.bcf \
     ${bamNormal}
 
   delly filter \
     --filter germline \
-    --outfile ${idNormal}@${svType}.filter.bcf \
-    ${idNormal}@${svType}.bcf
+    --outfile ${idNormal}_${svType}.filter.bcf \
+    ${idNormal}_${svType}.bcf
   """
 }
 
