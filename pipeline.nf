@@ -297,7 +297,7 @@ recalibratedBamForOutput.combine(pairingTN)
                           def bamTumor = sampleBam
                           def baiTumor = sampleBai
 
-                          return [ assay, target, idTumor, idNormal, bamTumor, tumorBai ]
+                          return [ assay, target, idTumor, idNormal, bamTumor, baiTumor ]
                         }.combine(recalibratedBamForOutput2)
                         .filter { item ->
                           def assay = item[0]
