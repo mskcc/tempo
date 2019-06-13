@@ -883,12 +883,12 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex,
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex,
-      referenceMap.gnomadWesVcf, // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
-      referenceMap.gnomadWesVcfIndex // TODO: REPLACE WHEN WE ADD gnomadWgsVcfIndex
+      referenceMap.gnomadWesVcfIndex
     ])
+
+  // TODO: ADD gnomadWgsVcf and gnomadWgsVcfIndex
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
