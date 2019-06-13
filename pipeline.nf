@@ -1544,11 +1544,18 @@ hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
 
 haplotypecallerStrelkaChannel = hcv.combine(strelkaOutputGermline, by: [0,1,2]).unique()
 
+(bamsForCombineChannel, bamFiles) = bamFiles.into(2)
+
 process GermlineCombineChannel {
   tag {idNormal}
 
   input:
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForCombineChannel
     set idTumor, idNormal, target, file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from haplotypecallerStrelkaChannel
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+    ])
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
       referenceMap.repeatMasker,
       referenceMap.repeatMaskerIndex,
@@ -1563,7 +1570,7 @@ process GermlineCombineChannel {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}.vcf") into vcfMergedOutputGermline
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.vcf") into vcfMergedOutputGermline
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools
 
@@ -1663,10 +1670,25 @@ process GermlineCombineChannel {
     --annotations ${gnomad} \
     --columns INFO \
     --output-type v \
-    --output ${idTumor}.union.gnomad.vcf.gz \
+    --output ${idNormal}.union.gnomad.vcf \
     ${idNormal}.union.pass.vcf.gz
 
-  mv ${idTumor}.union.gnomad.vcf ${idTumor}.vcf
+  GetBaseCountsMultiSample \
+    --fasta ${genomeFile} \
+    --bam ${bamTumor} \
+    --vcf ${idNormal}.union.gnomad.vcf \
+    --output ${idTumor}.genotyped.vcf
+
+  bgzip ${idNormal}.union.gnomad.vcf
+  bgzip ${idTumor}.genotyped.vcf
+  tabix --preset vcf ${idNormal}.union.gnomad.vcf.gz
+  tabix --preset vcf ${idTumor}.genotyped.vcf.gz
+
+  bcftools merge \
+    --output ${idTumor}_vs_${idNormal}.germline.vcf \
+    --output-type v \
+    ${idNormal}.union.gnomad.vcf.gz \
+    ${idTumor}.genotyped.vcf.gz
   """
 }
 
@@ -1675,7 +1697,7 @@ process GermlineCombineChannel {
 process GermlineRunVcf2Maf {
   tag {idNormal}
 
-  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutputGermline
@@ -1688,22 +1710,23 @@ process GermlineRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.maf") into mafFileGermline
+    set idTumor, idNormal, target, file("*.maf") into mafFile
 
-  when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
+  when: "strelka2" in tools && "haplotypecaller" in tools
+
+  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
 
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
-  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
     --vep-path /opt/vep/src/ensembl-vep \
     --vep-data ${vepCache} \
     --vep-forks 10 \
-    --tumor-id ${idNormal} \
+    --tumor-id ${idTumor} \
     --normal-id ${idNormal} \
-    --vcf-tumor-id ${idNormal} \
+    --vcf-tumor-id ${idTumor} \
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
