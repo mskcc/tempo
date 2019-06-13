@@ -1344,11 +1344,11 @@ process RunLOHHLA {
   output:
     file("*") into lohhlaOutput
 
-    when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
+  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
 
     // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
 
-    script:
+  script:
     """
     cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
     PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
