@@ -538,11 +538,9 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex,
-      referenceMap.gnomadWgsVcf,
-      referenceMap.gnomadWgsVcfIndex
+      referenceMap.gnomadWesVcfIndex
     ])
 
   output:
@@ -553,7 +551,7 @@ process SomaticCombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  gnomad = gnomadWgsVcf
+  gnomad = gnomadWesVcf
   if (target != 'wgs') {
     pon = exomePoN
     gnomad = gnomadWesVcf
