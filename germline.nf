@@ -398,7 +398,7 @@ process GermlineCombineChannel {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}.vcf.gz") into vcfMergedOutputGermline
+    set idTumor, idNormal, target, file("${idTumor}.vcf") into vcfMergedOutputGermline
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools
 
@@ -483,25 +483,25 @@ process GermlineCombineChannel {
     --header-lines vcf.map.header \
     --annotations ${mapabilityBlacklist} \
     --columns CHROM,FROM,TO,EncodeDacMapability \
-    --output-type v \
-    --output ${idNormal}.union.vcf
+    --output-type z \
+    --output ${idNormal}.union.vcf.gz
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
-    --output-type v \
-    --output ${idNormal}.union.pass.vcf \
-    ${idNormal}.union.vcf
+    --output-type z \
+    --output ${idNormal}.union.pass.vcf.gz \
+    ${idNormal}.union.vcf.gz
 
-  tabix --preset vcf ${idNormal}.union.pass.vcf
+  tabix --preset vcf ${idNormal}.union.pass.vcf.gz
 
   bcftools annotate \
     --annotations ${gnomad} \
     --columns INFO \
-    --output-type z \
-    --output ${idTumor}.union.gnomad.vcf.gz \
-    ${idNormal}.union.pass.vcf
+    --output-type v \
+    --output ${idTumor}.union.gnomad.vcf \
+    ${idNormal}.union.pass.vcf.gz
 
-  mv ${idTumor}.union.gnomad.vcf.gz ${idTumor}.vcf.gz
+  mv ${idTumor}.union.gnomad.vcf ${idTumor}.vcf
   """
 }
 
