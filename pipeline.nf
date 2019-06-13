@@ -1580,7 +1580,6 @@ process GermlineCombineChannel {
   if (target != 'wgs') {
     gnomad = gnomadWesVcf
   }
-
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
   echo -e "##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" >> vcf.header
