@@ -17,7 +17,6 @@ Alignment and QC
 Somatic Analysis
 ----------------
 - SomaticDellyCall
-- SomaticDellyFilter
 - CreateIntervalBeds
 - RunMutect2
 - RunMutect2Filter

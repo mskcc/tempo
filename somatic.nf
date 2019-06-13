@@ -5,7 +5,6 @@
 --------------------------------------------------------------------------------
  Processes overview
  - SomaticDellyCall
- - SomaticDellyFilter
  - CreateIntervalBeds
  - RunMutect2
  - RunMutect2Filter
