@@ -1675,7 +1675,7 @@ process GermlineCombineChannel {
 
   GetBaseCountsMultiSample \
     --fasta ${genomeFile} \
-    --bam ${bamTumor} \
+    --bam ${idTumor}:${bamTumor} \
     --vcf ${idNormal}.union.gnomad.vcf \
     --output ${idTumor}.genotyped.vcf
 
