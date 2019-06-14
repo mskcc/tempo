@@ -31,6 +31,7 @@ RUN tar -xvf /tmp/netMHC/netMHCpan-4.0a.Linux.tar.gz -C /usr/local/bin \
     && sed -i 's|'/usr/cbs/packages/netMHCpan/4.0/netMHCpan-4.0'|'/usr/local/bin/netMHCpan-4.0'|' /usr/local/bin/netMHCpan-4.0/netMHCpan
 
 # Install netMHCpan data; had to make local changes (directory needed permission changes), so I'm copying them over
+# This is from http://www.cbs.dtu.dk/services/NetMHCpan-4.0/data.Linux.tar.gz
 COPY data.netmhcpan.tar.gz /usr/local/bin/netMHCpan-4.0/
 
 RUN cd /usr/local/bin/netMHCpan-4.0/ \
