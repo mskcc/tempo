@@ -1605,7 +1605,7 @@ process GermlineCombineChannel {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.vcf") into vcfMergedOutputGermline
 
-  when: 'strelka2' in tools && 'haplotypecaller' in tools
+  when: 'strelka2' in tools && 'haplotypecaller' in tools && runGermline
 
   script:  
   isec_dir = "${idNormal}.isec"
@@ -1744,7 +1744,7 @@ process GermlineRunVcf2Maf {
   output:
     set idTumor, idNormal, target, file("*.maf") into mafFile
 
-  when: "strelka2" in tools && "haplotypecaller" in tools
+  when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
   outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
 
