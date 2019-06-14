@@ -1177,7 +1177,7 @@ process RunPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForPolysolver
 
   output:
-    set assay, target, idTumor, idNormal, file("${outputDir}/winners.hla.txt") into hlaOutput
+    set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "polysolver" in tools && runSomatic
   
@@ -1297,7 +1297,8 @@ process RunConpair {
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
 
 // Channel currently in order [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
-// re-order bamsForLOHHLA into idTumor, idNormal, and target, i.e. 
+
+// Re-order bamsForLOHHLA into idTumor, idNormal, and target, i.e. 
 // [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
 
 bamsForLOHHLA = bamsForLOHHLA.map{ 
@@ -1315,6 +1316,12 @@ bamsForLOHHLA = bamsForLOHHLA.map{
     return [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
   }
 
+// Polysolver channel currently in order []
+// [ idTumor, idNormal, target, winners.hla.txt ]
+
+// FACETS channel in order
+// [ idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") ]
+
 
 (facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
 
@@ -1322,11 +1329,11 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 
 //apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
-facetsForLOHHLA = facetsForLOHHLA.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
+facetsForLOHHLA = facetsForLOHHLA.groupTuple(by: [0,1,2])  
 
-hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  // 
+hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  
 
-mergedChannelLOHHLA = bamsForLOHHLA.combine(facetsForLOHHLA, by: [0,1,2]).combine(hlaOutput, by: [0,1,2]).unique()
+mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutput, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
 
 
 process RunLOHHLA {
@@ -1335,7 +1342,7 @@ process RunLOHHLA {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla", mode: params.publishDirMode
 
   input:
-    set target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*_purity.out"), file("winners.hla.txt") from mergedChannelLOHHLA
+    set target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
     set file(hlaFasta), file(hlaDat) from Channel.value([ 
       referenceMap.hlaFasta, 
       referenceMap.hlaDat
@@ -1351,9 +1358,11 @@ process RunLOHHLA {
   script:
     """
     cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
+    
     PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
     PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+")
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
+
     Rscript /lohhla/LOHHLAscript.R \
         --patientId ${idTumor} \
         --normalBAMfile ${bamNormal} \
