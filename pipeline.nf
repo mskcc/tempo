@@ -1351,7 +1351,7 @@ process RunLOHHLA {
   output:
     file("*") into lohhlaOutput
 
-  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
+  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools && runSomatic
 
     // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
 
