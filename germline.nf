@@ -587,7 +587,7 @@ process GermlineRunVcf2Maf {
     --maf-center MSKCC-CMO \
     --vep-path /opt/vep/src/ensembl-vep \
     --vep-data ${vepCache} \
-    --vep-forks 10 \
+    --vep-forks 4 \
     --tumor-id ${idTumor} \
     --normal-id ${idNormal} \
     --vcf-tumor-id ${idTumor} \
