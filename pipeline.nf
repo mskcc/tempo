@@ -1133,7 +1133,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*.*") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1308,9 +1308,7 @@ bamsForLOHHLA = bamsForLOHHLA.map{
     def tumorID = item[2]
     def normalID = item[3]
     def tumorBam = item[4]
-    def tumorBai = item[5]
-    def sampleID = item[6]
-    def normalBam = item[7]
+    def normalBam = item[5]
     def normalBai = item[8]
 
     return [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
@@ -1324,6 +1322,7 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 
 
 (facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
+
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
 
