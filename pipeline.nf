@@ -1703,7 +1703,7 @@ bcftools annotate \
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
   bcftools filter \
-    --exclude \"non_cancer_AF_popmax>0.005\" \
+    --exclude \"non_cancer_AF_popmax>0.02\" \
     --output-type v \
     --output ${idNormal}.union.gnomad.vcf 
 
