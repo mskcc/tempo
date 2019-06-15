@@ -1133,7 +1133,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1319,33 +1319,50 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 
 // FACETS channel in order
 // [ idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") ]
+// [idTumor, idNormal, target, *purity.out, *purity.cncf.txt, *purity.Rdata, purity.seg, hisens.out, hisens.cncf.txt, hisens.Rdata, hisens.seg into FacetsOutput
+
 
 
 (facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
+
+
+facetsForLOHHLA = facetsForLOHHLA.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def purity_out = item[3]
+    def purity_cncf = item[4]
+    def purity_rdata = item[5]
+    def purity_seg = item[6]
+    def hisens_out = item[7]
+    def hisens_cncf = item[8]
+    def hisens_rdata = item[9]
+    def hisens_seg = item[10]
+
+    return [ idTumor, idNormal, target, purity_out ]
+  }
+
+
 
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
 
 //apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
-facetsForLOHHLA = facetsForLOHHLA.groupTuple(by: [0,1,2])  
-
-hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  
-
 mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutput, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
+
+
 
 
 process RunLOHHLA {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/lohhla", mode: params.publishDirMode
 
   input:
-    set target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
-    set file(hlaFasta), file(hlaDat) from Channel.value([ 
-      referenceMap.hlaFasta, 
-      referenceMap.hlaDat
-    ])
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
+    set file(hlaFasta), file(hlaDat) from Channel.value([ referenceMap.hlaFasta, referenceMap.hlaDat ])
 
   output:
     file("*") into lohhlaOutput
@@ -1933,7 +1950,7 @@ def defineReferenceMap() {
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
-    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex")
+    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
   ]
 
   if (!params.test) {
@@ -1959,6 +1976,9 @@ def defineReferenceMap() {
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
     result_array << ['wgsTargets' : checkParamReturnFile("wgsTargets")]
     result_array << ['wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")]
+    // HLA FASTA and *dat for LOHHLA
+    result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")]
+    result_array << ['hlaDat' : checkParamReturnFile("hlaDat")]
   }
   return result_array
 }
