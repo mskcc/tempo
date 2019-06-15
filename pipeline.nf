@@ -1305,13 +1305,14 @@ bamsForLOHHLA = bamsForLOHHLA.map{
   item -> 
     def assay = item[0]
     def target = item[1]
-    def tumorID = item[2]
-    def normalID = item[3]
+    def idTumor = item[2]
+    def idNormal = item[3]
     def tumorBam = item[4]
     def normalBam = item[5]
-    def normalBai = item[8]
+    def tumorBai = item[6]
+    def normalBai = item[7]
 
-    return [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+    return [ idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai ]
   }
 
 // Polysolver channel currently in order []
