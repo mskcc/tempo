@@ -1113,7 +1113,7 @@ process DoSnpPileup {
   """
   snp-pileup \
     --count-orphans \
-    --pseudo-snps 50 \
+    --pseudo-snps=50 \
     --gzip \
     ${facetsVcf} \
     ${outfile} \
@@ -1156,8 +1156,6 @@ process DoFacets {
     --TAG ${tag} \
     --directory ${outputDir} \
     --R_lib /usr/lib/R/library \
-    --single_chrom ${params.facets.single_chrom} \
-    --ggplot2 ${params.facets.ggplot2} \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
   """
