@@ -772,9 +772,7 @@ process DoFacets {
     --counts_file ${countsFile} \
     --TAG ${tag} \
     --directory ${outputDir} \
-    --R_lib /usr/lib/R/library \
-    --single_chrom ${params.facets.single_chrom} \
-    --ggplot2 ${params.facets.ggplot2} \
+    --R_lib /usr/lib/R/library \ 
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
   """
