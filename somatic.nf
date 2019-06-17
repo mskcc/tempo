@@ -772,7 +772,7 @@ process DoFacets {
     --counts_file ${countsFile} \
     --TAG ${tag} \
     --directory ${outputDir} \
-    --R_lib /usr/lib/R/library \ 
+    --R_lib /usr/lib/R/library \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
   """
