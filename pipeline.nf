@@ -888,7 +888,8 @@ process SomaticCombineChannel {
       referenceMap.gnomadWesVcfIndex
     ])
 
-    // TODO: Add gnomadWgsVcf
+  // TODO: ADD gnomadWgsVcf and gnomadWgsVcfIndex
+
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
