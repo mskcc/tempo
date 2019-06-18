@@ -31,6 +31,8 @@ Somatic Analysis
 - SomaticDoSNPPileup
 - DoFacets
 - RunMsiSensor
+- Polysolver
+- LOHHLA
 - RunConpair
 - RunMutationSignatures
 
@@ -1388,8 +1390,8 @@ process RunLOHHLA {
         --HLAexonLoc ${hlaDat} \
         --CopyNumLoc tumor_purity_ploidy.txt \
         --hlaPath massaged.winners.hla.txt \
-        --gatkDir /picard \
-        --novoDir /novocraft
+        --gatkDir /picard-tools \
+        --novoDir /opt/conda/bin
     """
 }
 
