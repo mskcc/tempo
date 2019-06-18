@@ -675,7 +675,7 @@ process SomaticRunVcf2Maf {
     --output-maf ${outfile} \
     --filter-vcf 0
 
-  filter-maf.R ${outfile}
+  filter-somatic-maf.R ${outfile}
   """
 }
 
