@@ -17,10 +17,8 @@ Alignment and QC
 Somatic Analysis
 ----------------
 - SomaticDellyCall
-- SomaticDellyFilter
 - CreateIntervalBeds
 - RunMutect2
-- RunMutect2Filter
 - SomaticCombineMutect2VCF
 - SomaticRunManta
 - SomaticRunStrelka
@@ -37,7 +35,6 @@ Somatic Analysis
 Germline Analysis
 -----------------
 - GermlineDellyCall
-- GermlineDellyFilter
 - CreateIntervalBeds
 - GermlineRunHaplotypecaller
 - GermlineRunManta
@@ -1117,7 +1114,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1702,7 +1699,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
     each svType from svTypes
