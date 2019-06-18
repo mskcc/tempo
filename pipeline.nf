@@ -31,6 +31,8 @@ Somatic Analysis
 - SomaticDoSNPPileup
 - DoFacets
 - RunMsiSensor
+- Polysolver
+- LOHHLA
 - RunConpair
 - RunMutationSignatures
 
@@ -814,6 +816,7 @@ process SomaticRunStrelka2 {
   """
 }
 
+//Formatting the channel to be keyed by idTumor, idNormal, and target
 strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 
 // --- Process Mutect2 and Strelka2 VCFs
@@ -1133,7 +1136,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1162,9 +1165,9 @@ process DoFacets {
   """
 }
 
-(bamsForPolysolver, bamFiles) = bamFiles.into(2)
-
 // Run Polysolver
+
+(bamsForPolysolver, bamFiles) = bamFiles.into(2)
 
 process RunPolysolver {
   tag {idTumor + "_vs_" + idNormal}
@@ -1172,7 +1175,7 @@ process RunPolysolver {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/hla", mode: params.publishDirMode
   
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForPolysolver
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
@@ -1288,6 +1291,111 @@ process RunConpair {
 }
 
 
+
+
+// Run LOHHLA
+
+(bamsForLOHHLA, bamFiles) = bamFiles.into(2)
+
+// Channel currently in order [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
+
+// Re-order bamsForLOHHLA into idTumor, idNormal, and target, i.e. 
+// [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+
+bamsForLOHHLA = bamsForLOHHLA.map{ 
+  item -> 
+    def assay = item[0]
+    def target = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def tumorBam = item[4]
+    def normalBam = item[5]
+    def tumorBai = item[6]
+    def normalBai = item[7]
+
+    return [ idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai ]
+  }
+
+// Polysolver channel currently in order []
+// [ idTumor, idNormal, target, winners.hla.txt ]
+
+// FACETS channel in order
+// [ idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") ]
+// [idTumor, idNormal, target, *purity.out, *purity.cncf.txt, *purity.Rdata, purity.seg, hisens.out, hisens.cncf.txt, hisens.Rdata, hisens.seg into FacetsOutput
+
+
+
+(facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
+
+
+facetsForLOHHLA = facetsForLOHHLA.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def purity_out = item[3]
+    def purity_cncf = item[4]
+    def purity_rdata = item[5]
+    def purity_seg = item[6]
+    def hisens_out = item[7]
+    def hisens_cncf = item[8]
+    def hisens_rdata = item[9]
+    def hisens_seg = item[10]
+
+    return [ idTumor, idNormal, target, purity_out ]
+  }
+
+
+(hlaOutputForLOHHLA, hlaOutput) = hlaOutput.into(2)
+
+// *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
+
+//apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
+
+mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
+
+
+
+
+process RunLOHHLA {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/lohhla", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
+    set file(hlaFasta), file(hlaDat) from Channel.value([ referenceMap.hlaFasta, referenceMap.hlaDat ])
+
+  output:
+    file("*") into lohhlaOutput
+
+  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools && runSomatic
+
+    // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
+
+  script:
+    """
+    cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
+    
+    PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
+    PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+")
+    cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
+
+    Rscript /lohhla/LOHHLAscript.R \
+        --patientId ${idTumor} \
+        --normalBAMfile ${bamNormal} \
+        --tumorBAMfile ${bamTumor} \
+        --HLAfastaLoc ${hlaFasta} \
+        --HLAexonLoc ${hlaDat} \
+        --CopyNumLoc tumor_purity_ploidy.txt \
+        --hlaPath massaged.winners.hla.txt \
+        --gatkDir /picard-tools \
+        --novoDir /opt/conda/bin
+    """
+}
+
+
+
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
@@ -1313,6 +1421,8 @@ process RunMutationSignatures {
     ${idTumor}_vs_${idNormal}.mutsig.txt
   """
 }
+
+// occurs above 
 
 FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
 
@@ -1884,7 +1994,7 @@ def defineReferenceMap() {
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
-    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex")
+    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
   ]
 
   if (!params.test) {
@@ -1910,6 +2020,10 @@ def defineReferenceMap() {
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
     result_array << ['wgsTargets' : checkParamReturnFile("wgsTargets")]
     result_array << ['wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")]
+    // HLA FASTA and *dat for LOHHLA
+    result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")]
+    result_array << ['hlaDat' : checkParamReturnFile("hlaDat")]
+    // Neoantigen reference files
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
   }
