@@ -1748,7 +1748,7 @@ process GermlineRunVcf2Maf {
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
-  outfile="${vcfMerged}".replaceFirst(".vcf", "unfiltered.maf")
+  outfile="${vcfMerged}".replaceFirst(".vcf", ".unfiltered.maf")
 
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
