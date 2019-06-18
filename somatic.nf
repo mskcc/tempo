@@ -936,6 +936,84 @@ process RunConpair {
 }
 
 
+// Run LOHHLA
+
+(bamsForLOHHLA, bamFiles) = bamFiles.into(2)
+
+// Channel currently in order [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
+// re-order bamsForLOHHLA into idTumor, idNormal, and target, i.e. 
+// [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+
+bamsForLOHHLA = bamsForLOHHLA.map{ 
+  item -> 
+    def assay = item[0]
+    def target = item[1]
+    def tumorID = item[2]
+    def normalID = item[3]
+    def tumorBam = item[4]
+    def tumorBai = item[5]
+    def sampleID = item[6]
+    def normalBam = item[7]
+    def normalBai = item[8]
+
+    return [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+  }
+
+
+(facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
+
+// *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
+
+//apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
+
+facetsForLOHHLA = facetsForLOHHLA.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
+
+hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  // 
+
+mergedChannelLOHHLA = bamsForLOHHLA.combine(facetsForLOHHLA, by: [0,1,2]).combine(hlaOutput, by: [0,1,2]).unique()
+
+
+process RunLOHHLA {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla", mode: params.publishDirMode
+
+  input:
+    set target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*_purity.out"), file("winners.hla.txt") from mergedChannelLOHHLA
+    set file(hlaFasta), file(hlaDat) from Channel.value([ 
+      referenceMap.hlaFasta, 
+      referenceMap.hlaDat
+    ])
+
+  output:
+    file("*") into lohhlaOutput
+
+    when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
+
+    // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
+
+    script:
+    """
+    cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
+    PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
+    PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+")
+    cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
+    Rscript /lohhla/LOHHLAscript.R \
+        --patientId ${idTumor} \
+        --normalBAMfile ${bamNormal} \
+        --tumorBAMfile ${bamTumor} \
+        --HLAfastaLoc ${hlaFasta} \
+        --HLAexonLoc ${hlaDat} \
+        --CopyNumLoc tumor_purity_ploidy.txt \
+        --hlaPath massaged.winners.hla.txt \
+        --gatkDir /picard \
+        --novoDir /novocraft
+    """
+}
+
+
+
+
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
 (mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
