@@ -551,7 +551,7 @@ process RunMutect2 {
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
     set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-delly filter      referenceMap.genomeFile,
+      referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict
     ])
