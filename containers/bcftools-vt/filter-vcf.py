@@ -3,15 +3,14 @@
  
 """
 Perform custom annotation of variants in VCF file, based on MuTect2 and Strelka2 variant calls and custom pre-processing.
+Usage: filter-vcf.py input_filename.vcf
+Output: 'input_filename.filter.vcf'
 """
 
 __author__  = "Philip Jonsson"
 __email__   = "jonssonp@mskcc.org"
 __version__ = "0.1.0"
 __status__  = "Dev"
-
-### Usage: filter-vcf.py input_filename.vcf
-### Outputs `input_filename.filter.vcf`
 
 import sys, os
 from pysam import VariantFile   # version >= 0.15.2
