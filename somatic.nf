@@ -679,6 +679,7 @@ process SomaticRunVcf2Maf {
   """
 }
 
+
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
@@ -694,20 +695,22 @@ process DoSnpPileup {
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
 
-  when: 'facets' in tools
+  when: 'facets' in tools 
 
   script:
   outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
   """
   snp-pileup \
     --count-orphans \
-    --pseudo-snps 50 \
+    --pseudo-snps=50 \
     --gzip \
     ${facetsVcf} \
     ${outfile} \
     ${bamTumor} ${bamNormal}
   """
 }
+
+// FACETS
 
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
@@ -718,9 +721,9 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
 
-  when: 'facets' in tools
+  when: 'facets' in tools 
 
   script:
   tag = "${idTumor}_vs_${idNormal}"
