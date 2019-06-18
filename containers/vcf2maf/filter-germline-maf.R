@@ -12,7 +12,7 @@ suppressPackageStartupMessages({
 args = commandArgs(TRUE)
 
 if (is.null(args) | length(args)<1) {
-    message("Usage: filter-maf.R input.maf")
+    message("Usage: filter-germline-maf.R input.maf")
     quit()
 }
 
@@ -26,6 +26,9 @@ add_tag = function(filter, tag) {
            paste(filter, tag, sep = ';'))
 }
 
+ch_genes = c("ASXL1", "ATM", "BCOR", "CALR", "CBL", "CEBPA", "CREBBP", "DNMT3A", "ETV6", "EZH2", "FLT3", "GNAS",
+             "IDH1", "IDH2", "JAK2", "KIT", "KRAS", "MPL", "MYD88", "NF1", "NPM1", "NRAS", "PPM1D", "RAD21", "RUNX1", "SETD2", "SF3B1", "SH2B3", "SRSF2", "STAG2", "STAT3", "TET2", "TP53", "U2AF1", "WT1", "ZRSR2")
+
 # Tag input MAF with filters --------------------------------------------------------------------------------------
 maf = fread(maf)
 
@@ -33,18 +36,19 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             n_var_freq = n_alt_count/(n_alt_count+n_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
             RepeatMasker = ifelse(is.na(RepeatMasker), '', RepeatMasker),
-            gnomAD_FILTER = ifelse(is.na(gnomAD_FILTER), 0, 1)
+            gnomAD_FILTER = ifelse(is.na(gnomAD_FILTER), 0, 1),
+            ch_gene = Hugo_Symbol %in% ch_genes
 )]
 
-maf[t_var_freq < .05, FILTER := add_tag(FILTER, 'low_vaf')]
-maf[t_depth < 20, FILTER := add_tag(FILTER, 'low_t_depth')]
-maf[n_depth < 10, FILTER := add_tag(FILTER, 'low_n_depth')]
-maf[t_alt_count < 3, FILTER := add_tag(FILTER, 'low_t_alt_count')]
-maf[n_alt_count > 3, FILTER := add_tag(FILTER, 'high_n_alt_count')]
+maf[n_depth < 20, FILTER := add_tag(FILTER, 'low_n_depth')]
+
+maf[!ch_gene & n_var_freq < .35 & Variant_Classification %nin% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
+maf!ch_gene & [n_var_freq < .25 & Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
+maf[ch_gene & n_var_freq < .35 & t_var_freq < .25, FILTER := add_tag(FILTER, 'ch_mutation')]
+maf[t_var_freq > 3 * n_var_freq, FILTER := add_tag(FILTER, 't_in_n_contamination')]
 maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mapability')]
 maf[RepeatMasker != '', FILTER := add_tag(FILTER, 'repeatmasker')]
-maf[non_cancer_AF_popmax > .01, FILTER := add_tag(FILTER, 'high_gnomad_pop_af')]
-maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
+maf[gnomAD_FILTER == 1, FILTER := add_tag(FILTER, 'gnomad_filter')]
 
 # Filters not used:
 # gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier

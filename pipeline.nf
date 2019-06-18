@@ -1054,7 +1054,7 @@ process SomaticRunVcf2Maf {
     --output-maf ${outfile} \
     --filter-vcf 0
 
-  filter-maf.R ${outfile}
+  filter-somatic-maf.R ${outfile}
   """
 }
 
@@ -1744,11 +1744,11 @@ process GermlineRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.maf") into mafFile
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFile
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
-  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+  outfile="${vcfMerged}".replaceFirst(".vcf", "unfiltered.maf")
 
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
@@ -1768,6 +1768,8 @@ process GermlineRunVcf2Maf {
     --custom-enst ${isoforms} \
     --output-maf ${outfile} \
     --filter-vcf 0
+    
+    filter-germline-maf.R ${outfile}
   """
 }
 
