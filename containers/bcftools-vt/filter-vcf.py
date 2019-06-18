@@ -10,26 +10,28 @@ __email__   = "jonssonp@mskcc.org"
 __version__ = "0.1.0"
 __status__  = "Dev"
 
-### Usage:
-### `$ filter-vcf.py input_filename.vcf`
+### Usage: filter-vcf.py input_filename.vcf
 ### Outputs `input_filename.filter.vcf`
 
 import sys, os
-from pysam import VariantFile   ## version >= 0.15.2
+from pysam import VariantFile   # version >= 0.15.2
 from itertools import groupby
-
 
 vcf_in = VariantFile(sys.argv[1], "r")
 normal = vcf_in.header.samples[0]
 tumor = vcf_in.header.samples[1]
 
 ## Add new headers
-vcf_in.header.filters.add('multiallelic2', None, None, 'Multiple alleles at same locus') # Note that MuTect2 already has a FILTER tag for this, we're hijacking that
+vcf_in.header.filters.add('multiallelic2', None, None, 'Multiple alleles at same locus') # Note that MuTect2 already has a FILTER tag for this, which requires a new name for this one
 vcf_in.header.filters.add('part_of_mnv', None, None, 'Variant is part of previous variant')
-vcf_in.header.filters.add('strand_bias', None, None, 'Variant part of a short repeat') # Note that MuTect2 already has a FILTER tag for this, we're hijacking that
+vcf_in.header.filters.add('strand_bias', None, None, 'Variant suffering from strand bias') # Note that MuTect2 already has a FILTER tag for this, but this works
 vcf_in.header.info.add('Ref_Tri', 1, 'String', 'Normalize trinucleotide context of SNVs')
 
-## output by default `input_filename.filter.vcf`
+## Filter tags not used
+# vcf_in.header.filters.add('short_repeat', None, None, 'Variant part of a short repeat')
+# vcf_in.header.filters.add('caller_conflict', None, None, 'MuTect2 and Strelka2 provides conflicting FILTER flags for this variant')
+
+## Output by default `input_filename.filter.vcf`
 outfile = os.path.splitext(sys.argv[1])[0] + '.filter.vcf'
 vcf_out = VariantFile(outfile, "w", header = vcf_in.header)
 prev_var = None
@@ -39,8 +41,6 @@ for var in vcf_in.fetch():
     ## Variant info
     info = var.info.keys()
     pos = var.pos
-    print(var.pos)
-
     ref = var.ref
     alt = var.alts[0]
     filter = var.filter.keys()
@@ -94,7 +94,31 @@ for var in vcf_in.fetch():
             if t_fw[0] > 10 and t_rev[0] > 10 or n_fw[0] > 10 and n_rev[0] > 10:
                 new_flags.append('strand_bias')
 
+    ## Filters not in use:
+    ## Strand bias
+    # left_flank = var.info['FLANKSEQ'].split('[')[0][::-1]
+    # right_flank = var.info['FLANKSEQ'].split(']')[1]
+    # if len(alt) > len(ref): # insertion
+    #     alt_repeat = alt[1:]
+    # elif len(alt) < len(ref): # deletion
+    #     alt_repeat = ref[1:]
+    # else:
+    #     alt_repeat = alt
+
+    # right_flank = [right_flank[i:i+len(alt_repeat)] for i in range(0, len(right_flank), len(alt_repeat))]
+    # left_flank = [left_flank[i:i+len(alt_repeat)] for i in range(0, len(left_flank), len(alt_repeat))]
+    # right_flank = [(key, len(list(group))) for key, group in groupby(right_flank)]
+    # left_flank = [(key, len(list(group))) for key, group in groupby(left_flank)]
+    # rep_length = len(alt_repeat) * sum([bps[1] for bps in [left_flank[0], right_flank[0]] if bps[0] == alt_repeat])
+    
+    # if rep_length > 5:
+    #     new_flags.append('short_repeat') 
+
     ## Conflicting MuTect2 and Strelka2 filters
+    # if "PASS" in filter and "Strelka2FAIL" in info:
+    #     new_flags.append('caller_conflict')
+
+    # Add new FILTER tags
     if len(new_flags) > 0:
         if "PASS" in var.filter.keys():
             var.filter.clear()
