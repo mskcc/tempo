@@ -1588,7 +1588,7 @@ process GermlineCombineHaplotypecallerVcf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcfOutput
+    set idTumor, idNormal, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcfOutput
 
   when: 'haplotypecaller' in tools && runGermline 
 
@@ -1632,7 +1632,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
+    set idTumor, idNormal, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
 
   when: 'manta' in tools && runGermline
 
@@ -1692,7 +1692,7 @@ process GermlineRunStrelka2 {
       ])
 
   output:
-    set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutputGermline
+    set idTumor, idNormal, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutput
 
   when: 'strelka2' in tools && runGermline
   
@@ -1726,16 +1726,31 @@ process GermlineRunStrelka2 {
 
 hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
 
-haplotypecallerStrelkaChannel = hcv.combine(strelkaOutputGermline, by: [0,1,2]).unique()
+haplotypecallerStrelkaChannel = hcv.combine(strelkaOutput, by: [0,1]).unique()
 
 (bamsForCombineChannel, bamFiles) = bamFiles.into(2)
+
+bamsForCombineChannel = bamsForCombineChannel.map{
+  item -> 
+    def assay = item[0]
+    def target = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def bamTumor = item[4]
+    def bamNormal = item[5]
+    def baiTumor = item[6]
+    def baiNormal = item[7]
+    
+    return [idTumor, idNormal, assay, bamTumor, baiTumor, target]
+  }
+
+mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1]).unique()
 
 process GermlineCombineChannel {
   tag {idNormal}
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForCombineChannel
-    set idTumor, idNormal, target, file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from haplotypecallerStrelkaChannel
+    set idTumor, idNormal, assay, file(bamTumor), file(baiTumor), target, file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1752,7 +1767,7 @@ process GermlineCombineChannel {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.vcf") into vcfMergedOutputGermline
+    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}.germline.vcf") into vcfMergedOutputGermline
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools && runGermline
 
@@ -1883,7 +1898,7 @@ process GermlineRunVcf2Maf {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
   input:
-    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutputGermline
+    set idTumor, idNormal, file(vcfMerged) from vcfMergedOutputGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1893,7 +1908,7 @@ process GermlineRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFile
+    set idTumor, idNormal, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFile
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
