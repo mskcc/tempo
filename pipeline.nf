@@ -1075,8 +1075,8 @@ process RunMsiSensor {
 
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
- 
-process DoSnpPileup {
+
+process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
@@ -1087,11 +1087,14 @@ process DoSnpPileup {
 
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
   script:
   outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
+  tag = "${idTumor}_vs_${idNormal}"
+  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   snp-pileup \
     --count-orphans \
@@ -1100,29 +1103,7 @@ process DoSnpPileup {
     ${facetsVcf} \
     ${outfile} \
     ${bamTumor} ${bamNormal}
-  """
-}
 
-// FACETS
-
-process DoFacets {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
-
-  input:
-    set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
-
-  output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
-
-  when: 'facets' in tools && runSomatic
-
-  script:
-  tag = "${idTumor}_vs_${idNormal}"
-  countsFile = "${snpPileupFile}"
-  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
-  """
   mkdir ${outputDir}
   /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
@@ -1134,7 +1115,7 @@ process DoFacets {
     --purity_ndepth ${params.facets.purity_ndepth} \
     --purity_min_nhet ${params.facets.purity_min_nhet} \
     --genome ${params.facets.genome} \
-    --counts_file ${countsFile} \
+    --counts_file ${outfile} \
     --TAG ${tag} \
     --directory ${outputDir} \
     --R_lib /usr/lib/R/library \
