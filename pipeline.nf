@@ -19,6 +19,7 @@ Somatic Analysis
 - SomaticDellyCall
 - CreateIntervalBeds
 - RunMutect2
+- RunMutect2Filter
 - SomaticCombineMutect2VCF
 - SomaticRunManta
 - SomaticRunStrelka
@@ -35,6 +36,7 @@ Somatic Analysis
 Germline Analysis
 -----------------
 - GermlineDellyCall
+- GermlineDellyFilter
 - CreateIntervalBeds
 - GermlineRunHaplotypecaller
 - GermlineRunManta
@@ -736,7 +738,7 @@ mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -750,14 +752,15 @@ process SomaticRunStrelka2 {
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
     ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
     ])
 
   output:
-    set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput mode flatten
+    set idTumor, idNormal, target, file('*merged.filtered.vcf.gz'), file('*merged.filtered.vcf.gz.tbi') into strelkaOutputMerged
+    set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput
 
   when: 'manta' in tools && 'strelka2' in tools && runSomatic
 
@@ -770,6 +773,8 @@ process SomaticRunStrelka2 {
     if(target == 'idt') intervals = idtTargets
    }
    
+  prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
+  outfile = "${prefix}.filtered.vcf.gz"
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
@@ -792,40 +797,13 @@ process SomaticRunStrelka2 {
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz
   mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
-  """
-}
 
-strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 
-// --- Process Mutect2 and Strelka2 VCFs
-
-process SomaticMergeStrelka2Vcfs {
-  tag {idTumor + "_vs_" + idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
-
-  input: 
-    set idTumor, idNormal, target, file(strelkaIndels), file(strelkaIndelsIndex), file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutput
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict
-    ])
-
-  output:
-    set idTumor, idNormal, target, file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutputMerged
-
-  when: 'manta' in tools && 'strelka2' in tools && runSomatic
-
-  script:
-  prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
-  outfile = "${prefix}.filtered.vcf.gz"
-  """
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
   
   bcftools concat \
     --allow-overlaps \
-    ${strelkaIndels} ${strelkaSNVs} | \
+    Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz | \
   bcftools reheader \
     --samples samples.txt | \
   bcftools sort | \
@@ -838,6 +816,7 @@ process SomaticMergeStrelka2Vcfs {
   tabix --preset vcf ${outfile}
   """
 }
+
 
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
 
@@ -1075,7 +1054,7 @@ process RunMsiSensor {
 
 // --- Run FACETS
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
-
+ 
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -1087,7 +1066,7 @@ process DoFacets {
 
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
