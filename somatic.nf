@@ -46,9 +46,12 @@ bamFiles = extractBamFiles(tsvFile)
 ================================================================================
 */
 
+// parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
+
 // --- Run Delly
+
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
 
@@ -67,9 +70,9 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, svType, file("${idTumor}_vs_${idNormal}_${svType}.bcf"), file("${idTumor}_vs_${idNormal}_${svType}.bcf.csi") into dellyCallOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
 
-  when: 'delly' in tools
+  when: 'delly' in tools && runSomatic
 
   script:
   """
@@ -79,35 +82,17 @@ process SomaticDellyCall {
     --exclude ${svCallingExcludeRegions} \
     --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
     ${bamTumor} ${bamNormal}
-  """
-}
 
-process SomaticDellyFilter {
-  tag {idTumor + "_vs_" + idNormal + '_' + svType}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
-
-  input:
-    set idTumor, idNormal, target, svType, file(dellyBcf), file(dellyBcfIndex) from dellyCallOutput
-
-  output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
-
-  when: 'delly' in tools
-
-  outfile="${dellyBcf}".replaceFirst(".bcf",".filter.bcf")
-
-  script:
-  """
   echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
 
   delly filter \
     --filter somatic \
     --samples samples.tsv \
-    --outfile ${outfile} \
-    ${dellyBcf}
+    --outfile ${idTumor}_vs_${idNormal}_${svType}.filter.bcf \
+    ${idTumor}_vs_${idNormal}_${svType}.bcf
   """
 }
+
 
 // --- Run Mutect2
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
