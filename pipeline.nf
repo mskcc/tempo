@@ -17,7 +17,6 @@ Alignment and QC
 Somatic Analysis
 ----------------
 - SomaticDellyCall
-- SomaticDellyFilter
 - CreateIntervalBeds
 - RunMutect2
 - RunMutect2Filter
@@ -63,6 +62,9 @@ if (!check_for_duplicated_rows(pairingPath)) {
 
 outname = params.outname
 
+runGermline = params.germline
+runSomatic = params.somatic
+
 referenceMap = defineReferenceMap()
 
 fastqFiles = Channel.empty()
@@ -70,12 +72,11 @@ fastqFiles = Channel.empty()
 mappingFile = file(mappingPath)
 pairingfile = file(pairingPath)
 
-pairingT = extractPairing(pairingfile)
+pairingTN = extractPairing(pairingfile)
 
 fastqFiles = extractFastq(mappingFile)
 
-runGermline = params.germline
-runSomatic = params.somatic
+
 
 /*
 ================================================================================
@@ -89,6 +90,7 @@ fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files
 groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
 fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
+
 
 
 // FastP - FastP on lane pairs, R1/R2
@@ -134,6 +136,7 @@ process AlignReads {
   """
 }
 
+
 // SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
 
 process SortBAM {
@@ -158,8 +161,8 @@ process SortBAM {
   """
 }
 
-sortedBam.groupTuple().set { groupedBam }
-groupedBam.into { groupedBamDebug; groupedBam }
+sortedBam.groupTuple().set { groupedBam }    // assignment, i.e. groupedBam = sortedBam.groupTuple()
+
 
 // MergeBams
 
@@ -177,6 +180,7 @@ process MergeBams {
   samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
   """
 }
+
 
 // GATK MarkDuplicates
 
@@ -207,12 +211,12 @@ process MarkDuplicates {
 }
 
 duplicateMarkedBams = duplicateMarkedBams.map {
-    bam, bai, idSample, lane, assay, targetFile ->
-    tag = bam.baseName.tokenize('.')[0]
+    bam, bai, idSample, lane, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
     [idSample, bam, bai, assay, targetFile]
 }
 
 (mdBam, mdBamToJoin, mdDebug) = duplicateMarkedBams.into(3)
+
 
 // GATK BaseRecalibrator , CreateRecalibrationTable
 
@@ -253,7 +257,6 @@ process CreateRecalibrationTable {
 
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
-(recalibrationTable, recalibrationTableDebug) = recalibrationTable.into(2)
 
 // GATK ApplyBQSR, RecalibrateBAM
 
@@ -264,7 +267,6 @@ process RecalibrateBam {
 
   input:
     set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
-
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -291,52 +293,55 @@ process RecalibrateBam {
   """
 }
 
-recalibratedBamForOutput.combine(pairingT)
+
+// set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
+
+recalibratedBamForOutput.combine(pairingTN)
                         .filter { item -> // only keep combinations where sample is same as tumor pair sample
-                          def sampleID = item[0]
+                          def idSample = item[0]
                           def sampleBam = item[1]
                           def sampleBai = item[2]
                           def assay = item[3]
                           def target = item[4]
-                          def tumorID = item[5]
-                          def normalID = item[6]
-                          sampleID == tumorID
+                          def idTumor = item[5]
+                          def idNormal = item[6]
+                          idSample == idTumor
                         }.map { item -> // re-order the elements
-                          def sampleID = item[0]
+                          def idSample = item[0]
                           def sampleBam = item[1]
                           def sampleBai = item[2]
                           def assay = item[3][0]
                           def target = item[4][0]
-                          def tumorID = item[5]
-                          def normalID = item[6]
-                          def tumorBam = sampleBam
-                          def tumorBai = sampleBai
+                          def idTumor = item[5]
+                          def idNormal = item[6]
+                          def bamTumor = sampleBam
+                          def baiTumor = sampleBai
 
-                          return [ assay, target, tumorID, normalID, tumorBam, tumorBai ]
+                          return [ assay, target, idTumor, idNormal, bamTumor, baiTumor ]
                         }.combine(recalibratedBamForOutput2)
                         .filter { item ->
                           def assay = item[0]
                           def target = item[1]
-                          def tumorID = item[2]
-                          def normalID = item[3]
-                          def tumorBam = item[4]
-                          def tumorBai = item[5]
-                          def sampleID = item[6]
-                          def normalBam = item[7]
-                          def normalBai = item[8]
-                          sampleID == normalID
+                          def idTumor = item[2]
+                          def idNormal = item[3]
+                          def bamTumor = item[4]
+                          def baiTumor = item[5]
+                          def idSample = item[6]
+                          def bamNormal = item[7]
+                          def baiNormal = item[8]
+                          idSample == idNormal
                         }.map { item -> // re-order the elements
                           def assay = item[0]
                           def target = item[1]
-                          def tumorID = item[2]
-                          def normalID = item[3]
-                          def tumorBam = item[4]
-                          def tumorBai = item[5]
-                          def sampleID = item[6]
-                          def normalBam = item[7]
-                          def normalBai = item[8]
+                          def idTumor = item[2]
+                          def idNormal = item[3]
+                          def bamTumor = item[4]
+                          def baiTumor = item[5]
+                          def idSample = item[6]
+                          def bamNormal = item[7]
+                          def baiNormal = item[8]
 
-                          return [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
+                          return [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
                         }
                         .set { result }
 
@@ -362,7 +367,9 @@ else {
   }
 }
 
+
 ignore_read_groups = Channel.from( true , false )
+
 
 // Alfred, BAM QC
 
@@ -393,11 +400,10 @@ process Alfred {
 
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
+
 // GATK SplitIntervals, CreateScatteredIntervals
 
 process CreateScatteredIntervals {
-
-  //publishDir "${params.outDir}/intervals", mode: params.publishDirMode
 
   input:
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -490,7 +496,9 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
+
 // --- Run Delly
+
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
 
@@ -532,12 +540,11 @@ process SomaticDellyCall {
   """
 }
 
+
 // --- Run Mutect2
 
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName }
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
@@ -578,15 +585,15 @@ process RunMutect2 {
   """
 }
 
+
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
+
 
 // Combine Mutect2 VCFs, bcftools
 
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
@@ -622,13 +629,13 @@ process SomaticCombineMutect2Vcf {
   """
 }
 
+
 // --- Run Manta
+
 (bamsForManta, bamsForStrelka, bamFiles) = bamFiles.into(3)
 
 process SomaticRunManta {
   tag {idTumor + "_vs_" + idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -685,12 +692,13 @@ process SomaticRunManta {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-
 mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
 
 dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
 
 dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
+
+
 
 // --- Process Delly and Manta VCFs 
 
@@ -700,8 +708,6 @@ dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).u
 
 process SomaticMergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
@@ -732,14 +738,13 @@ process SomaticMergeDellyAndManta {
   """
 }
 
+
 // --- Run Strelka2
 
 mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -805,8 +810,6 @@ strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 process SomaticMergeStrelka2Vcfs {
   tag {idTumor + "_vs_" + idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
-
   input: 
     set idTumor, idNormal, target, file(strelkaIndels), file(strelkaIndelsIndex), file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -843,6 +846,7 @@ process SomaticMergeStrelka2Vcfs {
 }
 
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
+
 
 // Combined Somatic VCFs
 
@@ -1018,7 +1022,6 @@ process SomaticRunVcf2Maf {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
 
-  // when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic 
 
   script:
   outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
@@ -1043,7 +1046,9 @@ process SomaticRunVcf2Maf {
   """
 }
 
+
 // MSI Sensor
+
 (bamFilesForMsiSensor, bamFiles) = bamFiles.into(2)
 
 process RunMsiSensor {
@@ -1076,7 +1081,9 @@ process RunMsiSensor {
   """
 }
 
+
 // --- Run FACETS
+
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
 process DoSnpPileup {
@@ -1146,9 +1153,10 @@ process DoFacets {
   """
 }
 
-(bamsForPolysolver, bamFiles) = bamFiles.into(2)
 
 // Run Polysolver
+
+(bamsForPolysolver, bamFiles) = bamFiles.into(2)
 
 process RunPolysolver {
   tag {idTumor + "_vs_" + idNormal}
@@ -1181,6 +1189,7 @@ process RunPolysolver {
   ${outputDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outputDir}/winners.hla.txt 
   """
 }
+
 
 // --- Run Conpair
 
@@ -1298,6 +1307,9 @@ process RunMutationSignatures {
   """
 }
 
+
+//Formatting the channel to be grouped by idTumor, idNormal, and target
+
 FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
@@ -1375,12 +1387,11 @@ process RunNeoantigen {
 ================================================================================
 */
 
+
 // GATK HaplotypeCaller
 
 process GermlineRunHaplotypecaller {
   tag {idNormal + "@" + intervalBed.baseName}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
@@ -1443,15 +1454,14 @@ process GermlineRunHaplotypecaller {
   """
 }
 
-//Formatting the channel to be keyed by idTumor, idNormal, and target
+
+//Formatting the channel to be grouped by idTumor, idNormal, and target
 haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
 
 // merge VCFs, GATK HaplotypeCaller
 
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
     set idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
@@ -1486,13 +1496,13 @@ process GermlineCombineHaplotypecallerVcf {
   """
 }
 
-// --- Run Manta
+
+// --- Run Manta, germline
+
 (bamsForMantaGermline, bamsForStrelkaGermline, bamFiles) = bamFiles.into(3)
 
 process GermlineRunManta {
   tag {idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta"
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
@@ -1541,11 +1551,11 @@ process GermlineRunManta {
   """
 }
 
-// --- Run Strelka2
+
+// --- Run Strelka2, germline
+
 process GermlineRunStrelka2 {
   tag {idNormal}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2"
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelkaGermline
@@ -1595,6 +1605,7 @@ process GermlineRunStrelka2 {
   mv Strelka/results/variants/variants.vcf.gz.tbi Strelka_${idNormal}_variants.vcf.gz.tbi
   """
 }
+
 
 // Join HaploTypeCaller and Strelka outputs,  bcftools
 
@@ -1764,6 +1775,7 @@ bcftools annotate \
   """
 }
 
+
 // vcf2maf, germline calls
 
 process GermlineRunVcf2Maf {
@@ -1811,6 +1823,7 @@ process GermlineRunVcf2Maf {
   """
 }
 
+
 // --- Process Delly and Manta VCFs 
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDellyGermline, bamFiles) = bamFiles.into(2)
@@ -1842,7 +1855,6 @@ process GermlineDellyCall {
     --exclude ${svCallingExcludeRegions} \
     --outfile ${idNormal}_${svType}.bcf \
     ${bamNormal}
-
   delly filter \
     --filter germline \
     --outfile ${idNormal}_${svType}.filter.bcf \
@@ -1853,6 +1865,12 @@ process GermlineDellyCall {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+// filter Delly & Manta via bcftools
+
+
+// Put manta output and delly output into the same channel so they can be processed together in the group key
+// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+
 // filter Delly & Manta via bcftools
 
 mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2])
@@ -1896,7 +1914,6 @@ process GermlineMergeDellyAndManta {
     --output-type z \
     --output ${idNormal}.delly.manta.unfiltered.vcf.gz \
     *.vcf.gz
-
 
   tabix --preset vcf ${idNormal}.delly.manta.unfiltered.vcf.gz
 
