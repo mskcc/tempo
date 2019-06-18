@@ -43,7 +43,7 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
 maf[n_depth < 20, FILTER := add_tag(FILTER, 'low_n_depth')]
 
 maf[!ch_gene & n_var_freq < .35 & !Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
-maf!ch_gene & [n_var_freq < .25 & Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
+maf[!ch_gene & [n_var_freq < .25 & Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
 maf[ch_gene & n_var_freq < .35 & t_var_freq < .25, FILTER := add_tag(FILTER, 'ch_mutation')]
 maf[t_var_freq > 3 * n_var_freq, FILTER := add_tag(FILTER, 't_in_n_contamination')]
 maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mapability')]
