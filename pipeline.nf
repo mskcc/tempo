@@ -1347,13 +1347,13 @@ facetsForLOHHLA = facetsForLOHHLA.map{
   }
 
 
-
+(hlaOutputForLOHHLA, hlaOutput) = hlaOutput.into(2)
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
 
 //apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
-mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutput, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
+mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
 
 
 
