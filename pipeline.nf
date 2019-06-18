@@ -893,6 +893,7 @@ process SomaticCombineChannel {
 
   // TODO: ADD gnomadWgsVcf and gnomadWgsVcfIndex
 
+
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
 
@@ -1041,9 +1042,9 @@ process SomaticRunVcf2Maf {
   script:
   outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
   """
-  perl /opt/vcf2maf.pl \
+  perl /usr/bin/vcf2maf/vcf2maf.pl \
     --maf-center MSKCC-CMO \
-    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-path /usr/bin/vep  \
     --vep-data ${vepCache} \
     --vep-forks 10 \
     --tumor-id ${idTumor} \
@@ -1116,7 +1117,7 @@ process DoSnpPileup {
   """
   snp-pileup \
     --count-orphans \
-    --pseudo-snps 50 \
+    --pseudo-snps=50 \
     --gzip \
     ${facetsVcf} \
     ${outfile} \
@@ -1159,8 +1160,6 @@ process DoFacets {
     --TAG ${tag} \
     --directory ${outputDir} \
     --R_lib /usr/lib/R/library \
-    --single_chrom ${params.facets.single_chrom} \
-    --ggplot2 ${params.facets.ggplot2} \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
   """
@@ -1399,7 +1398,7 @@ process RunLOHHLA {
 
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
-(mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
+(mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
 process RunMutationSignatures {
   tag {idTumor + "_vs_" + idNormal}
@@ -1450,7 +1449,49 @@ process DoMafAnno {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf  
+  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf
+  """
+}
+
+(mafFileForNeoantigen, mafFile) = mafFile.into(2)
+mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
+
+hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
+
+process RunNeoantigen {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/neoantigen", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
+    set file(neoantigenCDNA), file(neoantigenCDS) from Channel.value([
+      referenceMap.neoantigenCDNA,
+      referenceMap.neoantigenCDS
+    ]) // These reference files are in the neoantigen-docker.config
+
+  output:
+    set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+
+  when: "neoantigen" in tools
+
+  // must set full path to tmp directories for netMHC and netMHCpan to work;
+  // for some reason doesn't work with /scratch, so putting them in the process workspace
+  script:
+  outputDir = "neoantigen"
+  tmpDir = "${outputDir}-tmp"
+  tmpDirFullPath = "\$PWD/${tmpDir}/"
+  """
+  export TMPDIR=${tmpDirFullPath}
+  mkdir -p ${tmpDir}
+  chmod 777 ${tmpDir}
+
+  python /usr/local/bin/neoantigen/neoantigen.py \
+    --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
+    --sample_id ${idTumor} \
+    --hla_file ${polysolverFile} \
+    --maf_file ${mafFile} \
+    --output_dir ${outputDir}
   """
 }
 
@@ -1982,6 +2023,9 @@ def defineReferenceMap() {
     // HLA FASTA and *dat for LOHHLA
     result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")]
     result_array << ['hlaDat' : checkParamReturnFile("hlaDat")]
+    // Neoantigen reference files
+    result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
+    result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
   }
   return result_array
 }
