@@ -215,11 +215,14 @@ process RunMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"), file("${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into mutect2Output
+    set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
+
 
   when: 'mutect2' in tools
 
   script:
+  mutect2Vcf = "${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"
+  prefix = "${mutect2Vcf}".replaceFirst('.vcf.gz', '')
   """
   # Xmx hard-coded for now due to lsf bug
   # Wrong intervals set here
@@ -231,26 +234,8 @@ process RunMutect2 {
     --tumor-sample ${idTumor} \
     --input ${bamNormal} \
     --normal-sample ${idNormal} \
-    --output ${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz
-  """
-}
+    --output ${mutect2Vcf}
 
-process RunMutect2Filter {
-  tag {idTumor + "_vs_" + idNormal + '_' + mutect2Vcf.baseName}
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2_filter", mode: params.publishDirMode
-
-  input:
-    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex) from mutect2Output
-
-  output:
-    set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
-
-  when: 'mutect2' in tools
-
-  script:
-  prefix = "${mutect2Vcf}".replaceFirst('.vcf.gz', '')
-  """
   gatk --java-options -Xmx8g \
     FilterMutectCalls \
     --variant ${mutect2Vcf} \
@@ -539,11 +524,9 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex,
-      referenceMap.gnomadWgsVcf,
-      referenceMap.gnomadWgsVcfIndex
+      referenceMap.gnomadWesVcfIndex
     ])
 
   output:
@@ -554,7 +537,7 @@ process SomaticCombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  gnomad = gnomadWgsVcf
+  gnomad = gnomadWesVcf
   if (target != 'wgs') {
     pon = exomePoN
     gnomad = gnomadWesVcf
@@ -775,8 +758,6 @@ process DoFacets {
     --TAG ${tag} \
     --directory ${outputDir} \
     --R_lib /usr/lib/R/library \
-    --single_chrom ${params.facets.single_chrom} \
-    --ggplot2 ${params.facets.ggplot2} \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
   """
@@ -938,6 +919,84 @@ process RunConpair {
     --outpre=${idTumor}_${idNormal}
   """
 }
+
+
+// Run LOHHLA
+
+(bamsForLOHHLA, bamFiles) = bamFiles.into(2)
+
+// Channel currently in order [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
+// re-order bamsForLOHHLA into idTumor, idNormal, and target, i.e. 
+// [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+
+bamsForLOHHLA = bamsForLOHHLA.map{ 
+  item -> 
+    def assay = item[0]
+    def target = item[1]
+    def tumorID = item[2]
+    def normalID = item[3]
+    def tumorBam = item[4]
+    def tumorBai = item[5]
+    def sampleID = item[6]
+    def normalBam = item[7]
+    def normalBai = item[8]
+
+    return [ tumorID, normalID, target, tumorBam, normalBam, tumorBai, normalBai ]
+  }
+
+
+(facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
+
+// *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
+
+//apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
+
+facetsForLOHHLA = facetsForLOHHLA.groupTuple(by: [0,1,2])  // also used for mafFileForMafAnno below
+
+hlaOutput = hlaOutput.groupTuple(by: [0,1,2])  // 
+
+mergedChannelLOHHLA = bamsForLOHHLA.combine(facetsForLOHHLA, by: [0,1,2]).combine(hlaOutput, by: [0,1,2]).unique()
+
+
+process RunLOHHLA {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/lohhla", mode: params.publishDirMode
+
+  input:
+    set target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*_purity.out"), file("winners.hla.txt") from mergedChannelLOHHLA
+    set file(hlaFasta), file(hlaDat) from Channel.value([ 
+      referenceMap.hlaFasta, 
+      referenceMap.hlaDat
+    ])
+
+  output:
+    file("*") into lohhlaOutput
+
+    when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
+
+    // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
+
+    script:
+    """
+    cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
+    PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
+    PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+")
+    cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
+    Rscript /lohhla/LOHHLAscript.R \
+        --patientId ${idTumor} \
+        --normalBAMfile ${bamNormal} \
+        --tumorBAMfile ${bamTumor} \
+        --HLAfastaLoc ${hlaFasta} \
+        --HLAexonLoc ${hlaDat} \
+        --CopyNumLoc tumor_purity_ploidy.txt \
+        --hlaPath massaged.winners.hla.txt \
+        --gatkDir /picard \
+        --novoDir /novocraft
+    """
+}
+
+
 
 
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
