@@ -2,7 +2,7 @@ FROM alpine:3.8
 
 LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
-      version.image="1.0.0" \
+      version.image="1.1.0" \
       version.vcf2maf="1.6.17" \
       version.vep="88" \
       version.htslib="1.9" \
@@ -10,21 +10,26 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       version.samtools="1.9" \
       version.perl="5.26.2-r1" \
       version.alpine="3.8" \
+      version.oncokb_annotator="1.1.0" \
+      version.filter_somatic_maf="0.2.0" \
+      version.filter_germline_maf="0.1.0" \
       source.vcf2maf="https://github.com/mskcc/vcf2maf/releases/tag/v1.6.17" \
       source.vep="http://dec2016.archive.ensembl.org/info/docs/tools/vep/script/vep_download.html#versions" \
       source.htslib="https://github.com/samtools/htslib/releases/tag/1.9" \
       source.bcftools="https://github.com/samtools/bcftools/releases/tag/1.9" \
-      source.samtools="https://github.com/samtools/samtools/releases/tag/1.9"
+      source.samtools="https://github.com/samtools/samtools/releases/tag/1.9" \
+      source.oncokb_annotator="https://github.com/oncokb/oncokb-annotator/releases/tag/v1.1.0"
 
 ENV VCF2MAF_VERSION 1.6.17
 ENV VEP_VERSION 88
 ENV HTSLIB_VERSION 1.9
 ENV SAMTOOLS_VERSION 1.9
 ENV BCFTOOLS_VERSION 1.9
+ENV ONCOKB_VERSION 1.1.0
 
 RUN apk add --update \
       # install all the build-related tools
-            && apk add ca-certificates gcc g++ make git curl curl-dev wget gzip perl perl-dev musl-dev libgcrypt-dev zlib-dev bzip2-dev xz-dev ncurses-dev \
+            && apk add ca-certificates gcc g++ make git curl curl-dev wget gzip perl perl-dev musl-dev libgcrypt-dev zlib-dev bzip2-dev xz-dev ncurses-dev python python-dev py-pip pkgconfig \
       # install system packages and Perl modules
             && apk add expat-dev libressl-dev perl-net-ssleay mariadb-dev libxml2-dev perl-dbd-mysql perl-module-metadata perl-gd perl-db_file perl-archive-zip perl-cgi perl-dbi perl-encode perl-time-hires perl-file-copy-recursive perl-json \
       # install cpanminus
@@ -60,22 +65,30 @@ RUN apk add --update \
       # install vcf2maf
             && cd /tmp && wget -O vcf2maf-v${VCF2MAF_VERSION} https://github.com/mskcc/vcf2maf/archive/v${VCF2MAF_VERSION}.zip \
             && unzip vcf2maf-v${VCF2MAF_VERSION} \
-            && mkdir -p /usr/bin/vcf2maf/ \
+            && mkdir -p /usr/bin/vcf2maf \
             && cp -r vcf2maf-${VCF2MAF_VERSION}/* /usr/bin/vcf2maf/ \
+      # install oncokb-annotator
+            && cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \
+            && unzip oncokb_annotator-v${ONCOKB_VERSION} \
+            && mkdir -p /usr/bin/oncokb_annotator \
+            && cp -r oncokb-annotator-${ONCOKB_VERSION}/* /usr/bin/oncokb_annotator/ \
       # clean up
             && rm -rf /var/cache/apk/* /tmp/*
+
+# Install python dependencies
+RUN pip install --upgrade pip
+RUN pip install matplotlib
 
 # Install R with depencies
 RUN apk add --update && \
     apk add R R-dev && \
-    R -e "install.packages('data.table', dependencies = TRUE, repos = 'http://cran.rstudio.com')" 
+    R -e "install.packages('data.table', dependencies = TRUE, repos = 'http://cran.rstudio.com'); devtools::install_github('taylor-lab/annotateMaf')" 
 
 # Add filter script
 COPY filter-somatic-maf.R /usr/bin
 COPY filter-germline-maf.R /usr/bin
 RUN chmod +x /usr/bin/filter-somatic-maf.R
 RUN chmod +x /usr/bin/filter-germline-maf.R
-
 
 # install bash
 RUN apk add bash
