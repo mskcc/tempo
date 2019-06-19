@@ -78,20 +78,18 @@ pairingTN = extractPairing(pairingfile)
 
 fastqFiles = extractFastq(mappingFile)
 
-
-
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
 ================================================================================
 */
 
-
 fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets) }.set { groupedFastqs }
 
 groupedFastqs.into { fastPFiles; fastqFiles }
 fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
+
 
 
 // AlignReads - Map reads with BWA mem output SAM
@@ -1553,7 +1551,6 @@ process GermlineCombineHaplotypecallerVcf {
   """
 }
 
-
 // --- Run Manta, germline
 
 (bamsForMantaGermline, bamsForStrelkaGermline, bamFiles) = bamFiles.into(3)
@@ -1607,7 +1604,6 @@ process GermlineRunManta {
     Manta_${idNormal}.diploidSV.vcf.gz.tbi
   """
 }
-
 
 // --- Run Strelka2, germline
 
@@ -1663,7 +1659,6 @@ process GermlineRunStrelka2 {
   """
 }
 
-
 // Join HaploTypeCaller and Strelka outputs,  bcftools
 
 hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
@@ -1692,8 +1687,8 @@ process GermlineCombineChannel {
   tag {idNormal}
 
   input:
-    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), target, file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
+    set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
     ])
@@ -1804,7 +1799,7 @@ process GermlineCombineChannel {
 
   tabix --preset vcf ${idNormal}.union.pass.vcf.gz
 
-bcftools annotate \
+  bcftools annotate \
     --annotations ${gnomad} \
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
@@ -1831,7 +1826,6 @@ bcftools annotate \
     ${idTumor}.genotyped.vcf.gz
   """
 }
-
 
 // vcf2maf, germline calls
 
@@ -1860,9 +1854,9 @@ process GermlineRunVcf2Maf {
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
   """
-  perl /opt/vcf2maf.pl \
+  perl /usr/bin/vcf2maf/vcf2maf.pl \
     --maf-center MSKCC-CMO \
-    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
     --vep-forks 4 \
     --tumor-id ${idTumor} \
