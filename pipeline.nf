@@ -1390,7 +1390,7 @@ process DoMafAnno {
   mapFile = "${idTumor}_${idNormal}.map"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
+  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
   /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf
   """
