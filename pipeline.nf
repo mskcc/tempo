@@ -1379,7 +1379,7 @@ process DoMafAnno {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
+    set idTumor, idNormal, target, file(purity_rdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput

@@ -1011,9 +1011,10 @@ process RunLOHHLA {
 }
 
 
+
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
-(mafFileForMafAnno, mafFileForMutSig) = mafFile.into(2)
+(mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
 process RunMutationSignatures {
   tag {idTumor + "_vs_" + idNormal}
@@ -1026,7 +1027,7 @@ process RunMutationSignatures {
   output:
     file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
 
   script:
   """
@@ -1036,6 +1037,7 @@ process RunMutationSignatures {
     ${idTumor}_vs_${idNormal}.mutsig.txt
   """
 }
+
 
 //Formatting the channel to be: idTumor, idNormal, target, purity_rdata
 
@@ -1065,7 +1067,7 @@ FacetsforMafAnno = FacetsforMafAnno.map{
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
-FacetsMafFileCombine = FacetsOutput.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
 
 
 process DoMafAnno {
@@ -1074,20 +1076,62 @@ process DoMafAnno {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
+    set idTumor, idNormal, target, file(purity_rdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
+  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf  
+  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf
+  """
+}
+
+(mafFileForNeoantigen, mafFile) = mafFile.into(2)
+mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
+
+hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
+
+process RunNeoantigen {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/neoantigen", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
+    set file(neoantigenCDNA), file(neoantigenCDS) from Channel.value([
+      referenceMap.neoantigenCDNA,
+      referenceMap.neoantigenCDS
+    ]) // These reference files are in the neoantigen-docker.config
+
+  output:
+    set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+
+  when: "neoantigen" in tools
+
+  // must set full path to tmp directories for netMHC and netMHCpan to work;
+  // for some reason doesn't work with /scratch, so putting them in the process workspace
+  script:
+  outputDir = "neoantigen"
+  tmpDir = "${outputDir}-tmp"
+  tmpDirFullPath = "\$PWD/${tmpDir}/"
+  """
+  export TMPDIR=${tmpDirFullPath}
+  mkdir -p ${tmpDir}
+  chmod 777 ${tmpDir}
+
+  python /usr/local/bin/neoantigen/neoantigen.py \
+    --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
+    --sample_id ${idTumor} \
+    --hla_file ${polysolverFile} \
+    --maf_file ${mafFile} \
+    --output_dir ${outputDir}
   """
 }
 
@@ -1151,6 +1195,12 @@ def defineReferenceMap() {
     // gnomAD resources
     result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
+    // HLA FASTA and *dat for LOHHLA 
+    result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
+    result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
+    // files for neoantigen & NetMHC
+    result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
+    result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
   }
   return result_array
 }
