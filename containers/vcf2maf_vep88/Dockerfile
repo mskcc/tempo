@@ -29,7 +29,7 @@ ENV ONCOKB_VERSION 1.1.0
 
 RUN apk add --update \
       # install all the build-related tools
-            && apk add ca-certificates gcc g++ make git curl curl-dev wget gzip perl perl-dev musl-dev libgcrypt-dev zlib-dev bzip2-dev xz-dev ncurses-dev python python-dev py-pip pkgconfig \
+            && apk add ca-certificates gcc g++ make git curl curl-dev wget gzip perl perl-dev musl-dev libgcrypt-dev zlib-dev bzip2-dev xz-dev ncurses-dev python python-dev py-pip build-base freetype-dev libpng-dev openblas-dev \
       # install system packages and Perl modules
             && apk add expat-dev libressl-dev perl-net-ssleay mariadb-dev libxml2-dev perl-dbd-mysql perl-module-metadata perl-gd perl-db_file perl-archive-zip perl-cgi perl-dbi perl-encode perl-time-hires perl-file-copy-recursive perl-json \
       # install cpanminus
@@ -81,8 +81,8 @@ RUN pip install matplotlib
 
 # Install R with depencies
 RUN apk add --update && \
-    apk add R R-dev && \
-    R -e "install.packages('data.table', dependencies = TRUE, repos = 'http://cran.rstudio.com'); devtools::install_github('taylor-lab/annotateMaf')" 
+    apk add --no-cache R R-dev && \
+    R -e "install.packages(c('data.table', 'rlang', 'devtools'), dependencies = TRUE, repos = 'http://cran.rstudio.com'); devtools::install_github('taylor-lab/annotateMaf')" 
 
 # Add filter script
 COPY filter-somatic-maf.R /usr/bin
