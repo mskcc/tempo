@@ -76,22 +76,17 @@ pairingTN = extractPairing(pairingfile)
 
 fastqFiles = extractFastq(mappingFile)
 
-
-
 /*
 ================================================================================
 =                               P R O C E S S E S                              =
 ================================================================================
 */
 
-
 fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets) }.set { groupedFastqs }
 
 groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
 fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
-
-
 
 // FastP - FastP on lane pairs, R1/R2
 
@@ -112,7 +107,6 @@ process FastP {
   fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
   """
 }
-
 
 // AlignReads - Map reads with BWA mem output SAM
 
@@ -1496,7 +1490,6 @@ process GermlineCombineHaplotypecallerVcf {
   """
 }
 
-
 // --- Run Manta, germline
 
 (bamsForMantaGermline, bamsForStrelkaGermline, bamFiles) = bamFiles.into(3)
@@ -1551,7 +1544,6 @@ process GermlineRunManta {
   """
 }
 
-
 // --- Run Strelka2, germline
 
 process GermlineRunStrelka2 {
@@ -1576,7 +1568,7 @@ process GermlineRunStrelka2 {
       ])
 
   output:
-    set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutput
+    set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutputGermline
 
   when: 'strelka2' in tools && runGermline
   
@@ -1606,12 +1598,11 @@ process GermlineRunStrelka2 {
   """
 }
 
-
 // Join HaploTypeCaller and Strelka outputs,  bcftools
 
 hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
 
-haplotypecallerStrelkaChannel = hcv.combine(strelkaOutput, by: [0,1,2]).unique()
+haplotypecallerStrelkaChannel = hcv.combine(strelkaOutputGermline, by: [0,1,2]).unique()
 
 (bamsForCombineChannel, bamFiles) = bamFiles.into(2)
 
@@ -1635,7 +1626,7 @@ process GermlineCombineChannel {
   tag {idNormal}
 
   input:
-    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), target, file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
+    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1747,7 +1738,7 @@ process GermlineCombineChannel {
 
   tabix --preset vcf ${idNormal}.union.pass.vcf.gz
 
-bcftools annotate \
+  bcftools annotate \
     --annotations ${gnomad} \
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
@@ -1775,7 +1766,6 @@ bcftools annotate \
   """
 }
 
-
 // vcf2maf, germline calls
 
 process GermlineRunVcf2Maf {
@@ -1794,7 +1784,7 @@ process GermlineRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFile
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFileGermline
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
