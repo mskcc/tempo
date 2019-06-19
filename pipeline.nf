@@ -1126,7 +1126,7 @@ process DoFacets {
     set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*hisens.CNCF.png") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1314,7 +1314,7 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 // [ idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") ]
 // [idTumor, idNormal, target, *purity.out, *purity.cncf.txt, *purity.Rdata, purity.seg, hisens.out, hisens.cncf.txt, hisens.Rdata, hisens.seg into FacetsOutput
 
-(facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
+(facetsForLOHHLA, FacetsforMafAnno, FacetsOutput) = FacetsOutput.into(3)
 
 
 facetsForLOHHLA = facetsForLOHHLA.map{
@@ -1330,6 +1330,8 @@ facetsForLOHHLA = facetsForLOHHLA.map{
     def hisens_cncf = item[8]
     def hisens_rdata = item[9]
     def hisens_seg = item[10]
+    def purityCNCF_png = item[11]
+    def hisensCNCF_png = item[12]
 
     return [ idTumor, idNormal, target, purity_out ]
   }
@@ -1410,13 +1412,36 @@ process RunMutationSignatures {
 }
 
 
+//Formatting the channel to be: idTumor, idNormal, target, purity_rdata
+
+FacetsforMafAnno = FacetsforMafAnno.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def purity_out = item[3]
+    def purity_cncf = item[4]
+    def purity_rdata = item[5]
+    def purity_seg = item[6]
+    def hisens_out = item[7]
+    def hisens_cncf = item[8]
+    def hisens_rdata = item[9]
+    def hisens_seg = item[10]
+    def purityCNCF_png = item[11]
+    def hisensCNCF_png = item[12]
+    
+    return [ idTumor, idNormal, target, purity_rdata ]
+  }
+
+
 //Formatting the channel to be grouped by idTumor, idNormal, and target
 
-FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
+// FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
-FacetsMafFileCombine = FacetsOutput.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+
 
 process DoMafAnno {
   tag {idTumor + "_vs_" + idNormal}
