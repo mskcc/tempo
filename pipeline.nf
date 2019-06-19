@@ -1314,7 +1314,7 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 // [ idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") ]
 // [idTumor, idNormal, target, *purity.out, *purity.cncf.txt, *purity.Rdata, purity.seg, hisens.out, hisens.cncf.txt, hisens.Rdata, hisens.seg into FacetsOutput
 
-(facetsForLOHHLA, FacetsforMafAnno, FacetsOutput) = FacetsOutput.into(3)
+(facetsForLOHHLA, FacetsOutput) = FacetsOutput.into(2)
 
 
 facetsForLOHHLA = facetsForLOHHLA.map{
@@ -1410,33 +1410,13 @@ process RunMutationSignatures {
 }
 
 
-//Formatting the channel to be: idTumor, idNormal, target, purity_rdata
-
-FacetsforMafAnno = FacetsforMafAnno.map{
-  item -> 
-    def idTumor = item[0]
-    def idNormal = item[1]
-    def target = item[2]
-    def purity_out = item[3]
-    def purity_cncf = item[4]
-    def purity_rdata = item[5]
-    def purity_seg = item[6]
-    def hisens_out = item[7]
-    def hisens_cncf = item[8]
-    def hisens_rdata = item[9]
-    def hisens_seg = item[10]
-
-    return [ idTumor, idNormal, target, purity_rdata ]
-  }
-
-
 //Formatting the channel to be grouped by idTumor, idNormal, and target
 
-// FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
+FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
-FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+FacetsMafFileCombine = FacetsOutput.combine(mafFileForMafAnno, by: [0,1,2]).unique()
 
 process DoMafAnno {
   tag {idTumor + "_vs_" + idNormal}
@@ -1444,7 +1424,7 @@ process DoMafAnno {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(maf) from FacetsMafFileCombine
+    set idTumor, idNormal, target, file(purityRdata), file(facetsFiles), file(maf) from FacetsMafFileCombine
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
@@ -1455,7 +1435,7 @@ process DoMafAnno {
   mapFile = "${idTumor}_${idNormal}.map"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
+  echo "${idTumor}\t${purityRdata.fileName}" >> ${mapFile}
 
   /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf
   """
@@ -2111,6 +2091,10 @@ def defineReferenceMap() {
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
     result_array << ['wgsTargets' : checkParamReturnFile("wgsTargets")]
     result_array << ['wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")]
+    // HLA FASTA and *dat for LOHHLA 
+    result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
+    result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
+    // files for neoantigen & NetMHC
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
   }
