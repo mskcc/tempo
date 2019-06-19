@@ -1627,7 +1627,7 @@ process GermlineCombineChannel {
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+    set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
     ])
