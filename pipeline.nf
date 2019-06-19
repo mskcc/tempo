@@ -89,7 +89,7 @@ fastqFiles = extractFastq(mappingFile)
 
 fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets) }.set { groupedFastqs }
 
-groupedFastqs.into { groupedFastqsDebug; fastPFiles; fastqFiles }
+groupedFastqs.into { fastPFiles; fastqFiles }
 fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
 
@@ -107,7 +107,7 @@ process AlignReads {
 
   output:
     file("*.html") into fastPResults
-    set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into (sortedBam, sortedBamDebug)
+    set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
   script:
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
@@ -131,7 +131,7 @@ process AlignReads {
 
 
 sortedBam.groupTuple().set { groupedBam }
-groupedBam.into { groupedBamDebug; groupedBam }
+
 
 // MergeBams
 
@@ -142,7 +142,7 @@ process MergeBams {
     set idSample, lane, file(bam), assay, targetFile from groupedBam
 
   output:
-    set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile into (mergedBam, mergedBamDebug)
+    set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile into mergedBam
 
   script:
   """
@@ -184,7 +184,7 @@ duplicateMarkedBams = duplicateMarkedBams.map {
     [idSample, bam, bai, assay, targetFile]
 }
 
-(mdBam, mdBamToJoin, mdDebug) = duplicateMarkedBams.into(3)
+mdBam, mdBamToJoin = duplicateMarkedBams.into(2)
 
 
 // GATK BaseRecalibrator , CreateRecalibrationTable
@@ -243,7 +243,7 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2, recalibratedBamForDebug
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
     set idSample into currentSample
     set file("${idSample}.recal.bam") into currentBam
