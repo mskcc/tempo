@@ -16,8 +16,10 @@
  - SomaticRunBCFToolsMerge
  - SomaticRunVCF2MAF
  - SomaticDoSNPPileup
- - DoFacets
+ - DoFacets 
  - RunMsiSensor
+ - Polysolver
+ - LOHHLA
  - RunConpair
  - RunMutationSignatures
 */
