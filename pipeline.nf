@@ -94,77 +94,44 @@ fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
 
 
-
-// FastP - FastP on lane pairs, R1/R2
-
-process FastP {
-  tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
-
-
-  publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
-
-  input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
-
-  output:
-    file("*.html") into fastPResults
-
-  script:
-  """
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
-  """
-}
-
-
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
   tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
+
+  publishDir "${params.outDir}/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
 
   input:
     set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
-    set idSample, lane, file("${lane}.bam"), assay, targetFile into (unsortedBam)
-
-  script:
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    
-  """
-  set -e
-  set -o pipefail
-  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
-  """
-}
-
-
-// SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
-
-process SortBAM {
-  tag {idSample + "@" + lane}
-
-  input:
-    set idSample, lane, file("${lane}.bam"), assay, targetFile from unsortedBam
-
-  output:
+    file("*.html") into fastPResults
     set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into (sortedBam, sortedBamDebug)
 
   script:
-  // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
-  if(params.mem_per_core) { 
-    mem = task.memory.toString().split(" ")[0].toInteger() - 1 
-  }
-  else {
-    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-  }
+    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+
+    // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
+    if(params.mem_per_core) { 
+      mem = task.memory.toString().split(" ")[0].toInteger() - 1 
+    }
+    else {
+      mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+    } 
   """
+  set -e
+  set -o pipefail
+  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
+
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
   """
 }
 
-sortedBam.groupTuple().set { groupedBam }    // assignment, i.e. groupedBam = sortedBam.groupTuple()
 
+sortedBam.groupTuple().set { groupedBam }
+groupedBam.into { groupedBamDebug; groupedBam }
 
 // MergeBams
 
@@ -748,6 +715,8 @@ mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -767,7 +736,8 @@ process SomaticRunStrelka2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput mode flatten
+    set idTumor, idNormal, target, file('*merged.filtered.vcf.gz'), file('*merged.filtered.vcf.gz.tbi') into strelkaOutputMerged
+    set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput
 
   when: 'manta' in tools && 'strelka2' in tools && runSomatic
 
@@ -780,6 +750,8 @@ process SomaticRunStrelka2 {
     if(target == 'idt') intervals = idtTargets
    }
    
+  prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
+  outfile = "${prefix}.filtered.vcf.gz"
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
@@ -802,38 +774,13 @@ process SomaticRunStrelka2 {
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz
   mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
-  """
-}
 
-strelkaOutput = strelkaOutput.groupTuple(by: [0,1,2])
 
-// --- Process Mutect2 and Strelka2 VCFs
-
-process SomaticMergeStrelka2Vcfs {
-  tag {idTumor + "_vs_" + idNormal}
-
-  input: 
-    set idTumor, idNormal, target, file(strelkaIndels), file(strelkaIndelsIndex), file(strelkaSNVs), file(strelkaSNVsIndex) from strelkaOutput
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict
-    ])
-
-  output:
-    set idTumor, idNormal, target, file('*.vcf.gz'), file('*.vcf.gz.tbi') into strelkaOutputMerged
-
-  when: 'manta' in tools && 'strelka2' in tools && runSomatic
-
-  script:
-  prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
-  outfile = "${prefix}.filtered.vcf.gz"
-  """
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
   
   bcftools concat \
     --allow-overlaps \
-    ${strelkaIndels} ${strelkaSNVs} | \
+    Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz | \
   bcftools reheader \
     --samples samples.txt | \
   bcftools sort | \
@@ -846,6 +793,7 @@ process SomaticMergeStrelka2Vcfs {
   tabix --preset vcf ${outfile}
   """
 }
+
 
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
 
@@ -1088,7 +1036,7 @@ process RunMsiSensor {
 
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
  
-process DoSnpPileup {
+process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
@@ -1099,11 +1047,14 @@ process DoSnpPileup {
 
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
+    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") into FacetsOutput
 
   when: 'facets' in tools && runSomatic
 
   script:
   outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
+  tag = "${idTumor}_vs_${idNormal}"
+  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   snp-pileup \
     --count-orphans \
@@ -1112,29 +1063,8 @@ process DoSnpPileup {
     ${facetsVcf} \
     ${outfile} \
     ${bamTumor} ${bamNormal}
-  """
-}
 
-// FACETS
 
-process DoFacets {
-  tag {idTumor + "_vs_" + idNormal}
-
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/facets", mode: params.publishDirMode
-
-  input:
-    set assay, target, idTumor, idNormal, file(snpPileupFile) from SnpPileup
-
-  output:
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*hisens.CNCF.png") into FacetsOutput
-
-  when: 'facets' in tools && runSomatic
-
-  script:
-  tag = "${idTumor}_vs_${idNormal}"
-  countsFile = "${snpPileupFile}"
-  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
-  """
   mkdir ${outputDir}
   /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
@@ -1146,7 +1076,7 @@ process DoFacets {
     --purity_ndepth ${params.facets.purity_ndepth} \
     --purity_min_nhet ${params.facets.purity_min_nhet} \
     --genome ${params.facets.genome} \
-    --counts_file ${countsFile} \
+    --counts_file ${outfile} \
     --TAG ${tag} \
     --directory ${outputDir} \
     --R_lib /usr/lib/R/library \
@@ -1958,7 +1888,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
 
   input:
     each svType from svTypes
