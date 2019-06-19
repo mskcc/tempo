@@ -90,72 +90,41 @@ fastPFiles = fastPFiles.transpose()
 fastqFiles = fastqFiles.transpose()
 
 
-// FastP - FastP on lane pairs, R1/R2
-
-process FastP {
-  tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
-
-
-  publishDir "${params.outDir}/FastP/${idSample}", mode: params.publishDirMode
-
-  input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assays, targetFiles from fastPFiles
-
-  output:
-    file("*.html") into fastPResults
-
-  script:
-  """
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
-  """
-}
-
 
 // AlignReads - Map reads with BWA mem output SAM
 
 process AlignReads {
   tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
+  publishDir "${params.outDir}/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
+
   input:
     set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
     set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
   output:
-    set idSample, lane, file("${lane}.bam"), assay, targetFile into (unsortedBam)
-
-  script:
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    
-  """
-  set -e
-  set -o pipefail
-  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
-  """
-}
-
-// SortBAM - Sort unsorted BAM with samtools, 'samtools sort'
-
-process SortBAM {
-  tag {idSample + "@" + lane}
-
-  input:
-    set idSample, lane, file("${lane}.bam"), assay, targetFile from unsortedBam
-
-  output:
+    file("*.html") into fastPResults
     set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into (sortedBam, sortedBamDebug)
 
   script:
-  // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
-  if(params.mem_per_core) { 
-    mem = task.memory.toString().split(" ")[0].toInteger() - 1 
-  }
-  else {
-    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-  }
+    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+
+    // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
+    if(params.mem_per_core) { 
+      mem = task.memory.toString().split(" ")[0].toInteger() - 1 
+    }
+    else {
+      mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+    } 
   """
+  set -e
+  set -o pipefail
+  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
   """
 }
+
 
 sortedBam.groupTuple().set { groupedBam }
 groupedBam.into { groupedBamDebug; groupedBam }
