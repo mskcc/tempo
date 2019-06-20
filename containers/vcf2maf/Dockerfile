@@ -59,5 +59,7 @@ RUN apt-get update && \
     R -e "install.packages('data.table', dependencies = TRUE, repos = 'http://cran.rstudio.com')"
 
 # Add filter script
-COPY filter-maf.R /usr/bin
-RUN chmod +x /usr/bin/filter-maf.R
+COPY filter-somatic-maf.R /usr/bin
+COPY filter-germline-maf.R /usr/bin
+RUN chmod +x /usr/bin/filter-somatic-maf.R
+RUN chmod +x /usr/bin/filter-germline-maf.R
