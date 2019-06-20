@@ -98,7 +98,8 @@ fastqFiles = fastqFiles.transpose()
 process AlignReads {
   tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-  publishDir "${params.outDir}/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
+  publishDir "${params.outDir}/FastP/", pattern: "*.pdf", mode: params.publishDirMode
+  publishDir "${params.outDir}/FastP/", pattern: "*.json", mode: params.publishDirMode
 
   input:
     set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
@@ -121,7 +122,7 @@ process AlignReads {
   """
   set -e
   set -o pipefail
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+  fastp -h ${lane}.html -j ${lane}.json -i ${fastqFile1} -I ${fastqFile2}
   bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
   """
@@ -153,7 +154,7 @@ process MergeBams {
 process MarkDuplicates {
   tag {idSample}
 
-   publishDir "${params.outDir}/MarkDup/${idSample}", mode: params.publishDirMode
+//   publishDir "${params.outDir}/MarkDup/", mode: params.publishDirMode
 
   input:
     set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
@@ -230,7 +231,7 @@ recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 process RecalibrateBam {
   tag {idSample}
 
-  publishDir "${params.outDir}/BQSR/${idSample}", mode: params.publishDirMode
+//  publishDir "${params.outDir}/BAM/", mode: params.publishDirMode
 
   input:
     set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
@@ -339,7 +340,7 @@ ignore_read_groups = Channel.from( true , false )
 process Alfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
-  publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
+  publishDir "${params.outDir}/Alfred/", mode: params.publishDirMode
   
   input:
     each ignore_rg from ignore_read_groups
@@ -467,7 +468,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process SomaticDellyCall {
   tag {idTumor + "_vs_" + idNormal + '@' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
   input:
     each svType from svTypes
@@ -506,8 +507,6 @@ process SomaticDellyCall {
 
 process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName }
-
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
@@ -556,7 +555,7 @@ forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
@@ -598,7 +597,8 @@ process SomaticCombineMutect2Vcf {
 process SomaticRunManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", mode: params.publishDirMode
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", pattern: "*.gz", mode: params.publishDirMode
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", pattern: "*.gz.tbi", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -613,6 +613,7 @@ process SomaticRunManta {
 
   output:
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
+    set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantatbi
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools && runSomatic
@@ -671,13 +672,14 @@ dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).u
 process SomaticMergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/vcf_merged_output", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/structural_variants", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
 
   output:
-    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
+    file("*filtered.merge.vcf.gz") into vcfDellyMantaMergedOutput
+    file("*filtered.merge.vcf.gz.tbi") into vcfDellyMantaMergedtbi
 
   when: 'manta' in tools && 'delly' in tools && runSomatic
 
@@ -696,9 +698,12 @@ process SomaticMergeDellyAndManta {
   bcftools merge \
     --force-samples \
     --merge none \
-    --output-type v \
-    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf \
+    --output-type z \
+    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf.gz \
     *.vcf.gz
+
+  tabix --preset vcf ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf.gz
+
   """
 }
 
@@ -709,7 +714,7 @@ mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
-//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -1008,7 +1013,7 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${outputPrefix}*") into msiOutput 
+    set file("${outputPrefix}"), file("${outputPrefix}_somatic"), file("${outputPrefix}_germline") into msiOutput 
 
   when: "msisensor" in tools && runSomatic
 
@@ -1447,7 +1452,7 @@ haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(haplotypecallerVcf), file(haplotypecallerVcfIndex) from haplotypecallerOutput
@@ -1488,7 +1493,8 @@ process GermlineCombineHaplotypecallerVcf {
 process GermlineRunManta {
   tag {idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta"
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta", pattern: "*.gz", mode: params.publishDirMode
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta", pattern: "*.gz.tbi", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
@@ -1503,6 +1509,8 @@ process GermlineRunManta {
 
   output:
     set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
+    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutputGermlineVCF
+    set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantaOutputGermlineVCFtbi
 
   when: 'manta' in tools && runGermline
 
@@ -1541,7 +1549,7 @@ process GermlineRunManta {
 process GermlineRunStrelka2 {
   tag {idNormal}
 
-  //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2"
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/strelka2", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelkaGermline
@@ -1555,7 +1563,7 @@ process GermlineRunStrelka2 {
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -1685,7 +1693,7 @@ process GermlineCombineChannel {
 process GermlineRunVcf2Maf {
   tag {idNormal}
 
-  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations"
+  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutputGermline
@@ -1731,7 +1739,7 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly"
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly", mode: params.publishDirMode
 
   input:
     each svType from svTypes
@@ -1776,7 +1784,7 @@ dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermlin
 process GermlineMergeDellyAndManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/structural_variants"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/structural_variants", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannelGermline
@@ -1787,7 +1795,7 @@ process GermlineMergeDellyAndManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}.delly.manta.filtered.merge.vcf.gz"), file("${idNormal}.delly.manta.filtered.merge.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
 
   when: 'manta' in tools && 'delly' in tools && runGermline
 
@@ -1817,10 +1825,10 @@ process GermlineMergeDellyAndManta {
     --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
     --include 'FILTER=\"PASS\"' \
     --output-type z \
-    --output ${idNormal}.delly.manta.vcf.gz \
+    --output ${idNormal}.delly.manta.filtered.merge.vcf.gz \
     ${idNormal}.delly.manta.unfiltered.vcf.gz 
     
-  tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
+  tabix --preset vcf ${idNormal}.delly.manta.filtered.merge.vcf.gz
   """
 }
 
