@@ -101,7 +101,6 @@ process GermlineDellyFilter {
 
 // --- Run Haplotypecaller
 process CreateScatteredIntervals {
-  tag { idNormal }
 
   //publishDir "${params.outDir}/intervals", mode: params.publishDirMode
 
@@ -130,11 +129,12 @@ process CreateScatteredIntervals {
   when: "haplotypecaller" in tools
 
   script:
+  scatterCount = 10
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${agilentTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output agilent
   for i in agilent/*.interval_list;
@@ -145,7 +145,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${idtTargets} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output idt
   for i in idt/*.interval_list;
@@ -156,7 +156,7 @@ process CreateScatteredIntervals {
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${wgsIntervals} \
-    --scatter-count 3 \
+    --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
   for i in wgs/*.interval_list;
@@ -203,8 +203,8 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.vcf.gz"),
-    file("${idNormal}_${intervalBed.baseName}.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
+    file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput mode flatten
 
   when: 'haplotypecaller' in tools
 
@@ -218,6 +218,39 @@ process GermlineRunHaplotypecaller {
     --intervals ${intervalBed} \
     --input ${bamNormal} \
     --output ${idNormal}_${intervalBed.baseName}.vcf.gz
+
+  gatk SelectVariants \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.vcf.gz \
+    --select-type-to-include SNP \
+    --output ${idNormal}_${intervalBed.baseName}.snps.vcf.gz
+
+  gatk SelectVariants \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.vcf.gz \
+    --select-type-to-include INDEL \
+    --output ${idNormal}_${intervalBed.baseName}.indels.vcf.gz
+
+  gatk VariantFiltration \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.snps.vcf.gz \
+    --filter-expression \"QD < 2.0\" --filter-name \"QD2\" \
+    --filter-expression \"QUAL < 30.0\" --filter-name \"QUAL30\" \
+    --filter-expression \"SOR > 3.0\" --filter-name \"SOR3\" \
+    --filter-expression \"FS > 60.0\" --filter-name \"FS60\" \
+    --filter-expression \"MQ < 40.0\" --filter-name \"MQ40\" \
+    --filter-expression \"MQRankSum < -12.5\" --filter-name \"MQRankSum-12.5\" \
+    --filter-expression \"ReadPosRankSum < -8.0\" --filter-name \"ReadPosRankSum-8\" \
+    --output ${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz
+
+  gatk VariantFiltration \
+    --reference ${genomeFile} \
+    --variant ${idNormal}_${intervalBed.baseName}.indels.vcf.gz \
+    --filter-expression \"QD < 2.0\" --filter-name \"QD2\" \
+    --filter-expression \"QUAL < 30.0\" --filter-name \"QUAL30\" \
+    --filter-expression \"FS > 200.0\" --filter-name \"FS200\" \
+    --filter-expression \"ReadPosRankSum < -20.0\" --filter-name \"ReadPosRankSum-20\" \
+    --output ${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz
   """
 }
 
@@ -230,7 +263,7 @@ process GermlineCombineHaplotypecallerVcf {
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller"
 
   input:
-    set idTumor, idNormal, target, file(haplotypecallerVcf), file(haplotypecallerVcfIndex) from haplotypecallerOutput
+    set idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -248,7 +281,7 @@ process GermlineCombineHaplotypecallerVcf {
   """
   bcftools concat \
     --allow-overlaps \
-    ${haplotypecallerVcf} | \
+    ${haplotypecallerSnpVcf} ${haplotypecallerIndelVcf} | \
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
@@ -342,7 +375,7 @@ process GermlineRunStrelka2 {
       ])
 
   output:
-    set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutput
+    set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutputGermline
 
   when: 'strelka2' in tools
   
@@ -376,29 +409,61 @@ process GermlineRunStrelka2 {
 
 hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
 
-haplotypecallerStrelkaChannel = hcv.combine(strelkaOutput, by: [0,1,2]).unique()
+haplotypecallerStrelkaChannel = hcv.combine(strelkaOutputGermline, by: [0,1,2]).unique()
+
+(bamsForCombineChannel, bamFiles) = bamFiles.into(2)
+
+bamsForCombineChannel = bamsForCombineChannel.map{
+  item -> 
+    def assay = item[0]
+    def target = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def bamTumor = item[4]
+    def bamNormal = item[5]
+    def baiTumor = item[6]
+    def baiNormal = item[7]
+    
+    return [idTumor, idNormal, target, assay, bamTumor, baiTumor]
+  }
+
+mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1,2]).unique()
 
 process GermlineCombineChannel {
   tag {idNormal}
 
   input:
-    set idTumor, idNormal, target, file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from haplotypecallerStrelkaChannel
+    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
+    set file(genomeFile), file(genomeIndex) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+    ])
     set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
       referenceMap.repeatMasker,
       referenceMap.repeatMaskerIndex,
       referenceMap.mapabilityBlacklist,
       referenceMap.mapabilityBlacklistIndex
     ])
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+      referenceMap.gnomadWesVcf,
+      referenceMap.gnomadWesVcfIndex
+    ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.union.pass.vcf") into vcfMergedOutputGermline
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.vcf") into vcfMergedOutputGermline
 
   when: 'strelka2' in tools && 'haplotypecaller' in tools
 
   script:  
   isec_dir = "${idNormal}.isec"
+  gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
+  if (target != 'wgs') {
+    gnomad = gnomadWesVcf
+  }
   """
-  echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">\n##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" > vcf.header
+  echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
+  echo -e "##INFO=<ID=Strelka2,Number=0,Type=Flag,Description=\"Variant was called by Strelka2\">" >> vcf.header
+  echo -e "##INFO=<ID=Strelka2FILTER,Number=0,Type=Flag,Description=\"Variant failed filters in Strelka2\">" >> vcf.header
   echo -e '##INFO=<ID=RepeatMasker,Number=1,Type=String,Description="RepeatMasker">' > vcf.rm.header
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
 
@@ -408,12 +473,13 @@ process GermlineCombineChannel {
     ${haplotypecallercombinedVCF} ${strelkaVCF}
 
   bcftools annotate \
-    --header-lines vcf.header \
-    --annotations ${isec_dir}/0002.vcf.gz \
-    --mark-sites \"+HaplotypeCaller;Strelka2\" \
+    --annotations ${isec_dir}/0003.vcf.gz \
+    --include 'FILTER!=\"PASS\"' \
+    --mark-sites \"+Strelka2FILTER\" \
+    -k \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
-    ${isec_dir}/0002.vcf.gz
+    --output ${isec_dir}/0003.annot.vcf.gz \
+    ${isec_dir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -422,6 +488,24 @@ process GermlineCombineChannel {
     --output-type z \
     --output ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0000.vcf.gz
+
+  bcftools annotate \
+    --header-lines vcf.header \
+    --annotations ${isec_dir}/0002.vcf.gz \
+    --mark-sites \"+HaplotypeCaller;Strelka2\" \
+    --output-type z \
+    --output ${isec_dir}/0002.tmp.vcf.gz \
+    ${isec_dir}/0002.vcf.gz
+
+  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
+
+  bcftools annotate \
+    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --columns +FORMAT,Strelka2FILTER \
+    --output-type z \
+    --output ${isec_dir}/0002.annot.vcf.gz \
+    ${isec_dir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
@@ -437,6 +521,7 @@ process GermlineCombineChannel {
 
   bcftools concat \
     --allow-overlaps \
+    --rm-dups all \
     ${isec_dir}/0000.annot.vcf.gz \
     ${isec_dir}/0001.annot.vcf.gz \
     ${isec_dir}/0002.annot.vcf.gz | \
@@ -449,22 +534,49 @@ process GermlineCombineChannel {
     --header-lines vcf.map.header \
     --annotations ${mapabilityBlacklist} \
     --columns CHROM,FROM,TO,EncodeDacMapability \
-    --output-type v \
-    --output ${idNormal}.union.vcf
+    --output-type z \
+    --output ${idNormal}.union.vcf.gz
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
+    --output-type z \
+    --output ${idNormal}.union.pass.vcf.gz \
+    ${idNormal}.union.vcf.gz
+
+  tabix --preset vcf ${idNormal}.union.pass.vcf.gz
+
+  bcftools annotate \
+    --annotations ${gnomad} \
+    --columns INFO \
+    ${idNormal}.union.pass.vcf.gz | \
+  bcftools filter \
+    --exclude \"non_cancer_AF_popmax>0.02\" \
     --output-type v \
-    --output ${idNormal}.union.pass.vcf \
-    ${idNormal}.union.vcf
+    --output ${idNormal}.union.gnomad.vcf 
+
+  GetBaseCountsMultiSample \
+    --fasta ${genomeFile} \
+    --bam ${idTumor}:${bamTumor} \
+    --vcf ${idNormal}.union.gnomad.vcf \
+    --output ${idTumor}.genotyped.vcf
+
+  bgzip ${idNormal}.union.gnomad.vcf
+  bgzip ${idTumor}.genotyped.vcf
+  tabix --preset vcf ${idNormal}.union.gnomad.vcf.gz
+  tabix --preset vcf ${idTumor}.genotyped.vcf.gz
+
+  bcftools merge \
+    --output ${idTumor}_vs_${idNormal}.germline.vcf \
+    --output-type v \
+    ${idNormal}.union.gnomad.vcf.gz \
+    ${idTumor}.genotyped.vcf.gz
   """
 }
-
 
 process GermlineRunVcf2Maf {
   tag {idNormal}
 
-  publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations"
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutputGermline
@@ -477,30 +589,32 @@ process GermlineRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.maf") into mafFile
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFileGermline
 
   when: "strelka2" in tools && "haplotypecaller" in tools
 
-  outfile="${vcfMerged}".replaceFirst(".vcf", ".maf")
+  outfile="${vcfMerged}".replaceFirst(".vcf", ".unfiltered.maf")
 
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
   """
-  perl /opt/vcf2maf.pl \
+  perl /usr/bin/vcf2maf/vcf2maf.pl \
     --maf-center MSKCC-CMO \
-    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
-    --vep-forks 10 \
-    --tumor-id ${idNormal} \
+    --vep-forks 4 \
+    --tumor-id ${idTumor} \
     --normal-id ${idNormal} \
-    --vcf-tumor-id ${idNormal} \
+    --vcf-tumor-id ${idTumor} \
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info HaplotypeCaller,Strelka2,RepeatMasker,EncodeDacMapability \
+    --retain-info HaplotypeCaller,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax \
     --custom-enst ${isoforms} \
     --output-maf ${outfile} \
     --filter-vcf 0
+
+    filter-germline-maf.R ${outfile}
   """
 }
 
@@ -631,6 +745,9 @@ def defineReferenceMap() {
     result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
     // isoforms needed by vcf2maf
     result_array << ['isoforms' : checkParamReturnFile("isoforms")]
+    // gnomAD resources
+    result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
+    result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
   }
   return result_array
 }
