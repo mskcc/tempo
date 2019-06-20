@@ -98,7 +98,7 @@ fastqFiles = fastqFiles.transpose()
 process AlignReads {
   tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-  publishDir "${params.outDir}/FastP/", pattern: "*.pdf", mode: params.publishDirMode
+  publishDir "${params.outDir}/FastP/", pattern: "*.html", mode: params.publishDirMode
   publishDir "${params.outDir}/FastP/", pattern: "*.json", mode: params.publishDirMode
 
   input:
