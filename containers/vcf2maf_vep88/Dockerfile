@@ -112,7 +112,7 @@ RUN cd /tmp && curl -L -o tmp2.tar.gz https://github.com/samtools/bcftools/relea
 # Install vcf2maf
 WORKDIR /opt/
 
-RUN curl -ksSL -o tmp.tar.gz https://github.com/mskcc/vcf2maf/archive/v${VCF2MAF_VERSION}.tar.gz && \
+RUN cd /opt/ && curl -ksSL -o tmp.tar.gz https://github.com/mskcc/vcf2maf/archive/v${VCF2MAF_VERSION}.tar.gz && \
     tar --strip-components 1 -zxf tmp.tar.gz && \
     rm tmp.tar.gz && \
     chmod +x *.pl
