@@ -90,7 +90,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -L -o tmp.tar.gz https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
+RUN cd /tmp && curl -L -o tmp.tar.gz https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
     mkdir samtools && \
     tar -C samtools --strip-components 1 -jxf tmp.tar.gz && \
     cd samtools && \
@@ -98,16 +98,16 @@ RUN curl -L -o tmp.tar.gz https://github.com/samtools/samtools/releases/download
     make && \
     make install && \
     cd .. && \
-    rm -rf *
+    rm -rf /tmp/*
 
-RUN curl -L -o tmp2.tar.gz https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSION}/bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
+RUN cd /tmp && curl -L -o tmp2.tar.gz https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSION}/bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
     mkdir bcftools && \
     tar -C bcftools --strip-components 1 -jxf tmp2.tar.gz && \
     cd bcftools && \
     make && \
     make install && \
     cd .. && \
-    rm -rf *
+    rm -rf /tmp/*
 
 # Install vcf2maf
 WORKDIR /opt/
@@ -128,7 +128,7 @@ RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/on
             && unzip oncokb_annotator-v${ONCOKB_VERSION} \
             && mkdir -p /usr/bin/oncokb_annotator \
             && cp -r oncokb-annotator-${ONCOKB_VERSION}/* /usr/bin/oncokb_annotator/ \
-            && rm -rf /var/cache/apk/* /tmp/
+            && rm -rf /var/cache/apk/* /tmp/*
    
 # Add filter script
 COPY filter-somatic-maf.R /usr/bin
