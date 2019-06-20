@@ -231,7 +231,7 @@ recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 process RecalibrateBam {
   tag {idSample}
 
-//  publishDir "${params.outDir}/BAM/", mode: params.publishDirMode
+  publishDir "${params.outDir}/BAM/", mode: params.publishDirMode
 
   input:
     set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
