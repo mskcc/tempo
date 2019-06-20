@@ -107,6 +107,7 @@ process AlignReads {
 
   output:
     file("*.html") into fastPResults
+    file("*.json") into fastPResultsjson
     set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into (sortedBam, sortedBamDebug)
 
   script:
