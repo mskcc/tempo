@@ -62,7 +62,7 @@ RUN cpanm --notest CGI DBI Encode version Time::HiRes File::Copy::Recursive Perl
 
 RUN cpanm --notest Sereal JSON Bio::Root::Version Set::IntervalTree 
 
-RUN apt-get update && apt-get install -y zlib1g-dev bzip2 libbz2-dev liblzma-dev
+RUN apt-get update && apt-get install -y zlib1g-dev bzip2 libbz2-dev liblzma-dev unzip
 
 # install htslib (for vep)
 RUN cd /tmp && wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 \
