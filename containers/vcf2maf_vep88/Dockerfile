@@ -86,6 +86,9 @@ RUN apt-get update && \
     libncurses5-dev \
     vcftools \
     libbz2-dev \
+    libxml2 \
+    libxml2-dev \
+    libcurl4-openssl-dev \
     liblzma-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -120,8 +123,9 @@ RUN cd /opt/ && curl -ksSL -o tmp.tar.gz https://github.com/mskcc/vcf2maf/archiv
 # Install R with depencies
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
-    r-base-core r-base-dev && \
-    R -e "install.packages(c('data.table', 'rlang', 'devtools'), dependencies = TRUE, repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf')" 
+    r-base-core r-base-dev
+
+RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools'), dependencies = TRUE, repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf')" 
 
 # install oncokb-annotator
 RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \
