@@ -139,6 +139,3 @@ COPY filter-somatic-maf.R /usr/bin
 COPY filter-germline-maf.R /usr/bin
 RUN chmod +x /usr/bin/filter-somatic-maf.R
 RUN chmod +x /usr/bin/filter-germline-maf.R
-
-# install bash
-RUN apk add bash
