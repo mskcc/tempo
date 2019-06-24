@@ -14,7 +14,7 @@
  - SomaticCombineChannel
  - SomaticRunBCFToolsFilterNorm
  - SomaticRunBCFToolsMerge
- - SomaticRunVCF2MAF
+ - SomaticAnnotateMaf
  - SomaticDoSNPPileup
  - DoFacets 
  - RunMsiSensor
@@ -638,7 +638,7 @@ process SomaticCombineChannel {
   """
 }
 
-process SomaticRunVcf2Maf {
+process SomaticAnnotateMaf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
