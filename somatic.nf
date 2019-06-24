@@ -770,7 +770,7 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${outputPrefix}*") into msiOutput 
+    file("${outputPrefix}") into msiOutput 
 
   when: "msisensor" in tools
 
