@@ -30,7 +30,7 @@ add_tag = function(filter, tag) {
 maf = fread(maf)
 
 # Hotspot annotation ----------------------------------------------------------------------------------------------
-maf = oncokb(annotateMaf)
+maf = hotspot_annotate_maf(annotateMaf)
 
 # Tag input MAF with filters --------------------------------------------------------------------------------------
 maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
