@@ -970,7 +970,6 @@ process SomaticAnnotateMaf {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
 
-
   script:
   outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
   """
