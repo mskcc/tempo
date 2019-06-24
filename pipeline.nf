@@ -62,6 +62,11 @@ if (!check_for_duplicated_rows(pairingPath)) {
   exit 1
 }
 
+if (!check_for_mixed_assay(mappingPath)) {
+  println "ERROR: You can run only exome or genome assay type"
+  exit 1
+}
+
 outname = params.outname
 
 runGermline = params.germline
@@ -2108,4 +2113,18 @@ def check_for_duplicated_rows(pairingFilePath) {
     entries << line
   }
   return entries.toSet().size() == entries.size()
+}
+
+def check_for_mixed_assay(mappingFilePath) {
+  def wgs = false
+  def wes = false
+  file( mappingFilePath ).eachLine { line ->
+    if (line.contains('\tgenome\t')) {
+      wgs = true
+    }
+    if (line.contains('\texome\t')) {
+      wes = true
+    }
+  return !(wgs && wes)
+  }
 }
