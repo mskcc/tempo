@@ -444,11 +444,9 @@ process GermlineCombineChannel {
       referenceMap.mapabilityBlacklist,
       referenceMap.mapabilityBlacklistIndex
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex,
-      referenceMap.gnomadWgsVcf,
-      referenceMap.gnomadWgsVcfIndex
+      referenceMap.gnomadWesVcfIndex
     ])
 
   output:
@@ -458,7 +456,7 @@ process GermlineCombineChannel {
 
   script:  
   isec_dir = "${idNormal}.isec"
-  gnomad = gnomadWgsVcf
+  gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
   if (target != 'wgs') {
     gnomad = gnomadWesVcf
   }
