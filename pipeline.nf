@@ -665,8 +665,6 @@ dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
 
 dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
 
-
-
 // --- Process Delly and Manta VCFs 
 
 (sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
@@ -819,13 +817,12 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex,
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
     ])
-
-  // TODO: ADD gnomadWgsVcf and gnomadWgsVcfIndex
-
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
@@ -835,7 +832,7 @@ process SomaticCombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  gnomad = gnomadWesVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
+  gnomad = gnomadWgsVcf
   if (target != 'wgs') {
     pon = exomePoN
     gnomad = gnomadWesVcf
@@ -1701,9 +1698,11 @@ process GermlineCombineChannel {
       referenceMap.mapabilityBlacklist,
       referenceMap.mapabilityBlacklistIndex
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
     ])
 
   output:
@@ -1713,7 +1712,7 @@ process GermlineCombineChannel {
 
   script:  
   isec_dir = "${idNormal}.isec"
-  gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
+  gnomad = gnomadWgsVcf
   if (target != 'wgs') {
     gnomad = gnomadWesVcf
   }
