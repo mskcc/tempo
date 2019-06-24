@@ -1014,7 +1014,7 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${outputPrefix}*") into msiOutput 
+    file("${outputPrefix}*") into msiOutput.filter(~/.*(?<!_dis|_somatic|_germline)$/)
 
   when: "msisensor" in tools && runSomatic
 
