@@ -2,11 +2,12 @@
 
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.1.0"
+# __version__ = "0.2.0"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
     library(data.table)
+    library(annotateMaf)
 })
 
 args = commandArgs(TRUE)
@@ -50,6 +51,8 @@ maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 # gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier
 
 filter_maf = maf[FILTER == 'PASS']
+
+maf = hotspot_annotate_maf(maf)
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
 fwrite(maf, output1, sep = '\t')
