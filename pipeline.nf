@@ -26,7 +26,7 @@ Somatic Analysis
 - SomaticCombineChannel
 - SomaticRunBCFToolsFilterNorm
 - SomaticRunBCFToolsMerge
-- SomaticRunVCF2MAF
+- SomaticAnnotateMaf
 - SomaticDoSNPPileup
 - DoFacets
 - RunMsiSensor
@@ -45,7 +45,7 @@ Germline Analysis
 - GermlineRunStrelka
 - GermlineRunBcfToolsFilterNorm
 - GermlineRunBcfToolsMerge
-- GermlineRunVcf2Maf
+- GermlineAnnotateMaf
 */
 
 /*
@@ -952,7 +952,7 @@ process SomaticCombineChannel {
 
 // run VCF2MAF, somatic
 
-process SomaticRunVcf2Maf {
+process SomaticAnnotateMaf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
@@ -1829,7 +1829,7 @@ process GermlineCombineChannel {
 
 // vcf2maf, germline calls
 
-process GermlineRunVcf2Maf {
+process GermlineAnnotateMaf {
   tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
