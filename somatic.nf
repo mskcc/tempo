@@ -770,12 +770,12 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${outputPrefix}") into msiOutput 
+    file("${idTumor}_${idNormal}.msisensor.tsv") into msiOutput 
 
   when: "msisensor" in tools
 
   script:
-  outputPrefix = "${idTumor}_${idNormal}"
+  outputPrefix = "${idTumor}_${idNormal}.msisensor.tsv"
   """
   msisensor msi \
     -d "${msiSensorList}" \

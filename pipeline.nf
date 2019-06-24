@@ -995,9 +995,9 @@ process SomaticRunVcf2Maf {
 }
 
 
-// MSI Sensor
+// --- Run MSIsensor
 
-(bamFilesForMsiSensor, bamFiles) = bamFiles.into(2)
+(bamsForMsiSensor, bamFiles) = bamFiles.into(2)
 
 process RunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
@@ -1005,7 +1005,7 @@ process RunMsiSensor {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForMsiSensor
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1014,20 +1014,21 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${outputPrefix}") into msiOutput
+    file("${idTumor}_${idNormal}.msisensor.tsv") into msiOutput 
 
-  when: "msisensor" in tools && runSomatic
+  when: "msisensor" in tools
 
   script:
-  outputPrefix = "${idTumor}_${idNormal}"
+  outputPrefix = "${idTumor}_${idNormal}.msisensor.tsv"
   """
   msisensor msi \
-    -d ${msiSensorList} \
-    -t ${bamTumor} \
-    -n ${bamNormal} \
-    -o ${outputPrefix}
+    -d "${msiSensorList}" \
+    -t "${bamTumor}" \
+    -n "${bamNormal}" \
+    -o "${outputPrefix}"
   """
 }
+
 
 
 // --- Run FACETS
