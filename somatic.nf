@@ -51,6 +51,9 @@ bamFiles = extractBamFiles(tsvFile)
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
+if('strelka2' in tools) {
+  tools.add('manta')
+}
 
 // --- Run Delly
 
