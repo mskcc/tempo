@@ -2,11 +2,12 @@
 
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.1.0"
+# __version__ = "0.2.0"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
     library(data.table)
+    library(annotateMaf)
 })
 
 args = commandArgs(TRUE)
@@ -17,8 +18,8 @@ if (is.null(args) | length(args)<1) {
 }
 
 maf = args[1]
-output1 = maf
-output2 = gsub('.unfiltered.maf$', '.maf', maf)
+output1 = gsub('.raw.oncokb.maf$', '.unfiltered.maf', maf)
+output2 = gsub('.raw.oncokb.maf$', '.maf', maf)
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -26,9 +27,12 @@ add_tag = function(filter, tag) {
            paste(filter, tag, sep = ';'))
 }
 
-# Tag input MAF with filters --------------------------------------------------------------------------------------
 maf = fread(maf)
 
+# Hotspot annotation ----------------------------------------------------------------------------------------------
+maf = oncokb(annotateMaf)
+
+# Tag input MAF with filters --------------------------------------------------------------------------------------
 maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             n_var_freq = n_alt_count/(n_alt_count+n_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
