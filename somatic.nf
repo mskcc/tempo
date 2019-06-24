@@ -493,7 +493,7 @@ process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
+    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -541,7 +541,7 @@ process SomaticCombineChannel {
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
-    ${mutect2combinedVCF} ${strelkaVCF}
+    ${mutectCombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
