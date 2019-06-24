@@ -13,12 +13,14 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       version.oncokb_annotator="1.1.0" \
       version.filter_somatic_maf="0.2.0" \
       version.filter_germline_maf="0.1.0" \
+      version.annotateMaf="1.0.0" \
       source.vcf2maf="https://github.com/mskcc/vcf2maf/releases/tag/v1.6.17" \
       source.vep="http://dec2016.archive.ensembl.org/info/docs/tools/vep/script/vep_download.html#versions" \
       source.htslib="https://github.com/samtools/htslib/releases/tag/1.9" \
       source.bcftools="https://github.com/samtools/bcftools/releases/tag/1.9" \
       source.samtools="https://github.com/samtools/samtools/releases/tag/1.9" \
       source.oncokb_annotator="https://github.com/oncokb/oncokb-annotator/releases/tag/v1.1.0"
+      source.annotateMaf="https://github.com/taylor-lab/annotateMaf"
 
 ENV VCF2MAF_VERSION 1.6.17
 ENV VEP_VERSION 88
@@ -26,6 +28,7 @@ ENV HTSLIB_VERSION 1.9
 ENV SAMTOOLS_VERSION 1.9
 ENV BCFTOOLS_VERSION 1.9
 ENV ONCOKB_VERSION 1.1.0
+ENV ANNOTATE_MAF 1.0.0
 
 RUN apt-get update && apt-get install -y \
     tcsh \
@@ -125,7 +128,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     r-base-core r-base-dev
 
-RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools'), dependencies = TRUE, repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf')" 
+RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools'), repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf', ref = ${ANNOTATE_MAF})"
 
 # install oncokb-annotator
 RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \
