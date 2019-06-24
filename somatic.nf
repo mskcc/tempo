@@ -518,7 +518,7 @@ process SomaticCombineChannel {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
 
-  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
+  when: 'strelka2' in tools && 'mutect2' in tools
 
   script:
   isec_dir = "${idTumor}.isec"
@@ -656,7 +656,7 @@ process SomaticAnnotateMaf {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: "mutect2" in tools && "strelka2" in tools
 
   script:
   outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
