@@ -19,7 +19,7 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       source.htslib="https://github.com/samtools/htslib/releases/tag/1.9" \
       source.bcftools="https://github.com/samtools/bcftools/releases/tag/1.9" \
       source.samtools="https://github.com/samtools/samtools/releases/tag/1.9" \
-      source.oncokb_annotator="https://github.com/oncokb/oncokb-annotator/releases/tag/v1.1.0"
+      source.oncokb_annotator="https://github.com/oncokb/oncokb-annotator/releases/tag/v1.1.0" \
       source.annotateMaf="https://github.com/taylor-lab/annotateMaf"
 
 ENV VCF2MAF_VERSION 1.6.17
