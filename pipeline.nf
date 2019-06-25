@@ -54,6 +54,11 @@ Germline Analysis
 ================================================================================
 */
 
+if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
+  println "ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)"
+  exit 1
+}
+
 if (params.mapping) mappingPath = params.mapping
 if (params.pairing) pairingPath = params.pairing
 
