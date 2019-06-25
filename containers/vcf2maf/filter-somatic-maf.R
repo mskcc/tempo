@@ -29,9 +29,6 @@ add_tag = function(filter, tag) {
 
 maf = fread(maf)
 
-# Tag hotspots ----------------------------------------------------------------------------------------------------
-maf = hotspot_annotate_maf(maf)
-
 # Tag input MAF with filters --------------------------------------------------------------------------------------
 maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             n_var_freq = n_alt_count/(n_alt_count+n_ref_count),
@@ -52,6 +49,9 @@ maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 
 # Filters not used:
 # gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier
+
+# Tag hotspots ----------------------------------------------------------------------------------------------------
+maf = hotspot_annotate_maf(maf)
 
 filter_maf = maf[FILTER == 'PASS']
 
