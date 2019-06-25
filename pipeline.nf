@@ -1299,7 +1299,7 @@ process RunLOHHLA {
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
     Rscript /lohhla/LOHHLAscript.R \
-        --patientId ${idTumor} \
+        --patientId ${idTumor}_vs_{idNormal} \
         --normalBAMfile ${bamNormal} \
         --tumorBAMfile ${bamTumor} \
         --HLAfastaLoc ${hlaFasta} \
