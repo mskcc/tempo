@@ -29,9 +29,9 @@ add_tag = function(filter, tag) {
 ch_genes = c("ASXL1", "ATM", "BCOR", "CALR", "CBL", "CEBPA", "CREBBP", "DNMT3A", "ETV6", "EZH2", "FLT3", "GNAS",
              "IDH1", "IDH2", "JAK2", "KIT", "KRAS", "MPL", "MYD88", "NF1", "NPM1", "NRAS", "PPM1D", "RAD21", "RUNX1", "SETD2", "SF3B1", "SH2B3", "SRSF2", "STAG2", "STAT3", "TET2", "TP53", "U2AF1", "WT1", "ZRSR2")
 
-# Tag input MAF with filters --------------------------------------------------------------------------------------
-maf = fread(maf)
+maf = fread(maf, data.table = TRUE)
 
+# Tag input MAF with filters --------------------------------------------------------------------------------------
 maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             n_var_freq = n_alt_count/(n_alt_count+n_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),

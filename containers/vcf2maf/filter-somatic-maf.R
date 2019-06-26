@@ -27,7 +27,7 @@ add_tag = function(filter, tag) {
            paste(filter, tag, sep = ';'))
 }
 
-maf = fread(maf)
+maf = fread(maf, data.table = TRUE)
 
 # Tag input MAF with filters --------------------------------------------------------------------------------------
 maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
@@ -53,6 +53,7 @@ maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 # Tag hotspots ----------------------------------------------------------------------------------------------------
 maf = hotspot_annotate_maf(maf)
 
+maf = as.data.table(maf) # necessary because of the class of output from previous call
 filter_maf = maf[FILTER == 'PASS']
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
