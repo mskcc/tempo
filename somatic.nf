@@ -781,10 +781,10 @@ process RunMsiSensor {
   outputPrefix = "${idTumor}_${idNormal}.msisensor.tsv"
   """
   msisensor msi \
-    -d "${msiSensorList}" \
-    -t "${bamTumor}" \
-    -n "${bamNormal}" \
-    -o "${outputPrefix}"
+    -d ${msiSensorList} \
+    -t ${bamTumor} \
+    -n ${bamNormal} \
+    -o ${outputPrefix}
   """
 }
 
