@@ -483,8 +483,62 @@ tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} 
 
 // --- Run Delly
 
-svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
-(bamsForDelly, bamFiles) = bamFiles.into(2)
+svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV", "manta1", "manta2", "manta3", "manta4")
+(bamsForDellyManta, bamFiles) = bamFiles.into(2)
+(bamsForDelly, bamsForManta) = bamsForDellyManta.combine(svTypes).map{
+  item ->
+    def key = item[2]+"_vs_"+item[3]
+    def assay = item[0]
+    def target = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def tumorBam = item[4]
+    def normalBam = item[5]
+    def tumorBai = item[6]
+    def normalBai = item[7]
+    def svType = item[8]
+    return [ key, assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, svType ]
+}
+.groupTuple().map{ key, assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, svType -> tuple ( groupKey(key, svType.size()), assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, svType)}.transpose().into(2)
+
+bamsForDelly=bamsForDelly.filter { item ->
+    def key = item[0]
+    def assay = item[1]
+    def target = item[2]
+    def idTumor = item[3]
+    def idNormal = item[4]
+    def tumorBam = item[5]
+    def normalBam = item[6]
+    def tumorBai = item[7]
+    def normalBai = item[8]
+    def svType = item[9]
+    svType =~ /["DUP", "BND", "DEL", "INS", "INV"]/
+}
+
+bamsForManta=bamsForManta.filter { item ->
+    def key = item[0]
+    def assay = item[1]
+    def target = item[2]
+    def idTumor = item[3]
+    def idNormal = item[4]
+    def tumorBam = item[5]
+    def normalBam = item[6]
+    def tumorBai = item[7]
+    def normalBai = item[8]
+    def svType = item[9]
+    svType =~ /^manta./
+}.map { item ->
+    def key = item[0]
+    def assay = item[1]
+    def target = item[2]
+    def idTumor = item[3]
+    def idNormal = item[4]
+    def tumorBam = item[5]
+    def normalBam = item[6]
+    def tumorBai = item[7]
+    def normalBai = item[8]
+    return [ key, assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai ]
+}.unique()
 
 process SomaticDellyCall {
   tag {idTumor + "_vs_" + idNormal + '@' + svType}
@@ -492,8 +546,7 @@ process SomaticDellyCall {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/delly", mode: params.publishDirMode
 
   input:
-    each svType from svTypes
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
+    set id, assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), svType from bamsForDelly
     set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -501,7 +554,7 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
+    set id, idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
 
   when: 'delly' in tools && runSomatic
 
@@ -620,7 +673,7 @@ process SomaticCombineMutect2Vcf {
 
 // --- Run Manta
 
-(bamsForManta, bamsForStrelka, bamFiles) = bamFiles.into(3)
+(bamsForStrelka, bamFiles) = bamFiles.into(2)
 
 process SomaticRunManta {
   tag {idTumor + "_vs_" + idNormal}
@@ -629,7 +682,7 @@ process SomaticRunManta {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", pattern: "*.gz.tbi", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
+    set id, assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -640,7 +693,7 @@ process SomaticRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
+    set id, idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
     set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantatbi
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
@@ -683,13 +736,8 @@ process SomaticRunManta {
 }
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
-// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
 
-dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
-
-dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
-
+dellyMantaCombineChannel = dellyFilterOutput.concat(mantaOutput).groupTuple()
 
 
 // --- Process Delly and Manta VCFs 
@@ -704,7 +752,7 @@ process SomaticMergeDellyAndManta {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/structural_variants", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
+    set id, idTumor, idNormal, target, file(files) from dellyMantaCombineChannel
 
   output:
     file("*filtered.merge.vcf.gz") into vcfDellyMantaMergedOutput
@@ -713,6 +761,8 @@ process SomaticMergeDellyAndManta {
   when: 'manta' in tools && 'delly' in tools && runSomatic
 
   script:
+  idTumor = idTumor.first()
+  idNormal = idNormal.first()
   """ 
   for f in *.bcf
   do 
@@ -1588,7 +1638,62 @@ process GermlineCombineHaplotypecallerVcf {
 
 // --- Run Manta, germline
 
-(bamsForMantaGermline, bamsForStrelkaGermline, bamFiles) = bamFiles.into(3)
+svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV", "manta1")
+(bamsForDellyMantaGermline, bamFiles) = bamFiles.into(2)
+(bamsForDellyGermline, bamsForMantaGermline) = bamsForDellyMantaGermline.combine(svTypes).map{
+  item ->
+    def key = item[2]+"_vs_"+item[3]
+    def assay = item[0]
+    def target = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def tumorBam = item[4]
+    def normalBam = item[5]
+    def tumorBai = item[6]
+    def normalBai = item[7]
+    def svType = item[8]
+    return [ key, assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, svType ]
+}
+.groupTuple().map{ key, assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, svType -> tuple ( groupKey(key, svType.size()), assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, svType)}.transpose().into(2)
+
+bamsForDellyGermline=bamsForDellyGermline.filter { item ->
+    def key = item[0]
+    def assay = item[1]
+    def target = item[2]
+    def idTumor = item[3]
+    def idNormal = item[4]
+    def tumorBam = item[5]
+    def normalBam = item[6]
+    def tumorBai = item[7]
+    def normalBai = item[8]
+    def svType = item[9]
+    svType =~ /["DUP", "BND", "DEL", "INS", "INV"]/
+}
+
+bamsForMantaGermline=bamsForMantaGermline.filter { item ->
+    def key = item[0]
+    def assay = item[1]
+    def target = item[2]
+    def idTumor = item[3]
+    def idNormal = item[4]
+    def tumorBam = item[5]
+    def normalBam = item[6]
+    def tumorBai = item[7]
+    def normalBai = item[8]
+    def svType = item[9]
+    svType =~ /^manta./
+}.map { item ->
+    def key = item[0]
+    def assay = item[1]
+    def target = item[2]
+    def idTumor = item[3]
+    def idNormal = item[4]
+    def tumorBam = item[5]
+    def normalBam = item[6]
+    def tumorBai = item[7]
+    def normalBai = item[8]
+    return [ key, assay, target, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai ]
+}.unique()
 
 process GermlineRunManta {
   tag {idNormal}
@@ -1597,7 +1702,7 @@ process GermlineRunManta {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/manta", pattern: "*.gz.tbi", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
+    set id, assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -1608,7 +1713,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
+    set id, idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutputGermlineVCF
     set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantaOutputGermlineVCFtbi
 
@@ -1646,6 +1751,8 @@ process GermlineRunManta {
 }
 
 // --- Run Strelka2, germline
+
+(bamsForStrelkaGermline, bamFiles) = bamFiles.into(2)
 
 process GermlineRunStrelka2 {
   tag {idNormal}
@@ -1919,8 +2026,6 @@ process GermlineRunVcf2Maf {
 
 
 // --- Process Delly and Manta VCFs 
-svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
-(bamsForDellyGermline, bamFiles) = bamFiles.into(2)
 
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
@@ -1928,8 +2033,7 @@ process GermlineDellyCall {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/delly", mode: params.publishDirMode
 
   input:
-    each svType from svTypes
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDellyGermline
+    set id, assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), svType from bamsForDellyGermline
     set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1937,7 +2041,7 @@ process GermlineDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilterOutputGermline
+    set id, idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilterOutputGermline
 
   when: 'delly' in tools && runGermline
 
@@ -1958,19 +2062,7 @@ process GermlineDellyCall {
 
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
-// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-// filter Delly & Manta via bcftools
-
-
-// Put manta output and delly output into the same channel so they can be processed together in the group key
-// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-
-// filter Delly & Manta via bcftools
-
-mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2])
-dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2])
-
-dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2]).unique()
+dellyMantaChannelGermline = dellyFilterOutputGermline.concat(mantaOutputGermline).groupTuple()
 
 process GermlineMergeDellyAndManta {
   tag {idNormal}
@@ -1978,7 +2070,7 @@ process GermlineMergeDellyAndManta {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/structural_variants", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannelGermline
+    set id, idTumor, idNormal, target, file(files) from dellyMantaChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1991,6 +2083,7 @@ process GermlineMergeDellyAndManta {
   when: 'manta' in tools && 'delly' in tools && runGermline
 
   script:
+  idNormal = idNormal.first()
   """ 
   for f in *.bcf
   do 
