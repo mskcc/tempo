@@ -68,7 +68,7 @@ if (!check_for_duplicated_rows(pairingPath)) {
 }
 
 if (!check_for_mixed_assay(mappingPath)) {
-  println "ERROR: You can run only exome or genome assay type"
+  println "ERROR: You can only use either assays 'exome' or 'genome', not both WES and WGS together"
   exit 1
 }
 
