@@ -454,7 +454,22 @@ bMergedChannel = iBamList.combine(idtIList, by: 1).unique()
 wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
 
 // These will go into mutect2 and haplotypecaller
-(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
+(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).map{
+  item ->
+    def key = item[2]+"_vs_"+item[3]
+    def target = item[0]
+    def assay = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def tumorBam = item[4]
+    def normalBam = item[5]
+    def tumorBai = item[6]
+    def normalBai = item[7]
+    def intervalBed = item[8]
+
+    return [ key, target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
+}.groupTuple().map{ key, target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> tuple ( groupKey(key, intervalBed.size()), target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed)}.transpose().into(2)
+
 
 /*
 ================================================================================
@@ -517,7 +532,7 @@ process RunMutect2 {
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
+   set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -525,7 +540,7 @@ process RunMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
+   set id, idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine 
 
 
   when: 'mutect2' in tools && runSomatic
@@ -556,7 +571,7 @@ process RunMutect2 {
 
 
 //Formatting the channel to be keyed by idTumor, idNormal, and target
-forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
+forMutect2Combine = forMutect2Combine.groupTuple()
 
 
 // Combine Mutect2 VCFs, bcftools
@@ -567,7 +582,7 @@ process SomaticCombineMutect2Vcf {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
+    set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -580,6 +595,8 @@ process SomaticCombineMutect2Vcf {
   when: 'mutect2' in tools && runSomatic
 
   script:
+  idTumor = idTumor.first()
+  idNormal = idNormal.first()
   outfile="${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
   """
   bcftools concat \
@@ -1465,7 +1482,7 @@ process GermlineRunHaplotypecaller {
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
+    set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1473,8 +1490,8 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
-    file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
+    file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1526,7 +1543,7 @@ process GermlineRunHaplotypecaller {
 
 
 //Formatting the channel to be grouped by idTumor, idNormal, and target
-haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
+haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 
 // merge VCFs, GATK HaplotypeCaller
 
@@ -1536,7 +1553,7 @@ process GermlineCombineHaplotypecallerVcf {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
+    set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1549,6 +1566,7 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script:
+  idNormal = idNormal.first()
   outfile="${idNormal}.haplotypecaller.vcf.gz"
 
   """
