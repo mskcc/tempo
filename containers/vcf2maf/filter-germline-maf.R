@@ -17,8 +17,7 @@ if (is.null(args) | length(args)<1) {
 }
 
 maf = args[1]
-output1 = maf
-output2 = gsub('.unfiltered.maf$', '.maf', maf)
+out_prefix = args[2]
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -56,5 +55,5 @@ maf[gnomAD_FILTER == 1, FILTER := add_tag(FILTER, 'gnomad_filter')]
 filter_maf = maf[FILTER == 'PASS']
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
-fwrite(maf, output1, sep = '\t')
-fwrite(filter_maf, output2, sep = '\t')
+fwrite(maf, paste0(output_prefix, '.unfiltered.maf'), sep = '\t')
+fwrite(filter_maf, paste0(output_prefix, '.maf'), sep = '\t')
