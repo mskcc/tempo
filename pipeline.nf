@@ -1476,7 +1476,7 @@ process GermlineRunHaplotypecaller {
     set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
     file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput mode flatten
 
-  when: 'haplotypecaller' in tools
+  when: 'haplotypecaller' in tools && runGermline
 
   script:
   """
