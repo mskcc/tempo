@@ -13,13 +13,12 @@ suppressPackageStartupMessages({
 args = commandArgs(TRUE)
 
 if (is.null(args) | length(args)<1) {
-    message("Usage: filter-somatic-maf.R input.maf")
+    message("Usage: filter-somatic-maf.R input.maf output.prefix")
     quit()
 }
 
 maf = args[1]
-output1 = gsub('.raw.oncokb.maf$', '.unfiltered.maf', maf)
-output2 = gsub('.raw.oncokb.maf$', '.maf', maf)
+out_prefix = args[2]
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -57,5 +56,5 @@ maf = as.data.table(maf) # necessary because of the class of output from previou
 filter_maf = maf[FILTER == 'PASS']
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
-fwrite(maf, output1, sep = '\t')
-fwrite(filter_maf, output2, sep = '\t')
+fwrite(maf, paste0(output_prefix, '.unfiltered.maf'), sep = '\t')
+fwrite(filter_maf, paste0(output_prefix, '.maf'), sep = '\t')

@@ -654,12 +654,12 @@ process SomaticAnnotateMaf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFile
 
   when: "mutect2" in tools && "strelka2" in tools
 
   script:
-  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
+  outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
@@ -674,14 +674,14 @@ process SomaticAnnotateMaf {
     --ref-fasta ${genomeFile} \
     --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
     --custom-enst ${isoforms} \
-    --output-maf ${idTumor}.raw.maf \
+    --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
-    -i ${idTumor}.raw.maf \
-    -o ${idTumor}.raw.oncokb.maf
+    -i ${outputPrefix}.raw.maf \
+    -o ${outputPrefix}.raw.oncokb.maf
 
-  filter-somatic-maf.R ${idTumor}.raw.oncokb.maf
+  filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
   """
 }
 
