@@ -1420,7 +1420,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    set idTumor, idNormal, target, file("${outputDir}/*.maf") into MafNeoantigenPairOutput
+    set idTumor, idNormal, target, file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt"), file("${outputDir}/*.maf") into NeoantigenPairOutput
 
   when: "neoantigen" in tools
 
@@ -1450,7 +1450,7 @@ process SomaticGroupForQC {
   publishDir "${params.outDir}/somatic/qc", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(mafFile) from MafNeoantigenPairOutput.collect()
+    set idTumor, idNormal, target, file(netmhcCombinedFile), file(mafFile) from NeoantigenPairOutput.collect()
     file(mutsigFile) from mutSigOutput.collect()
     set file(purSeg), file(purCncfTxt), file(purCncfPng), file(purRdata), file(purOut) from FacetsPurity.collect()
     set file(hisensSeg), file(hisensCncfTxt), file(hisensCncfPng), file(hisensRdata), file(hisensOut) from FacetsHisens.collect()
@@ -1458,8 +1458,10 @@ process SomaticGroupForQC {
 
   output:
     file("maf_files/*") into MafFilesOutput
+    file("netmhc_stats/*") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
+
 
   when: "neoantigen" in tools
     
@@ -1468,6 +1470,10 @@ process SomaticGroupForQC {
   # Collect MAF files from neoantigen to maf_files/
   mkdir maf_files
   mv *.maf maf_files
+
+  # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
+  mkdir netmhc_stats
+  mv *.netmhcpan_netmhc_combined.output.txt netmhc_stats
 
   # Collect mutsig output to mutsig/
   mkdir mutsig
