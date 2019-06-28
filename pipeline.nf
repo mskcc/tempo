@@ -463,6 +463,9 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
+if('strelka2' in tools) {
+  tools.add('manta')
+}
 
 // --- Run Delly
 
@@ -1302,7 +1305,7 @@ process RunLOHHLA {
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
     Rscript /lohhla/LOHHLAscript.R \
-        --patientId ${idTumor} \
+        --patientId ${idTumor}_vs_{idNormal} \
         --normalBAMfile ${bamNormal} \
         --tumorBAMfile ${bamTumor} \
         --HLAfastaLoc ${hlaFasta} \
@@ -1625,7 +1628,7 @@ process GermlineRunStrelka2 {
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervals) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
