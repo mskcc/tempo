@@ -335,7 +335,6 @@ else {
 
 ignore_read_groups = Channel.from( true , false )
 
-
 // Alfred, BAM QC
 
 process Alfred {
@@ -350,6 +349,16 @@ process Alfred {
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
     ])
+    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets,
+      referenceMap.wgsTargets
+    ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex,
+      referenceMap.wgsTargetsIndex
+    ])
 
   output:
     set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
@@ -357,7 +366,9 @@ process Alfred {
   script:
   options = ""
   if(params.assayType == "exome") {
-    options = "--bed ${targetFile}"
+    if(target == 'agilent') intervals = agilentTargets
+    if(target == 'idt') intervals = idtTargets
+    options = "--bed ${intervals}"
    }
   def ignore = ignore_rg ? "--ignore" : ''
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
@@ -365,7 +376,6 @@ process Alfred {
   alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
     Rscript /opt/alfred/scripts/stats.R ${outfile}
   """
-
 }
 
 (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
