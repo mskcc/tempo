@@ -2,23 +2,23 @@
 
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.1.0"
+# __version__ = "0.2.0"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
     library(data.table)
+    library(annotateMaf)
 })
 
 args = commandArgs(TRUE)
 
 if (is.null(args) | length(args)<1) {
-    message("Usage: filter-somatic-maf.R input.maf")
+    message("Usage: filter-somatic-maf.R input.maf output.prefix")
     quit()
 }
 
 maf = args[1]
-output1 = maf
-output2 = gsub('.unfiltered.maf$', '.maf', maf)
+output_prefix = args[2]
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -26,9 +26,9 @@ add_tag = function(filter, tag) {
            paste(filter, tag, sep = ';'))
 }
 
-# Tag input MAF with filters --------------------------------------------------------------------------------------
-maf = fread(maf)
+maf = fread(maf, data.table = TRUE)
 
+# Tag input MAF with filters --------------------------------------------------------------------------------------
 maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             n_var_freq = n_alt_count/(n_alt_count+n_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
@@ -49,8 +49,12 @@ maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 # Filters not used:
 # gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier
 
-filter_maf = maf[FILTER == 'PASS']
+# Tag hotspots ----------------------------------------------------------------------------------------------------
+maf = hotspot_annotate_maf(maf)
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
-fwrite(maf, output1, sep = '\t')
-fwrite(filter_maf, output2, sep = '\t')
+maf = as.data.table(maf) # necessary because of the class of output from previous call
+filter_maf = maf[FILTER == 'PASS']
+
+fwrite(maf, paste0(output_prefix, '.unfiltered.maf'), sep = '\t')
+fwrite(filter_maf, paste0(output_prefix, '.maf'), sep = '\t')
