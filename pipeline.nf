@@ -1399,7 +1399,7 @@ process DoMafAnno {
   """
 }
 
-(mafFileForNeoantigen, mafFile) = mafFile.into(2)
+(mafFileForNeoantigen, MafAnnoOutput) = MafAnnoOutput.into(2)
 mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
@@ -1418,6 +1418,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    set idTumor, idNormal, target, file("${outputDir}/*.maf") into MafNeoantigenPairOutput
 
   when: "neoantigen" in tools
 
@@ -1434,10 +1435,38 @@ process RunNeoantigen {
 
   python /usr/local/bin/neoantigen/neoantigen.py \
     --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
-    --sample_id ${idTumor} \
+    --sample_id ${idTumor}_vs_${idNormal} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
+  """
+}
+
+
+process SomaticGroupForQC {
+ 
+  publishDir "${params.outDir}/somatic/qc", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(mafFile) from MafNeoantigenPairOutput.collect()
+    file("*.mutsig.txt") from mutSigOutput.collect()
+
+  output:
+    file("maf_files/*") into MafFilesOutput
+
+  when: "neoantigen" in tools
+    
+  script:
+  """
+  # Collect MAF files from neoantigen to maf_files/
+  mkdir maf_files
+  mv *.maf maf_files
+
+  # Collect mutsig output to mutsig/
+  mkdir mutsig
+  mv *.mutsig.txt mutsig/
+
+
   """
 }
 
