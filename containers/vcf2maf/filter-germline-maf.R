@@ -7,6 +7,7 @@
 
 suppressPackageStartupMessages({
     library(data.table)
+    library(annotateMaf)
 })
 
 args = commandArgs(TRUE)
