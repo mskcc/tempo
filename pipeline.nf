@@ -127,9 +127,7 @@ process AlignReads {
   """
 }
 
-
-sortedBam.groupTuple().set { groupedBam }
-
+sortedBam.groupTuple().set{groupedBam}
 
 // MergeBams
 
@@ -357,10 +355,15 @@ process Alfred {
     set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
   script:
+  options = ""
+  if(params.assayType == "exome") {
+    options = "--bed ${targetFile}"
+   }
   def ignore = ignore_rg ? "--ignore" : ''
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
   """
-  alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
+  alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
+    Rscript /opt/alfred/scripts/stats.R ${outfile}
   """
 
 }
