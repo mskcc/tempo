@@ -1035,7 +1035,6 @@ process RunMsiSensor {
   """
 }
 
-
 // --- Run FACETS
 
 (bamFilesForSnpPileup, bamFiles) = bamFiles.into(2)
