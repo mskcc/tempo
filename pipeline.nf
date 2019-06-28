@@ -1449,7 +1449,7 @@ process SomaticGroupForQC {
 
   input:
     set idTumor, idNormal, target, file(mafFile) from MafNeoantigenPairOutput.collect()
-    file("*.mutsig.txt") from mutSigOutput.collect()
+    file(mutsigFile) from mutSigOutput.collect()
 
   output:
     file("maf_files/*") into MafFilesOutput
@@ -1465,8 +1465,6 @@ process SomaticGroupForQC {
   # Collect mutsig output to mutsig/
   mkdir mutsig
   mv *.mutsig.txt mutsig/
-
-
   """
 }
 
