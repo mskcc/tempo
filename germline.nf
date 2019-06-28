@@ -613,7 +613,7 @@ process GermlineAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-    filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
+  filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
   """
 }
 
