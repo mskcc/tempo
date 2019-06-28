@@ -849,7 +849,7 @@ process SomaticCombineChannel {
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWesVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
-  if (target != 'wgs') {
+  if (target != 'genome') {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -1724,7 +1724,7 @@ process GermlineCombineChannel {
   script:  
   isec_dir = "${idNormal}.isec"
   gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
-  if (target != 'wgs') {
+  if (target != 'genome') {
     gnomad = gnomadWesVcf
   }
   """

@@ -527,7 +527,7 @@ process SomaticCombineChannel {
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWesVcf
-  if (target != 'wgs') {
+  if (target != 'genome') {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
