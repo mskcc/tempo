@@ -7,6 +7,7 @@
 
 suppressPackageStartupMessages({
     library(data.table)
+    library(annotateMaf)
 })
 
 args = commandArgs(TRUE)
@@ -17,8 +18,7 @@ if (is.null(args) | length(args)<1) {
 }
 
 maf = args[1]
-output1 = maf
-output2 = gsub('.unfiltered.maf$', '.maf', maf)
+output_prefix = args[2]
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -29,9 +29,9 @@ add_tag = function(filter, tag) {
 ch_genes = c("ASXL1", "ATM", "BCOR", "CALR", "CBL", "CEBPA", "CREBBP", "DNMT3A", "ETV6", "EZH2", "FLT3", "GNAS",
              "IDH1", "IDH2", "JAK2", "KIT", "KRAS", "MPL", "MYD88", "NF1", "NPM1", "NRAS", "PPM1D", "RAD21", "RUNX1", "SETD2", "SF3B1", "SH2B3", "SRSF2", "STAG2", "STAT3", "TET2", "TP53", "U2AF1", "WT1", "ZRSR2")
 
-# Tag input MAF with filters --------------------------------------------------------------------------------------
-maf = fread(maf)
+maf = fread(maf, data.table = TRUE)
 
+# Tag input MAF with filters --------------------------------------------------------------------------------------
 maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             n_var_freq = n_alt_count/(n_alt_count+n_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
@@ -53,8 +53,12 @@ maf[gnomAD_FILTER == 1, FILTER := add_tag(FILTER, 'gnomad_filter')]
 # Filters not used:
 # gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier
 
-filter_maf = maf[FILTER == 'PASS']
+# Add BRCA annotation ---------------------------------------------------------------------------------------------
+maf = brca_annotate_maf(maf)
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
-fwrite(maf, output1, sep = '\t')
-fwrite(filter_maf, output2, sep = '\t')
+maf = as.data.table(maf) # necessary because of the class of output from previous call
+filter_maf = maf[FILTER == 'PASS']
+
+fwrite(maf, paste0(output_prefix, '.unfiltered.maf'), sep = '\t')
+fwrite(filter_maf, paste0(output_prefix, '.maf'), sep = '\t')
