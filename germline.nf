@@ -433,7 +433,7 @@ process GermlineCombineChannel {
   tag {idNormal}
 
   input:
-    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
+    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVcf), file(haplotypecallercombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mergedChannelVcfCombine
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -470,7 +470,7 @@ process GermlineCombineChannel {
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
-    ${haplotypecallercombinedVCF} ${strelkaVCF}
+    ${haplotypecallercombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
@@ -573,7 +573,7 @@ process GermlineCombineChannel {
   """
 }
 
-process GermlineRunVcf2Maf {
+process GermlineAnnotateMaf {
   tag {idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/mutations"
@@ -589,16 +589,15 @@ process GermlineRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFileGermline
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
 
   when: "strelka2" in tools && "haplotypecaller" in tools
 
-  outfile="${vcfMerged}".replaceFirst(".vcf", ".unfiltered.maf")
-
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
+  outputPrefix = "${idTumor}_vs_${idNormal}.germline"
   """
-  perl /usr/bin/vcf2maf/vcf2maf.pl \
+  perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
     --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
@@ -611,10 +610,10 @@ process GermlineRunVcf2Maf {
     --ref-fasta ${genomeFile} \
     --retain-info HaplotypeCaller,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax \
     --custom-enst ${isoforms} \
-    --output-maf ${outfile} \
+    --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-    filter-germline-maf.R ${outfile}
+  filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
   """
 }
 
