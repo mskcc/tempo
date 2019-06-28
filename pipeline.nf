@@ -1856,7 +1856,7 @@ process GermlineAnnotateMaf {
   script:
   outputPrefix = "${idTumor}_vs_${idNormal}.germline"
   """
-  perl /usr/bin/vcf2maf/vcf2maf.pl \
+  perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
     --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \

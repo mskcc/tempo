@@ -17,7 +17,7 @@ if (is.null(args) | length(args)<1) {
 }
 
 maf = args[1]
-out_prefix = args[2]
+output_prefix = args[2]
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -52,8 +52,12 @@ maf[gnomAD_FILTER == 1, FILTER := add_tag(FILTER, 'gnomad_filter')]
 # Filters not used:
 # gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier
 
-filter_maf = maf[FILTER == 'PASS']
+# Add BRCA annotation ---------------------------------------------------------------------------------------------
+maf = brca_annotate_maf(maf)
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
+maf = as.data.table(maf) # necessary because of the class of output from previous call
+filter_maf = maf[FILTER == 'PASS']
+
 fwrite(maf, paste0(output_prefix, '.unfiltered.maf'), sep = '\t')
 fwrite(filter_maf, paste0(output_prefix, '.maf'), sep = '\t')
