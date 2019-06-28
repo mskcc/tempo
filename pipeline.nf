@@ -1051,6 +1051,8 @@ process DoFacets {
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
     set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
+    set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
+    set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
 
   when: 'facets' in tools && runSomatic
 
@@ -1450,9 +1452,14 @@ process SomaticGroupForQC {
   input:
     set idTumor, idNormal, target, file(mafFile) from MafNeoantigenPairOutput.collect()
     file(mutsigFile) from mutSigOutput.collect()
+    set file(purSeg), file(purCncfTxt), file(purCncfPng), file(purRdata), file(purOut) from FacetsPurity.collect()
+    set file(hisensSeg), file(hisensCncfTxt), file(hisensCncfPng), file(hisensRdata), file(hisensOut) from FacetsHisens.collect()
+
 
   output:
     file("maf_files/*") into MafFilesOutput
+    file("mutsig/*") into MutSigFilesOutput
+    file("facets/*") into FacetsChannel
 
   when: "neoantigen" in tools
     
@@ -1465,6 +1472,13 @@ process SomaticGroupForQC {
   # Collect mutsig output to mutsig/
   mkdir mutsig
   mv *.mutsig.txt mutsig/
+
+  # Collect facets output to facets/
+  mkdir facets
+  mkdir facets/hisens
+  mkdir facets/purity
+  mv *purity.* facets/purity
+  mv *hisens.* facets/hisens
   """
 }
 
