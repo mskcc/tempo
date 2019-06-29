@@ -835,7 +835,11 @@ process SomaticCombineChannel {
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWgsVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
-  if (target != 'wgs') {
+  if (target == 'wgs') {
+    pon = wgsPoN
+    gnomad = gnomadWgsVcf
+  }
+  else {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -1714,7 +1718,10 @@ process GermlineCombineChannel {
   script:  
   isec_dir = "${idNormal}.isec"
   gnomad = gnomadWgsVcf
-  if (target != 'wgs') {
+  if (target == 'wgs') {
+    gnomad = gnomadWgsVcf
+  }
+  else {
     gnomad = gnomadWesVcf
   }
   """
@@ -2040,8 +2047,8 @@ def defineReferenceMap() {
     // gnomAD resources
     result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
-    result_array << ['wgsTargets' : checkParamReturnFile("wgsTargets")]
-    result_array << ['wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")]
+    result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
+    result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
     // HLA FASTA and *dat for LOHHLA 
     result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
     result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
