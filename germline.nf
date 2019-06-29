@@ -458,8 +458,10 @@ process GermlineCombineChannel {
 
   script:  
   isec_dir = "${idNormal}.isec"
-  gnomad = gnomadWgsVcf
-  if (target != 'wgs') {
+  if (target == 'wgs') {
+    gnomad = gnomadWgsVcf
+  }
+  else {
     gnomad = gnomadWesVcf
   }
   """
