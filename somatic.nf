@@ -131,7 +131,7 @@ process CreateScatteredIntervals {
   when: "mutect2" in tools
 
   script:
-  scatterCount = 10
+  scatterCount = 40
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
@@ -620,7 +620,7 @@ process SomaticCombineChannel {
     --output ${idTumor}.union.gnomad.vcf.gz \
     ${idTumor}.union.vcf.gz
 
-  tabix ${idTumor}.union.gnomad.vcf.gz
+  tabix --preset vcf ${idTumor}.union.gnomad.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.pon.header \
