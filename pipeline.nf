@@ -56,409 +56,457 @@ Germline Analysis
 
 if (params.mapping) mappingPath = params.mapping
 if (params.pairing) pairingPath = params.pairing
+if (params.bam_pairing) bamPairingPath = params.bam_pairing
 
-if (!check_for_duplicated_rows(pairingPath)) {
-  println "ERROR: Duplicated row found in pairing file. Please fix the error and rerun the pipeline"
+// CHECK if user provides uses either mapping or pairing argument, the other argument must be used as well
+
+if (params.mapping && !params.pairing){
+  println "ERROR: Flags --mapping and --pairing must both be provide. Please provide --pairing and re-run the pipeline."
   exit 1
 }
 
-outname = params.outname
+if (!params.mapping && params.pairing){
+  println "ERROR: Flags --mapping and --pairing must both be provide. Please provide --mapping and re-run the pipeline."
+  exit 1
+}
+
+if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pairing){
+  println "ERROR: Cannot use both FASTQs and BAMs as inputs. Flags --bam_pairing and --mapping/-pairing cannot be invoked together. Please provide either FASTQs or BAMs, and re-run thep pipeline."
+  exit 1
+} 
+
+// CHECK if duplicate rows provided in pairing tsv
+
+if (pairingPath && !check_for_duplicated_rows(pairingPath)) {
+  println "ERROR: Duplicated row found in pairing file. Please fix the error and re-run the pipeline."
+  exit 1
+}
+
+
+if (mappingPath && !check_for_duplicated_rows(mappingPath)) {
+  println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
+  exit 1
+}
+
+
+// We never use this parameter
+// outname = params.outname
 
 runGermline = params.germline
 runSomatic = params.somatic
 
 referenceMap = defineReferenceMap()
 
-fastqFiles = Channel.empty()
-
-mappingFile = file(mappingPath)
-pairingfile = file(pairingPath)
-
-pairingTN = extractPairing(pairingfile)
-
-fastqFiles = extractFastq(mappingFile)
-
-/*
-================================================================================
-=                               P R O C E S S E S                              =
-================================================================================
-*/
-
-fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets) }.set { groupedFastqs }
-
-groupedFastqs.into { fastPFiles; fastqFiles }
-fastPFiles = fastPFiles.transpose()
-fastqFiles = fastqFiles.transpose()
 
 
+if (!params.bam_pairing){
 
-// AlignReads - Map reads with BWA mem output SAM
+  fastqFiles = Channel.empty()
+ 
+  mappingFile = file(mappingPath)
+  pairingFile = file(pairingPath)
 
-process AlignReads {
-  tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
+  pairingTN = extractPairing(pairingFile)
 
-  publishDir "${params.outDir}/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
+  fastqFiles = extractFastq(mappingFile)
 
-  input:
-    set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
-    set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
+  /*
+  ================================================================================
+  =                               P R O C E S S E S                              =
+  ================================================================================
+  */
 
-  output:
-    file("*.html") into fastPResults
-    set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
+  fastqFiles.groupTuple(by:[0]).map { key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets) }.set { groupedFastqs }
 
-  script:
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+  groupedFastqs.into { fastPFiles; fastqFiles }
+  fastPFiles = fastPFiles.transpose()
+  fastqFiles = fastqFiles.transpose()
 
-    // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
-    if(params.mem_per_core) { 
-      mem = task.memory.toString().split(" ")[0].toInteger() - 1 
+
+
+  // AlignReads - Map reads with BWA mem output SAM
+
+  process AlignReads {
+    tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
+
+    publishDir "${params.outDir}/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
+
+    input:
+      set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
+      set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
+
+    output:
+      file("*.html") into fastPResults
+      set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
+
+    script:
+      readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+
+      // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
+      if(params.mem_per_core) { 
+        mem = task.memory.toString().split(" ")[0].toInteger() - 1 
+      }
+      else {
+        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+      } 
+    """
+    set -e
+    set -o pipefail
+    fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
+
+    samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
+    """
+  }
+
+
+  sortedBam.groupTuple().set { groupedBam }
+
+
+  // MergeBams
+
+  process MergeBams {
+    tag {idSample}
+
+    input:
+      set idSample, lane, file(bam), assay, targetFile from groupedBam
+
+    output:
+      set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile into mergedBam
+
+    script:
+    """
+    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
+    """
+  }
+
+
+  // GATK MarkDuplicates
+
+  process MarkDuplicates {
+    tag {idSample}
+
+     publishDir "${params.outDir}/MarkDup/${idSample}", mode: params.publishDirMode
+
+    input:
+      set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
+
+    output:
+      set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
+      set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), assay, targetFile into markDuplicatesTSV
+      file ("${idSample}.bam.metrics") into markDuplicatesReport
+
+    script:
+    """
+    gatk MarkDuplicates --java-options ${params.markdup_java_options}  \
+      --MAX_RECORDS_IN_RAM 50000 \
+      --INPUT ${idSample}.merged.bam \
+      --METRICS_FILE ${idSample}.bam.metrics \
+      --TMP_DIR . \
+      --ASSUME_SORT_ORDER coordinate \
+      --CREATE_INDEX true \
+      --OUTPUT ${idSample}.md.bam
+    """
+  }
+
+  duplicateMarkedBams = duplicateMarkedBams.map {
+      bam, bai, idSample, lane, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
+      [idSample, bam, bai, assay, targetFile]
+  }
+
+  (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
+
+
+  // GATK BaseRecalibrator , CreateRecalibrationTable
+
+  process CreateRecalibrationTable {
+    tag {idSample}
+
+    input:
+      set idSample, file(bam), file(bai), assay, targetFile from mdBam 
+
+      set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
+        referenceMap.genomeFile,
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict,
+        referenceMap.dbsnp,
+        referenceMap.dbsnpIndex,
+        referenceMap.knownIndels,
+        referenceMap.knownIndelsIndex 
+      ])
+
+    output:
+      set idSample, file("${idSample}.recal.table") into recalibrationTable
+      set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
+
+    script:
+    known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+
+    """
+    gatk BaseRecalibrator \
+      --tmp-dir /tmp \
+      --reference ${genomeFile} \
+      --known-sites ${dbsnp} \
+      ${known} \
+      --verbosity INFO \
+      --input ${bam} \
+      --output ${idSample}.recal.table
+    """
+  }
+
+  recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
+
+
+  // GATK ApplyBQSR, RecalibrateBAM
+
+  process RecalibrateBam {
+    tag {idSample}
+
+    publishDir "${params.outDir}/BQSR/${idSample}", mode: params.publishDirMode
+
+    input:
+      set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
+      set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+        referenceMap.genomeFile,
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict 
+      ])
+
+    output:
+      set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+      set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
+      set idSample into currentSample
+      set file("${idSample}.recal.bam") into currentBam
+      set file("${idSample}.recal.bai") into currentBai
+      set assay into assays
+      set targetFile into targets
+
+    script:
+    """
+    gatk ApplyBQSR \
+      --reference ${genomeFile} \
+      --create-output-bam-index true \
+      --bqsr-recal-file ${recalibrationReport} \
+      --input ${bam} \
+      --output ${idSample}.recal.bam
+    """
+  }
+
+
+  // set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
+
+  recalibratedBamForOutput.combine(pairingTN)
+                          .filter { item -> // only keep combinations where sample is same as tumor pair sample
+                            def idSample = item[0]
+                            def sampleBam = item[1]
+                            def sampleBai = item[2]
+                            def assay = item[3]
+                            def target = item[4]
+                            def idTumor = item[5]
+                            def idNormal = item[6]
+                            idSample == idTumor
+                          }.map { item -> // re-order the elements
+                            def idSample = item[0]
+                            def sampleBam = item[1]
+                            def sampleBai = item[2]
+                            def assay = item[3][0]
+                            def target = item[4][0]
+                            def idTumor = item[5]
+                            def idNormal = item[6]
+                            def bamTumor = sampleBam
+                            def baiTumor = sampleBai
+
+                            return [ assay, target, idTumor, idNormal, bamTumor, baiTumor ]
+                          }.combine(recalibratedBamForOutput2)
+                          .filter { item ->
+                            def assay = item[0]
+                            def target = item[1]
+                            def idTumor = item[2]
+                            def idNormal = item[3]
+                            def bamTumor = item[4]
+                            def baiTumor = item[5]
+                            def idSample = item[6]
+                            def bamNormal = item[7]
+                            def baiNormal = item[8]
+                            idSample == idNormal
+                          }.map { item -> // re-order the elements
+                            def assay = item[0]
+                            def target = item[1]
+                            def idTumor = item[2]
+                            def idNormal = item[3]
+                            def bamTumor = item[4]
+                            def baiTumor = item[5]
+                            def idSample = item[6]
+                            def bamNormal = item[7]
+                            def baiNormal = item[8]
+
+                            return [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
+                          }
+                          .set { result }
+
+  result.into { resultTsv; bamFiles }
+
+  File file = new File(outname)
+  file.newWriter().withWriter { w ->
+      w << "ASSAY\tTARGET\tTUMOR_ID\tNORMAL_ID\tTUMOR_BAM\tNORMAL_BAM\tTUMOR_BAI\tNORMAL_BAI\n"
+  }
+
+  if (workflow.profile == 'awsbatch') {
+      resultTsv.subscribe { Object obj ->
+        file.withWriterAppend { out ->
+          out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\ts3:/${obj[4]}\ts3:/${obj[5]}\ts3:/${obj[6]}\ts3:/${obj[7]}"
+        }
+      }
     }
-    else {
-      mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-    } 
-  """
-  set -e
-  set -o pipefail
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
-  bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
-
-  samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
-  """
-}
-
-
-sortedBam.groupTuple().set { groupedBam }
-
-
-// MergeBams
-
-process MergeBams {
-  tag {idSample}
-
-  input:
-    set idSample, lane, file(bam), assay, targetFile from groupedBam
-
-  output:
-    set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile into mergedBam
-
-  script:
-  """
-  samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
-  """
-}
-
-
-// GATK MarkDuplicates
-
-process MarkDuplicates {
-  tag {idSample}
-
-   publishDir "${params.outDir}/MarkDup/${idSample}", mode: params.publishDirMode
-
-  input:
-    set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
-
-  output:
-    set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
-    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), assay, targetFile into markDuplicatesTSV
-    file ("${idSample}.bam.metrics") into markDuplicatesReport
-
-  script:
-  """
-  gatk MarkDuplicates --java-options ${params.markdup_java_options}  \
-    --MAX_RECORDS_IN_RAM 50000 \
-    --INPUT ${idSample}.merged.bam \
-    --METRICS_FILE ${idSample}.bam.metrics \
-    --TMP_DIR . \
-    --ASSUME_SORT_ORDER coordinate \
-    --CREATE_INDEX true \
-    --OUTPUT ${idSample}.md.bam
-  """
-}
-
-duplicateMarkedBams = duplicateMarkedBams.map {
-    bam, bai, idSample, lane, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
-    [idSample, bam, bai, assay, targetFile]
-}
-
-(mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
-
-
-// GATK BaseRecalibrator , CreateRecalibrationTable
-
-process CreateRecalibrationTable {
-  tag {idSample}
-
-  input:
-    set idSample, file(bam), file(bai), assay, targetFile from mdBam 
-
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict,
-      referenceMap.dbsnp,
-      referenceMap.dbsnpIndex,
-      referenceMap.knownIndels,
-      referenceMap.knownIndelsIndex 
-    ])
-
-  output:
-    set idSample, file("${idSample}.recal.table") into recalibrationTable
-    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
-
-  script:
-  known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
-
-  """
-  gatk BaseRecalibrator \
-    --tmp-dir /tmp \
-    --reference ${genomeFile} \
-    --known-sites ${dbsnp} \
-    ${known} \
-    --verbosity INFO \
-    --input ${bam} \
-    --output ${idSample}.recal.table
-  """
-}
-
-recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
-
-
-// GATK ApplyBQSR, RecalibrateBAM
-
-process RecalibrateBam {
-  tag {idSample}
-
-  publishDir "${params.outDir}/BQSR/${idSample}", mode: params.publishDirMode
-
-  input:
-    set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict 
-    ])
-
-  output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
-    set idSample into currentSample
-    set file("${idSample}.recal.bam") into currentBam
-    set file("${idSample}.recal.bai") into currentBai
-    set assay into assays
-    set targetFile into targets
-
-  script:
-  """
-  gatk ApplyBQSR \
-    --reference ${genomeFile} \
-    --create-output-bam-index true \
-    --bqsr-recal-file ${recalibrationReport} \
-    --input ${bam} \
-    --output ${idSample}.recal.bam
-  """
-}
-
-
-// set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
-
-recalibratedBamForOutput.combine(pairingTN)
-                        .filter { item -> // only keep combinations where sample is same as tumor pair sample
-                          def idSample = item[0]
-                          def sampleBam = item[1]
-                          def sampleBai = item[2]
-                          def assay = item[3]
-                          def target = item[4]
-                          def idTumor = item[5]
-                          def idNormal = item[6]
-                          idSample == idTumor
-                        }.map { item -> // re-order the elements
-                          def idSample = item[0]
-                          def sampleBam = item[1]
-                          def sampleBai = item[2]
-                          def assay = item[3][0]
-                          def target = item[4][0]
-                          def idTumor = item[5]
-                          def idNormal = item[6]
-                          def bamTumor = sampleBam
-                          def baiTumor = sampleBai
-
-                          return [ assay, target, idTumor, idNormal, bamTumor, baiTumor ]
-                        }.combine(recalibratedBamForOutput2)
-                        .filter { item ->
-                          def assay = item[0]
-                          def target = item[1]
-                          def idTumor = item[2]
-                          def idNormal = item[3]
-                          def bamTumor = item[4]
-                          def baiTumor = item[5]
-                          def idSample = item[6]
-                          def bamNormal = item[7]
-                          def baiNormal = item[8]
-                          idSample == idNormal
-                        }.map { item -> // re-order the elements
-                          def assay = item[0]
-                          def target = item[1]
-                          def idTumor = item[2]
-                          def idNormal = item[3]
-                          def bamTumor = item[4]
-                          def baiTumor = item[5]
-                          def idSample = item[6]
-                          def bamNormal = item[7]
-                          def baiNormal = item[8]
-
-                          return [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
-                        }
-                        .set { result }
-
-result.into { resultTsv; bamFiles }
-
-File file = new File(outname)
-file.newWriter().withWriter { w ->
-    w << "ASSAY\tTARGET\tTUMOR_ID\tNORMAL_ID\tTUMOR_BAM\tNORMAL_BAM\tTUMOR_BAI\tNORMAL_BAI\n"
-}
-
-if (workflow.profile == 'awsbatch') {
+  else {
     resultTsv.subscribe { Object obj ->
       file.withWriterAppend { out ->
-        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\ts3:/${obj[4]}\ts3:/${obj[5]}\ts3:/${obj[6]}\ts3:/${obj[7]}"
+        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[4]}\t${obj[5]}\t${obj[6]}\t${obj[7]}"
       }
     }
   }
-else {
-  resultTsv.subscribe { Object obj ->
-    file.withWriterAppend { out ->
-      out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[4]}\t${obj[5]}\t${obj[6]}\t${obj[7]}"
-    }
+
+
+  ignore_read_groups = Channel.from( true , false )
+
+
+  // Alfred, BAM QC
+
+  process Alfred {
+    tag {idSample + "@" + "ignore_rg_" + ignore_rg }
+
+    publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
+    
+    input:
+      each ignore_rg from ignore_read_groups
+      set idSample, file(bam), file(bai), assay, targetFile from recalibratedBam
+
+      file(genomeFile) from Channel.value([
+        referenceMap.genomeFile
+      ])
+
+    output:
+      set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
+
+    script:
+    def ignore = ignore_rg ? "--ignore" : ''
+    def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
+    """
+    alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
+    """
+
   }
+
+  (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
+
+
+  // GATK SplitIntervals, CreateScatteredIntervals
+
+  process CreateScatteredIntervals {
+
+    input:
+      set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+        referenceMap.genomeFile,
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict
+        ])
+      set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+        referenceMap.idtTargets,
+        referenceMap.agilentTargets,
+        referenceMap.wgsTargets
+        ])
+      set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+        referenceMap.idtTargetsIndex,
+        referenceMap.agilentTargetsIndex,
+        referenceMap.wgsTargetsIndex
+        ])
+
+    output:
+      file("agilent*.interval_list") into agilentIntervals mode flatten
+      file("idt*.interval_list") into idtIntervals mode flatten
+      file("wgs*.interval_list") into wgsIntervals mode flatten
+
+    script:
+    scatterCount = 10
+    """
+    gatk SplitIntervals \
+      --reference ${genomeFile} \
+      --intervals ${agilentTargets} \
+      --scatter-count ${scatterCount} \
+      --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+      --output agilent
+
+    for i in agilent/*.interval_list;
+    do
+      BASENAME=`basename \$i`
+      mv \$i agilent-\$BASENAME
+    done
+
+    gatk SplitIntervals \
+      --reference ${genomeFile} \
+      --intervals ${idtTargets} \
+      --scatter-count ${scatterCount} \
+      --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+      --output idt
+
+    for i in idt/*.interval_list;
+    do
+      BASENAME=`basename \$i`
+      mv \$i idt-\$BASENAME
+    done
+
+    gatk SplitIntervals \
+      --reference ${genomeFile} \
+      --intervals ${wgsIntervals} \
+      --scatter-count ${scatterCount} \
+      --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+      --output wgs 
+
+    for i in wgs/*.interval_list;
+    do
+      BASENAME=`basename \$i`
+      mv \$i wgs-\$BASENAME
+    done
+    """
+  }
+
+  (bamsForIntervals, bamFiles) = bamFiles.into(2)
+
+  //Associating interval_list files with BAM files, putting them into one channel
+  agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
+  idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
+  wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
+
+  (aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
+
+  aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
+  bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
+  wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
+
+  // These will go into mutect2 and haplotypecaller
+  (mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
+
 }
 
-
-ignore_read_groups = Channel.from( true , false )
-
-
-// Alfred, BAM QC
-
-process Alfred {
-  tag {idSample + "@" + "ignore_rg_" + ignore_rg }
-
-  publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
-  
-  input:
-    each ignore_rg from ignore_read_groups
-    set idSample, file(bam), file(bai), assay, targetFile from recalibratedBam
-
-    file(genomeFile) from Channel.value([
-      referenceMap.genomeFile
-    ])
-
-  output:
-    set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
-
-  script:
-  def ignore = ignore_rg ? "--ignore" : ''
-  def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
-  """
-  alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
-  """
-
-}
-
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
-
-
-// GATK SplitIntervals, CreateScatteredIntervals
-
-process CreateScatteredIntervals {
-
-  input:
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile,
-      referenceMap.genomeIndex,
-      referenceMap.genomeDict
-      ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
-      referenceMap.idtTargets,
-      referenceMap.agilentTargets,
-      referenceMap.wgsTargets
-      ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
-      referenceMap.idtTargetsIndex,
-      referenceMap.agilentTargetsIndex,
-      referenceMap.wgsTargetsIndex
-      ])
-
-  output:
-    file("agilent*.interval_list") into agilentIntervals mode flatten
-    file("idt*.interval_list") into idtIntervals mode flatten
-    file("wgs*.interval_list") into wgsIntervals mode flatten
-
-  script:
-  scatterCount = 10
-  """
-  gatk SplitIntervals \
-    --reference ${genomeFile} \
-    --intervals ${agilentTargets} \
-    --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output agilent
-
-  for i in agilent/*.interval_list;
-  do
-    BASENAME=`basename \$i`
-    mv \$i agilent-\$BASENAME
-  done
-
-  gatk SplitIntervals \
-    --reference ${genomeFile} \
-    --intervals ${idtTargets} \
-    --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output idt
-
-  for i in idt/*.interval_list;
-  do
-    BASENAME=`basename \$i`
-    mv \$i idt-\$BASENAME
-  done
-
-  gatk SplitIntervals \
-    --reference ${genomeFile} \
-    --intervals ${wgsIntervals} \
-    --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output wgs 
-
-  for i in wgs/*.interval_list;
-  do
-    BASENAME=`basename \$i`
-    mv \$i wgs-\$BASENAME
-  done
-  """
-}
-
-(bamsForIntervals, bamFiles) = bamFiles.into(2)
-
-//Associating interval_list files with BAM files, putting them into one channel
-agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
-idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
-wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
-
-(aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
-
-aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
-bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
-wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
-
-// These will go into mutect2 and haplotypecaller
-(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
 
 /*
 ================================================================================
 =                                SOMATIC PIPELINE                              =
 ================================================================================
 */
+
+if (params.bam_pairing){
+
+  bamFiles = Channel.empty()
+ 
+  bamPairingfile = file(bamPairingPath)
+
+  bamFiles = extractPairing(bamPairingfile)
+
+}
+
+
+
 
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
@@ -2085,9 +2133,46 @@ def extractFastq(tsvFile) {
     checkFileExtension(fastqFile1,".fastq.gz")
     checkFileExtension(fastqFile2,".fastq.gz")
 
-    [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
+    [idSample, lane, assay, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
   }
 }
+
+//    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
+
+// extract BAMs for bam pairing file
+def extractBAM(tsvFile) {
+  Channel.from(tsvFile)
+  .splitCsv(sep: '\t', header: true)
+  .map { row ->
+    checkNumberOfItem(row, 6)
+    def idTumor= row.TUMOR_ID
+    def idNormal= row.NORMAL_ID
+    def assay = row.ASSAY
+    def target= row.TARGET
+    def bamTumor = returnFile(row.TUMOR_BAM)
+    def baiTumor = "${tumorBamFile}.bai"
+    // def sizeTumorBamFile = tumorBamFile.size()
+    def bamNormal = returnFile(row.NORMAL_BAM)
+    def baiNormal = "${normalBamFile}.bai"
+    // def sizeNormalBamFile = normalBamFile.size()
+
+    // Check BAMs are indexed
+    if(!file(baiTumor).exists){
+      println "ERROR: Cannot find BAM indices for ${baiTumor} in the format '${baiTumor}.bai'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+      exit 1
+    }
+
+    // Check BAMs are indexed
+    if(!file(baiNormal).exists){
+      println "ERROR: Cannot find BAM indices for ${baiNormal} in the format '${baiNormal}.bai'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+      exit 1
+    }
+
+    [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
+  }
+}
+
+
 
 // Check file extension
 def checkFileExtension(it, extension) {
