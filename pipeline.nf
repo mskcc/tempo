@@ -432,7 +432,7 @@ if (params.bam_pairing){
  
   bamPairingfile = file(bamPairingPath)
 
-  bamFiles = extractPairing(bamPairingfile)
+  bamFiles = extractBAM(bamPairingfile)
 
 }
 
