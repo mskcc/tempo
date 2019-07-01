@@ -129,6 +129,25 @@ process AlignReads {
 
 sortedBam.groupTuple().set{groupedBam}
 
+groupedBam = groupedBam.map{ item ->
+  def idSample = item[0]
+  def lane = item[1] //is a list
+  def bam = item[2]
+  
+  def assayList = item[3].unique()
+  def targetList = item[4].unique()
+
+  if ((assayList.size() > 1) || (targetList.size() > 1)) {  
+    println "ERROR: Multiple assays and/or targets found for ${idSample}; check inputs"
+    exit 1
+  }
+
+  def assay = assayList[0]
+  def target = targetList[0]
+
+  [idSample, lane, bam, assay, target]
+}
+
 // MergeBams
 
 process MergeBams {
@@ -275,8 +294,8 @@ recalibratedBamForOutput.combine(pairingTN)
                           def idSample = item[0]
                           def sampleBam = item[1]
                           def sampleBai = item[2]
-                          def assay = item[3][0]
-                          def target = item[4][0]
+                          def assay = item[3]
+                          def target = item[4]
                           def idTumor = item[5]
                           def idNormal = item[6]
                           def bamTumor = sampleBam
