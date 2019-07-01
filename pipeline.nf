@@ -26,7 +26,7 @@ Somatic Analysis
 - SomaticCombineChannel
 - SomaticRunBCFToolsFilterNorm
 - SomaticRunBCFToolsMerge
-- SomaticRunVCF2MAF
+- SomaticAnnotateMaf
 - SomaticDoSNPPileup
 - DoFacets
 - RunMsiSensor
@@ -45,7 +45,7 @@ Germline Analysis
 - GermlineRunStrelka
 - GermlineRunBcfToolsFilterNorm
 - GermlineRunBcfToolsMerge
-- GermlineRunVcf2Maf
+- GermlineAnnotateMaf
 */
 
 /*
@@ -54,11 +54,21 @@ Germline Analysis
 ================================================================================
 */
 
+if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
+  println "ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)"
+  exit 1
+}
+
 if (params.mapping) mappingPath = params.mapping
 if (params.pairing) pairingPath = params.pairing
 
 if (!check_for_duplicated_rows(pairingPath)) {
   println "ERROR: Duplicated row found in pairing file. Please fix the error and rerun the pipeline"
+  exit 1
+}
+
+if (!check_for_mixed_assay(mappingPath)) {
+  println "ERROR: You can only use either assays 'exome' or 'genome', not both WES and WGS together"
   exit 1
 }
 
@@ -465,6 +475,9 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
+if('strelka2' in tools) {
+  tools.add('manta')
+}
 
 // --- Run Delly
 
@@ -816,7 +829,7 @@ process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
+    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -850,7 +863,7 @@ process SomaticCombineChannel {
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWesVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
-  if (target != 'wgs') {
+  if (target != 'genome') {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -865,7 +878,7 @@ process SomaticCombineChannel {
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
-    ${mutect2combinedVCF} ${strelkaVCF}
+    ${mutectCombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
@@ -966,7 +979,7 @@ process SomaticCombineChannel {
 
 // run VCF2MAF, somatic
 
-process SomaticRunVcf2Maf {
+process SomaticAnnotateMaf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
@@ -982,15 +995,14 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
-
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFile
 
   script:
-  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
+  outputPrefix = "${idTumor}_vs_${idNormal}"
   """
-  perl /usr/bin/vcf2maf/vcf2maf.pl \
+  perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
-    --vep-path /usr/bin/vep  \
+    --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
     --vep-forks 10 \
     --tumor-id ${idTumor} \
@@ -1001,17 +1013,21 @@ process SomaticRunVcf2Maf {
     --ref-fasta ${genomeFile} \
     --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
     --custom-enst ${isoforms} \
-    --output-maf ${outfile} \
+    --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-somatic-maf.R ${outfile}
+  python /usr/bin/oncokb_annotator/MafAnnotator.py \
+    -i ${outputPrefix}.raw.maf \
+    -o ${outputPrefix}.raw.oncokb.maf
+
+  filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
   """
 }
 
 
-// MSI Sensor
+// --- Run MSIsensor
 
-(bamFilesForMsiSensor, bamFiles) = bamFiles.into(2)
+(bamsForMsiSensor, bamFiles) = bamFiles.into(2)
 
 process RunMsiSensor {
   tag {idTumor + "_vs_" + idNormal}
@@ -1019,7 +1035,7 @@ process RunMsiSensor {
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/msisensor", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForMsiSensor
+    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1030,10 +1046,10 @@ process RunMsiSensor {
   output:
     set file("${outputPrefix}"), file("${outputPrefix}_somatic"), file("${outputPrefix}_germline") into msiOutput 
 
-  when: "msisensor" in tools && runSomatic
+  when: "msisensor" in tools
 
   script:
-  outputPrefix = "${idTumor}_${idNormal}"
+  outputPrefix = "${idTumor}_vs_${idNormal}.msisensor.tsv"
   """
   msisensor msi \
     -d ${msiSensorList} \
@@ -1042,7 +1058,6 @@ process RunMsiSensor {
     -o ${outputPrefix}
   """
 }
-
 
 // --- Run FACETS
 
@@ -1314,7 +1329,7 @@ process RunLOHHLA {
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
     Rscript /lohhla/LOHHLAscript.R \
-        --patientId ${idTumor} \
+        --patientId ${idTumor}_vs_{idNormal} \
         --normalBAMfile ${bamNormal} \
         --tumorBAMfile ${bamTumor} \
         --HLAfastaLoc ${hlaFasta} \
@@ -1711,7 +1726,7 @@ process GermlineCombineChannel {
   tag {idNormal}
 
   input:
-    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVCF), file(haplotypecallercombinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mergedChannelVcfCombine
+    set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVcf), file(haplotypecallercombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mergedChannelVcfCombine
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1735,7 +1750,7 @@ process GermlineCombineChannel {
   script:  
   isec_dir = "${idNormal}.isec"
   gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
-  if (target != 'wgs') {
+  if (target != 'genome') {
     gnomad = gnomadWesVcf
   }
   """
@@ -1748,7 +1763,7 @@ process GermlineCombineChannel {
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
-    ${haplotypecallercombinedVCF} ${strelkaVCF}
+    ${haplotypecallercombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
@@ -1853,7 +1868,7 @@ process GermlineCombineChannel {
 
 // vcf2maf, germline calls
 
-process GermlineRunVcf2Maf {
+process GermlineAnnotateMaf {
   tag {idNormal}
 
   publishDir "${ params.outDir }/${idTumor}_vs_${idNormal}/germline_variants/mutations", mode: params.publishDirMode
@@ -1870,16 +1885,15 @@ process GermlineRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.maf") into mafFileGermline
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
-  outfile="${vcfMerged}".replaceFirst(".vcf", ".unfiltered.maf")
-
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
+  outputPrefix = "${idTumor}_vs_${idNormal}.germline"
   """
-  perl /usr/bin/vcf2maf/vcf2maf.pl \
+  perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
     --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
@@ -1892,12 +1906,12 @@ process GermlineRunVcf2Maf {
     --ref-fasta ${genomeFile} \
     --retain-info HaplotypeCaller,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax \
     --custom-enst ${isoforms} \
-    --output-maf ${outfile} \
+    --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
-    
-    filter-germline-maf.R ${outfile}
+
+  filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
   """
-}
+  }
 
 
 // --- Process Delly and Manta VCFs 
@@ -2133,4 +2147,18 @@ def check_for_duplicated_rows(pairingFilePath) {
     entries << line
   }
   return entries.toSet().size() == entries.size()
+}
+
+def check_for_mixed_assay(mappingFilePath) {
+  def wgs = false
+  def wes = false
+  file( mappingFilePath ).eachLine { line ->
+    if (line.contains('\tgenome\t')) {
+      wgs = true
+    }
+    if (line.contains('\texome\t')) {
+      wes = true
+    }
+  return !(wgs && wes)
+  }
 }
