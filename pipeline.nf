@@ -70,7 +70,7 @@ if (!params.mapping && params.pairing){
   exit 1
 }
 
-if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pairing){
+if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pairing)){
   println "ERROR: Cannot use both FASTQs and BAMs as inputs. Flags --bam_pairing and --mapping/-pairing cannot be invoked together. Please provide either FASTQs or BAMs, and re-run thep pipeline."
   exit 1
 } 
