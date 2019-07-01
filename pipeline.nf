@@ -370,12 +370,11 @@ process Alfred {
     ])
     set file(idtTargets), file(agilentTargets) from Channel.value([
       referenceMap.idtTargets,
-      referenceMap.agilentTargets,
-      referenceMap.wgsTargets
+      referenceMap.agilentTargets
     ])
     set file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
-      referenceMap.agilentTargetsIndex,
+      referenceMap.agilentTargetsIndex
     ])
 
   output:
