@@ -457,7 +457,7 @@ process GermlineCombineChannel {
   script:  
   isec_dir = "${idNormal}.isec"
   gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
-  if (target != 'wgs') {
+  if (target != 'genome') {
     gnomad = gnomadWesVcf
   }
   """
