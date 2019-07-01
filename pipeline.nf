@@ -1454,6 +1454,7 @@ process SomaticGroupForQC {
     file(mutsigFile) from mutSigOutput.collect()
     set file(purSeg), file(purCncfTxt), file(purCncfPng), file(purRdata), file(purOut) from FacetsPurity.collect()
     set file(hisensSeg), file(hisensCncfTxt), file(hisensCncfPng), file(hisensRdata), file(hisensOut) from FacetsHisens.collect()
+    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
 
 
   output:
@@ -1485,6 +1486,10 @@ process SomaticGroupForQC {
   mkdir facets/purity
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
+
+  # Collect delly and manta vcf outputs into vcf_delly_manta/
+  mkdir vcf_delly_manta
+  mv *.filtered.merge.vcf vcf_delly_manta
   """
 }
 
