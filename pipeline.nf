@@ -88,6 +88,10 @@ if (mappingPath && !check_for_duplicated_rows(mappingPath)) {
   exit 1
 }
 
+if (bamPairingPath && !check_for_duplicated_rows(bamPairingPath)) {
+  println "ERROR: Duplicated row found in bam mapping file. Please fix the error and re-run the pipeline."
+  exit 1
+}
 
 // We never use this parameter
 // outname = params.outname
@@ -96,7 +100,6 @@ runGermline = params.germline
 runSomatic = params.somatic
 
 referenceMap = defineReferenceMap()
-
 
 
 if (!params.bam_pairing){
