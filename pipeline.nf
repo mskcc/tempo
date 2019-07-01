@@ -2159,10 +2159,10 @@ def extractBAM(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 6)
-    def idTumor= row.TUMOR_ID
-    def idNormal= row.NORMAL_ID
+    def idTumor = row.TUMOR_ID
+    def idNormal = row.NORMAL_ID
     def assay = row.ASSAY
-    def target= row.TARGET
+    def target = row.TARGET
     def bamTumor = returnFile(row.TUMOR_BAM)
     def baiTumor = "${bamTumor}.bai"
     // def sizeTumorBamFile = tumorBamFile.size()
@@ -2172,13 +2172,13 @@ def extractBAM(tsvFile) {
 
     // Check BAMs are indexed
     if(!file(baiTumor).exists()){
-      println "ERROR: Cannot find BAM indices for ${baiTumor} in the format '${baiTumor}.bai'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+      println "ERROR: Cannot find BAM indices for ${bamTumor} in the format '${baiTumor}'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
       exit 1
     }
 
     // Check BAMs are indexed
     if(!file(baiNormal).exists()){
-      println "ERROR: Cannot find BAM indices for ${baiNormal} in the format '${baiNormal}.bai'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+      println "ERROR: Cannot find BAM indices for ${bamNormal} in the format '${baiNormal}'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
       exit 1
     }
 
