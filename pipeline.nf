@@ -54,9 +54,6 @@ Germline Analysis
 ================================================================================
 */
 
-if (params.mapping) mappingPath = params.mapping
-if (params.pairing) pairingPath = params.pairing
-if (params.bam_pairing) bamPairingPath = params.bam_pairing
 
 // CHECK if user provides uses either mapping or pairing argument, the other argument must be used as well
 
@@ -77,20 +74,32 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 
 // CHECK if duplicate rows provided in pairing tsv
 
-if (pairingPath && !check_for_duplicated_rows(pairingPath)) {
-  println "ERROR: Duplicated row found in pairing file. Please fix the error and re-run the pipeline."
-  exit 1
+if (params.mapping) {
+  mappingPath = params.mapping
+
+  if (mappingPath && !check_for_duplicated_rows(mappingPath)) {
+    println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
+    exit 1
+  }
 }
 
+if (params.pairing) {
+  pairingPath = params.pairing
 
-if (mappingPath && !check_for_duplicated_rows(mappingPath)) {
-  println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
-  exit 1
+  if (!check_for_duplicated_rows(pairingPath)) {
+    println "ERROR: Duplicated row found in pairing file. Please fix the error and re-run the pipeline."
+    exit 1
+  }
 }
 
-if (bamPairingPath && !check_for_duplicated_rows(bamPairingPath)) {
-  println "ERROR: Duplicated row found in bam mapping file. Please fix the error and re-run the pipeline."
-  exit 1
+if (params.bam_pairing) {
+  bamPairingPath = params.bam_pairing
+
+  if (bamPairingPath && !check_for_duplicated_rows(bamPairingPath)) {
+    println "ERROR: Duplicated row found in bam mapping file. Please fix the error and re-run the pipeline."
+    exit 1
+  }
+
 }
 
 // We never use this parameter
