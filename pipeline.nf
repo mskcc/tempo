@@ -54,11 +54,21 @@ Germline Analysis
 ================================================================================
 */
 
+if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
+  println "ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)"
+  exit 1
+}
+
 if (params.mapping) mappingPath = params.mapping
 if (params.pairing) pairingPath = params.pairing
 
 if (!check_for_duplicated_rows(pairingPath)) {
   println "ERROR: Duplicated row found in pairing file. Please fix the error and rerun the pipeline"
+  exit 1
+}
+
+if (!check_for_mixed_assay(mappingPath)) {
+  println "ERROR: You can only use either assays 'exome' or 'genome', not both WES and WGS together"
   exit 1
 }
 
@@ -364,8 +374,6 @@ process Alfred {
   """
 
 }
-
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
 
 // GATK SplitIntervals, CreateScatteredIntervals
@@ -839,7 +847,7 @@ process SomaticCombineChannel {
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWesVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
-  if (target != 'wgs') {
+  if (target != 'genome') {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -1716,7 +1724,7 @@ process GermlineCombineChannel {
   script:  
   isec_dir = "${idNormal}.isec"
   gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
-  if (target != 'wgs') {
+  if (target != 'genome') {
     gnomad = gnomadWesVcf
   }
   """
@@ -2112,4 +2120,18 @@ def check_for_duplicated_rows(pairingFilePath) {
     entries << line
   }
   return entries.toSet().size() == entries.size()
+}
+
+def check_for_mixed_assay(mappingFilePath) {
+  def wgs = false
+  def wes = false
+  file( mappingFilePath ).eachLine { line ->
+    if (line.contains('\tgenome\t')) {
+      wgs = true
+    }
+    if (line.contains('\texome\t')) {
+      wes = true
+    }
+  return !(wgs && wes)
+  }
 }
