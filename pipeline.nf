@@ -365,8 +365,6 @@ process Alfred {
 
 }
 
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
-
 
 // GATK SplitIntervals, CreateScatteredIntervals
 
