@@ -2171,13 +2171,13 @@ def extractBAM(tsvFile) {
     // def sizeNormalBamFile = normalBamFile.size()
 
     // Check BAMs are indexed
-    if(!file(baiTumor).exists){
+    if(!file(baiTumor).exists()){
       println "ERROR: Cannot find BAM indices for ${baiTumor} in the format '${baiTumor}.bai'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
       exit 1
     }
 
     // Check BAMs are indexed
-    if(!file(baiNormal).exists){
+    if(!file(baiNormal).exists()){
       println "ERROR: Cannot find BAM indices for ${baiNormal} in the format '${baiNormal}.bai'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
       exit 1
     }
