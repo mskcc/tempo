@@ -99,8 +99,7 @@ process SomaticDellyCall {
 }
 
 
-// --- Run Mutect2
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
+
 
 process CreateScatteredIntervals {
 
@@ -173,6 +172,10 @@ process CreateScatteredIntervals {
   done
   """
 }
+
+
+// --- Run Mutect2
+
 
 (bamsForMutect2Intervals, bamFiles) = bamFiles.into(2)
 
