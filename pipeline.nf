@@ -191,7 +191,7 @@ process CreateRecalibrationTable {
   input:
     set idSample, file(bam), file(bai), assay, targetFile from mdBam 
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
@@ -206,14 +206,14 @@ process CreateRecalibrationTable {
     set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
   script:
-  known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+  knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
 
   """
   gatk BaseRecalibrator \
     --tmp-dir /tmp \
     --reference ${genomeFile} \
     --known-sites ${dbsnp} \
-    ${known} \
+    ${knownSites} \
     --verbosity INFO \
     --input ${bam} \
     --output ${idSample}.recal.table
@@ -344,20 +344,19 @@ process Alfred {
   
   input:
     each ignore_rg from ignore_read_groups
-    set idSample, file(bam), file(bai), assay, targetFile from recalibratedBam
+    set idSample, file(bam), file(bai), assay, target from recalibratedBam
 
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
     ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
     ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
-      referenceMap.wgsTargetsIndex
     ])
 
   output:
@@ -365,14 +364,16 @@ process Alfred {
 
   script:
   options = ""
-  if(params.assayType == "exome") {
-    if(target == 'agilent') intervals = agilentTargets
-    if(target == 'idt') intervals = idtTargets
-    options = "--bed ${intervals}"
+  if (assay == "exome") {
+    if (target == 'agilent') options = "--bed ${agilentTargets}"
+    if (target == 'idt') options = "--bed ${idtTargets}"
    }
   def ignore = ignore_rg ? "--ignore" : ''
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
   """
+  echo ${idSample}
+  echo ${assay}
+  echo ${target}
   alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
     Rscript /opt/alfred/scripts/stats.R ${outfile}
   """
@@ -527,7 +528,7 @@ process SomaticDellyCall {
 // --- Run Mutect2
 
 process RunMutect2 {
-  tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName }
+  tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName}
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
