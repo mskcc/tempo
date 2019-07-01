@@ -2164,10 +2164,10 @@ def extractBAM(tsvFile) {
     def assay = row.ASSAY
     def target= row.TARGET
     def bamTumor = returnFile(row.TUMOR_BAM)
-    def baiTumor = "${tumorBamFile}.bai"
+    def baiTumor = "${bamTumor}.bai"
     // def sizeTumorBamFile = tumorBamFile.size()
     def bamNormal = returnFile(row.NORMAL_BAM)
-    def baiNormal = "${normalBamFile}.bai"
+    def baiNormal = "${bamNormal}.bai"
     // def sizeNormalBamFile = normalBamFile.size()
 
     // Check BAMs are indexed
