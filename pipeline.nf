@@ -409,94 +409,7 @@ if (!params.bam_pairing){
 
   }
 
-  (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
-
-
-  // GATK SplitIntervals, CreateScatteredIntervals
-
-  process CreateScatteredIntervals {
-
-    input:
-      set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-        referenceMap.genomeFile,
-        referenceMap.genomeIndex,
-        referenceMap.genomeDict
-        ])
-      set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
-        referenceMap.idtTargets,
-        referenceMap.agilentTargets,
-        referenceMap.wgsTargets
-        ])
-      set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
-        referenceMap.idtTargetsIndex,
-        referenceMap.agilentTargetsIndex,
-        referenceMap.wgsTargetsIndex
-        ])
-
-    output:
-      file("agilent*.interval_list") into agilentIntervals mode flatten
-      file("idt*.interval_list") into idtIntervals mode flatten
-      file("wgs*.interval_list") into wgsIntervals mode flatten
-
-    script:
-    scatterCount = 10
-    """
-    gatk SplitIntervals \
-      --reference ${genomeFile} \
-      --intervals ${agilentTargets} \
-      --scatter-count ${scatterCount} \
-      --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-      --output agilent
-
-    for i in agilent/*.interval_list;
-    do
-      BASENAME=`basename \$i`
-      mv \$i agilent-\$BASENAME
-    done
-
-    gatk SplitIntervals \
-      --reference ${genomeFile} \
-      --intervals ${idtTargets} \
-      --scatter-count ${scatterCount} \
-      --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-      --output idt
-
-    for i in idt/*.interval_list;
-    do
-      BASENAME=`basename \$i`
-      mv \$i idt-\$BASENAME
-    done
-
-    gatk SplitIntervals \
-      --reference ${genomeFile} \
-      --intervals ${wgsIntervals} \
-      --scatter-count ${scatterCount} \
-      --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-      --output wgs 
-
-    for i in wgs/*.interval_list;
-    do
-      BASENAME=`basename \$i`
-      mv \$i wgs-\$BASENAME
-    done
-    """
-  }
-
-  (bamsForIntervals, bamFiles) = bamFiles.into(2)
-
-  //Associating interval_list files with BAM files, putting them into one channel
-  agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
-  idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
-  wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
-
-  (aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
-
-  aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
-  bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
-  wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
-
-  // These will go into mutect2 and haplotypecaller
-  (mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
+  /// (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
 }
 
@@ -506,6 +419,12 @@ if (!params.bam_pairing){
 =                                SOMATIC PIPELINE                              =
 ================================================================================
 */
+
+
+// parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
+tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
+
+
 
 if (params.bam_pairing){
 
@@ -517,11 +436,94 @@ if (params.bam_pairing){
 
 }
 
+// GATK SplitIntervals, CreateScatteredIntervals
+
+process CreateScatteredIntervals {
+
+  input:
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+      ])
+    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets,
+      referenceMap.wgsTargets
+      ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex,
+      referenceMap.wgsTargetsIndex
+      ])
+
+  output:
+    file("agilent*.interval_list") into agilentIntervals mode flatten
+    file("idt*.interval_list") into idtIntervals mode flatten
+    file("wgs*.interval_list") into wgsIntervals mode flatten
+
+  script:
+  scatterCount = 10
+  """
+  gatk SplitIntervals \
+    --reference ${genomeFile} \
+    --intervals ${agilentTargets} \
+    --scatter-count ${scatterCount} \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --output agilent
+
+  for i in agilent/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i agilent-\$BASENAME
+  done
+
+  gatk SplitIntervals \
+    --reference ${genomeFile} \
+    --intervals ${idtTargets} \
+    --scatter-count ${scatterCount} \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --output idt
+
+  for i in idt/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i idt-\$BASENAME
+  done
+
+  gatk SplitIntervals \
+    --reference ${genomeFile} \
+    --intervals ${wgsIntervals} \
+    --scatter-count ${scatterCount} \
+    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --output wgs 
+
+  for i in wgs/*.interval_list;
+  do
+    BASENAME=`basename \$i`
+    mv \$i wgs-\$BASENAME
+  done
+  """
+}
+
+(bamsForIntervals, bamFiles) = bamFiles.into(2)
+
+//Associating interval_list files with BAM files, putting them into one channel
+agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
+idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
+wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
+
+(aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
+
+aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
+bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
+wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
+
+// These will go into mutect2 and haplotypecaller
+(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
 
 
-
-// parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
-tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
+// if using strelka2, one should have manta for small InDels
 
 if('strelka2' in tools) {
   tools.add('manta')
