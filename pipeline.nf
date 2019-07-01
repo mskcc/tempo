@@ -1462,6 +1462,7 @@ process SomaticGroupForQC {
     file("netmhc_stats/*") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
+    file("vcf_delly_manta/*") into VcfBedPeChannel
 
 
   when: "neoantigen" in tools
