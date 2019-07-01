@@ -14,7 +14,7 @@
  - SomaticCombineChannel
  - SomaticRunBCFToolsFilterNorm
  - SomaticRunBCFToolsMerge
- - SomaticRunVCF2MAF
+ - SomaticAnnotateMaf
  - SomaticDoSNPPileup
  - DoFacets 
  - RunMsiSensor
@@ -51,6 +51,9 @@ bamFiles = extractBamFiles(tsvFile)
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
+if('strelka2' in tools) {
+  tools.add('manta')
+}
 
 // --- Run Delly
 
@@ -493,7 +496,7 @@ process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
+    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -518,13 +521,13 @@ process SomaticCombineChannel {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
 
-  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
+  when: 'strelka2' in tools && 'mutect2' in tools
 
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWesVcf
-  if (target != 'wgs') {
+  if (target != 'genome') {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -539,7 +542,7 @@ process SomaticCombineChannel {
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
-    ${mutect2combinedVCF} ${strelkaVCF}
+    ${mutectCombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
@@ -638,7 +641,7 @@ process SomaticCombineChannel {
   """
 }
 
-process SomaticRunVcf2Maf {
+process SomaticAnnotateMaf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
@@ -654,16 +657,16 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFile
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: "mutect2" in tools && "strelka2" in tools
 
   script:
-  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
+  outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
-    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
     --vep-forks 10 \
     --tumor-id ${idTumor} \
@@ -674,10 +677,14 @@ process SomaticRunVcf2Maf {
     --ref-fasta ${genomeFile} \
     --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
     --custom-enst ${isoforms} \
-    --output-maf ${outfile} \
+    --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-somatic-maf.R ${outfile}
+  python /usr/bin/oncokb_annotator/MafAnnotator.py \
+    -i ${outputPrefix}.raw.maf \
+    -o ${outputPrefix}.raw.oncokb.maf
+
+  filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
   """
 }
 
@@ -770,18 +777,18 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${outputPrefix}*") into msiOutput 
+    file("${idTumor}_vs_${idNormal}.msisensor.tsv") into msiOutput 
 
   when: "msisensor" in tools
 
   script:
-  outputPrefix = "${idTumor}_${idNormal}"
+  outputPrefix = "${idTumor}_vs_${idNormal}.msisensor.tsv"
   """
   msisensor msi \
-    -d "${msiSensorList}" \
-    -t "${bamTumor}" \
-    -n "${bamNormal}" \
-    -o "${outputPrefix}"
+    -d ${msiSensorList} \
+    -t ${bamTumor} \
+    -n ${bamNormal} \
+    -o ${outputPrefix}
   """
 }
 
@@ -998,7 +1005,7 @@ process RunLOHHLA {
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
     Rscript /lohhla/LOHHLAscript.R \
-        --patientId ${idTumor} \
+        --patientId ${idTumor}_vs_{idNormal} \
         --normalBAMfile ${bamNormal} \
         --tumorBAMfile ${bamTumor} \
         --HLAfastaLoc ${hlaFasta} \
