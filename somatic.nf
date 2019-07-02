@@ -77,7 +77,7 @@ process SomaticDellyCall {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
 
-  when: 'delly' in tools && runSomatic
+  when: 'delly' in tools
 
   script:
   """
@@ -99,8 +99,7 @@ process SomaticDellyCall {
 }
 
 
-// --- Run Mutect2
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
+
 
 process CreateScatteredIntervals {
 
@@ -173,6 +172,10 @@ process CreateScatteredIntervals {
   done
   """
 }
+
+
+// --- Run Mutect2
+
 
 (bamsForMutect2Intervals, bamFiles) = bamFiles.into(2)
 
@@ -513,9 +516,11 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
     ])
 
   output:
@@ -525,9 +530,12 @@ process SomaticCombineChannel {
 
   script:
   isec_dir = "${idTumor}.isec"
-  pon = wgsPoN
-  gnomad = gnomadWesVcf
-  if (target != 'genome') {
+  if (target == 'wgs') {
+    pon = wgsPoN
+    gnomad = gnomadWgsVcf
+    infoCols = ""
+  }
+  else {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -618,7 +626,7 @@ process SomaticCombineChannel {
     --output ${idTumor}.union.gnomad.vcf.gz \
     ${idTumor}.union.vcf.gz
 
-  tabix ${idTumor}.union.gnomad.vcf.gz
+  tabix --preset vcf ${idTumor}.union.gnomad.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.pon.header \
@@ -663,6 +671,12 @@ process SomaticAnnotateMaf {
 
   script:
   outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
+  if (target == 'wgs') {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+  }
+  else {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+  }
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
@@ -675,7 +689,7 @@ process SomaticAnnotateMaf {
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
+    --retain-info ${infoCols} \
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
@@ -992,7 +1006,7 @@ process RunLOHHLA {
   output:
     file("*") into lohhlaOutput
 
-  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools && runSomatic
+  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
 
     // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
 
@@ -1034,7 +1048,7 @@ process RunMutationSignatures {
   output:
     file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
 
   script:
   """
@@ -1088,7 +1102,7 @@ process DoMafAnno {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
@@ -1202,6 +1216,8 @@ def defineReferenceMap() {
     // gnomAD resources
     result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
+    result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
+    result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
     // HLA FASTA and *dat for LOHHLA 
     result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
     result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
