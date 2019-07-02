@@ -137,9 +137,26 @@ process AlignReads {
   """
 }
 
+sortedBam.groupTuple().set{groupedBam}
 
-sortedBam.groupTuple().set { groupedBam }
+groupedBam = groupedBam.map{ item ->
+  def idSample = item[0]
+  def lane = item[1] //is a list
+  def bam = item[2]
+  
+  def assayList = item[3].unique()
+  def targetList = item[4].unique()
 
+  if ((assayList.size() > 1) || (targetList.size() > 1)) {  
+    println "ERROR: Multiple assays and/or targets found for ${idSample}; check inputs"
+    exit 1
+  }
+
+  def assay = assayList[0]
+  def target = targetList[0]
+
+  [idSample, lane, bam, assay, target]
+}
 
 // MergeBams
 
@@ -203,7 +220,7 @@ process CreateRecalibrationTable {
   input:
     set idSample, file(bam), file(bai), assay, targetFile from mdBam 
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
@@ -218,14 +235,14 @@ process CreateRecalibrationTable {
     set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
   script:
-  known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+  knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
 
   """
   gatk BaseRecalibrator \
     --tmp-dir /tmp \
     --reference ${genomeFile} \
     --known-sites ${dbsnp} \
-    ${known} \
+    ${knownSites} \
     --verbosity INFO \
     --input ${bam} \
     --output ${idSample}.recal.table
@@ -287,8 +304,8 @@ recalibratedBamForOutput.combine(pairingTN)
                           def idSample = item[0]
                           def sampleBam = item[1]
                           def sampleBai = item[2]
-                          def assay = item[3][0]
-                          def target = item[4][0]
+                          def assay = item[3]
+                          def target = item[4]
                           def idTumor = item[5]
                           def idNormal = item[6]
                           def bamTumor = sampleBam
@@ -347,7 +364,6 @@ else {
 
 ignore_read_groups = Channel.from( true , false )
 
-
 // Alfred, BAM QC
 
 process Alfred {
@@ -357,22 +373,38 @@ process Alfred {
   
   input:
     each ignore_rg from ignore_read_groups
-    set idSample, file(bam), file(bai), assay, targetFile from recalibratedBam
+    set idSample, file(bam), file(bai), assay, target from recalibratedBam
 
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
+    ])
+    set file(idtTargets), file(agilentTargets) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets
+    ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex
     ])
 
   output:
     set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
   script:
+  options = ""
+  if (assay == "exome") {
+    if (target == 'agilent') options = "--bed ${agilentTargets}"
+    if (target == 'idt') options = "--bed ${idtTargets}"
+   }
   def ignore = ignore_rg ? "--ignore" : ''
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
   """
-  alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
+  echo ${idSample}
+  echo ${assay}
+  echo ${target}
+  alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
+    Rscript /opt/alfred/scripts/stats.R ${outfile}
   """
-
 }
 
 
@@ -522,7 +554,7 @@ process SomaticDellyCall {
 // --- Run Mutect2
 
 process RunMutect2 {
-  tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName }
+  tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName}
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
