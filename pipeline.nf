@@ -1445,9 +1445,9 @@ process RunNeoantigen {
 }
 
 
-process SomaticGroupForQC {
+process SomaticGroupForQcAndAggregate {
  
-  publishDir "${params.outDir}/somatic/qc", mode: params.publishDirMode
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(netmhcCombinedFile), file(mafFile) from NeoantigenPairOutput.collect()
@@ -1458,7 +1458,7 @@ process SomaticGroupForQC {
 
 
   output:
-    file("maf_files/*") into MafFilesOutput
+    file("merged.maf") into MafFileOutput
     file("netmhc_stats/*") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
@@ -1469,9 +1469,11 @@ process SomaticGroupForQC {
     
   script:
   """
-  # Collect MAF files from neoantigen to maf_files/
+  # Collect MAF files from neoantigen to maf_files/ and merge into one maf
   mkdir maf_files
   mv *.maf maf_files
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
 
   # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
   mkdir netmhc_stats
