@@ -131,7 +131,7 @@ process CreateScatteredIntervals {
   when: "mutect2" in tools
 
   script:
-  scatterCount = 40
+  scatterCount = 10
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
