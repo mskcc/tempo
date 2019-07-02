@@ -170,8 +170,27 @@ if (!params.bam_pairing){
     """
   }
 
-
   sortedBam.groupTuple().set { groupedBam }
+
+
+  groupedBam = groupedBam.map{ item ->
+    def idSample = item[0]
+    def lane = item[1] //is a list
+    def bam = item[2]
+  
+    def assayList = item[3].unique()
+    def targetList = item[4].unique()
+
+    if ((assayList.size() > 1) || (targetList.size() > 1)) {  
+      println "ERROR: Multiple assays and/or targets found for ${idSample}; check inputs"
+      exit 1
+    }
+
+    def assay = assayList[0]
+    def target = targetList[0]
+
+    [idSample, lane, bam, assay, target]
+  }
 
 
   // MergeBams
@@ -400,17 +419,21 @@ if (!params.bam_pairing){
       set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
     script:
+    options = ""
+    if (assay == "exome") {
+      if (target == 'agilent') options = "--bed ${agilentTargets}"
+      if (target == 'idt') options = "--bed ${idtTargets}"
+     }
     def ignore = ignore_rg ? "--ignore" : ''
     def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
     """
-    alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
+    echo ${idSample}
+    echo ${assay}
+    echo ${target}
+    alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
+      Rscript /opt/alfred/scripts/stats.R ${outfile}
     """
-
   }
-
-  /// (sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
-
-}
 
 
 /*
