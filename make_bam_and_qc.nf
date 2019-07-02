@@ -26,6 +26,11 @@ if (!check_for_duplicated_rows(pairingPath)) {
   exit 1
 }
 
+if (!check_for_mixed_assay(mappingPath)) {
+  println "ERROR: You can only use either assays 'exome' or 'genome', not both WES and WGS together"
+  exit 1
+}
+
 outname = params.outname
 
 referenceMap = defineReferenceMap()
@@ -408,12 +413,21 @@ def extractFastq(tsvFile) {
     checkNumberOfItem(row, 6)
     def idSample = row.SAMPLE
     def lane = row.LANE
-    def assay = row.ASSAY
+    def assayValue = row.ASSAY
     def targetFile = row.TARGET
     def fastqFile1 = returnFile(row.FASTQ_PE1)
     def sizeFastqFile1 = fastqFile1.size()
     def fastqFile2 = returnFile(row.FASTQ_PE2)
     def sizeFastqFile2 = fastqFile2.size()
+
+    def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+    if ((assay == "genome") || (assay == "wgs")) {
+      assay = "wgs"
+    }
+    if ((assay == "exome") || (assay == "wes")) {
+      assay = "wes"
+    }
 
     checkFileExtension(fastqFile1,".fastq.gz")
     checkFileExtension(fastqFile2,".fastq.gz")
@@ -445,4 +459,19 @@ def check_for_duplicated_rows(pairingFilePath) {
     entries << line
   }
   return entries.toSet().size() == entries.size()
+}
+
+def check_for_mixed_assay(mappingFilePath) {
+  def wgs = false
+  def wes = false
+  file( mappingFilePath ).eachLine { line ->
+    currentLine = line.toLowerCase()
+    if (currentLine.contains('\tgenome\t') || currentLine.contains('\twgs\t')) {
+      wgs = true
+    }
+    if (currentLine.contains('\texome\t') || currentLine.contains('\twes\t')) {
+      wes = true
+    }
+  return !(wgs && wes)
+  }
 }
