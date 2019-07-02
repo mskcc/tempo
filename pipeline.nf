@@ -170,8 +170,8 @@ process MarkDuplicates {
     set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
 
   output:
-    set file("${idSample}.md.bam"), file("${idSample}.md.bam.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
-    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bam.bai"), assay, targetFile into markDuplicatesTSV
+    set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
+    set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), assay, targetFile into markDuplicatesTSV
     file ("${idSample}.bam.metrics") into markDuplicatesReport
 
   script:
