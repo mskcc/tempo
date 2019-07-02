@@ -402,9 +402,9 @@ process CreateScatteredIntervals {
       ])
 
   output:
-    file("agilent*.interval_list") into agilentIntervals mode flatten
-    file("idt*.interval_list") into idtIntervals mode flatten
-    file("wgs*.interval_list") into wgsIntervals mode flatten
+    set file("agilent*.interval_list"), val("agilent") into agilentIList
+    set file("idt*.interval_list"), val("idt") into idtIList
+    set file("wgs*.interval_list"), val("wgs") into wgsIList
 
   script:
   scatterCount = 10
@@ -453,18 +453,41 @@ process CreateScatteredIntervals {
 (bamsForIntervals, bamFiles) = bamFiles.into(2)
 
 //Associating interval_list files with BAM files, putting them into one channel
-agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
-idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
-wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
 
 (aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
 
 aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
-bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
+iMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
 wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
 
 // These will go into mutect2 and haplotypecaller
-(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
+
+// From Nextflow Doc: However there are use cases in which each tuple has a different size depending grouping key. In this cases use the built-in function groupKey that allows you to create a special grouping key object to which it's possible to associate the group size for a given key.
+// Reference: https://github.com/nextflow-io/nextflow/issues/796
+// using groupKey() function to create a unique key for each TN pair, and the key also includes number of intervalBeds for each samples
+// this change will allow the merging processes of each sample only wait for relative children processes from the previous step, instead of waiting for all the processes to be done
+// change from .concat to .mix because .concat will wait for all the items proceeding from the first channel were emitted
+(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.mix( iMergedChannel, wMergedChannel).map{
+  item ->
+    def key = item[2]+"_vs_"+item[3] // adding one unique key
+    def target = item[0]
+    def assay = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def tumorBam = item[4]
+    def normalBam = item[5]
+    def tumorBai = item[6]
+    def normalBai = item[7]
+    def intervalBed = item[8]
+
+    return [ key, target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
+}.map{ 
+    key, target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> 
+    tuple ( 
+         groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
+         target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed
+    )
+}.transpose().into(2)
 
 /*
 ================================================================================
@@ -530,7 +553,7 @@ process RunMutect2 {
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
+    set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -538,7 +561,7 @@ process RunMutect2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
+    set id, idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine
 
 
   when: 'mutect2' in tools && runSomatic
@@ -569,7 +592,8 @@ process RunMutect2 {
 
 
 //Formatting the channel to be keyed by idTumor, idNormal, and target
-forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
+// group by groupKey(key, intervalBed.size())
+forMutect2Combine = forMutect2Combine.groupTuple()
 
 
 // Combine Mutect2 VCFs, bcftools
@@ -580,7 +604,7 @@ process SomaticCombineMutect2Vcf {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
+    set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -593,6 +617,9 @@ process SomaticCombineMutect2Vcf {
   when: 'mutect2' in tools && runSomatic
 
   script:
+  idTumor = idTumor.first()
+  idNormal = idNormal.first()
+  target = target.first()
   outfile="${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
   """
   bcftools concat \
@@ -818,7 +845,6 @@ process SomaticRunStrelka2 {
   tabix --preset vcf ${outfile}
   """
 }
-
 
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
 
@@ -1480,7 +1506,7 @@ process GermlineRunHaplotypecaller {
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
+    set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1488,8 +1514,8 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
-    file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
+    file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1541,7 +1567,8 @@ process GermlineRunHaplotypecaller {
 
 
 //Formatting the channel to be grouped by idTumor, idNormal, and target
-haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
+// group by groupKey(key, intervalBed.size())
+haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 
 // merge VCFs, GATK HaplotypeCaller
 
@@ -1551,7 +1578,7 @@ process GermlineCombineHaplotypecallerVcf {
 //  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
+    set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1564,6 +1591,9 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script:
+  idTumor = idTumor.first()
+  idNormal = idNormal.first()
+  target = target.first()
   outfile="${idNormal}.haplotypecaller.vcf.gz"
 
   """
