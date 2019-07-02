@@ -456,9 +456,9 @@ process CreateScatteredIntervals {
 
 (aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
 
-aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
-iMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
-wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
+aMergedChannel = aBamList.combine(agilentIList, by: 1)
+iMergedChannel = iBamList.combine(idtIList, by: 1)
+wMergedChannel = wBamList.combine(wgsIList, by: 1)
 
 // These will go into mutect2 and haplotypecaller
 
@@ -663,9 +663,9 @@ process SomaticRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
+    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput
     set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantatbi
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: 'manta' in tools && runSomatic
 
@@ -707,7 +707,6 @@ process SomaticRunManta {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-mantaOutput = mantaOutput.groupTuple(by: [0,1,2], size: 4)
 
 dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2], size: 5)
 
@@ -761,8 +760,6 @@ process SomaticMergeDellyAndManta {
 
 
 // --- Run Strelka2
-
-mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2], size: 1)
 
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
@@ -846,7 +843,7 @@ process SomaticRunStrelka2 {
   """
 }
 
-mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
+mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2])
 
 
 // Combined Somatic VCFs
@@ -1325,7 +1322,7 @@ facetsForLOHHLA = facetsForLOHHLA.map{
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
 
-mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
+mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2])
 
 
 process RunLOHHLA {
@@ -1416,7 +1413,7 @@ FacetsforMafAnno = FacetsforMafAnno.map{
   }
 
 
-FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
 
 
 process DoMafAnno {
@@ -1444,7 +1441,7 @@ process DoMafAnno {
 
 (mafFileForNeoantigen, mafFile) = mafFile.into(2)
 
-hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
+hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2])
 
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
@@ -1626,7 +1623,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
+    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutputGermlineVCF
     set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantaOutputGermlineVCFtbi
 
@@ -1721,7 +1718,7 @@ process GermlineRunStrelka2 {
 
 // Join HaploTypeCaller and Strelka outputs,  bcftools
 
-haplotypecallerStrelkaChannel = haplotypecallerCombinedVcfOutput.combine(strelkaOutputGermline, by: [0,1,2]).unique()
+haplotypecallerStrelkaChannel = haplotypecallerCombinedVcfOutput.combine(strelkaOutputGermline, by: [0,1,2])
 
 (bamsForCombineChannel, bamFiles) = bamFiles.into(2)
 
@@ -1739,7 +1736,7 @@ bamsForCombineChannel = bamsForCombineChannel.map{
     return [idTumor, idNormal, target, assay, bamTumor, baiTumor]
   }
 
-mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1,2]).unique()
+mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1,2])
 
 process GermlineCombineChannel {
   tag {idNormal}
@@ -1974,8 +1971,6 @@ process GermlineDellyCall {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-
-mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2], size: 1)
 
 dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2], size: 5)
 
