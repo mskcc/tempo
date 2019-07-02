@@ -77,7 +77,7 @@ process SomaticDellyCall {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
 
-  when: 'delly' in tools && runSomatic
+  when: 'delly' in tools
 
   script:
   """
@@ -99,8 +99,7 @@ process SomaticDellyCall {
 }
 
 
-// --- Run Mutect2
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
+
 
 process CreateScatteredIntervals {
 
@@ -173,6 +172,10 @@ process CreateScatteredIntervals {
   done
   """
 }
+
+
+// --- Run Mutect2
+
 
 (bamsForMutect2Intervals, bamFiles) = bamFiles.into(2)
 
@@ -1003,7 +1006,7 @@ process RunLOHHLA {
   output:
     file("*") into lohhlaOutput
 
-  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools && runSomatic
+  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
 
     // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
 
@@ -1045,7 +1048,7 @@ process RunMutationSignatures {
   output:
     file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
 
   script:
   """
@@ -1099,7 +1102,7 @@ process DoMafAnno {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
