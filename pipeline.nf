@@ -2151,7 +2151,7 @@ def extractFastq(tsvFile) {
   }
 }
 
-//    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
+// set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
 
 // extract BAMs for bam pairing file
 def extractBAM(tsvFile) {
