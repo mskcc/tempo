@@ -2163,29 +2163,33 @@ def extractBAM(tsvFile) {
     def assay = row.ASSAY
     def target = row.TARGET
     def bamTumor = returnFile(row.TUMOR_BAM)
-    def baiTumor = "${bamTumor}.bai"
+    // check if using bamTumor.bai or bamTumor.bam.bai
+    def baiTumor = validateBamIndexFormat(bamTumor)
     // def sizeTumorBamFile = tumorBamFile.size()
     def bamNormal = returnFile(row.NORMAL_BAM)
-    def baiNormal = "${bamNormal}.bai"
+    def baiNormal = validateBamIndexFormat(bamNormal)
     // def sizeNormalBamFile = normalBamFile.size()
-
-    // Check BAMs are indexed
-    if(!file(baiTumor).exists()){
-      println "ERROR: Cannot find BAM indices for ${bamTumor} in the format '${baiTumor}'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
-      exit 1
-    }
-
-    // Check BAMs are indexed
-    if(!file(baiNormal).exists()){
-      println "ERROR: Cannot find BAM indices for ${bamNormal} in the format '${baiNormal}'. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
-      exit 1
-    }
 
     [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
   }
 }
 
 
+// Check which format of BAM index used
+// input 'it' as BAM file 'bamTumor.bam'
+// returns BAM index file
+def validateBamIndexFormat(it){
+  bamFilename = it.take(it.lastIndexOf('.'));
+  // Check BAM index extension
+  if(file(bamFilename + ".bai").exists()){
+    return(file("${bamFilename}.bai"))
+  } else if(file(bamFilename + ".bam.bai").exists()){
+    return(file("${bamFilename}.bam.bai"))
+  } else {
+    println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+    exit 1
+  }
+}
 
 // Check file extension
 def checkFileExtension(it, extension) {
