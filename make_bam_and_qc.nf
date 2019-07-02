@@ -220,6 +220,8 @@ process RecalibrateBam {
     --bqsr-recal-file ${recalibrationReport} \
     --input ${bam} \
     --output ${idSample}.recal.bam
+
+  for f in *.bai; do cp -- "$f" "${f%.bai}.bam.bai"; done  
   """
 }
 
