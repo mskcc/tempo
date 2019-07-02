@@ -1325,8 +1325,6 @@ facetsForLOHHLA = facetsForLOHHLA.map{
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
 
-//apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
-
 mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
 
 
@@ -1418,12 +1416,6 @@ FacetsforMafAnno = FacetsforMafAnno.map{
   }
 
 
-//Formatting the channel to be grouped by idTumor, idNormal, and target
-
-// FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
-
-mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
-
 FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
 
 
@@ -1451,7 +1443,6 @@ process DoMafAnno {
 }
 
 (mafFileForNeoantigen, mafFile) = mafFile.into(2)
-mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
 
@@ -1730,9 +1721,7 @@ process GermlineRunStrelka2 {
 
 // Join HaploTypeCaller and Strelka outputs,  bcftools
 
-hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
-
-haplotypecallerStrelkaChannel = hcv.combine(strelkaOutputGermline, by: [0,1,2]).unique()
+haplotypecallerStrelkaChannel = haplotypecallerCombinedVcfOutput.combine(strelkaOutputGermline, by: [0,1,2]).unique()
 
 (bamsForCombineChannel, bamFiles) = bamFiles.into(2)
 
