@@ -139,9 +139,26 @@ process AlignReads {
   """
 }
 
+sortedBam.groupTuple().set{groupedBam}
 
-sortedBam.groupTuple().set { groupedBam }
+groupedBam = groupedBam.map{ item ->
+  def idSample = item[0]
+  def lane = item[1] //is a list
+  def bam = item[2]
+  
+  def assayList = item[3].unique()
+  def targetList = item[4].unique()
 
+  if ((assayList.size() > 1) || (targetList.size() > 1)) {  
+    println "ERROR: Multiple assays and/or targets found for ${idSample}; check inputs"
+    exit 1
+  }
+
+  def assay = assayList[0]
+  def target = targetList[0]
+
+  [idSample, lane, bam, assay, target]
+}
 
 // MergeBams
 
@@ -205,7 +222,7 @@ process CreateRecalibrationTable {
   input:
     set idSample, file(bam), file(bai), assay, targetFile from mdBam 
 
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex)  from Channel.value([
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict,
@@ -220,14 +237,14 @@ process CreateRecalibrationTable {
     set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
   script:
-  known = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+  knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
 
   """
   gatk BaseRecalibrator \
     --tmp-dir /tmp \
     --reference ${genomeFile} \
     --known-sites ${dbsnp} \
-    ${known} \
+    ${knownSites} \
     --verbosity INFO \
     --input ${bam} \
     --output ${idSample}.recal.table
@@ -289,8 +306,8 @@ recalibratedBamForOutput.combine(pairingTN)
                           def idSample = item[0]
                           def sampleBam = item[1]
                           def sampleBai = item[2]
-                          def assay = item[3][0]
-                          def target = item[4][0]
+                          def assay = item[3]
+                          def target = item[4]
                           def idTumor = item[5]
                           def idNormal = item[6]
                           def bamTumor = sampleBam
@@ -349,7 +366,6 @@ else {
 
 ignore_read_groups = Channel.from( true , false )
 
-
 // Alfred, BAM QC
 
 process Alfred {
@@ -359,25 +375,39 @@ process Alfred {
   
   input:
     each ignore_rg from ignore_read_groups
-    set idSample, file(bam), file(bai), assay, targetFile from recalibratedBam
+    set idSample, file(bam), file(bai), assay, target from recalibratedBam
 
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
+    ])
+    set file(idtTargets), file(agilentTargets) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets
+    ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex
     ])
 
   output:
     set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
   script:
+  options = ""
+  if (assay == "exome") {
+    if (target == 'agilent') options = "--bed ${agilentTargets}"
+    if (target == 'idt') options = "--bed ${idtTargets}"
+   }
   def ignore = ignore_rg ? "--ignore" : ''
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
   """
-  alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
+  echo ${idSample}
+  echo ${assay}
+  echo ${target}
+  alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
+    Rscript /opt/alfred/scripts/stats.R ${outfile}
   """
-
 }
-
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
 
 
 // GATK SplitIntervals, CreateScatteredIntervals
@@ -526,7 +556,7 @@ process SomaticDellyCall {
 // --- Run Mutect2
 
 process RunMutect2 {
-  tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName }
+  tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName}
 
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
@@ -686,8 +716,6 @@ dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
 
 dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
 
-
-
 // --- Process Delly and Manta VCFs 
 
 (sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
@@ -731,7 +759,6 @@ process SomaticMergeDellyAndManta {
 
   """
 }
-
 
 // --- Run Strelka2
 
@@ -846,13 +873,12 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex,
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
     ])
-
-  // TODO: ADD gnomadWgsVcf and gnomadWgsVcfIndex
-
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
@@ -862,8 +888,12 @@ process SomaticCombineChannel {
   script:
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
-  gnomad = gnomadWesVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
-  if (target != 'genome') {
+  gnomad = gnomadWgsVcf // TODO: REPLACE WHEN WE ADD gnomadWgsVcf
+  if (target == 'wgs') {
+    pon = wgsPoN
+    gnomad = gnomadWgsVcf
+  }
+  else {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -954,7 +984,7 @@ process SomaticCombineChannel {
     --output ${idTumor}.union.gnomad.vcf.gz \
     ${idTumor}.union.vcf.gz
 
-  tabix ${idTumor}.union.gnomad.vcf.gz
+  tabix --preset vcf ${idTumor}.union.gnomad.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.pon.header \
@@ -999,6 +1029,12 @@ process SomaticAnnotateMaf {
 
   script:
   outputPrefix = "${idTumor}_vs_${idNormal}"
+  if (target == 'wgs') {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+  }
+  else {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+  }
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
@@ -1011,7 +1047,7 @@ process SomaticAnnotateMaf {
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
+    --retain-info ${infoCols} \
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
@@ -1737,9 +1773,11 @@ process GermlineCombineChannel {
       referenceMap.mapabilityBlacklist,
       referenceMap.mapabilityBlacklistIndex
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
     ])
 
   output:
@@ -1749,8 +1787,11 @@ process GermlineCombineChannel {
 
   script:  
   isec_dir = "${idNormal}.isec"
-  gnomad = gnomadWesVcf // TODO: replace with WGS equivalent
-  if (target != 'genome') {
+  gnomad = gnomadWgsVcf
+  if (target == 'wgs') {
+    gnomad = gnomadWgsVcf
+  }
+  else {
     gnomad = gnomadWesVcf
   }
   """
@@ -1892,6 +1933,12 @@ process GermlineAnnotateMaf {
   // both tumor-id and normal-id flags are set to idNormal since we're not processing the tumor in germline.nf
   script:
   outputPrefix = "${idTumor}_vs_${idNormal}.germline"
+  if (target == 'wgs') {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+  }
+  else {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+  }
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
@@ -1904,7 +1951,7 @@ process GermlineAnnotateMaf {
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info HaplotypeCaller,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax \
+    --retain-info ${infoCols} \
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
@@ -2077,8 +2124,8 @@ def defineReferenceMap() {
     // gnomAD resources
     result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
-    result_array << ['wgsTargets' : checkParamReturnFile("wgsTargets")]
-    result_array << ['wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")]
+    result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
+    result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
     // HLA FASTA and *dat for LOHHLA 
     result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
     result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
