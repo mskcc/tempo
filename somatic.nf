@@ -661,9 +661,9 @@ process SomaticRunVcf2Maf {
   script:
   outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
   """
-  perl /opt/vcf2maf.pl \
+  perl /usr/bin/vcf2maf/vcf2maf.pl \
     --maf-center MSKCC-CMO \
-    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
     --vep-forks 10 \
     --tumor-id ${idTumor} \
