@@ -707,11 +707,11 @@ process SomaticRunManta {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
+mantaOutput = mantaOutput.groupTuple(by: [0,1,2], size: 4)
 
-dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
+dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2], size: 5)
 
-dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
+dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2])
 
 
 
@@ -762,7 +762,7 @@ process SomaticMergeDellyAndManta {
 
 // --- Run Strelka2
 
-mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
+mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2], size: 1)
 
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
@@ -1985,18 +1985,12 @@ process GermlineDellyCall {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-// filter Delly & Manta via bcftools
 
+mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2], size: 1)
 
-// Put manta output and delly output into the same channel so they can be processed together in the group key
-// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2], size: 5)
 
-// filter Delly & Manta via bcftools
-
-mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2])
-dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2])
-
-dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2]).unique()
+dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2])
 
 process GermlineMergeDellyAndManta {
   tag {idNormal}
