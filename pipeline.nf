@@ -2224,7 +2224,7 @@ def extractFastq(tsvFile) {
     checkFileExtension(fastqFile1,".fastq.gz")
     checkFileExtension(fastqFile2,".fastq.gz")
 
-    [idSample, lane, assay, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
+    [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
   }
 }
 
