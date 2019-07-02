@@ -19,6 +19,10 @@
         "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
         "checks": [{"type": "checkExitCode", "expected": 1}]
     },
+    "test_mixed_assay_validation_pipeline": {
+	"command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_mixed_samples.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
+	"checks": [{"type": "checkExitCode", "expected": 1}]
+    },
     "test_pairing_file_validation_make_bam": {
         "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_BAM_map_pair_inputs.tsv", "--somatic", "--germline", "-profile", "test"],
         "checks": [{"type": "checkExitCode", "expected": 1}]

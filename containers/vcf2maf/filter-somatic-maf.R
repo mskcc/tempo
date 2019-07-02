@@ -2,7 +2,7 @@
 
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.2.0"
+# __version__ = "0.3.0"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
@@ -43,7 +43,11 @@ maf[t_alt_count < 3, FILTER := add_tag(FILTER, 'low_t_alt_count')]
 maf[n_alt_count > 3, FILTER := add_tag(FILTER, 'high_n_alt_count')]
 maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mapability')]
 maf[RepeatMasker != '', FILTER := add_tag(FILTER, 'repeatmasker')]
-maf[non_cancer_AF_popmax > .01, FILTER := add_tag(FILTER, 'high_gnomad_pop_af')]
+if ('non_cancer_AF_popmax' %in% names(maf)) {
+    maf[non_cancer_AF_popmax > .01, FILTER := add_tag(FILTER, 'high_gnomad_pop_af')]
+} else if ('AF_popmax' %in% names(maf)) {
+    maf[AF_popmax > .01, FILTER := add_tag(FILTER, 'high_gnomad_pop_af')]
+}
 maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 
 # Filters not used:
