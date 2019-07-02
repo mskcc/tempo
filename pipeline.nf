@@ -102,8 +102,7 @@ if (params.bam_pairing) {
 
 }
 
-// We never use this parameter
-// outname = params.outname
+outname = params.outname
 
 runGermline = params.germline
 runSomatic = params.somatic
