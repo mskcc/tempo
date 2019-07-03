@@ -300,7 +300,7 @@ process SomaticRunManta {
 
   output:
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools
   script:
@@ -393,18 +393,18 @@ process SomaticRunStrelka2 {
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict
     ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(wgsTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
     ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -417,13 +417,12 @@ process SomaticRunStrelka2 {
 
   script:
   options = ""
-  intervals = wgsIntervals
-  if(params.assayType == "exome") {
+  intervals = wgsTargets
+  if (assay == "exome") {
     options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
    }
-   
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
