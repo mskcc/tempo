@@ -17,7 +17,7 @@ Alignment and QC
 Somatic Analysis
 ----------------
 - SomaticDellyCall
-- CreateIntervalBeds
+- CreateScatteredIntervals
 - RunMutect2
 - RunMutect2Filter
 - SomaticCombineMutect2VCF
@@ -39,7 +39,7 @@ Germline Analysis
 -----------------
 - GermlineDellyCall
 - GermlineDellyFilter
-- CreateIntervalBeds
+- CreateScatteredIntervals
 - GermlineRunHaplotypecaller
 - GermlineRunManta
 - GermlineRunStrelka
@@ -270,11 +270,11 @@ process RecalibrateBam {
   output:
     set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
-    set idSample into currentSample
-    set file("${idSample}.recal.bam") into currentBam
-    set file("${idSample}.recal.bai") into currentBai
-    set assay into assays
-    set targetFile into targets
+    val(idSample) into currentSample
+    file("${idSample}.recal.bam") into currentBam
+    file("${idSample}.recal.bai") into currentBai
+    val(assay) into assays
+    val(targetFile) into targets
 
   script:
   """
@@ -418,12 +418,12 @@ process CreateScatteredIntervals {
       referenceMap.genomeIndex,
       referenceMap.genomeDict
       ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(wgsTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -465,7 +465,7 @@ process CreateScatteredIntervals {
 
   gatk SplitIntervals \
     --reference ${genomeFile} \
-    --intervals ${wgsIntervals} \
+    --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
@@ -2071,10 +2071,13 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
+    // Target BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
-    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex")
+    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'wgsTargets' : checkParamReturnFile("wgsTargets"),
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (!params.test) {
