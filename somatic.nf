@@ -1068,14 +1068,13 @@ FacetsforMafAnno = FacetsforMafAnno.map{
   }
 
 
-//Formatting the channel to be grouped by idTumor, idNormal, and target
+// Formatting the channel to be grouped by idTumor, idNormal, and target
 
 // FacetsOutput = FacetsOutput.groupTuple(by: [0,1,2])
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
 FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
-
 
 process FacetsAnnotation {
   tag {idTumor + "_vs_" + idNormal}
