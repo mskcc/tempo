@@ -797,7 +797,7 @@ process RunPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
-    file("${outputDir}/winners.hla.txt") into hlaOutput
+    set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "polysolver" in tools
   
