@@ -818,7 +818,7 @@ process RunPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
-    file("${outputDir}/winners.hla.txt") into hlaOutput
+    set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "polysolver" in tools
   
@@ -930,8 +930,6 @@ process RunConpair {
   """
 }
 
-
-
 // Run LOHHLA
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
@@ -992,7 +990,6 @@ facetsForLOHHLA = facetsForLOHHLA.map{
 //apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
 mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
-
 
 process RunLOHHLA {
   tag {idTumor + "_vs_" + idNormal}
