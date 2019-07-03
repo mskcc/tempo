@@ -392,7 +392,7 @@ process Alfred {
 
   script:
   options = ""
-  if (assay == "exome") {
+  if (assay == "wes") {
     if (target == 'agilent') options = "--bed ${agilentTargets}"
     if (target == 'idt') options = "--bed ${idtTargets}"
    }
@@ -666,7 +666,7 @@ process SomaticRunManta {
 
   script:
   options = ""
-  if(params.assayType == "exome") options = "--exome"
+  if(assay == "wes") options = "--exome"
 
   """
   configManta.py \
@@ -782,7 +782,7 @@ process SomaticRunStrelka2 {
   script:
   options = ""
   intervals = wgsIntervals
-  if(params.assayType == "exome") {
+  if(assay == "wes") {
     options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
@@ -1628,7 +1628,7 @@ process GermlineRunManta {
   // flag with --exome if exome
   script:
   options = ""
-  if (params.assayType == "exome") options = "--exome"
+  if (assay == "wes") options = "--exome"
   """
   configManta.py \
     ${options} \
@@ -1686,10 +1686,9 @@ process GermlineRunStrelka2 {
   
   script:
   options = ""
-  if (params.assayType == "exome") options = "--exome"
-
   intervals = wgsIntervals
-  if(params.assayType == "exome") {
+  if(assay == "wes") {
+    options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -2132,12 +2131,21 @@ def extractFastq(tsvFile) {
     checkNumberOfItem(row, 6)
     def idSample = row.SAMPLE
     def lane = row.LANE
-    def assay = row.ASSAY
+    def assayValue = row.ASSAY
     def targetFile = row.TARGET
     def fastqFile1 = returnFile(row.FASTQ_PE1)
     def sizeFastqFile1 = fastqFile1.size()
     def fastqFile2 = returnFile(row.FASTQ_PE2)
     def sizeFastqFile2 = fastqFile2.size()
+
+    def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+    if ((assay == "genome") || (assay == "wgs")) {
+      assay = "wgs"
+    }
+    if ((assay == "exome") || (assay == "wes")) {
+      assay = "wes"
+    }
 
     checkFileExtension(fastqFile1,".fastq.gz")
     checkFileExtension(fastqFile2,".fastq.gz")
@@ -2175,10 +2183,11 @@ def check_for_mixed_assay(mappingFilePath) {
   def wgs = false
   def wes = false
   file( mappingFilePath ).eachLine { line ->
-    if (line.contains('\tgenome\t')) {
+    currentLine = line.toLowerCase()
+    if (currentLine.contains('\tgenome\t') || currentLine.contains('\twgs\t')) {
       wgs = true
     }
-    if (line.contains('\texome\t')) {
+    if (currentLine.contains('\texome\t') || currentLine.contains('\twes\t')) {
       wes = true
     }
   return !(wgs && wes)
