@@ -67,12 +67,12 @@ if (params.pairing) pairingPath = params.pairing
 // CHECK if user provides uses either mapping or pairing argument, the other argument must be used as well
 
 if (params.mapping && !params.pairing){
-  println "ERROR: Flags --mapping and --pairing must both be provide. Please provide --pairing and re-run the pipeline."
+  println "ERROR: Flags --mapping and --pairing must both be provided. Please provide --pairing and re-run the pipeline."
   exit 1
 }
 
 if (!params.mapping && params.pairing){
-  println "ERROR: Flags --mapping and --pairing must both be provide. Please provide --mapping and re-run the pipeline."
+  println "ERROR: Flags --mapping and --pairing must both be provided. Please provide --mapping and re-run the pipeline."
   exit 1
 }
 
