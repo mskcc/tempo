@@ -439,39 +439,21 @@ if (!params.bam_pairing){
       set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
     script:
-    options = ""
-    if (assay == "exome") {
-      if (target == 'agilent') options = "--bed ${agilentTargets}"
-      if (target == 'idt') options = "--bed ${idtTargets}"
-     }
-    def ignore = ignore_rg ? "--ignore" : ''
-    def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
-    """
-    echo ${idSample}
-    echo ${assay}
-    echo ${target}
-    alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
-      Rscript /opt/alfred/scripts/stats.R ${outfile}
-    """
+      options = ""
+      if (assay == "exome") {
+        if (target == 'agilent') options = "--bed ${agilentTargets}"
+        if (target == 'idt') options = "--bed ${idtTargets}"
+       }
+      def ignore = ignore_rg ? "--ignore" : ''
+      def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
+      """
+      echo ${idSample}
+      echo ${assay}
+      echo ${target}
+      alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
+        Rscript /opt/alfred/scripts/stats.R ${outfile}
+      """
   }
-
-  script:
-  options = ""
-  if (assay == "exome") {
-    if (target == 'agilent') options = "--bed ${agilentTargets}"
-    if (target == 'idt') options = "--bed ${idtTargets}"
-   }
-  def ignore = ignore_rg ? "--ignore" : ''
-  def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
-  """
-  echo ${idSample}
-  echo ${assay}
-  echo ${target}
-  alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
-    Rscript /opt/alfred/scripts/stats.R ${outfile}
-  """
-}
-
 
 
 /*
