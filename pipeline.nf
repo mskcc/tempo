@@ -454,7 +454,8 @@ if (!params.bam_pairing){
         Rscript /opt/alfred/scripts/stats.R ${outfile}
       """
   }
-
+  
+}
 
 /*
 ================================================================================
