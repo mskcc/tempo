@@ -2101,6 +2101,8 @@ def defineReferenceMap() {
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'wgsTargets' : checkParamReturnFile("wgsTargets"),
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
   ]
 
   if (!params.test) {
