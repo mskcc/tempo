@@ -5,7 +5,7 @@
 --------------------------------------------------------------------------------
  Processes overview
  - SomaticDellyCall
- - CreateIntervalBeds
+ - CreateScatteredIntervals
  - RunMutect2
  - RunMutect2Filter
  - SomaticCombineMutect2VCF
@@ -111,12 +111,12 @@ process CreateScatteredIntervals {
       referenceMap.genomeIndex,
       referenceMap.genomeDict
       ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(wgsTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -160,7 +160,7 @@ process CreateScatteredIntervals {
 
   gatk SplitIntervals \
     --reference ${genomeFile} \
-    --intervals ${wgsIntervals} \
+    --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
@@ -1184,6 +1184,7 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
+    // Target BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
