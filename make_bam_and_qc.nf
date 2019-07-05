@@ -229,11 +229,11 @@ process RecalibrateBam {
   output:
     set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2, recalibratedBamForDebug
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
-    set idSample into currentSample
-    set file("${idSample}.recal.bam") into currentBam
-    set file("${idSample}.recal.bai") into currentBai
-    set assay into assays
-    set targetFile into targets
+    val(idSample) into currentSample
+    file("${idSample}.recal.bam") into currentBam
+    file("${idSample}.recal.bai") into currentBai
+    val(assay) into assays
+    val(targetFile) into targets
 
   script:
   """
@@ -388,7 +388,7 @@ def defineReferenceMap() {
     'bwaIndex'         : checkParamReturnFile("bwaIndex"), 
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
-    'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+    'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex")
   ]
 }
 
