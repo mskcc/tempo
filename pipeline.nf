@@ -2217,10 +2217,10 @@ def extractBAM(tsvFile) {
     def target = row.TARGET
     def bamTumor = returnFile(row.TUMOR_BAM)
     // check if using bamTumor.bai or bamTumor.bam.bai
-    def baiTumor = validateBamIndexFormat(bamTumor)
+    def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM))
     // def sizeTumorBamFile = tumorBamFile.size()
     def bamNormal = returnFile(row.NORMAL_BAM)
-    def baiNormal = validateBamIndexFormat(bamNormal)
+    def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
     // def sizeNormalBamFile = normalBamFile.size()
 
     [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
@@ -2232,7 +2232,7 @@ def extractBAM(tsvFile) {
 // input 'it' as BAM file 'bamTumor.bam'
 // returns BAM index file
 def validateBamIndexFormat(it){
-  bamFilename = it.take(it.lastIndexOf('.'));
+  bamFilename = it.take(it.lastIndexOf('.'))
   // Check BAM index extension
   if(file(bamFilename + ".bai").exists()){
     return(file("${bamFilename}.bai"))
