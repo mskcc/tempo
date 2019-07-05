@@ -1431,7 +1431,7 @@ process DoMafAnno {
     set idTumor, idNormal, target, file(purity_rdata), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput mode flatten
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
@@ -1464,6 +1464,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    set idTumor, idNormal, target, file("${outputDir}/*.maf") into NeoantigenMafForMerge mode flatten
 
   when: "neoantigen" in tools
 
@@ -1485,6 +1486,22 @@ process RunNeoantigen {
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
   """
+}
+
+MergeFacetsNeoantigenMafChannel = MafAnnoOutput.combine(NeoantigenMafForMerge, by: [0,1,2]).unique()
+
+process MergeFacetsNeoantigenMaf {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/merge_facets_neoantigen_maf", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(facetsMaf), file(neoantigenMaf) from MergeFacetsNeoantigenMafChannel
+
+  output:
+    file("*.facets.neoantigen.merged.maf") into MergedMafChannel
+
+
 }
 
 /*
