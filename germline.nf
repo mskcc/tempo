@@ -322,7 +322,7 @@ process GermlineRunManta {
   // flag with --exome if exome
   script:
   options = ""
-  if (params.assayType == "exome") options = "--exome"
+  if (assay == "wes") options = "--exome"
   """
   configManta.py \
     ${options} \
@@ -381,10 +381,9 @@ process GermlineRunStrelka2 {
   
   script:
   options = ""
-  if (params.assayType == "exome") options = "--exome"
-
   intervals = wgsIntervals
-  if(params.assayType == "exome") {
+  if(assay == "wes") {
+    options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
