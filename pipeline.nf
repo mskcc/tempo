@@ -1014,7 +1014,7 @@ process SomaticAnnotateMaf {
     set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFile
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}"
+  outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
   if (target == 'wgs') {
     infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
   }
@@ -1385,7 +1385,7 @@ process RunMutationSignatures {
   """
   python /mutation-signatures/main.py \
     /mutation-signatures/Stratton_signatures30.txt \
-    ${idTumor}_vs_${idNormal}.maf \
+    ${idTumor}_vs_${idNormal}.somatic.maf \
     ${idTumor}_vs_${idNormal}.mutsig.txt
   """
 }
