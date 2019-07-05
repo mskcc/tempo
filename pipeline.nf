@@ -1507,7 +1507,7 @@ process SomaticGroupForQcAndAggregate {
 
   output:
     file("merged.maf") into MafFileOutput
-    file("netmhc_stats/*") into NetMhcChannel
+    file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
     file("vcf_delly_manta/*") into VcfBedPeChannel
