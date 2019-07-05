@@ -1,4 +1,4 @@
-FROM: r-base:3.5.3
+FROM r-base:3.5.3
 
 RUN apt-get -y update && \
     apt-get -y install curl \ 
@@ -7,7 +7,6 @@ RUN apt-get -y update && \
     libssl-dev \
     procps
 
-# Add BiocManager and install maftools
-RUN R -e "source('https://bioconductor.org/biocLite.R'); biocLite('maftools')"
 
-
+RUN R -e "install.packages('devtools')" \
+    && R -e "devtools::install_github(repo = 'PoisonAlien/maftools')"
