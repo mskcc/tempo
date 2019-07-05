@@ -1123,7 +1123,7 @@ process RunPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outputDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outputDir}/winners.hla.txt 
+  ${outputDir}
   """
 }
 
@@ -1420,7 +1420,8 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    set idTumor, idNormal, target, file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt"), file("${outputDir}/*.maf") into NeoantigenPairOutput
+    file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt") into NetMhcStatsOutput
+    file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: "neoantigen" in tools
 
@@ -1450,10 +1451,11 @@ process SomaticGroupForQcAndAggregate {
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(netmhcCombinedFile), file(mafFile) from NeoantigenPairOutput.collect()
+    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
+    file(mafFile) from NeoantigenMafOutput.collect()
     file(mutsigFile) from mutSigOutput.collect()
-    set file(purSeg), file(purCncfTxt), file(purCncfPng), file(purRdata), file(purOut) from FacetsPurity.collect()
-    set file(hisensSeg), file(hisensCncfTxt), file(hisensCncfPng), file(hisensRdata), file(hisensOut) from FacetsHisens.collect()
+    file(purityFiles) from FacetsPurity.collect()
+    file(hisensFiles) from FacetsHisens.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
 
 
@@ -1464,11 +1466,15 @@ process SomaticGroupForQcAndAggregate {
     file("facets/*") into FacetsChannel
     file("vcf_delly_manta/*") into VcfBedPeChannel
 
-
   when: "neoantigen" in tools
     
   script:
+
   """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
   # Collect MAF files from neoantigen to maf_files/ and merge into one maf
   mkdir maf_files
   mv *.maf maf_files
