@@ -330,7 +330,7 @@ process FastP {
 
   script:
   """
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+  fastp -h ${idSample}_${lane}.html -i ${fastqFile1} -I ${fastqFile2}
   """
 }
 

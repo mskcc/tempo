@@ -130,7 +130,7 @@ process AlignReads {
   """
   set -e
   set -o pipefail
-  fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+  fastp -h ${idSample}_${lane}.html -i ${fastqFile1} -I ${fastqFile2}
   bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
   samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
