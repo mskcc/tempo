@@ -107,10 +107,6 @@ if (params.bam_pairing) {
 
 }
 
-if (!check_for_mixed_assay(mappingPath)) {
-  println "ERROR: You can only use either assays 'exome' or 'genome', not both WES and WGS together"
-  exit 1
-}
 
 outname = params.outname
 
