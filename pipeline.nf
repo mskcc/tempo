@@ -60,10 +60,6 @@ if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_si
   exit 1
 }
 
-if (params.mapping) mappingPath = params.mapping
-if (params.pairing) pairingPath = params.pairing
-
-
 // CHECK if user provides uses either mapping or pairing argument, the other argument must be used as well
 
 if (params.mapping && !params.pairing){
