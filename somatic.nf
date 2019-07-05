@@ -305,7 +305,7 @@ process SomaticRunManta {
   when: 'manta' in tools
   script:
   options = ""
-  if(params.assayType == "exome") options = "--exome"
+  if(assay == "wes") options = "--exome"
 
   """
   configManta.py \
@@ -418,7 +418,7 @@ process SomaticRunStrelka2 {
   script:
   options = ""
   intervals = wgsTargets
-  if (assay == "exome") {
+  if (assay == "wes") {
     options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
