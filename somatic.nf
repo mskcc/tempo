@@ -5,7 +5,7 @@
 --------------------------------------------------------------------------------
  Processes overview
  - SomaticDellyCall
- - CreateIntervalBeds
+ - CreateScatteredIntervals
  - RunMutect2
  - RunMutect2Filter
  - SomaticCombineMutect2VCF
@@ -14,7 +14,7 @@
  - SomaticCombineChannel
  - SomaticRunBCFToolsFilterNorm
  - SomaticRunBCFToolsMerge
- - SomaticRunVCF2MAF
+ - SomaticAnnotateMaf
  - SomaticDoSNPPileup
  - DoFacets 
  - RunMsiSensor
@@ -77,7 +77,7 @@ process SomaticDellyCall {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf")  into dellyFilterOutput
 
-  when: 'delly' in tools && runSomatic
+  when: 'delly' in tools
 
   script:
   """
@@ -99,8 +99,7 @@ process SomaticDellyCall {
 }
 
 
-// --- Run Mutect2
-(sampleIdsForIntervalBeds, bamFiles) = bamFiles.into(2)
+
 
 process CreateScatteredIntervals {
 
@@ -112,12 +111,12 @@ process CreateScatteredIntervals {
       referenceMap.genomeIndex,
       referenceMap.genomeDict
       ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(wgsTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -161,7 +160,7 @@ process CreateScatteredIntervals {
 
   gatk SplitIntervals \
     --reference ${genomeFile} \
-    --intervals ${wgsIntervals} \
+    --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
@@ -173,6 +172,10 @@ process CreateScatteredIntervals {
   done
   """
 }
+
+
+// --- Run Mutect2
+
 
 (bamsForMutect2Intervals, bamFiles) = bamFiles.into(2)
 
@@ -297,12 +300,12 @@ process SomaticRunManta {
 
   output:
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools
   script:
   options = ""
-  if(params.assayType == "exome") options = "--exome"
+  if(assay == "wes") options = "--exome"
 
   """
   configManta.py \
@@ -390,18 +393,18 @@ process SomaticRunStrelka2 {
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict
     ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(wgsTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
     ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -414,13 +417,12 @@ process SomaticRunStrelka2 {
 
   script:
   options = ""
-  intervals = wgsIntervals
-  if(params.assayType == "exome") {
+  intervals = wgsTargets
+  if (assay == "wes") {
     options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
    }
-   
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
@@ -496,7 +498,7 @@ process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutect2combinedVCF), file(mutect2combinedVCFIndex), file(strelkaVCF), file(strelkaVCFIndex) from mutectStrelkaChannel
+    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -513,21 +515,26 @@ process SomaticCombineChannel {
       referenceMap.exomePoNIndex,
       referenceMap.wgsPoNIndex
     ])
-    set file(gnomadWesVcf), file(gnomadWesVcfIndex) from Channel.value([
+    set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf,
-      referenceMap.gnomadWesVcfIndex
+      referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf,
+      referenceMap.gnomadWgsVcfIndex
     ])
 
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.pass.vcf") into vcfMergedOutput
 
-  when: 'manta' in tools && 'strelka2' in tools && 'mutect2' in tools
+  when: 'strelka2' in tools && 'mutect2' in tools
 
   script:
   isec_dir = "${idTumor}.isec"
-  pon = wgsPoN
-  gnomad = gnomadWesVcf
-  if (target != 'wgs') {
+  if (target == 'wgs') {
+    pon = wgsPoN
+    gnomad = gnomadWgsVcf
+    infoCols = ""
+  }
+  else {
     pon = exomePoN
     gnomad = gnomadWesVcf
   }
@@ -542,7 +549,7 @@ process SomaticCombineChannel {
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
-    ${mutect2combinedVCF} ${strelkaVCF}
+    ${mutectCombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
     --annotations ${isec_dir}/0003.vcf.gz \
@@ -618,7 +625,7 @@ process SomaticCombineChannel {
     --output ${idTumor}.union.gnomad.vcf.gz \
     ${idTumor}.union.vcf.gz
 
-  tabix ${idTumor}.union.gnomad.vcf.gz
+  tabix --preset vcf ${idTumor}.union.gnomad.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.pon.header \
@@ -641,7 +648,7 @@ process SomaticCombineChannel {
   """
 }
 
-process SomaticRunVcf2Maf {
+process SomaticAnnotateMaf {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutations", mode: params.publishDirMode
@@ -657,16 +664,22 @@ process SomaticRunVcf2Maf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.maf") into mafFile
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFile
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: "mutect2" in tools && "strelka2" in tools
 
   script:
-  outfile="${vcfMerged}".replaceFirst(".pass.vcf", ".unfiltered.maf")
+  outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
+  if (target == 'wgs') {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+  }
+  else {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+  }
   """
   perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
-    --vep-path /opt/vep/src/ensembl-vep \
+    --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
     --vep-forks 10 \
     --tumor-id ${idTumor} \
@@ -675,12 +688,16 @@ process SomaticRunVcf2Maf {
     --vcf-normal-id ${idNormal} \
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
-    --retain-info MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,Ref_Tri \
+    --retain-info ${infoCols} \
     --custom-enst ${isoforms} \
-    --output-maf ${outfile} \
+    --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-somatic-maf.R ${outfile}
+  python /usr/bin/oncokb_annotator/MafAnnotator.py \
+    -i ${outputPrefix}.raw.maf \
+    -o ${outputPrefix}.raw.oncokb.maf
+
+  filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
   """
 }
 
@@ -773,18 +790,18 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${outputPrefix}*") into msiOutput 
+    file("${idTumor}_vs_${idNormal}.msisensor.tsv") into msiOutput 
 
   when: "msisensor" in tools
 
   script:
-  outputPrefix = "${idTumor}_${idNormal}"
+  outputPrefix = "${idTumor}_vs_${idNormal}.msisensor.tsv"
   """
   msisensor msi \
-    -d "${msiSensorList}" \
-    -t "${bamTumor}" \
-    -n "${bamNormal}" \
-    -o "${outputPrefix}"
+    -d ${msiSensorList} \
+    -t ${bamTumor} \
+    -n ${bamNormal} \
+    -o ${outputPrefix}
   """
 }
 
@@ -800,7 +817,7 @@ process RunPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
-    file("${outputDir}/winners.hla.txt") into hlaOutput
+    set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "polysolver" in tools
   
@@ -819,7 +836,7 @@ process RunPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outputDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outputDir}/winners.hla.txt 
+  ${outputDir}
   """
 }
 
@@ -912,8 +929,6 @@ process RunConpair {
   """
 }
 
-
-
 // Run LOHHLA
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
@@ -946,7 +961,6 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 
 (facetsForLOHHLA, FacetsforMafAnno, FacetsOutput) = FacetsOutput.into(3)
 
-
 facetsForLOHHLA = facetsForLOHHLA.map{
   item -> 
     def idTumor = item[0]
@@ -975,7 +989,6 @@ facetsForLOHHLA = facetsForLOHHLA.map{
 
 mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
 
-
 process RunLOHHLA {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -988,7 +1001,7 @@ process RunLOHHLA {
   output:
     file("*") into lohhlaOutput
 
-  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools && runSomatic
+  when: "lohhla" in tools && "polysolver" in tools && "facets" in tools
 
     // NOTE: --cleanUp in LOHHLAscript.R by default set to FALSE
 
@@ -1014,7 +1027,6 @@ process RunLOHHLA {
 }
 
 
-
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
@@ -1030,13 +1042,13 @@ process RunMutationSignatures {
   output:
     file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
-  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
+  when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools
 
   script:
   """
   python /mutation-signatures/main.py \
     /mutation-signatures/Stratton_signatures30.txt \
-    ${idTumor}_vs_${idNormal}.maf \
+    ${idTumor}_vs_${idNormal}.somatic.maf \
     ${idTumor}_vs_${idNormal}.mutsig.txt
   """
 }
@@ -1084,7 +1096,7 @@ process DoMafAnno {
   output:
     set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
@@ -1169,6 +1181,7 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
+    // Target BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
@@ -1198,6 +1211,8 @@ def defineReferenceMap() {
     // gnomAD resources
     result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
+    result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
+    result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
     // HLA FASTA and *dat for LOHHLA 
     result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
     result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
@@ -1215,7 +1230,7 @@ def extractBamFiles(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 8)
-    def assay = row.ASSAY
+    def assayValue = row.ASSAY
     def target = row.TARGET
     def idTumor = row.TUMOR_ID
     def idNormal = row.NORMAL_ID
@@ -1223,6 +1238,16 @@ def extractBamFiles(tsvFile) {
     def bamNormal = returnFile(row.NORMAL_BAM)
     def baiTumor = returnFile(row.TUMOR_BAI)
     def baiNormal = returnFile(row.NORMAL_BAI)
+
+    def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+    if ((assay == "genome") || (assay == "wgs")) {
+      assay = "wgs"
+    }
+    if ((assay == "exome") || (assay == "wes")) {
+      assay = "wes"
+    }
+
     checkFileExtension(bamTumor,".bam")
     checkFileExtension(bamNormal,".bam")
     checkFileExtension(baiTumor,".bai")
