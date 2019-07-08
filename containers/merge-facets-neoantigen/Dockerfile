@@ -5,12 +5,11 @@ RUN apt-get -y update && \
     openssl \
     libcurl4-openssl-dev \
     libssl-dev \
+    libxml2-dev \
+    python \
     procps
 
-
-RUN R -e "install.packages('devtools')" \
+RUN R -e "install.packages(c('argparse','devtools'), dependencies=TRUE)" \
     && R -e "devtools::install_github(repo = 'PoisonAlien/maftools')"
 
-RUN R -e "install.packages('argparse')"
-
-RUN apt-get -y install python
+ADD merge_mafs.R /usr/local/bin
