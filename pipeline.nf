@@ -1456,7 +1456,7 @@ process FacetsAnnotation {
   """
 }
 
-(mafFileForNeoantigen, MafAnnoOutput) = MafAnnoOutput.into(2)
+(mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
 mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
