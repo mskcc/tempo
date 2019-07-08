@@ -1464,6 +1464,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    set idTumor, idNormal, target, file("${outputDir}/*.maf") into NeoantigenMafForMerge mode flatten
     file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
