@@ -210,7 +210,7 @@ process CreateRecalibrationTable {
 
 recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
-(recalibrationTable, recalibrationTableDebug) = recalibrationTable.into(2)
+// GATK ApplyBQSR, RecalibrateBAM
 
 process RecalibrateBam {
   tag {idSample}
@@ -219,7 +219,6 @@ process RecalibrateBam {
 
   input:
     set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
-
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -227,8 +226,8 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2, recalibratedBamForDebug
-    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBamTSV
     val(idSample) into currentSample
     file("${idSample}.recal.bam") into currentBam
     file("${idSample}.recal.bai") into currentBai
@@ -243,8 +242,11 @@ process RecalibrateBam {
     --bqsr-recal-file ${recalibrationReport} \
     --input ${bam} \
     --output ${idSample}.recal.bam
+
+  cp -p ${idSample}.recal.bai ${idSample}.recal.bam.bai
   """
 }
+
 
 recalibratedBamForOutput.combine(pairingT)
                         .filter { item -> // only keep combinations where sample is same as tumor pair sample
