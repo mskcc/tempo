@@ -1412,7 +1412,7 @@ FacetsforMafAnno = FacetsforMafAnno.map{
     def purityCNCF_png = item[11]
     def hisensCNCF_png = item[12]
     
-    return [ idTumor, idNormal, target, purity_rdata ]
+    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf]
   }
 
 
@@ -1424,31 +1424,42 @@ mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
 FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
 
-
-process DoMafAnno {
+process FacetsAnnotation {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(maf) from FacetsMafFileCombine
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf") into FacetsAnnotationOutput
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
+  outputPrefix = "${idTumor}_vs_${idNormal}"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf
+  /usr/bin/facets-suite/mafAnno.R \
+    --facets_files ${mapFile} \
+    --maf ${maf} \
+    --out_maf ${outputPrefix}.facets.maf
+  
+  /usr/bin/facets-suite/geneLevel.R \
+    --filenames ${hisens_cncf} \
+    --outfile ${outputPrefix}.genelevel.tsv
+
+  /usr/bin/facets-suite/armLevel.R \
+    --filenames ${purity_cncf} \
+    --outfile ${outputPrefix}.armlevel.tsv
   """
 }
 
-(mafFileForNeoantigen, MafAnnoOutput) = MafAnnoOutput.into(2)
+(mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
 mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
