@@ -1129,6 +1129,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    set idTumor, idNormal, target, file("${outputDir}/*.maf") into NeoantigenMafForMerge mode flatten
     file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
@@ -1154,13 +1155,35 @@ process RunNeoantigen {
   """
 }
 
-process SomaticGroupForQcAndAggregate {
+MergeFacetsNeoantigenMafChannel = MafAnnoOutput.combine(NeoantigenMafForMerge, by: [0,1,2]).unique()
 
+process MergeFacetsNeoantigenMaf {
+  tag {idTumor + "_vs_" + idNormal}
+
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/merge_facets_neoantigen_maf", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(facetsMaf), file(neoantigenMaf) from MergeFacetsNeoantigenMafChannel
+
+  output:
+    file("*.facets.neoantigen.merged.maf") into MergedFacetsNeoantigenMafChannel
+
+  script:
+  """
+  Rscript /usr/local/bin/merge_mafs.R \
+    --facets_maf ${facetsMaf} \
+    --neoantigen_maf ${neoantigenMaf} \
+    --output_file ${idTumor}_vs_${idNormal}.facets.neoantigen.merged.maf
+  """
+}
+
+process SomaticGroupForQcAndAggregate {
+ 
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
 
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
-    file(mafFile) from NeoantigenMafOutput.collect()
+    file(mafFile) from MergedFacetsNeoantigenMafChannel.collect()
     file(mutsigFile) from mutSigOutput.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
@@ -1175,7 +1198,7 @@ process SomaticGroupForQcAndAggregate {
     file("vcf_delly_manta/*") into VcfBedPeChannel
 
   when: "neoantigen" in tools
-
+    
   script:
 
   """
