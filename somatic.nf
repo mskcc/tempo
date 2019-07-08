@@ -1095,7 +1095,7 @@ process FacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf") into FacetsAnnotationOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf") into FacetsAnnotationOutput mode flatten
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
 
@@ -1166,7 +1166,7 @@ process RunNeoantigen {
   """
 }
 
-MergeFacetsNeoantigenMafChannel = MafAnnoOutput.combine(NeoantigenMafForMerge, by: [0,1,2]).unique()
+MergeFacetsNeoantigenMafChannel = FacetsAnnotationOutput.combine(NeoantigenMafForMerge, by: [0,1,2]).unique()
 
 process MergeFacetsNeoantigenMaf {
   tag {idTumor + "_vs_" + idNormal}
