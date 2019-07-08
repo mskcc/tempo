@@ -1407,7 +1407,7 @@ FacetsforMafAnno = FacetsforMafAnno.map{
     def purityCNCF_png = item[11]
     def hisensCNCF_png = item[12]
     
-    return [ idTumor, idNormal, target, purity_rdata ]
+    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf]
   }
 
 
@@ -1428,7 +1428,7 @@ process FacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf") into MafAnnoOutput
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
