@@ -10,3 +10,7 @@ RUN apt-get -y update && \
 
 RUN R -e "install.packages('devtools')" \
     && R -e "devtools::install_github(repo = 'PoisonAlien/maftools')"
+
+RUN R -e "install.packages('argparse')"
+
+RUN apt-get -y install python
