@@ -467,26 +467,7 @@ if (params.bam_pairing){
  
   bamPairingfile = file(bamPairingPath)
 
-<<<<<<< HEAD
   bamFiles = extractBAM(bamPairingfile)
-=======
-  script:
-  options = ""
-  if (assay == "wes") {
-    if (target == 'agilent') options = "--bed ${agilentTargets}"
-    if (target == 'idt') options = "--bed ${idtTargets}"
-   }
-  def ignore = ignore_rg ? "--ignore" : ''
-  def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
-  """
-  echo ${idSample}
-  echo ${assay}
-  echo ${target}
-  alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
-    Rscript /opt/alfred/scripts/stats.R ${outfile}
-  """
-}
->>>>>>> develop
 
 }
 
