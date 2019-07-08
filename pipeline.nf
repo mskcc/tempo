@@ -1501,7 +1501,13 @@ process MergeFacetsNeoantigenMaf {
   output:
     file("*.facets.neoantigen.merged.maf") into MergedMafChannel
 
-
+  script:
+  """
+  Rscript /usr/local/bin/merge_mafs \
+    --facets_maf ${facetsMaf} \
+    --neoantigen_maf ${neoantigenMaf} \
+    --output_file ${idTumor}_vs_${idNormal}.facets.neoantigen.merged.maf
+  """
 }
 
 /*
