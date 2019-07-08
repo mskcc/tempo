@@ -1508,6 +1508,7 @@ process MergeFacetsNeoantigenMaf {
     --facets_maf ${facetsMaf} \
     --neoantigen_maf ${neoantigenMaf} \
     --output_file ${idTumor}_vs_${idNormal}.facets.neoantigen.merged.maf
+  """
 }
 
 process SomaticGroupForQcAndAggregate {
