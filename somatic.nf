@@ -5,7 +5,7 @@
 --------------------------------------------------------------------------------
  Processes overview
  - SomaticDellyCall
- - CreateIntervalBeds
+ - CreateScatteredIntervals
  - RunMutect2
  - RunMutect2Filter
  - SomaticCombineMutect2VCF
@@ -111,12 +111,12 @@ process CreateScatteredIntervals {
       referenceMap.genomeIndex,
       referenceMap.genomeDict
       ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(wgsTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
       ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -160,7 +160,7 @@ process CreateScatteredIntervals {
 
   gatk SplitIntervals \
     --reference ${genomeFile} \
-    --intervals ${wgsIntervals} \
+    --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
     --output wgs 
@@ -300,12 +300,12 @@ process SomaticRunManta {
 
   output:
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools
   script:
   options = ""
-  if(params.assayType == "exome") options = "--exome"
+  if(assay == "wes") options = "--exome"
 
   """
   configManta.py \
@@ -393,18 +393,18 @@ process SomaticRunStrelka2 {
   //publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
       referenceMap.genomeDict
     ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(wgsTargets) from Channel.value([
       referenceMap.idtTargets,
       referenceMap.agilentTargets,
       referenceMap.wgsTargets
     ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
       referenceMap.idtTargetsIndex,
       referenceMap.agilentTargetsIndex,
       referenceMap.wgsTargetsIndex
@@ -417,13 +417,12 @@ process SomaticRunStrelka2 {
 
   script:
   options = ""
-  intervals = wgsIntervals
-  if(params.assayType == "exome") {
+  intervals = wgsTargets
+  if (assay == "wes") {
     options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
    }
-   
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
@@ -818,7 +817,7 @@ process RunPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
-    file("${outputDir}/winners.hla.txt") into hlaOutput
+    set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
 
   when: "polysolver" in tools
   
@@ -837,7 +836,7 @@ process RunPolysolver {
   hg19 \
   STDFQ \
   0 \
-  ${outputDir} || echo "HLA Polysolver did not run successfully and its process has been redirected to generate this file." > ${outputDir}/winners.hla.txt 
+  ${outputDir}
   """
 }
 
@@ -930,8 +929,6 @@ process RunConpair {
   """
 }
 
-
-
 // Run LOHHLA
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
@@ -964,7 +961,6 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 
 (facetsForLOHHLA, FacetsforMafAnno, FacetsOutput) = FacetsOutput.into(3)
 
-
 facetsForLOHHLA = facetsForLOHHLA.map{
   item -> 
     def idTumor = item[0]
@@ -992,7 +988,6 @@ facetsForLOHHLA = facetsForLOHHLA.map{
 //apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
 mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
-
 
 process RunLOHHLA {
   tag {idTumor + "_vs_" + idNormal}
@@ -1032,7 +1027,6 @@ process RunLOHHLA {
 }
 
 
-
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
@@ -1054,7 +1048,7 @@ process RunMutationSignatures {
   """
   python /mutation-signatures/main.py \
     /mutation-signatures/Stratton_signatures30.txt \
-    ${idTumor}_vs_${idNormal}.maf \
+    ${idTumor}_vs_${idNormal}.somatic.maf \
     ${idTumor}_vs_${idNormal}.mutsig.txt
   """
 }
@@ -1187,6 +1181,7 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
+    // Target BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
@@ -1235,7 +1230,7 @@ def extractBamFiles(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 8)
-    def assay = row.ASSAY
+    def assayValue = row.ASSAY
     def target = row.TARGET
     def idTumor = row.TUMOR_ID
     def idNormal = row.NORMAL_ID
@@ -1243,6 +1238,16 @@ def extractBamFiles(tsvFile) {
     def bamNormal = returnFile(row.NORMAL_BAM)
     def baiTumor = returnFile(row.TUMOR_BAI)
     def baiNormal = returnFile(row.NORMAL_BAI)
+
+    def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+    if ((assay == "genome") || (assay == "wgs")) {
+      assay = "wgs"
+    }
+    if ((assay == "exome") || (assay == "wes")) {
+      assay = "wes"
+    }
+
     checkFileExtension(bamTumor,".bam")
     checkFileExtension(bamNormal,".bam")
     checkFileExtension(baiTumor,".bai")
