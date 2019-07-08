@@ -26,6 +26,11 @@ if (!check_for_duplicated_rows(pairingPath)) {
   exit 1
 }
 
+if (!check_for_mixed_assay(mappingPath)) {
+  println "ERROR: You can only use either assays 'exome' or 'genome', not both WES and WGS together"
+  exit 1
+}
+
 outname = params.outname
 
 referenceMap = defineReferenceMap()
@@ -97,6 +102,24 @@ process SortBAM {
 }
 
 sortedBam.groupTuple().set { groupedBam }
+groupedBam = groupedBam.map{ item ->
+  def idSample = item[0]
+  def lane = item[1] //is a list
+  def bam = item[2]
+
+  def assayList = item[3].unique()
+  def targetList = item[4].unique()
+
+  if ((assayList.size() > 1) || (targetList.size() > 1)) {
+    println "ERROR: Multiple assays and/or targets found for ${idSample}; check inputs"
+    exit 1
+  }
+
+  def assay = assayList[0]
+  def target = targetList[0]
+
+  [idSample, lane, bam, assay, target]
+}
 groupedBam.into { groupedBamDebug; groupedBam }
 
 process MergeBams {
@@ -206,11 +229,11 @@ process RecalibrateBam {
   output:
     set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2, recalibratedBamForDebug
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
-    set idSample into currentSample
-    set file("${idSample}.recal.bam") into currentBam
-    set file("${idSample}.recal.bai") into currentBai
-    set assay into assays
-    set targetFile into targets
+    val(idSample) into currentSample
+    file("${idSample}.recal.bam") into currentBam
+    file("${idSample}.recal.bai") into currentBai
+    val(assay) into assays
+    val(targetFile) into targets
 
   script:
   """
@@ -237,8 +260,8 @@ recalibratedBamForOutput.combine(pairingT)
                           def sampleID = item[0]
                           def sampleBam = item[1]
                           def sampleBai = item[2]
-                          def assay = item[3][0]
-                          def target = item[4][0]
+                          def assay = item[3]
+                          def target = item[4]
                           def tumorID = item[5]
                           def normalID = item[6]
                           def tumorBam = sampleBam
@@ -365,7 +388,7 @@ def defineReferenceMap() {
     'bwaIndex'         : checkParamReturnFile("bwaIndex"), 
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels'      : checkParamReturnFile("knownIndels"),
-    'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+    'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex")
   ]
 }
 
@@ -390,12 +413,21 @@ def extractFastq(tsvFile) {
     checkNumberOfItem(row, 6)
     def idSample = row.SAMPLE
     def lane = row.LANE
-    def assay = row.ASSAY
+    def assayValue = row.ASSAY
     def targetFile = row.TARGET
     def fastqFile1 = returnFile(row.FASTQ_PE1)
     def sizeFastqFile1 = fastqFile1.size()
     def fastqFile2 = returnFile(row.FASTQ_PE2)
     def sizeFastqFile2 = fastqFile2.size()
+
+    def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+    if ((assay == "genome") || (assay == "wgs")) {
+      assay = "wgs"
+    }
+    if ((assay == "exome") || (assay == "wes")) {
+      assay = "wes"
+    }
 
     checkFileExtension(fastqFile1,".fastq.gz")
     checkFileExtension(fastqFile2,".fastq.gz")
@@ -427,4 +459,19 @@ def check_for_duplicated_rows(pairingFilePath) {
     entries << line
   }
   return entries.toSet().size() == entries.size()
+}
+
+def check_for_mixed_assay(mappingFilePath) {
+  def wgs = false
+  def wes = false
+  file( mappingFilePath ).eachLine { line ->
+    currentLine = line.toLowerCase()
+    if (currentLine.contains('\tgenome\t') || currentLine.contains('\twgs\t')) {
+      wgs = true
+    }
+    if (currentLine.contains('\texome\t') || currentLine.contains('\twes\t')) {
+      wes = true
+    }
+  return !(wgs && wes)
+  }
 }
