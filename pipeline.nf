@@ -201,6 +201,7 @@ process MarkDuplicates {
     --ASSUME_SORT_ORDER coordinate \
     --CREATE_INDEX true \
     --OUTPUT ${idSample}.md.bam
+
   """
 }
 
@@ -268,8 +269,8 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBamTSV
     val(idSample) into currentSample
     file("${idSample}.recal.bam") into currentBam
     file("${idSample}.recal.bai") into currentBai
@@ -284,6 +285,8 @@ process RecalibrateBam {
     --bqsr-recal-file ${recalibrationReport} \
     --input ${bam} \
     --output ${idSample}.recal.bam
+
+  cp -p ${idSample}.recal.bai ${idSample}.recal.bam.bai
   """
 }
 
