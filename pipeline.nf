@@ -269,7 +269,7 @@ process RecalibrateBam {
     --input ${bam} \
     --output ${idSample}.recal.bam
 
-  for f in *.bai; do cp -- '$f' '${f%.bai}.bam.bai'; done  
+  cp -p ${idSample}.recal.bai ${idSample}.recal.bam.bai
   """
 }
 
