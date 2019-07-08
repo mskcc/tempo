@@ -1501,11 +1501,11 @@ process MergeFacetsNeoantigenMaf {
     set idTumor, idNormal, target, file(facetsMaf), file(neoantigenMaf) from MergeFacetsNeoantigenMafChannel
 
   output:
-    file("*.facets.neoantigen.merged.maf") into MergedMafChannel
+    file("*.facets.neoantigen.merged.maf") into MergedFacetsNeoantigenMafChannel
 
   script:
   """
-  Rscript /usr/local/bin/merge_mafs \
+  Rscript /usr/local/bin/merge_mafs.R \
     --facets_maf ${facetsMaf} \
     --neoantigen_maf ${neoantigenMaf} \
     --output_file ${idTumor}_vs_${idNormal}.facets.neoantigen.merged.maf
@@ -1518,7 +1518,7 @@ process SomaticGroupForQcAndAggregate {
 
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
-    file(mafFile) from NeoantigenMafOutput.collect()
+    file(mafFile) from MergedFacetsNeoantigenMafChannel.collect()
     file(mutsigFile) from mutSigOutput.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
