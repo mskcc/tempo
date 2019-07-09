@@ -268,11 +268,11 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBamTSV
     val(idSample) into currentSample
     file("${idSample}.recal.bam") into currentBam
-    file("${idSample}.recal.bai") into currentBai
+    file("${idSample}.recal.bam.bai") into currentBai
     val(assay) into assays
     val(targetFile) into targets
 
@@ -286,6 +286,7 @@ process RecalibrateBam {
     --output ${idSample}.recal.bam
   """
 }
+
 
 
 // set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -407,6 +408,59 @@ process Alfred {
   """
 }
 
+// GATK CollectHsMetrics, WES only
+
+process CollectHsMetrics{
+  tag {idSample}
+
+  publishDir "${params.outDir}/CollectHsMetrics/${idSample}", mode: params.publishDirMode
+
+  input:
+    set idSample, file(bam), file(bai), assay, target from recalibratedBamForCollectHsMetrics
+
+    file(genomeFile) from Channel.value([
+      referenceMap.genomeFile
+    ])
+    set file(idtTargets), file(agilentTargets), file(idtBaits), file(agilentBaits) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets, 
+      referenceMap.idtBaits,
+      referenceMap.agilentBaits      
+    ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex), file(idtBaitsIndex), file(agilentBaitsIndex) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex, 
+      referenceMap.idtBaitsIndex,
+      referenceMap.agilentBaitsIndex      
+    ])
+
+
+  output:
+    set idSample, file("${idSample}_output_hs_metrics.txt") into collectHsMetricsStats
+
+  when: 'wes' in assay
+
+  script:
+  bait_intervals = ""
+  target_intervals = ""
+  if (target == 'agilent'){
+    bait_intervals = "${agilentBaits}"
+    target_intervals = "${agilentTargets}"
+  }
+  if (target == 'idt'){
+    bait_intervals = "${idtBaits}"
+    target_intervals = "${idtTargets}"
+  }
+  """
+  gatk CollectHsMetrics \
+    --INPUT  ${bam} \
+    --OUTPUT ${idSample}_output_hs_metrics.txt \
+    --REFERENCE_SEQUENCE ${genomeFile} \
+    --BAIT_INTERVALS ${bait_intervals}\
+    --TARGET_INTERVALS ${target_intervals} 
+  """
+}
+
 
 // GATK SplitIntervals, CreateScatteredIntervals
 
@@ -493,6 +547,10 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1).unique()
 
 // These will go into mutect2 and haplotypecaller
 (mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
+
+
+
+
 
 /*
 ================================================================================
@@ -2069,13 +2127,17 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
-    // Target BED files
+    // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
+    'idtBaits' : checkParamReturnFile("idtBaits"),
+    'idtBaitsIndex' = checkParamReturnFile("idtBaitsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'agilentBaits' : checkParamReturnFile("agilentBaits"),
+    'agilentBaitsIndex' : checkParamReturnFile("agilentBaitsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"
   ]
 
   if (!params.test) {
