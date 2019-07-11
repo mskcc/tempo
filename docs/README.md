@@ -1,6 +1,6 @@
 # Vaporware documentation
 
-Vaporware is a computational pipeline for analyzing data from exome and genome sequencing. Its components are containerized and the pipeline runs on the (Juno high-performance computing cluster)[http://hpc.mskcc.org/] at Memorial Sloan Kettering Cancer Cencer and on Amazon Web Services (AWS).
+Vaporware is a computational pipeline for analyzing data from exome and genome sequencing. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Cencer and on [Amazon Web Services (AWS)](https://aws.amazon.com).
 
 These pages contain instructions on how to run the Vaporware pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus sources and processing of all reference materials use. 
 
