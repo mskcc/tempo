@@ -1,7 +1,7 @@
 FROM frolvlad/alpine-glibc:alpine-3.9
 
 LABEL maintainer="Nikhil Kumar (kumarn1@mskcc.org), Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="1.1.0" \
+      version.image="1.5.9" \
       version.facets_suite="1.5.9" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
