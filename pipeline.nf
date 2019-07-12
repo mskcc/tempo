@@ -438,7 +438,7 @@ process CreateScatteredIntervals {
     file("wgs*.interval_list") into wgsIntervals mode flatten
 
   script:
-  scatterCount = 10
+  scatterCount = params.scatterCount
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
@@ -470,7 +470,7 @@ process CreateScatteredIntervals {
     --reference ${genomeFile} \
     --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --subdivision-mode INTERVAL_SUBDIVISION \
     --output wgs 
 
   for i in wgs/*.interval_list;
