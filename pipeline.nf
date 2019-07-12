@@ -470,7 +470,7 @@ process CreateScatteredIntervals {
     --reference ${genomeFile} \
     --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --subdivision-mode INTERVAL_SUBDIVISION \
     --output wgs 
 
   for i in wgs/*.interval_list;
