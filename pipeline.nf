@@ -2214,7 +2214,7 @@ def defineReferenceMap() {
     'agilentBaits' : checkParamReturnFile("agilentBaits"),
     'agilentBaitsIndex' : checkParamReturnFile("agilentBaitsIndex"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (!params.test) {
