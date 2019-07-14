@@ -2208,7 +2208,7 @@ def defineReferenceMap() {
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'idtBaits' : checkParamReturnFile("idtBaits"),
-    'idtBaitsIndex' = checkParamReturnFile("idtBaitsIndex"),
+    'idtBaitsIndex' : checkParamReturnFile("idtBaitsIndex"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'agilentBaits' : checkParamReturnFile("agilentBaits"),
