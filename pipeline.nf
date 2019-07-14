@@ -1467,7 +1467,7 @@ hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/neoantigen", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
