@@ -1097,7 +1097,7 @@ process FacetsAnnotation {
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}_TSG_ManualReview.txt") into FacetsAnnotationOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools 
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
