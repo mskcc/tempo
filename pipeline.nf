@@ -2201,12 +2201,12 @@ def defineReferenceMap() {
     // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
-    'idtBaits' : checkParamReturnFile("idtBaits"),
-    'idtBaitsIndex' : checkParamReturnFile("idtBaitsIndex"),
+    'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
+    'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
-    'agilentBaits' : checkParamReturnFile("agilentBaits"),
-    'agilentBaitsIndex' : checkParamReturnFile("agilentBaitsIndex"),
+    'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
+    'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
