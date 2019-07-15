@@ -1095,9 +1095,9 @@ process FacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf") into FacetsAnnotationOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}_TSG_ManualReview.txt") into FacetsAnnotationOutput
 
-  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools
+  when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools 
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
