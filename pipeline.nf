@@ -1039,9 +1039,11 @@ process SomaticAnnotateMaf {
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
+    
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
+    
   filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
   """
 }
