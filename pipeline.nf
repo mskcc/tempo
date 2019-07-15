@@ -500,7 +500,7 @@ process CreateScatteredIntervals {
     file("wgs*.interval_list") into wgsIntervals mode flatten
 
   script:
-  scatterCount = 10
+  scatterCount = params.scatterCount
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
@@ -532,7 +532,7 @@ process CreateScatteredIntervals {
     --reference ${genomeFile} \
     --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --subdivision-mode INTERVAL_SUBDIVISION \
     --output wgs 
 
   for i in wgs/*.interval_list;
@@ -1079,7 +1079,7 @@ process SomaticAnnotateMaf {
     infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
   }
   """
-  perl /usr/bin/vcf2maf/vcf2maf.pl \
+  perl /opt/vcf2maf.pl \
     --maf-center MSKCC-CMO \
     --vep-path /usr/bin/vep \
     --vep-data ${vepCache} \
@@ -1094,7 +1094,7 @@ process SomaticAnnotateMaf {
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
-
+    
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
@@ -1102,6 +1102,7 @@ process SomaticAnnotateMaf {
   filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
   """
 }
+
 
 
 // --- Run MSIsensor
@@ -1409,7 +1410,7 @@ process RunLOHHLA {
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
     Rscript /lohhla/LOHHLAscript.R \
-        --patientId ${idTumor}_vs_{idNormal} \
+        --patientId ${idTumor}_vs_${idNormal} \
         --normalBAMfile ${bamNormal} \
         --tumorBAMfile ${bamTumor} \
         --HLAfastaLoc ${hlaFasta} \
@@ -1523,7 +1524,7 @@ hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/neoantigen", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
