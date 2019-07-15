@@ -424,19 +424,12 @@ process CollectHsMetrics{
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
     ])
-    set file(idtTargets), file(agilentTargets), file(idtBaits), file(agilentBaits) from Channel.value([
-      referenceMap.idtTargets,
-      referenceMap.agilentTargets, 
-      referenceMap.idtBaits,
-      referenceMap.agilentBaits      
+    set file(idtTargetsList), file(agilentTargetsList), file(idtBaitsList), file(agilentBaitsList) from Channel.value([
+      referenceMap.idtTargetsList,
+      referenceMap.agilentTargetsList, 
+      referenceMap.idtBaitsList,
+      referenceMap.agilentBaitsList      
     ])
-    set file(idtTargetsIndex), file(agilentTargetsIndex), file(idtBaitsIndex), file(agilentBaitsIndex) from Channel.value([
-      referenceMap.idtTargetsIndex,
-      referenceMap.agilentTargetsIndex, 
-      referenceMap.idtBaitsIndex,
-      referenceMap.agilentBaitsIndex      
-    ])
-
 
   output:
     set idSample, file("${idSample}_output_hs_metrics.txt") into collectHsMetricsStats
@@ -447,12 +440,12 @@ process CollectHsMetrics{
   bait_intervals = ""
   target_intervals = ""
   if (target == 'agilent'){
-    bait_intervals = "${agilentBaits}"
-    target_intervals = "${agilentTargets}"
+    bait_intervals = "${agilentBaitsList}"
+    target_intervals = "${agilentTargetsList}"
   }
   if (target == 'idt'){
-    bait_intervals = "${idtBaits}"
-    target_intervals = "${idtTargets}"
+    bait_intervals = "${idtBaitsList}"
+    target_intervals = "${idtTargetsList}"
   }
   """
   gatk CollectHsMetrics \
