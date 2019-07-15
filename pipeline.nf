@@ -421,8 +421,10 @@ process CollectHsMetrics{
   input:
     set idSample, file(bam), file(bai), assay, target from recalibratedBamForCollectHsMetrics
 
-    file(genomeFile) from Channel.value([
-      referenceMap.genomeFile
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
     ])
     set file(idtTargetsList), file(agilentTargetsList), file(idtBaitsList), file(agilentBaitsList) from Channel.value([
       referenceMap.idtTargetsList,
