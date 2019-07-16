@@ -1121,8 +1121,22 @@ process FacetsAnnotation {
   """
 }
 
+
 (mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
-mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
+
+//Formatting the channel to be: idTumor, idNormal, target, MAF
+
+mafFileForNeoantigen = mafFileForNeoantigen.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def mafFile = item[3]
+    def armLevel = item[4]
+    def geneLevel = item[5]
+    def tsg_manual_review = item[6]
+    return [idTumor, idNormal, target, mafFile]
+  }
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
 
