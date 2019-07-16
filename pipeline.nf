@@ -1856,9 +1856,11 @@ process GermlineCombineChannel {
   gnomad = gnomadWgsVcf
   if (target == 'wgs') {
     gnomad = gnomadWgsVcf
+    gnomadCutoff = 'AF_popmax>0.02'
   }
   else {
     gnomad = gnomadWesVcf
+    gnomadCutoff = 'non_cancer_AF_popmax>0.02'
   }
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
@@ -1950,7 +1952,7 @@ process GermlineCombineChannel {
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
   bcftools filter \
-    --exclude \"non_cancer_AF_popmax>0.02\" \
+    --exclude \"${gnomadCutoff}\" \
     --output-type v \
     --output ${idNormal}.union.gnomad.vcf 
 
