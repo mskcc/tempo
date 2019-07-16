@@ -1993,7 +1993,7 @@ process GermlineAnnotateMaf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
+    file("${outputPrefix}.maf") into mafFileGermline
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
@@ -2097,6 +2097,7 @@ process GermlineMergeDellyAndManta {
 
   output:
     set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
+    set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into germlineVcfBedPe
 
   when: 'manta' in tools && 'delly' in tools && runGermline
 
@@ -2129,6 +2130,37 @@ process GermlineMergeDellyAndManta {
     ${idNormal}.delly.manta.unfiltered.vcf.gz 
     
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
+  """
+}
+
+process GermlineAggregate {
+ 
+  publishDir "${params.outDir}/germline/", mode: params.publishDirMode
+
+  input:
+    file(mafFile) from mafFileGermline.collect()
+    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+
+  output:
+    file("merged.maf") into GermlineMafFileOutput
+    file("vcf_delly_manta/*") into GermlineVcfBedPeChannel
+    
+  script:
+
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  # Collect MAF files from neoantigen to maf_files/ and merge into one maf
+  mkdir maf_files
+  mv *.maf maf_files
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+
+  # Collect delly and manta vcf outputs into vcf_delly_manta/
+  mkdir vcf_delly_manta
+  mv  *.delly.manta.vcf.gz vcf_delly_manta
   """
 }
 
