@@ -322,7 +322,7 @@ process GermlineRunManta {
   // flag with --exome if exome
   script:
   options = ""
-  if (params.assayType == "exome") options = "--exome"
+  if (assay == "wes") options = "--exome"
   """
   configManta.py \
     ${options} \
@@ -381,10 +381,9 @@ process GermlineRunStrelka2 {
   
   script:
   options = ""
-  if (params.assayType == "exome") options = "--exome"
-
   intervals = wgsIntervals
-  if(params.assayType == "exome") {
+  if(assay == "wes") {
+    options = "--exome"
     if(target == 'agilent') intervals = agilentTargets
     if(target == 'idt') intervals = idtTargets
   }
@@ -768,7 +767,7 @@ def extractBamFiles(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 8)
-    def assay = row.ASSAY
+    def assayValue = row.ASSAY
     def target = row.TARGET
     def idTumor = row.TUMOR_ID
     def idNormal = row.NORMAL_ID
@@ -776,6 +775,16 @@ def extractBamFiles(tsvFile) {
     def bamNormal = returnFile(row.NORMAL_BAM)
     def baiTumor = returnFile(row.TUMOR_BAI)
     def baiNormal = returnFile(row.NORMAL_BAI)
+
+    def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+    if ((assay == "genome") || (assay == "wgs")) {
+      assay = "wgs"
+    }
+    if ((assay == "exome") || (assay == "wes")) {
+      assay = "wes"
+    }
+
     checkFileExtension(bamTumor,".bam")
     checkFileExtension(bamNormal,".bam")
     checkFileExtension(baiTumor,".bai")
