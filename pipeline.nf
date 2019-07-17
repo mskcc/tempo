@@ -723,7 +723,7 @@ process SomaticMergeDellyAndManta {
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
 
   output:
-    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
+    file("*filtered.merge.vcf.gz") into vcfDellyMantaMergedOutput
 
   when: 'manta' in tools && 'delly' in tools && runSomatic
 
@@ -742,8 +742,8 @@ process SomaticMergeDellyAndManta {
   bcftools merge \
     --force-samples \
     --merge none \
-    --output-type v \
-    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf \
+    --output-type z \
+    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf.gz \
     *.vcf.gz
   """
 }
@@ -1520,7 +1520,7 @@ process RunNeoantigen {
 }
 
 
-process SomaticGroupForQcAndAggregate {
+process SomaticAggregate {
  
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
 
@@ -1538,7 +1538,7 @@ process SomaticGroupForQcAndAggregate {
     file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
-    file("vcf_delly_manta/*") into VcfBedPeChannel
+    file("merged.vcf.gz") into VcfBedPeChannel
 
   when: "neoantigen" in tools
     
@@ -1573,8 +1573,20 @@ process SomaticGroupForQcAndAggregate {
   mv *hisens.* facets/hisens
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
+  for f in *.vcf.gz
+  do
+    tabix --preset vcf \$f
+  done
+
   mkdir vcf_delly_manta
-  mv *.filtered.merge.vcf vcf_delly_manta
+  mv *.filtered.merge.vcf.gz* vcf_delly_manta
+
+  bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type z \
+    --output merged.vcf.gz \
+    vcf_delly_manta/*.filtered.merge.vcf.gz
   """
 }
 
@@ -2143,7 +2155,7 @@ process GermlineAggregate {
 
   output:
     file("merged.maf") into GermlineMafFileOutput
-    file("vcf_delly_manta/*") into GermlineVcfBedPeChannel
+    file("merged.vcf.gz") into GermlineVcfBedPeChannel
     
   script:
 
@@ -2160,7 +2172,14 @@ process GermlineAggregate {
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   mkdir vcf_delly_manta
-  mv  *.delly.manta.vcf.gz vcf_delly_manta
+  mv  *.delly.manta.vcf.gz* vcf_delly_manta
+
+  bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type z \
+    --output merged.vcf.gz \
+    vcf_delly_manta/*.delly.manta.vcf.gz
   """
 }
 
