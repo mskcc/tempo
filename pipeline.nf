@@ -269,7 +269,7 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForOutput, recalibratedBamForOutput2
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBamTSV
     val(idSample) into currentSample
     file("${idSample}.recal.bam") into currentBam
@@ -1513,10 +1513,25 @@ process FacetsAnnotation {
   """
 }
 
+
 (mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
-mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
+
+//Formatting the channel to be: idTumor, idNormal, target, MAF
+
+mafFileForNeoantigen = mafFileForNeoantigen.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def mafFile = item[3]
+    def armLevel = item[4]
+    def geneLevel = item[5]
+    def tsg_manual_review = item[6]
+    return [idTumor, idNormal, target, mafFile]
+  }
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
+
 
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
@@ -1894,9 +1909,11 @@ process GermlineCombineChannel {
   gnomad = gnomadWgsVcf
   if (target == 'wgs') {
     gnomad = gnomadWgsVcf
+    gnomadCutoff = 'AF_popmax>0.02'
   }
   else {
     gnomad = gnomadWesVcf
+    gnomadCutoff = 'non_cancer_AF_popmax>0.02'
   }
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
@@ -1988,7 +2005,7 @@ process GermlineCombineChannel {
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
   bcftools filter \
-    --exclude \"non_cancer_AF_popmax>0.02\" \
+    --exclude \"${gnomadCutoff}\" \
     --output-type v \
     --output ${idNormal}.union.gnomad.vcf 
 
@@ -2029,7 +2046,7 @@ process GermlineAnnotateMaf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
+    file("${outputPrefix}.maf") into mafFileGermline
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
@@ -2133,6 +2150,7 @@ process GermlineMergeDellyAndManta {
 
   output:
     set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
+    set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into germlineVcfBedPe
 
   when: 'manta' in tools && 'delly' in tools && runGermline
 
@@ -2165,6 +2183,37 @@ process GermlineMergeDellyAndManta {
     ${idNormal}.delly.manta.unfiltered.vcf.gz 
     
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
+  """
+}
+
+process GermlineAggregate {
+ 
+  publishDir "${params.outDir}/germline/", mode: params.publishDirMode
+
+  input:
+    file(mafFile) from mafFileGermline.collect()
+    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+
+  output:
+    file("merged.maf") into GermlineMafFileOutput
+    file("vcf_delly_manta/*") into GermlineVcfBedPeChannel
+    
+  script:
+
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  # Collect MAF files from neoantigen to maf_files/ and merge into one maf
+  mkdir maf_files
+  mv *.maf maf_files
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+
+  # Collect delly and manta vcf outputs into vcf_delly_manta/
+  mkdir vcf_delly_manta
+  mv  *.delly.manta.vcf.gz vcf_delly_manta
   """
 }
 
