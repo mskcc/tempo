@@ -11,6 +11,3 @@ This page provides a basic reference to cloud computing concepts and AWS termino
 * __AWS Batch__:
 
 * __EBS Autoscaling__:
-
-
-
