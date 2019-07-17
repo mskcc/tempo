@@ -11,21 +11,32 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 ---
 
 ## Table of contents
-1. [Installation](installation.md)
-    - [Set up on Juno](juno-setup.md)
-    - [Set up on AWS](aws-setup.md)
-2. [Usage](usage.md)
-    - [Nextflow basics](nextflow-basics.md)
-    - [Working with containers](working-with-containers.md)
-    - [Run pipeline](run-pipeline.md)
-3. [Bioinformatic components](bioinformatic-components.md)
-    - [Read alignment](bioinformatic-components.md#read-alignment)
-    - [Somatic analyses](bioinformatic-components.md#somatic-analyses)
-    - [Germline analyses](bioinformatic-components.md#germline-analyses)
-4. [Reference files](reference-files.md)
-    - [Intervals](intervals.md)
-5. [Variant annotation and filtering](variant-annotation-and-filtering.md)
-    - [Panel of normals for exomes](wes-panel-of-normals.md)
-6. [More resources](more-resources.md)
-    - [AWS glossary](aws-glossary.md)
+
+### 1. Getting started
+
+#### 1.1 [Installation](installation.md)
+* [Set up on Juno](juno-setup.md)
+* [Set up on AWS](aws-setup.md)
+
+#### 1.2 [Usage](usage.md)
+* [Nextflow basics](nextflow-basics.md)
+* [Working with containers](working-with-containers.md)
+* [Run pipeline](run-pipeline.md)
+
+### 2. Pipeline contents
+
+#### 2.1 [Bioinformatic components](bioinformatic-components.md)
+* [Read alignment](bioinformatic-components.md#read-alignment)
+* [Somatic analyses](bioinformatic-components.md#somatic-analyses)
+* [Germline analyses](bioinformatic-components.md#germline-analyses)
+
+#### 2.2 [Reference files](reference-files.md)
+* [Intervals](intervals.md)
+
+#### 2.3 [Variant annotation and filtering](variant-annotation-and-filtering.md)
+* [Panel of normals for exomes](wes-panel-of-normals.md)
+
+### 3. Help and other resources
+* [Troubleshooting](troubleshooting.md)
+* [AWS glossary](aws-glossary.md)
 ---
