@@ -186,7 +186,7 @@ process MarkDuplicates {
 //   publishDir "${params.outDir}/MarkDup/", mode: params.publishDirMode
 
   input:
-    set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
+    set idSample, lane, file(bam), assay, targetFile from mergedBam
 
   output:
     set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
@@ -793,7 +793,7 @@ process SomaticMergeDellyAndManta {
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/strelka2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -1389,7 +1389,7 @@ process RunLOHHLA {
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
     Rscript /lohhla/LOHHLAscript.R \
-        --patientId ${idTumor}_vs_{idNormal} \
+        --patientId ${idTumor}_vs_${idNormal} \
         --normalBAMfile ${bamNormal} \
         --tumorBAMfile ${bamTumor} \
         --HLAfastaLoc ${hlaFasta} \
@@ -1496,7 +1496,7 @@ hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2])
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/neoantigen", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
