@@ -15,6 +15,9 @@ If there are any questions or comments, you are welcome to [raise an issue](http
     - [Set up on Juno](juno-setup.md)
     - [Set up on AWS](aws-setup.md)
 2. [Usage](usage.md)
+    - [Nextflow basics](nextflow-basics.md)
+    - [Working with containers](working-with-containers.md)
+    - [Run pipeline](run-pipeline.md)
 3. [Bioinformatic components](bioinformatic-components.md)
     - [Read alignment](bioinformatic-components.md#read-alignment)
     - [Somatic analyses](bioinformatic-components.md#somatic-analyses)
@@ -23,5 +26,6 @@ If there are any questions or comments, you are welcome to [raise an issue](http
     - [Intervals](intervals.md)
 5. [Variant annotation and filtering](variant-annotation-and-filtering.md)
     - [Panel of normals for exomes](wes-panel-of-normals.md)
-6. ...
+6. [More resources](more-resources.md)
+    - [AWS glossary](aws-glossary.md)
 ---
