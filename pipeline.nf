@@ -201,6 +201,7 @@ process MarkDuplicates {
     --ASSUME_SORT_ORDER coordinate \
     --CREATE_INDEX true \
     --OUTPUT ${idSample}.md.bam
+
   """
 }
 
@@ -268,8 +269,8 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForOutput, recalibratedBamForOutput2
+    set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBamTSV
     val(idSample) into currentSample
     file("${idSample}.recal.bam") into currentBam
     file("${idSample}.recal.bai") into currentBai
@@ -284,6 +285,8 @@ process RecalibrateBam {
     --bqsr-recal-file ${recalibrationReport} \
     --input ${bam} \
     --output ${idSample}.recal.bam
+
+  cp -p ${idSample}.recal.bai ${idSample}.recal.bam.bai
   """
 }
 
@@ -435,7 +438,7 @@ process CreateScatteredIntervals {
     file("wgs*.interval_list") into wgsIntervals mode flatten
 
   script:
-  scatterCount = 10
+  scatterCount = params.scatterCount
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
@@ -467,7 +470,7 @@ process CreateScatteredIntervals {
     --reference ${genomeFile} \
     --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --subdivision-mode INTERVAL_SUBDIVISION \
     --output wgs 
 
   for i in wgs/*.interval_list;
@@ -991,6 +994,7 @@ process SomaticCombineChannel {
   """
 }
 
+
 // run VCF2MAF, somatic
 
 process SomaticAnnotateMaf {
@@ -1035,11 +1039,11 @@ process SomaticAnnotateMaf {
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
-
+    
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
-
+    
   filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
   """
 }
@@ -1095,6 +1099,8 @@ process DoFacets {
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
     set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
+    set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
+    set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
 
   when: 'facets' in tools && runSomatic
 
@@ -1348,7 +1354,7 @@ process RunLOHHLA {
     cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
     Rscript /lohhla/LOHHLAscript.R \
-        --patientId ${idTumor}_vs_{idNormal} \
+        --patientId ${idTumor}_vs_${idNormal} \
         --normalBAMfile ${bamNormal} \
         --tumorBAMfile ${bamTumor} \
         --HLAfastaLoc ${hlaFasta} \
@@ -1407,7 +1413,7 @@ FacetsforMafAnno = FacetsforMafAnno.map{
     def purityCNCF_png = item[11]
     def hisensCNCF_png = item[12]
     
-    return [ idTumor, idNormal, target, purity_rdata ]
+    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf]
   }
 
 
@@ -1419,39 +1425,65 @@ mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
 FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
 
-
-process DoMafAnno {
+process FacetsAnnotation {
   tag {idTumor + "_vs_" + idNormal}
 
   publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/facets_maf", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(maf) from FacetsMafFileCombine
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.facets.maf") into MafAnnoOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsAnnotationOutput
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
+  outputPrefix = "${idTumor}_vs_${idNormal}"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R -f ${mapFile} -m ${maf} -o ${idTumor}_vs_${idNormal}.facets.maf
+  /usr/bin/facets-suite/mafAnno.R \
+    --facets_files ${mapFile} \
+    --maf ${maf} \
+    --out_maf ${outputPrefix}.facets.maf
+  
+  /usr/bin/facets-suite/geneLevel.R \
+    --filenames ${hisens_cncf} \
+    --outfile ${outputPrefix}.genelevel.tsv
+
+  /usr/bin/facets-suite/armLevel.R \
+    --filenames ${purity_cncf} \
+    --outfile ${outputPrefix}.armlevel.tsv
   """
 }
 
-(mafFileForNeoantigen, mafFile) = mafFile.into(2)
-mafFileForNeoantigen = mafFileForNeoantigen.groupTuple(by: [0,1,2])
+
+(mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
+
+//Formatting the channel to be: idTumor, idNormal, target, MAF
+
+mafFileForNeoantigen = mafFileForNeoantigen.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def mafFile = item[3]
+    def armLevel = item[4]
+    def geneLevel = item[5]
+    def tsg_manual_review = item[6]
+    return [idTumor, idNormal, target, mafFile]
+  }
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
+
 
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/neoantigen", mode: params.publishDirMode
+  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
@@ -1462,6 +1494,8 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt") into NetMhcStatsOutput
+    file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: "neoantigen" in tools
 
@@ -1478,10 +1512,69 @@ process RunNeoantigen {
 
   python /usr/local/bin/neoantigen/neoantigen.py \
     --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
-    --sample_id ${idTumor} \
+    --sample_id ${idTumor}_vs_${idNormal} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
+  """
+}
+
+
+process SomaticGroupForQcAndAggregate {
+ 
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+
+  input:
+    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
+    file(mafFile) from NeoantigenMafOutput.collect()
+    file(mutsigFile) from mutSigOutput.collect()
+    file(purityFiles) from FacetsPurity.collect()
+    file(hisensFiles) from FacetsHisens.collect()
+    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+
+
+  output:
+    file("merged.maf") into MafFileOutput
+    file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
+    file("mutsig/*") into MutSigFilesOutput
+    file("facets/*") into FacetsChannel
+    file("vcf_delly_manta/*") into VcfBedPeChannel
+
+  when: "neoantigen" in tools
+    
+  script:
+
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  # Collect MAF files from neoantigen to maf_files/ and merge into one maf
+  mkdir maf_files
+  mv *.maf maf_files
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+
+  # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
+  mkdir netmhc_stats
+  mv *.netmhcpan_netmhc_combined.output.txt netmhc_stats
+  cat netmhc_stats/*.output.txt | grep ^algorithm | head -n1 > merged.netmhcpan_netmhc_combined.output.txt
+  cat netmhc_stats/*.output.txt | grep -Ev "^algorithm" >> merged.netmhcpan_netmhc_combined.output.txt
+
+  # Collect mutsig output to mutsig/
+  mkdir mutsig
+  mv *.mutsig.txt mutsig/
+
+  # Collect facets output to facets/
+  mkdir facets
+  mkdir facets/hisens
+  mkdir facets/purity
+  mv *purity.* facets/purity
+  mv *hisens.* facets/hisens
+
+  # Collect delly and manta vcf outputs into vcf_delly_manta/
+  mkdir vcf_delly_manta
+  mv *.filtered.merge.vcf vcf_delly_manta
   """
 }
 
@@ -1763,9 +1856,11 @@ process GermlineCombineChannel {
   gnomad = gnomadWgsVcf
   if (target == 'wgs') {
     gnomad = gnomadWgsVcf
+    gnomadCutoff = 'AF_popmax>0.02'
   }
   else {
     gnomad = gnomadWesVcf
+    gnomadCutoff = 'non_cancer_AF_popmax>0.02'
   }
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
@@ -1857,7 +1952,7 @@ process GermlineCombineChannel {
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
   bcftools filter \
-    --exclude \"non_cancer_AF_popmax>0.02\" \
+    --exclude \"${gnomadCutoff}\" \
     --output-type v \
     --output ${idNormal}.union.gnomad.vcf 
 
@@ -1898,7 +1993,7 @@ process GermlineAnnotateMaf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
+    file("${outputPrefix}.maf") into mafFileGermline
 
   when: "strelka2" in tools && "haplotypecaller" in tools && runGermline
 
@@ -2002,6 +2097,7 @@ process GermlineMergeDellyAndManta {
 
   output:
     set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
+    set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into germlineVcfBedPe
 
   when: 'manta' in tools && 'delly' in tools && runGermline
 
@@ -2034,6 +2130,37 @@ process GermlineMergeDellyAndManta {
     ${idNormal}.delly.manta.unfiltered.vcf.gz 
     
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
+  """
+}
+
+process GermlineAggregate {
+ 
+  publishDir "${params.outDir}/germline/", mode: params.publishDirMode
+
+  input:
+    file(mafFile) from mafFileGermline.collect()
+    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+
+  output:
+    file("merged.maf") into GermlineMafFileOutput
+    file("vcf_delly_manta/*") into GermlineVcfBedPeChannel
+    
+  script:
+
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  # Collect MAF files from neoantigen to maf_files/ and merge into one maf
+  mkdir maf_files
+  mv *.maf maf_files
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+
+  # Collect delly and manta vcf outputs into vcf_delly_manta/
+  mkdir vcf_delly_manta
+  mv  *.delly.manta.vcf.gz vcf_delly_manta
   """
 }
 

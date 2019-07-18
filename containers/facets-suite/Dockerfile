@@ -1,17 +1,17 @@
 FROM frolvlad/alpine-glibc:alpine-3.9
 
-LABEL maintainer="Nikhil Kumar (kumarn1@mskcc.org)" \
-      version.image="1.0.0" \
-      version.facets_suite="1.5.7" \
+LABEL maintainer="Nikhil Kumar (kumarn1@mskcc.org), Philip Jonsson (jonssonp@mskcc.org)" \
+      version.image="1.5.9" \
+      version.facets_suite="1.5.9" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
       version.r="3.5.1" \
       version.pctGCdata="0.2.0" \
-      source.facets_suite="https://github.com/mskcc/facets-suite/releases/tag/1.5.7" \
+      source.facets_suite="https://github.com/mskcc/facets-suite/releases/tag/1.5.9" \
       source.facets="https://github.com/mskcc/facets/archive/v0.5.14.tar.gz"\
       source.r="https://pkgs.alpinelinux.org/package/edge/community/x86/R"
 
-ENV FACETS_SUITE_VERSION 1.5.7
+ENV FACETS_SUITE_VERSION 1.5.9
 ENV FACETS_VERSION 0.5.14
 ENV PCTGCDATA 0.2.0
 
@@ -47,7 +47,7 @@ RUN apk add --update \
             && cd /tmp/facets-${FACETS_VERSION} \
             && R CMD INSTALL . \
         # install Facets-Suite R dependencies
-            && R -e "install.packages(c('ggplot2','Cairo','argparse','data.table','gtable','gridExtra','bit64','plyr'), repos='http://cran.us.r-project.org')" \
+            && R -e "install.packages(c('ggplot2', 'Cairo', 'argparse', 'data.table', 'gtable', 'gridExtra', 'bit64','plyr', 'dplyr', 'tidyr', 'jsonlite', 'stringr', 'reshape2'), repos='http://cran.us.r-project.org')" \
 	    && R -e "source('https://bioconductor.org/biocLite.R'); biocLite('rtracklayer')" \ 
         # install Facets-Suite
             && cd /tmp/facets-suite-${FACETS_SUITE_VERSION} \
