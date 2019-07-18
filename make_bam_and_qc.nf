@@ -226,7 +226,7 @@ process RecalibrateBam {
     ])
 
   output:
-    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+    set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForOutput, recalibratedBamForOutput2
     set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBamTSV
     val(idSample) into currentSample
     file("${idSample}.recal.bam") into currentBam
