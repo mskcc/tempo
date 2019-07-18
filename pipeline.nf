@@ -118,6 +118,7 @@ referenceMap = defineReferenceMap()
 
 if (!params.bam_pairing){
 
+
   fastqFiles = Channel.empty()
  
   mappingFile = file(mappingPath)
@@ -146,7 +147,7 @@ if (!params.bam_pairing){
   process AlignReads {
     tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
 
     input:
       set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
@@ -410,7 +411,7 @@ if (!params.bam_pairing){
   process Alfred {
     tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
-    publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc/Alfred/${idSample}", mode: params.publishDirMode
   
     input:
       each ignore_rg from ignore_read_groups
