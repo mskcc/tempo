@@ -374,7 +374,7 @@ ignore_read_groups = Channel.from( true , false )
 process Alfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
-  if(publishAll) { publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode }
+  publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
   
   input:
     each ignore_rg from ignore_read_groups
