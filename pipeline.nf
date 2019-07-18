@@ -1642,7 +1642,7 @@ process SomaticGroupForQcAndAggregate {
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   mkdir vcf_delly_manta
-  mv *.filtered.merge.vcf vcf_delly_manta
+  mv *delly.manta.filtered.vcf.gz vcf_delly_manta
   """
 }
 
