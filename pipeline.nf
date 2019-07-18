@@ -107,7 +107,7 @@ fastqFiles = fastqFiles.transpose()
 process AlignReads {
   tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-  publishDir "${params.outDir}/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/FastP/${idSample}", pattern: "*.html", mode: params.publishDirMode
 
   input:
     set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
@@ -372,7 +372,7 @@ ignore_read_groups = Channel.from( true , false )
 process Alfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
-  publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/Alfred/${idSample}", mode: params.publishDirMode
   
   input:
     each ignore_rg from ignore_read_groups
