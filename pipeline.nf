@@ -662,12 +662,13 @@ process SomaticRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput mode flatten
-    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
+    set idTumor, idNormal, target, file("Manta_${outputPrefix}.somaticSV.vcf.gz") into mantaOutput mode flatten
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("Manta_${outputPrefix}.candidateSmallIndels.vcf.gz"), file("Manta_${outputPrefix}.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
 
   when: 'manta' in tools && runSomatic
 
   script:
+  outputPrefix = "${idTumor}_vs_${idNormal}"
   options = ""
   if(assay == "wes") options = "--exome"
   """
@@ -684,21 +685,21 @@ process SomaticRunManta {
     --jobs ${task.cpus}
 
   mv Manta/results/variants/candidateSmallIndels.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.candidateSmallIndels.vcf.gz
+    Manta_${outputPrefix}.candidateSmallIndels.vcf.gz
   mv Manta/results/variants/candidateSmallIndels.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.candidateSmallIndels.vcf.gz.tbi
+    Manta_${outputPrefix}.candidateSmallIndels.vcf.gz.tbi
   mv Manta/results/variants/candidateSV.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.candidateSV.vcf.gz
+    Manta_${outputPrefix}.candidateSV.vcf.gz
   mv Manta/results/variants/candidateSV.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.candidateSV.vcf.gz.tbi
+    Manta_${outputPrefix}.candidateSV.vcf.gz.tbi
   mv Manta/results/variants/diploidSV.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz
+    Manta_${outputPrefix}.diploidSV.vcf.gz
   mv Manta/results/variants/diploidSV.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.diploidSV.vcf.gz.tbi
+    Manta_${outputPrefix}.diploidSV.vcf.gz.tbi
   mv Manta/results/variants/somaticSV.vcf.gz \
-    Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz
+    Manta_${outputPrefix}.somaticSV.vcf.gz
   mv Manta/results/variants/somaticSV.vcf.gz.tbi \
-    Manta_${idTumor}_vs_${idNormal}.somaticSV.vcf.gz.tbi
+    Manta_${outputPrefix}.somaticSV.vcf.gz.tbi
   """
 }
 
@@ -723,11 +724,12 @@ process SomaticMergeDellyAndManta {
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
 
   output:
-    file("*filtered.merge.vcf") into vcfDellyMantaMergedOutput
+    file("${outputPrefix}.delly.manta.filtered.vcf.gz") into vcfDellyMantaMergedOutput
 
   when: 'manta' in tools && 'delly' in tools && runSomatic
 
   script:
+  outputPrefix = "${idTumor}_vs_${idNormal}"
   """ 
   for f in *.bcf
   do 
@@ -742,9 +744,20 @@ process SomaticMergeDellyAndManta {
   bcftools merge \
     --force-samples \
     --merge none \
-    --output-type v \
-    --output ${idTumor}_${idNormal}.delly.manta.filtered.merge.vcf \
+    --output-type z \
+    --output ${outputPrefix}.delly.manta.vcf.gz \
     *.vcf.gz
+  
+  tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz
+
+  bcftools filter \
+    --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
+    --include 'FILTER=\"PASS\"' \
+    --output-type z \
+    --output ${outputPrefix}.delly.manta.filtered.vcf.gz \
+    ${outputPrefix}.delly.manta.vcf.gz
+
+  tabix --preset vcf ${outputPrefix}.delly.manta.filtered.vcf.gz
   """
 }
 
