@@ -224,8 +224,6 @@ if (!params.bam_pairing){
   process MarkDuplicates {
     tag {idSample}
 
-    if(publishAll) { publishDir "${params.outDir}/bams/markdup/", mode: params.publishDirMode }
-
     input:
       set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
 
@@ -1499,8 +1497,6 @@ FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).
 
 process FacetsAnnotation {
   tag {idTumor + "_vs_" + idNormal}
-
-  if(publishAll) { publishDir "${params.outDir}/somatic/facets_maf", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
