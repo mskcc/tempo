@@ -150,12 +150,12 @@ if HLAoutput is not None:
     ## parse polysovler winners.hla.txt
     winners = pd.read_csv(HLAoutput, sep="\t", header=None)
     ## create HLA columns
-    results["HLA-A1"] = winners.loc[0][1]
-    results["HLA-A2"] = winners.loc[0][2]
-    results["HLA-B1"] = winners.loc[1][1]
-    results["HLA-B2"] = winners.loc[1][2]
-    results["HLA-C1"] = winners.loc[2][1]
-    results["HLA-C2"] = winners.loc[2][2]
+    results["HLA-A1"] = [winners.loc[0][1]]
+    results["HLA-A2"] = [winners.loc[0][2]]
+    results["HLA-B1"] = [winners.loc[1][1]]
+    results["HLA-B2"] = [winners.loc[1][2]]
+    results["HLA-C1"] = [winners.loc[2][1]]
+    results["HLA-C2"] = [winners.loc[2][2]]
 
 ## add LOHHLA results here
 
