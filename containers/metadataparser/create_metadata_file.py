@@ -42,7 +42,7 @@ Usage: python3 create_metadata_file.py [-h] --sampleID SAMPLEID
 Output: '{sampleID}_metadata.tsv'
 
 NOTE: This is meant to be run only within the WES/WGS pipeline at https://github.com/mskcc/vaporware
-The script assumes no special output subdirectory, and assumes only three assay types exist: AgilentExon_51MB_b37_v3, DT_Exome_v1_FP_b37, WGS_b37
+The script assumes no special output subdirectory, and assumes only three assay types exist: AgilentExon_51MB_b37_v3, IDT_Exome_v1_FP_b37, WGS_b37
 """
 
 import argparse
@@ -81,14 +81,14 @@ coding_baits_BED = args.coding_baits_BED
 results = pd.DataFrame()
 
 ## create sampleID column
-results = results.assign(sample=sampleID)
+results = results.assign(sample=[sampleID])
 
 if facetsPurityPloidy is not None:
     ## parse purity and ploidy from FACETS *_purity.out
     purity_out = pd.read_csv(facetsPurityPloidy, sep="\t")
     ## create purity and ploidy columns
-    results["purity"] = purity_out.iloc[15].str.split(' = ')[0][1] 
-    results["ploidy"] = purity_out.iloc[16].str.split(' = ')[0][1]
+    results["purity"] = [purity_out.iloc[15].str.split(' = ')[0][1]]
+    results["ploidy"] = [purity_out.iloc[16].str.split(' = ')[0][1]]
 
 
 if facetsArmLevel is not None:
@@ -96,11 +96,11 @@ if facetsArmLevel is not None:
     armLevel = pd.read_csv(facetsArmLevel, sep="\t")
     ## create WGD column
     if str(armLevel.WGD.unique()).replace("['", "").replace("']", "")=='WGD':
-    	results["WGD_status"] = True
+    	results["WGD_status"] = [True]
     elif str(armLevel.WGD.unique()).replace("['", "").replace("']", "")=='no WGD':
-    	results["WGD_status"] = False
+    	results["WGD_status"] = [False]
     else:
-    	results["WGD_status"] = 'NA'  ## hard-coding string NA, not NaN or None
+    	results["WGD_status"] = ['NA']  ## hard-coding string NA, not NaN or None
 
 if MSIoutput is not None:
     ## parse MSIsensor output
@@ -185,11 +185,11 @@ if MAF_input is not None and coding_baits_BED is not None:
     ## AgilentExon_51MB_b37_v3_baits.bed, total_cds_size = 30.89918
     ## IDT_Exome_v1_FP_b37_baits.bed, total_cds_size = 36.00458
     ## WGS, total_cds_size = 45.57229
-    if "AgilentExon" in coding_baits_BED:
+    if "AgilentExon_51MB_b37" in coding_baits_BED:
     	tmb = len(resultdf.index)/30.89918
-    elif "AgilentExon" in coding_baits_BED:
+    elif "IDT_Exome_v1_FP_b37" in coding_baits_BED:
     	tmb = len(resultdf.index)/36.00458
-    elif "AgilentExon" in coding_baits_BED:
+    elif "b37_wgs_calling_regions" in coding_baits_BED:
     	tmb = len(resultdf.index)/45.57229
     else: 
     	tmb = None ## this shouldn't happen
