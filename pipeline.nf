@@ -34,6 +34,7 @@ Somatic Analysis
 - LOHHLA
 - RunConpair
 - RunMutationSignatures
+- MetaDataParser
 
 Germline Analysis
 -----------------
@@ -46,6 +47,7 @@ Germline Analysis
 - GermlineRunBcfToolsFilterNorm
 - GermlineRunBcfToolsMerge
 - GermlineAnnotateMaf
+
 */
 
 /*
@@ -1390,6 +1392,9 @@ facetsForLOHHLA = facetsForLOHHLA.map{
     return [ idTumor, idNormal, target, purity_out ]
   }
 
+// create channel for MetaDataParser, using *purity.out from FACETS,
+
+(facetsForLOHHLA, facetsForMetaDataParser) = facetsForLOHHLA.into(2)
 
 (hlaOutputForLOHHLA, hlaOutput) = hlaOutput.into(2)
 
@@ -1452,7 +1457,7 @@ process RunMutationSignatures {
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
   output:
-    file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
 
@@ -1532,7 +1537,7 @@ process FacetsAnnotation {
 }
 
 
-(mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
+(mafFileForNeoantigen, facetsAnnotationForMetaData, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(3)
 
 //Formatting the channel to be: idTumor, idNormal, target, MAF
 
@@ -1550,6 +1555,7 @@ mafFileForNeoantigen = mafFileForNeoantigen.map{
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
 
+(hlaOutputForMetaDataParser, hlaOutput) = hlaOutput.into(2)
 
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
@@ -1589,6 +1595,54 @@ process RunNeoantigen {
     --output_dir ${outputDir}
   """
 }
+
+
+
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutSigOutput, by: [0,1,2]).unique()
+
+// facetsForMetaDataParser
+
+process MetaDataParser {
+  tag {idSample}
+
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+ 
+  input:
+    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(polysolverFile), file(mafFile), file(mutSigOutput) from
+    set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
+      referenceMap.idtCodingBed,
+      referenceMap.agilentCodingBed, 
+      referenceMap.wgsCodingBed
+    ]) 
+
+  output:
+    file("*_metadata.tsv") into MetaDataOutputs
+
+  when: runSomatic
+
+  script:
+  coding_regions_bed = ""
+  if (target == 'idt'){
+    coding_regions_bed = "${idtCodingBed}"
+  }
+  else if (target == 'agilent'){
+    coding_regions_bed = "${agilentCodingBed}"
+  }
+  else if (target == 'wgs'){
+    coding_regions_bed = "${wgsCodingBed}"
+  }
+  """
+  python3 create_metadata_file.py --sampleID ${idSample} \
+      --facetsPurity_out *_purity.out  
+      --facetsArmLevel  *.armlevel.tsv 
+      --MSIsensor_output *.msisensor.tsv  
+      --mutational_signatures_output *mutsig.txt 
+      --polysolver_output *winners.hla.txt
+      --MAF_input *.maf 
+      --coding_baits_BED ${coding_regions_bed}
+  """
+}
+
 
 
 process SomaticGroupForQcAndAggregate {
@@ -2315,6 +2369,10 @@ def defineReferenceMap() {
     // files for neoantigen & NetMHC
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
+    // coding region BED files for calculating TMB
+    result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
+    result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
+    result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
 }
