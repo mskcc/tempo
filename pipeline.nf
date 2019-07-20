@@ -1611,7 +1611,7 @@ facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
 
 (mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
 
-mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutSigOutput, by: [0,1,2]).unique()
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
 
 // facetsForMetaDataParser
 
