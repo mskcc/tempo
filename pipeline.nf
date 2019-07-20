@@ -1608,7 +1608,7 @@ process MetaDataParser {
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
  
   input:
-    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(polysolverFile), file(mafFile), file(mutSigOutput) from
+    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed,
       referenceMap.agilentCodingBed, 
