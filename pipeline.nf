@@ -1596,7 +1596,20 @@ process RunNeoantigen {
   """
 }
 
+// [idTumor, idNormal, target, armLevel]
+facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def mafFile = item[3]
+    def armLevel = item[4]
+    def geneLevel = item[5]
+    def tsg_manual_review = item[6]
+    return [idTumor, idNormal, target, armLevel]
+  }
 
+(mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
 
 mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutSigOutput, by: [0,1,2]).unique()
 
