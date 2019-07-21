@@ -350,8 +350,8 @@ if (!params.bam_pairing){
                             def idSample = item[0]
                             def sampleBam = item[1]
                             def sampleBai = item[2]
-                            def assay = item[3][0]
-                            def target = item[4][0]
+                            def assay = item[3]
+                            def target = item[4]
                             def idTumor = item[5]
                             def idNormal = item[6]
                             def bamTumor = sampleBam
@@ -1645,7 +1645,7 @@ process MetaDataParser {
     coding_regions_bed = "${wgsCodingBed}"
   }
   """
-  python3 create_metadata_file.py --sampleID ${idSample} \
+  python3 create_metadata_file.py --sampleID ${idTumor}_vs_${idNormal} \
       --facetsPurity_out *_purity.out  
       --facetsArmLevel  *.armlevel.tsv 
       --MSIsensor_output *.msisensor.tsv  
