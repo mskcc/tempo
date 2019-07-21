@@ -346,8 +346,8 @@ if (!params.bam_pairing){
                             def idSample = item[0]
                             def sampleBam = item[1]
                             def sampleBai = item[2]
-                            def assay = item[3][0]
-                            def target = item[4][0]
+                            def assay = item[3]
+                            def target = item[4]
                             def idTumor = item[5]
                             def idNormal = item[6]
                             def bamTumor = sampleBam
