@@ -1624,7 +1624,7 @@ process SomaticAggregate {
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
     set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg ") into FacetsMergedChannel
-    set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt") into FacetsAnnotationMergedChannel
+    set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
     file("merged.vcf.gz") into VcfBedPeChannel
 
   when: "neoantigen" in tools
@@ -1664,7 +1664,7 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > merged_purity.cncf.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > merged_hisens.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > merged_purity.seg 
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > merged_OUT.txt  
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > merged_hisensPurity_out.txt  
 
   ## Move and merge FacetsAnnotation outputs
   mkdir facets/armLevel
