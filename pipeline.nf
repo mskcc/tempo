@@ -1509,7 +1509,7 @@ process FacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsAnnotationOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsAnnotationOutputs
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
@@ -1605,6 +1605,7 @@ process SomaticAggregate {
     file(mutsigFile) from mutSigOutput.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
+    file(annotationFiles) from FacetsAnnotationOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
 
 
@@ -1614,6 +1615,7 @@ process SomaticAggregate {
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
     file("merged.vcf.gz") into VcfBedPeChannel
+    set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt") into FacetsAnnotationMergedChannel
 
   when: "neoantigen" in tools
     
@@ -1646,6 +1648,18 @@ process SomaticAggregate {
   mkdir facets/purity
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
+
+  ## Move and merge FacetsAnnotation outputs
+  mkdir facets/armLevel
+  mkdir facets/geneLevel
+  mkdir facets/manualReview
+  mv *armlevel.tsv facets/armLevel
+  mv *genelevel.tsv facets/geneLevel
+  mv *genelevel_TSG_ManualReview.txt  facets/manualReview
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > merged_armlevel.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*enelevel.tsv > merged_armlevel.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
+
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   for f in *.vcf.gz
