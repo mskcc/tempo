@@ -2494,5 +2494,5 @@ def checkForUniqueLanes(inputFilename) {
   }
   // remove header 'ASSAY'
   totalList.removeAll{ it == 'LANE'} 
-  return totalList.size() != totalList.unique().size()
+  return totalList.size() == totalList.unique().size()
 }
