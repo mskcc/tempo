@@ -1673,6 +1673,7 @@ process SomaticAggregate {
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+    file(metaDataFile) from MetaDataOutputs.collect()
 
 
   output:
@@ -1681,6 +1682,7 @@ process SomaticAggregate {
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
     file("merged.vcf.gz") into VcfBedPeChannel
+    file("merged_metadata.tsv") into MetaDataOutputChannel
 
   when: "neoantigen" in tools
     
@@ -1729,6 +1731,10 @@ process SomaticAggregate {
     --output-type z \
     --output merged.vcf.gz \
     vcf_delly_manta/*delly.manta.filtered.vcf.gz
+
+  ## Collect metadata *tsv file into merged_metadata.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' *_metadata.tsv > merged_metadata.tsv
+
   """
 }
 
