@@ -544,12 +544,10 @@ process CreateScatteredIntervals {
   """
 }
 
+
 (bamsForIntervals, bamFiles) = bamFiles.into(2)
 
 //Associating interval_list files with BAM files, putting them into one channel
-agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
-idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
-wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
 
 (aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
 
