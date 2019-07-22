@@ -1,0 +1,14 @@
+SAMPLE	LANE	ASSAY	TARGET	FASTQ_PE1	FASTQ_PE2
+1234N	1234N_L001	exome	agilent	test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
+1234N	1234N_L001	exome	agilent	test-data/testdata/tiny/normal/tiny_n_L002_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L002_R2_xxx.fastq.gz
+1234N	1234N_L001	exome	agilent	test-data/testdata/tiny/normal/tiny_n_L004_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L004_R2_xxx.fastq.gz
+1234N	1234N_L007	exome	agilent	test-data/testdata/tiny/normal/tiny_n_L007_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L007_R2_xxx.fastq.gz
+1234N	1234N_L008	exome	agilent	test-data/testdata/tiny/normal/tiny_n_L008_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L008_R2_xxx.fastq.gz
+1234T	1234T_L001	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L001_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L001_R2_xxx.fastq.gz
+1234T	1234T_L001	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L002_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L002_R2_xxx.fastq.gz
+1234T	1234T_L001	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L003_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L003_R2_xxx.fastq.gz
+1234T	1234T_L001	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L005_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L005_R2_xxx.fastq.gz
+1234T	1234T_L001	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L006_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L006_R2_xxx.fastq.gz
+1234T	1234T_L008	exome	agilent	test-data/testdata/tiny/tumor/tiny_t_L007_R1_xxx.fastq.gz	test-data/testdata/tiny/tumor/tiny_t_L007_R2_xxx.fastq.gz
+1235N	1235N_L001	exome	idt	test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
+1235T	1235T_L001	exome	idt	test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz	test-data/testdata/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
