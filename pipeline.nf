@@ -502,7 +502,7 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
 // change from .concat to .mix because .concat will wait for all the items proceeding from the first channel were emitted
 (mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.mix( iMergedChannel, wMergedChannel).map{
   item ->
-    def key = item[2]+"_vs_"+item[3] // adding one unique key
+    def key = item[2]+"_vs_"+item[3]+"@"+item[0] // adding one unique key
     def target = item[0]
     def assay = item[1]
     def idTumor = item[2]
@@ -650,9 +650,9 @@ process SomaticCombineMutect2Vcf {
   when: 'mutect2' in tools && runSomatic
 
   script:
-  idTumor = idTumor.first()
-  idNormal = idNormal.first()
-  target = target.first()
+  idTumor = id.toString().split("_vs_")[0]
+  idNormal = id.toString().split("@")[0].split("_vs_")[1]
+  target = id.toString().split("@")[1]
   outfile="${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
   """
   bcftools concat \
@@ -1694,9 +1694,9 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script:
-  idTumor = idTumor.first()
-  idNormal = idNormal.first()
-  target = target.first()
+  idTumor = id.toString().split("_vs_")[0]
+  idNormal = id.toString().split("@")[0].split("_vs_")[1]
+  target = id.toString().split("@")[1]
   outfile="${idNormal}.haplotypecaller.vcf.gz"
 
   """
