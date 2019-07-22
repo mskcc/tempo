@@ -1544,7 +1544,7 @@ process FacetsAnnotation {
 }
 
 
-(mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
+(mafFileForNeoantigen, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(2)
 
 //Formatting the channel to be: idTumor, idNormal, target, MAF
 
