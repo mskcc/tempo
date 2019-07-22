@@ -1614,8 +1614,9 @@ process SomaticAggregate {
     file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
-    file("merged.vcf.gz") into VcfBedPeChannel
+    set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg ") into FacetsMergedChannel
     set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt") into FacetsAnnotationMergedChannel
+    file("merged.vcf.gz") into VcfBedPeChannel
 
   when: "neoantigen" in tools
     
@@ -1648,6 +1649,10 @@ process SomaticAggregate {
   mkdir facets/purity
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > merged_hisens.cncf.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > merged_purity.cncf.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > merged_hisens.seg
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > merged_purity.seg 
 
   ## Move and merge FacetsAnnotation outputs
   mkdir facets/armLevel
