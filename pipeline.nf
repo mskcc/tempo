@@ -1178,6 +1178,7 @@ process DoFacets {
     set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
+    file("${tag}_OUT.txt") into FacetsPurityHisensOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1212,6 +1213,13 @@ process DoFacets {
     --R_lib /usr/lib/R/library \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
+
+  python3 summarize_project.py -p ${tag} \
+    -c ${outputDir}*cncf.txt  \
+    -o ${outputDir}*out   \
+    -s ${outputDir}*seg  
+
+
   """
 }
 
@@ -1605,6 +1613,7 @@ process SomaticAggregate {
     file(mutsigFile) from mutSigOutput.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
+    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
     file(annotationFiles) from FacetsAnnotationOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
 
@@ -1647,12 +1656,15 @@ process SomaticAggregate {
   mkdir facets
   mkdir facets/hisens
   mkdir facets/purity
+  mkdir facets/hisensPurityOutput
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
+  mv *_OUT.txt facets/hisensPurityOutput
   awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > merged_hisens.cncf.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > merged_purity.cncf.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > merged_hisens.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > merged_purity.seg 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > merged_OUT.txt  
 
   ## Move and merge FacetsAnnotation outputs
   mkdir facets/armLevel
