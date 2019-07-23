@@ -3,7 +3,7 @@
 
 __author__  = "Evan Biederstedt"
 __email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __status__  = "Dev"
 
 
@@ -106,9 +106,9 @@ if MSIoutput is not None:
     ## parse MSIsensor output
     MSI = pd.read_csv(MSIoutput, sep="\t")
     ## create MSI columns
-    results["MSIsensor_Total_Number_of_Sites"] = MSI.Total_Number_of_Sites
-    results["MSIsensor_Number_of_Somatic_Sites"] = MSI.Number_of_Somatic_Sites
-    results["MSIsensor_Percentages"] = MSI['%']
+    results["MSI_Total_Sites"] = MSI.Total_Number_of_Sites
+    results["MSI_Somatic_Sites"] = MSI.Number_of_Somatic_Sites
+    results["MSIscore"] = MSI['%']
 
 if mutationalSignatures is not None:
     ## parse mutational signatures output
