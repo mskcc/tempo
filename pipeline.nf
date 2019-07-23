@@ -1649,7 +1649,7 @@ process MetaDataParser {
     coding_regions_bed = "${wgsCodingBed}"
   }
   """
-  python3 create_metadata_file.py --sampleID ${idTumor}_vs_${idNormal} \
+  python3 /usr/bin/create_metadata_file.py --sampleID ${idTumor}_vs_${idNormal} \
       --facetsPurity_out *_purity.out  
       --facetsArmLevel  *.armlevel.tsv 
       --MSIsensor_output *.msisensor.tsv  
@@ -1730,7 +1730,7 @@ process SomaticAggregate {
     --merge none \
     --output-type z \
     --output merged.vcf.gz \
-    vcf_delly_manta/*delly.manta.filtered.vcf.gz
+    vcf_delly_manta/*delly.manta.vcf.gz
 
   ## Collect metadata *tsv file into merged_metadata.tsv
   awk 'FNR==1 && NR!=1{next;}{print}' *_metadata.tsv > merged_metadata.tsv
