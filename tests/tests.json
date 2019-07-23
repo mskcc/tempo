@@ -4,15 +4,15 @@
         "checks": [{"type": "checkNumberOfLines", "filename": "make_bam_output.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
     },
     "test_delly": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_somatic.tsv", "-profile", "test", "--tools", "delly", "--test"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_somatic.tsv", "--somatic", "-profile", "test", "--tools", "delly", "--test"],
         "checks": [{"type": "checkExitCode", "expected": 0}]
     },
     "test_manta_strelka": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_somatic.tsv", "-profile", "test", "--tools", "manta,strelka2", "--test"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_somatic.tsv", "--somatic", "-profile", "test", "--tools", "manta,strelka2", "--test"],
         "checks": [{"type": "checkExitCode", "expected": 0}]
     },
     "test_msisensor": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_somatic.tsv", "-profile", "test", "--tools", "msisensor", "--test"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_somatic.tsv", "--somatic", "-profile", "test", "--tools", "msisensor", "--test"],
         "checks": [{"type": "checkExitCode", "expected": 0}]
     },
     "test_pairing_file_validation_pipeline": {
