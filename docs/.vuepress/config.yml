@@ -1,5 +1,5 @@
 title: Vaporware
-description: Pipeline for WES/
+description: Pipeline for processing WES/WGS TN pairs
 themeConfig:
   logo: /vaporware_logo.jpg
   sidebar:
@@ -12,3 +12,4 @@ themeConfig:
     - "/aws-glossary"
     - "/contributing-to-vaporware"
   repo: mskcc/vaporware
+  docsBranch: 'feature/documentation_vuepress'
