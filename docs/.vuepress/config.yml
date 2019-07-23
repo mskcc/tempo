@@ -1,0 +1,14 @@
+title: Vaporware
+description: Pipeline for WES/
+themeConfig:
+  logo: /vaporware_logo.jpg
+  sidebar:
+    - "/"
+    - "/installation"
+    - "/debug"
+    - "/bioinformatic-components"
+    - "/reference-files"
+    - "/variant-annotation-and-filtering"
+    - "/aws-glossary"
+    - "/contributing-to-vaporware"
+  repo: mskcc/vaporware
