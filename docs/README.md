@@ -4,8 +4,13 @@ heroImage: /vaporware_logo.jpg
 actionText: Get Started →
 actionLink: /installation/
 features:
-
-footer: MIT Licensed | Copyright © 2018-present Evan You
+- title: Simplicity First
+  details: Minimal setup with markdown-centered project structure helps you focus on writing.
+- title: Simplicity First
+  details: Minimal setup with markdown-centered project structure helps you focus on writing.
+- title: Simplicity First
+  details: Minimal setup with markdown-centered project structure helps you focus on writing.
+footer: MIT Licensed | Copyright © 2019-present
 ---
 
 # Vaporware documentation

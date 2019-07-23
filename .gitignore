@@ -1,6 +1,7 @@
 tmp/
 work/
 example_data
+docs/node_modules
 .*swp
 .DS_Store
 .nextflow*

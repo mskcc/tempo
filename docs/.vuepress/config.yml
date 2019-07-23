@@ -1,7 +1,7 @@
 title: Vaporware
 description: Processing WES & WGS Tumor Samples
 themeConfig:
-  logo: /vaporware_logo.jpg
+  logo: /vaporware_stairs.jpg
   sidebar:
     - "/"
     - "/installation"
