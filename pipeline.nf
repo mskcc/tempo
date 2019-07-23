@@ -1140,7 +1140,7 @@ process SomaticAnnotateMaf {
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
     --retain-info ${infoCols} \
-    --retain-fmt ${} \
+    --retain-fmt alt_count_raw \
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
