@@ -968,7 +968,9 @@ process SomaticCombineChannel {
   echo -e "##INFO=<ID=RepeatMasker,Number=1,Type=String,Description=\"RepeatMasker\">" > vcf.rm.header
   echo -e "##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description=\"EncodeDacMapability\">" > vcf.map.header
   echo -e "##INFO=<ID=PoN,Number=1,Type=Integer,Description=\"Count in panel of normals\">" > vcf.pon.header
+  echo -e "##FORMAT=<ID=alt_count_raw,Number=1,Type=Integer,Description=\"Raw normal alternate allele depth\">" > vcf.ad_n.header
 
+  # Get set differences of variant calls
   bcftools isec \
     --output-type z \
     --prefix ${isec_dir} \
@@ -1021,6 +1023,7 @@ process SomaticCombineChannel {
   tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
   tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
 
+  # Concatenate the different sets, annotate with blacklists
   bcftools concat \
     --allow-overlaps \
     --rm-dups all \
@@ -1041,6 +1044,7 @@ process SomaticCombineChannel {
 
   tabix --preset vcf ${idTumor}.union.vcf.gz
 
+  # Add gnomAD annotation
   bcftools annotate \
     --annotations ${gnomad} \
     --columns INFO \
@@ -1050,6 +1054,7 @@ process SomaticCombineChannel {
 
   tabix --preset vcf ${idTumor}.union.gnomad.vcf.gz
 
+  # Add PoN annotation and flanking sequence
   bcftools annotate \
     --header-lines vcf.pon.header \
     --annotations ${pon} \
@@ -1058,7 +1063,8 @@ process SomaticCombineChannel {
     vt annotate_indels \
     -r ${genomeFile} \
     -o ${idTumor}.union.annot.vcf -
-  
+
+  # Do custom filter annotation, then filter variants
   filter-vcf.py ${idTumor}.union.annot.vcf
 
   mv ${idTumor}.union.annot.filter.vcf ${idTumor}_vs_${idNormal}.vcf
@@ -1066,11 +1072,32 @@ process SomaticCombineChannel {
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
-    --output ${idTumor}_vs_${idNormal}.pass.vcf \
+    --output ${idTumor}_vs_${idNormal}.filtered.vcf \
     ${idTumor}_vs_${idNormal}.vcf
+
+  # Add normal read count, using all reads
+  GetBaseCountsMultiSample \
+    --thread 4 \
+    --maq 0 \
+    --fasta ${genomeFile} \
+    --bam ${idNormal}:${bamNormal} \
+    --vcf ${idTumor}_vs_${idNormal}.vcf \
+    --output ${idNormal}.genotyped.vcf 
+  
+  bgzip ${idTumor}_vs_${idNormal}.filtered.vcf
+  bgzip ${idNormal}.genotyped.vcf
+  tabix --preset vcf ${idTumor}_vs_${idNormal}.filtered.vcf.gz
+  tabix --preset vcf ${idNormal}.genotyped.vcf.gz
+
+  bcftools annotate \
+    --annotations ${idNormal}.genotyped.vcf.gz \
+    --header-lines vcf.ad_n.header \
+    --columns INFO/alt_count_raw:=FORMAT/AD \
+    --output-type v \
+    --output ${idTumor}_vs_${idNormal}.pass.vcf \
+    ${idTumor}_vs_${idNormal}.filtered.vcf.gz
   """
 }
-
 
 // run VCF2MAF, somatic
 
@@ -1113,6 +1140,7 @@ process SomaticAnnotateMaf {
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
     --retain-info ${infoCols} \
+    --retain-fmt ${} \
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
