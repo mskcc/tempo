@@ -1723,7 +1723,7 @@ process SomaticAggregate {
   done
 
   mkdir vcf_delly_manta
-  mv *delly.manta.filtered.vcf.gz* vcf_delly_manta
+  mv *delly.manta.vcf.gz* vcf_delly_manta
 
   bcftools merge \
     --force-samples \
