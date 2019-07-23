@@ -23,8 +23,8 @@
 	    "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_mixed_samples.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
 	    "checks": [{"type": "checkExitCode", "expected": 1}]
     },
-    "test_nonUnique_lane_validation_pipeline": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/duplicate_lane_makeBamQC.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test"],
+    "test_nonUnique_sampleLane_validation_pipeline": {
+        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/duplicate_sampleLane_makeBamQC.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test"],
         "checks": [{"type": "checkExitCode", "expected": 1}]
     },
     "test_pairing_file_validation_make_bam": {

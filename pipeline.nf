@@ -96,13 +96,12 @@ if (params.mapping) {
   }
 
   // check that each value in LANE is unique
-  if (mappingPath && !checkForUniqueLanes(mappingPath)) {
-    println "LANE values must be unique. Please use the format {sampleID}_{Lane} in the mapping *tsv input file. Please fix the error and re-run the pipeline."
+  if (mappingPath && !checkForUniqueSampleLanes(mappingPath)) {
+    println "The combination of SAMPLE_LANE values must be unique. Duplicate non-unique values cause errors. Please fix the error and re-run the pipeline."
     exit 1
   }
 
 }
-
 
 
 if (params.pairing) {
@@ -2483,16 +2482,16 @@ def check_for_mixed_assay(mappingFilePath) {
 }
 
 // check LANE values are unique in input mapping *tsv 
-def checkForUniqueLanes(inputFilename) {
+def checkForUniqueSampleLanes(inputFilename) {
   def totalList = []
   // parse tsv
   file(inputFilename).eachLine { line ->
       if (!line.isEmpty()){
           def (sample, lane, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
-          totalList << lane
+          totalList << sample + "_" + lane
       }
   }
-  // remove header 'ASSAY'
-  totalList.removeAll{ it == 'LANE'} 
+  // remove header 'SAMPLE_LANE'
+  totalList.removeAll{ it == 'SAMPLE_LANE'} 
   return totalList.size() == totalList.unique().size()
 }
