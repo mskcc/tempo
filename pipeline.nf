@@ -1214,7 +1214,7 @@ process DoFacets {
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
 
-  python3 summarize_project.py -p ${tag} \
+  python3 /usr/bin/facets-suite/summarize_project.py -p ${tag} \
     -c ${outputDir}*cncf.txt  \
     -o ${outputDir}*out   \
     -s ${outputDir}*seg  
