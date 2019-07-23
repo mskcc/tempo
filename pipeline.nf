@@ -751,7 +751,7 @@ process SomaticRunManta {
   output:
     set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput
     set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantatbi
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: 'manta' in tools && runSomatic
 
