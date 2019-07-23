@@ -1723,14 +1723,14 @@ process SomaticAggregate {
   done
 
   mkdir vcf_delly_manta
-  mv *delly.manta.filtered.vcf.gz* vcf_delly_manta
+  mv *delly.manta.vcf.gz* vcf_delly_manta
 
   bcftools merge \
     --force-samples \
     --merge none \
     --output-type z \
     --output merged.vcf.gz \
-    vcf_delly_manta/*delly.manta.filtered.vcf.gz
+    vcf_delly_manta/*delly.manta.vcf.gz
 
   ## Collect metadata *tsv file into merged_metadata.tsv
   awk 'FNR==1 && NR!=1{next;}{print}' *_metadata.tsv > merged_metadata.tsv
