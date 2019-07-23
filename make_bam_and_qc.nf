@@ -339,30 +339,49 @@ process FastP {
 
 ignore_read_groups = Channel.from( true , false )
 
+// Alfred BAM QC
+
 process Alfred {
-  tag {idSample}
+  tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
   publishDir "${params.outDir}/Alfred/${idSample}", mode: params.publishDirMode
-  
+
   input:
     each ignore_rg from ignore_read_groups
-    set idSample, file(bam), file(bai), assay, targetFile from recalibratedBam
+    set idSample, file(bam), file(bai), assay, target from recalibratedBam
 
     file(genomeFile) from Channel.value([
       referenceMap.genomeFile
+    ])
+    set file(idtTargets), file(agilentTargets) from Channel.value([
+      referenceMap.idtTargets,
+      referenceMap.agilentTargets
+    ])
+    set file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
+      referenceMap.idtTargetsIndex,
+      referenceMap.agilentTargetsIndex
     ])
 
   output:
     set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
 
   script:
-  def ignore = ignore_rg ? "--ignore" : ''
-  def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
-  """
-  alfred qc --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && Rscript /opt/alfred/scripts/stats.R ${outfile}
-  """
-
+    options = ""
+    if (assay == "exome") {
+      if (target == 'agilent') options = "--bed ${agilentTargets}"
+      if (target == 'idt') options = "--bed ${idtTargets}"
+     }
+    def ignore = ignore_rg ? "--ignore" : ''
+    def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
+    """
+    echo ${idSample}
+    echo ${assay}
+    echo ${target}
+    alfred qc ${options} --reference ${genomeFile} ${ignore} --outfile ${outfile} ${bam} && \
+      Rscript /opt/alfred/scripts/stats.R ${outfile}
+    """
 }
+
 
 /*
 ================================================================================
