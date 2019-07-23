@@ -1,10 +1,16 @@
+---
+home: true
+heroImage: /vaporware_logo.jpg
+actionText: Get Started →
+actionLink: /installation/
+features:
 
-
-
+footer: MIT Licensed | Copyright © 2018-present Evan You
+---
 
 # Vaporware documentation
 
-Vaporware is a computational pipeline for analyzing data from paired-end exome and genome sequencing of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Cencer and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the [Center for Molecular Oncology](https://cmo.mskcc.org).
+Vaporware is a computational pipeline for processing data from paired-end exome and genome sequencing of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Cencer and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the [Center for Molecular Oncology](https://cmo.mskcc.org).
 
 These pages contain instructions on how to run the Vaporware pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus sources and processing of all reference materials use. 
 

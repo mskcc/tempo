@@ -1,11 +1,10 @@
 title: Vaporware
-description: Pipeline for processing WES/WGS TN pairs
+description: Processing WES & WGS Tumor Samples
 themeConfig:
   logo: /vaporware_logo.jpg
   sidebar:
     - "/"
     - "/installation"
-    - "/debug"
     - "/bioinformatic-components"
     - "/reference-files"
     - "/variant-annotation-and-filtering"
