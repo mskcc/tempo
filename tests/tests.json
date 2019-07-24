@@ -1,7 +1,7 @@
 {
     "test_make_bam_part": {
         "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--test"],
-        "checks": [{"type": "checkNumberOfLines", "filename": "make_bam_output.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
+        "checks": [{"type": "checkNumberOfLines", "filename": "make_bam_output.tsv", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
     "test_delly": {
         "command": ["./nextflow", "run", "somatic.nf", "--sample", "tests/test_somatic.tsv", "-profile", "test", "--tools", "delly", "--test"],
@@ -20,8 +20,12 @@
         "checks": [{"type": "checkExitCode", "expected": 1}]
     },
     "test_mixed_assay_validation_pipeline": {
-	"command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_mixed_samples.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
-	"checks": [{"type": "checkExitCode", "expected": 1}]
+	    "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_mixed_samples.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
+	    "checks": [{"type": "checkExitCode", "expected": 1}]
+    },
+    "test_nonUnique_sampleLane_validation_pipeline": {
+        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/duplicate_sampleLane_makeBamQC.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test"],
+        "checks": [{"type": "checkExitCode", "expected": 1}]
     },
     "test_pairing_file_validation_make_bam": {
         "command": ["./nextflow", "run", "pipeline.nf", "--bam_pairing", "tests/test_BAM_map_pair_inputs.tsv", "--somatic", "--germline", "-profile", "test"],
