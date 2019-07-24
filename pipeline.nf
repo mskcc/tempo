@@ -1162,7 +1162,7 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${idTumor}_vs_${idNormal}.msisensor.tsv") into msiOutput 
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.msisensor.tsv") into msiOutput 
 
   when: "msisensor" in tools
 
@@ -1176,6 +1176,8 @@ process RunMsiSensor {
     -o ${outputPrefix}
   """
 }
+
+(msiOutput, msiOutputForMetaData) = msiOutput.into(2)
 
 // --- Run FACETS
 
@@ -1630,7 +1632,7 @@ facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
 
 (mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
 
-mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combined(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
 
 // facetsForMetaDataParser
 
@@ -1640,7 +1642,7 @@ process MetaDataParser {
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
  
   input:
-    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
+    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(msiOutput), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed,
       referenceMap.agilentCodingBed, 
@@ -1665,12 +1667,12 @@ process MetaDataParser {
   }
   """
   python3 /usr/bin/create_metadata_file.py --sampleID ${idTumor}_vs_${idNormal} \
-      --facetsPurity_out *_purity.out   \
-      --facetsArmLevel  *.armlevel.tsv  \
-      --MSIsensor_output *.msisensor.tsv   \
-      --mutational_signatures_output *mutsig.txt  \
-      --polysolver_output *winners.hla.txt \
-      --MAF_input *.maf  \
+      --facetsPurity_out ${purity_out} \
+      --facetsArmLevel  ${armLevel} \
+      --MSIsensor_output ${msiOutput} \
+      --mutational_signatures_output ${mutSigOutput} \
+      --polysolver_output ${polysolverFile} \
+      --MAF_input ${mafFile} \
       --coding_baits_BED ${coding_regions_bed}
   """
 }
