@@ -1690,7 +1690,7 @@ process SomaticAggregate {
     file("mutsig/*") into MutSigFilesOutput
     file("collecthsmetrics/*") into CollectHSMetricsOutputsChannel
     file("facets/*") into FacetsChannel
-    set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg ") into FacetsMergedChannel
+    set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg") into FacetsMergedChannel
     set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
     file("merged.vcf.gz") into VcfBedPeChannel
 
