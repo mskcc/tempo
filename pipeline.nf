@@ -83,11 +83,26 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 if (params.mapping) {
   mappingPath = params.mapping
 
+  
   if (mappingPath && !check_for_duplicated_rows(mappingPath)) {
     println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
+
+  // check for mixed assay
+  if (mappingPath && !check_for_mixed_assay(mappingPath)) {
+    println "ERROR: Multiple assays found in mapping file. Users can either run WES or WGS, but not both. Please fix the error and re-run the pipeline."
+    exit 1
+  }
+
+  // check that each value in LANE is unique
+  if (mappingPath && !checkForUniqueSampleLanes(mappingPath)) {
+    println "The combination of SAMPLE_LANE values must be unique. Duplicate non-unique values cause errors. Please fix the error and re-run the pipeline."
+    exit 1
+  }
+
 }
+
 
 if (params.pairing) {
   pairingPath = params.pairing
@@ -2493,4 +2508,19 @@ def check_for_mixed_assay(mappingFilePath) {
     }
   return !(wgs && wes)
   }
+}
+
+// check LANE values are unique in input mapping *tsv 
+def checkForUniqueSampleLanes(inputFilename) {
+  def totalList = []
+  // parse tsv
+  file(inputFilename).eachLine { line ->
+      if (!line.isEmpty()){
+          def (sample, lane, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
+          totalList << sample + "_" + lane
+      }
+  }
+  // remove header 'SAMPLE_LANE'
+  totalList.removeAll{ it == 'SAMPLE_LANE'} 
+  return totalList.size() == totalList.unique().size()
 }
