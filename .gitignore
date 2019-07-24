@@ -8,13 +8,9 @@ example_data
 *.tar.gz
 conf/awsbatch.config
 nf.*
-*.bam
-*.bai
 *.html
 *.html.*
 *.txt
 *.txt.*
 *.pdf
-*.gz
-*.bam.*
 Result/
