@@ -486,7 +486,8 @@ if (params.bam_pairing){
   bamPairingfile = file(bamPairingPath)
 
   bamFiles = extractBAM(bamPairingfile)
-
+  
+}
 
 // GATK CollectHsMetrics, WES only
 
