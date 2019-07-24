@@ -1652,7 +1652,7 @@ process MetaDataParser {
   python3 /usr/bin/create_metadata_file.py --sampleID ${idTumor}_vs_${idNormal} \
       --facetsPurity_out *_purity.out   \
       --facetsArmLevel  *.armlevel.tsv  \
-      --MSIsensor_output *.msisensor.tsv  \ 
+      --MSIsensor_output *.msisensor.tsv   \
       --mutational_signatures_output *mutsig.txt  \
       --polysolver_output *winners.hla.txt \
       --MAF_input *.maf  \
