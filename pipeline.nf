@@ -853,7 +853,7 @@ process SomaticRunStrelka2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file('*merged.filtered.vcf.gz'), file('*merged.filtered.vcf.gz.tbi') into strelkaOutputMerged
+    set idTumor, idNormal, target, file(bamNormal), file(baiNormal), file('*merged.filtered.vcf.gz'), file('*merged.filtered.vcf.gz.tbi') into strelkaOutputMerged
     set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput
 
   when: 'manta' in tools && 'strelka2' in tools && runSomatic
@@ -891,7 +891,6 @@ process SomaticRunStrelka2 {
   mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
     Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
 
-
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
   
   bcftools concat \
@@ -920,7 +919,7 @@ process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
+    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(bamNormal), file(baiNormal), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex
@@ -1081,7 +1080,7 @@ process SomaticCombineChannel {
     --maq 0 \
     --fasta ${genomeFile} \
     --bam ${idNormal}:${bamNormal} \
-    --vcf ${idTumor}_vs_${idNormal}.vcf \
+    --vcf ${idTumor}_vs_${idNormal}.filtered.vcf \
     --output ${idNormal}.genotyped.vcf 
   
   bgzip ${idTumor}_vs_${idNormal}.filtered.vcf
