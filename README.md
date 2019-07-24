@@ -10,6 +10,7 @@ https://github.com/SciLifeLab/Sarek
 
 Vaporware contains several pipeline `*.nf` scripts but all functionality is contained in `pipeline.nf`.
 
+
 ## Setup instructions
 
 Clone the repository as `vaporware`:
