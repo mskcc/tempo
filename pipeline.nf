@@ -1689,8 +1689,8 @@ process SomaticAggregate {
   mv *genelevel.tsv facets/geneLevel
   mv *genelevel_TSG_ManualReview.txt  facets/manualReview
   awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > merged_armlevel.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*enelevel.tsv > merged_armlevel.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > merged_genelevel.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
 
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
