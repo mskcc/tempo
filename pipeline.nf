@@ -466,6 +466,7 @@ if (!params.bam_pairing){
   
 }
 
+
 /*
 ================================================================================
 =                                SOMATIC PIPELINE                              =
@@ -486,7 +487,55 @@ if (params.bam_pairing){
 
   bamFiles = extractBAM(bamPairingfile)
 
+
+// GATK CollectHsMetrics, WES only
+
+process CollectHsMetrics{
+  tag {idSample}
+
+  publishDir "${params.outDir}/CollectHsMetrics/${idSample}", mode: params.publishDirMode
+
+  input:
+    set idSample, file(bam), file(bai), assay, target from recalibratedBamForCollectHsMetrics
+
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
+    ])
+    set file(idtTargetsList), file(agilentTargetsList), file(idtBaitsList), file(agilentBaitsList) from Channel.value([
+      referenceMap.idtTargetsList,
+      referenceMap.agilentTargetsList, 
+      referenceMap.idtBaitsList,
+      referenceMap.agilentBaitsList      
+    ])
+
+  output:
+    set idSample, file("${idSample}_output_hs_metrics.txt") into collectHsMetricsStats
+
+  when: 'wes' in assay
+
+  script:
+  bait_intervals = ""
+  target_intervals = ""
+  if (target == 'agilent'){
+    bait_intervals = "${agilentBaitsList}"
+    target_intervals = "${agilentTargetsList}"
+  }
+  if (target == 'idt'){
+    bait_intervals = "${idtBaitsList}"
+    target_intervals = "${idtTargetsList}"
+  }
+  """
+  gatk CollectHsMetrics \
+    --INPUT  ${bam} \
+    --OUTPUT ${idSample}_output_hs_metrics.txt \
+    --REFERENCE_SEQUENCE ${genomeFile} \
+    --BAIT_INTERVALS ${bait_intervals}\
+    --TARGET_INTERVALS ${target_intervals} 
+  """
 }
+
 
 // GATK SplitIntervals, CreateScatteredIntervals
 
@@ -2345,11 +2394,15 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
-    // Target BED files
+    // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
+    'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
+    'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
+    'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
