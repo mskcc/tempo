@@ -1177,7 +1177,8 @@ process RunMsiSensor {
   """
 }
 
-(msiOutput, msiOutputForMetaData) = msiOutput.into(2)
+
+(msiOutputForMetaData, msiOutput) = msiOutput.into(2)
 
 // --- Run FACETS
 
@@ -1632,7 +1633,8 @@ facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
 
 (mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
 
-mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combined(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
+
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
 
 // facetsForMetaDataParser
 
@@ -1642,7 +1644,7 @@ process MetaDataParser {
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
  
   input:
-    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(msiOutput), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
+    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(msifile), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed,
       referenceMap.agilentCodingBed, 
