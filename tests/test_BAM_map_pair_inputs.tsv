@@ -1,2 +1,2 @@
 TUMOR_ID	NORMAL_ID	ASSAY	TARGET	TUMOR_BAM	NORMAL_BAM
-1234T	1234N	exome	agilent	test-data/testdata/tiny/tumor/1234T.recal.bam	test-data/testdata/tiny/normal/1234N.recal.bam	
+1234T	1234N	exome	agilent	test_inputs/test-data/testdata/tiny/tumor/1234T.recal.bam	test_inputs/test-data/testdata/tiny/normal/1234N.recal.bam	
