@@ -514,7 +514,7 @@ process CollectHsMetrics{
     ])
 
   output:
-    set file("${idSample}_output_hs_metrics.txt") into CollectHsMetricsStats
+    file("${idSample}_output_hs_metrics.txt") into CollectHsMetricsStats
 
   when: 'wes' in assay
 
