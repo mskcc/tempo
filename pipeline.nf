@@ -2568,13 +2568,17 @@ def returnFile(it) {
   return file(it)
 }
 
+
 def check_for_duplicated_rows(pairingFilePath) {
   def entries = []
   file( pairingFilePath ).eachLine { line ->
-    entries << line
+    if (!line.isEmpty()){
+      entries << line
+    }
   }
   return entries.toSet().size() == entries.size()
 }
+
 
 def check_for_mixed_assay(mappingFilePath) {
   def wgs = false
