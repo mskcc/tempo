@@ -446,7 +446,7 @@ if (!params.bam_pairing){
     output:
       file("${idSample}_output_hs_metrics.txt") into CollectHsMetricsStats
 
-    when: 'wes' in assay
+    when: 'wes' in assay && !params.test
 
     script:
     bait_intervals = ""
