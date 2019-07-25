@@ -1747,7 +1747,6 @@ process SomaticAggregate {
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
     file(mutsigFile) from mutSigOutput.collect()
-    file(collectHSmetrics) from CollectHsMetricsStats.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
@@ -1760,7 +1759,6 @@ process SomaticAggregate {
     file("merged.maf") into MafFileOutput
     file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
-    file("collecthsmetrics/*") into CollectHSMetricsOutputsChannel
     file("facets/*") into FacetsChannel
     set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg") into FacetsMergedChannel
     set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
@@ -1791,10 +1789,6 @@ process SomaticAggregate {
   # Collect mutsig output to mutsig/
   mkdir mutsig
   mv *.mutsig.txt mutsig/
-
-  ## Collect Picard CollectHSMetrics to collecthsmetrics/
-  mkdir collecthsmetrics
-  mv *output_hs_metrics.txt collecthsmetrics/
 
   # Collect facets output to facets/
   mkdir facets
@@ -1843,6 +1837,9 @@ process SomaticAggregate {
 
   """
 }
+
+
+
 
 /*
 ================================================================================
