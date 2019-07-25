@@ -1617,6 +1617,8 @@ process RunNeoantigen {
     --output_dir ${outputDir}
 
   cd ${outputDir}
+  ## add sampleID column to output
+  awk 'NR==1 {printf("%s\t%s\n", $0, "sampleID")}  NR>1 {printf("%s\t%s\n", $0, "${idTumor}_vs_${idNormal}") }' ${outputDir}/*.netmhcpan_netmhc_combined.output.txt > ${outputDir}/${idTumor}_vs_${idNormal}.netmhcpan_netmhc_combined.output.sampleID.txt
   """
 }
 
