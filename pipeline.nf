@@ -1189,7 +1189,7 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
-  if(publishAll) { publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode }
+  publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode 
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
@@ -1201,6 +1201,7 @@ process DoFacets {
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
     file("${tag}_OUT.txt") into FacetsPurityHisensOutput
+    file("${tag}") into FacetsOutputSubdirectories
 
   when: 'facets' in tools && runSomatic
 
@@ -1240,8 +1241,10 @@ process DoFacets {
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
-
-
+  
+  mkdir ${tag}
+  cp -rf ${outputDir} ${tag}
+  cp -rf  ${outfile} ${tag}
   """
 }
 
@@ -1744,7 +1747,7 @@ process SomaticAggregate {
   mv *.mutsig.txt mutsig/
 
   # Collect facets output to facets/
-  mkdir facets
+  ## mkdir facets
   mkdir facets/hisens
   mkdir facets/purity
   mkdir facets/hisensPurityOutput
