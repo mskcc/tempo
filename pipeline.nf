@@ -1605,22 +1605,21 @@ process RunNeoantigen {
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"
   """
-  export TMPDIR=${tmpDirFullPath}
-  mkdir -p ${tmpDir}
-  chmod 777 ${tmpDir}
+  export TMPDIR="${tmpDirFullPath}"
+  mkdir -p "${tmpDir}"
+  chmod 777 "${tmpDir}"
 
   python /usr/local/bin/neoantigen/neoantigen.py \
     --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
-    --sample_id ${idTumor}_vs_${idNormal} \
-    --hla_file ${polysolverFile} \
-    --maf_file ${mafFile} \
-    --output_dir ${outputDir}
+    --sample_id "${idTumor}_vs_${idNormal}" \
+    --hla_file "${polysolverFile}" \
+    --maf_file "${mafFile}" \
+    --output_dir "${outputDir}"
 
   ## add sampleID column to output
-  awk  "NR==1 {printf('%s\t%s\n', $0, 'sampleID')}  NR>1 {printf('%s\t%s\n', $0, '${idTumor}_vs_${idNormal}') }'" ${outputDir}/*.netmhcpan_netmhc_combined.output.txt > ${outputDir}/${idTumor}_vs_${idNormal}.netmhcpan_netmhc_combined.output.sampleID.txt
-
+  awk 'NR==1 {printf("%s\t%s\n", $0, "sampleID")}  NR>1 {printf("%s\t%s\n", $0, "${idTumor}_vs_${idNormal}") }' ${outputDir}/*.netmhcpan_netmhc_combined.output.txt > ${outputDir}/${idTumor}_vs_${idNormal}.netmhcpan_netmhc_combined.output.sampleID.txt
   """
-
+}
 
 // [idTumor, idNormal, target, armLevel]
 facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
