@@ -11,7 +11,7 @@ services:
 before_install:
   - export NXF_VER=19.05.0-edge && curl -fsSL get.nextflow.io | bash 
   - chmod +x nextflow
-  - wget -O test-data.tar.gz --no-check-certificate 'https://docs.google.com/uc?export=download&id=13kwUPGAPrQJcKj2_IKHP2p3dlCqLdcZ7'
+  - wget -O test-data.tar.gz --no-check-certificate 'https://docs.google.com/uc?export=download&id=1OIAQ3NMqwMt6m8GsrpQadpDsdyhS4dyr'
   - tar -xzvf test-data.tar.gz 
 
 script:
