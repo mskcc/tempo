@@ -1615,6 +1615,8 @@ process RunNeoantigen {
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
+
+  awk 'NR==1 {printf("%s\t%s\n", $0, "sampleID")}  NR>1 {printf("%s\t%s\n", $0, "${idTumor}_vs_${idNormal}") }' ${outputDir}/*.netmhcpan_netmhc_combined.output.txt > ${outputDir}/${idTumor}_vs_${idNormal}.netmhcpan_netmhc_combined.output.sampleID.txt
   """
 }
 
@@ -1720,9 +1722,9 @@ process SomaticAggregate {
 
   # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
   mkdir netmhc_stats
-  mv *.netmhcpan_netmhc_combined.output.txt netmhc_stats
-  cat netmhc_stats/*.output.txt | grep ^algorithm | head -n1 > merged.netmhcpan_netmhc_combined.output.txt
-  cat netmhc_stats/*.output.txt | grep -Ev "^algorithm" >> merged.netmhcpan_netmhc_combined.output.txt
+  mv *.netmhcpan_netmhc_combined.output.sampleID.txt netmhc_stats
+  cat netmhc_stats/*.output.sampleID.txt | grep ^algorithm | head -n1 > merged.netmhcpan_netmhc_combined.output.txt
+  cat netmhc_stats/*.output.sampleID.txt | grep -Ev "^algorithm" >> merged.netmhcpan_netmhc_combined.output.txt
 
   # Collect mutsig output to mutsig/
   mkdir mutsig
