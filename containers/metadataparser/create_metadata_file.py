@@ -114,7 +114,7 @@ if mutationalSignatures is not None:
     ## parse mutational signatures output
     mutsig = pd.read_csv(mutationalSignatures, sep="\t")
     ## create mutational signatures columns
-    results["Number_of_Signatures"] = mutsig['Number of Mutations']
+    results["Number_of_Mutations"] = mutsig['Number of Mutations']
     results["Signature_1"] =  mutsig['Signature.1']
     results["Signature_2"] =  mutsig['Signature.2']
     results["Signature_3"] =  mutsig['Signature.3']
