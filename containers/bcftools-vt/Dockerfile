@@ -1,9 +1,10 @@
 FROM halllab/bcftools:v1.9
 
 LABEL maintainer="C. Allan Bolipata (bolipatc@mskcc.org)" \
-    version.image="1.1.0" \
+    contributor="Philip Jonsson (jonssonp@mskcc.org)" \
+    version.image="1.1.1" \
     version.vt="0.57721" \
-    version.filter-vcf="0.1.0" \
+    version.filter-vcf="0.1.1" \
     version.pysam="0.15.2" \
     source.getBaseCountsMultiSample="https://github.com/zengzheng123/GetBaseCountsMultiSample/releases/tag/v1.2.2" \
     version.getBaseCountsMultiSample="1.2.2"
