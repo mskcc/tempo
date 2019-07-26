@@ -9,11 +9,11 @@ Output: 'input_filename.filter.vcf'
 
 __author__  = "Philip Jonsson"
 __email__   = "jonssonp@mskcc.org"
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __status__  = "Dev"
 
 import sys, os
-from pysam import VariantFile   # version >= 0.15.2
+from pysam import VariantFile    # version >= 0.15.2
 from itertools import groupby
 
 vcf_in = VariantFile(sys.argv[1], "r")
@@ -50,9 +50,10 @@ for var in vcf_in.fetch():
 
     if len(ref) == len(alt) == 1:
         ref_tri = var.info['FLANKSEQ'][9:14].replace('[', '').replace(']', '')
-        if ref not in ['C', 'T']:
-            ref_tri = ''.join([complement[nt] for nt in ref_tri])[::-1]
-        var.info.__setitem__('Ref_Tri', ref_tri)
+        if 'N' not in ref_tri:
+            if ref not in ['C', 'T']:
+                ref_tri = ''.join([complement[nt] for nt in ref_tri])[::-1]
+            var.info.__setitem__('Ref_Tri', ref_tri)
 
     ## Check for variant substitutions that are part of the previous variant
     ## These are most likely (but not always?) Strelka2 calls that MuTect2 called as MNVs
