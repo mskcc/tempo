@@ -37,7 +37,6 @@ Somatic Analysis
 Germline Analysis
 -----------------
 - GermlineDellyCall
-- GermlineDellyFilter
 - CreateScatteredIntervals
 - GermlineRunHaplotypecaller
 - GermlineRunManta
