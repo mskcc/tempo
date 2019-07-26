@@ -41,8 +41,7 @@ Germline Analysis
 - GermlineRunHaplotypecaller
 - GermlineRunManta
 - GermlineRunStrelka
-- GermlineRunBcfToolsFilterNorm
-- GermlineRunBcfToolsMerge
+- GermlineMergeDellyAndManta
 - GermlineAnnotateMaf
 
 */
