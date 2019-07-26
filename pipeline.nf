@@ -21,7 +21,6 @@ Somatic Analysis
  - CreateScatteredIntervals --- GATK4 SplitIntervals
  - CollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
  - RunMutect2 --- somatic SNV calling, MuTect2
- - RunMutect2Filter --- post-Mutect2 filtering, GATK4 FilterMutectCalls
  - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small InDel calling by default
  - SomaticCombineMutect2Vcf --- combine Mutect2 calls,bcftools
  - SomaticRunManta --- somatic SV calling, Manta
