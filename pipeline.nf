@@ -1655,7 +1655,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    file("${outputDir}/*.all_neoantigen_predictions.txt") into NetMhcStatsOutput
+    file("${outputDir}/${idTumor}_vs_${idNormal}.sampleID.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: "neoantigen" in tools
@@ -1677,6 +1677,8 @@ process RunNeoantigen {
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
+
+  awk 'NR==1 {printf("%s\t%s\n", \$0, "sampleID")}  NR>1 {printf("%s\t%s\n", \$0, "${idTumor}_vs_${idNormal}") }' *.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.sampleID.all_neoantigen_predictions.txt
 
   """
 }
