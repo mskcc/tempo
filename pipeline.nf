@@ -7,9 +7,11 @@ Processes overview:
 
 Alignment and QC
 ----------------
- - AlignReads --- Map paired-end FASTQs with bwa mem
- - SortBAM*** --- Sort BAM with samtools sort
- - MergeBam*** --- Merge BAM for the same samples from different lanes, samtools merge
+ - AlignReads
+    --- Map paired-end FASTQs with bwa mem
+    --- Sort BAM with samtools sort
+    --- FASTQ QC with FastP 
+ - MergeBam --- Merge BAM for the same samples from different lanes, samtools merge
  - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
  - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
  - RecalibrateBam --- Recalibrate Bam with GATK4 ApplyBQSR
@@ -20,22 +22,23 @@ Somatic Analysis
  - CollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
  - RunMutect2 --- somatic SNV calling, MuTect2
  - RunMutect2Filter --- post-Mutect2 filtering, GATK4 FilterMutectCalls
- - SomaticRunStrelka --- somatic SNV calling, Strelka2, using Manta for small InDel calling by default
- - SomaticCombineMutect2VCF --- combine Mutect2 and Strelka2 calls, bcftools
+ - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small InDel calling by default
+ - SomaticCombineMutect2Vcf --- combine Mutect2 calls,bcftools
  - SomaticRunManta --- somatic SV calling, Manta
  - SomaticDellyCall --- somatic SV calling, Delly
+ - SomaticMergeDellyAndManta --- combine Manta and Delly VCFs
  - SomaticCombineChannel --- combine and filter VCFs, bcftools
  - SomaticAnnotateMaf --- annotate MAF, vcf2maf
  - RunMsiSensor --- MSIsensor
  - DoFacets --- facets-suite: mafAnno.R, geneLevel.R, armLevel.R
- - Polysolver --- Polysolver
- - LOHHLA --- LOH in HLA
+ - RunPolysolver --- Polysolver
+ - RunLOHHLA --- LOH in HLA
  - RunConpair --- Tumor-Normal quality/contamination
  - RunMutationSignatures --- mutational signatures
  - FacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
  - MetaDataParser --- python script to parse metadata into single *tsv
- - SomaticGroupForQcAndAggregate --- collect outputs
+ - SomaticAggregate --- collect outputs
 
 Germline Analysis
 -----------------
@@ -44,47 +47,11 @@ Germline Analysis
  - GermlineRunManta --- germline SV calling, Manta
  - GermlineMergeDellyAndManta --- merge SV calls from Delly and Manta
  - GermlineRunHaplotypecaller --- germline SNV calling, GATK4
- - GermlineRunStrelka --- germline SNV calling, Strelka2 (with InDels from Manta)
+ - GermlineCombineHaplotypecallerVcf --- concatenate VCFs of GATK4 HaplotypeCaller
+ - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
  - GermlineCombineChannel --- combined and filter germline calls, bcftools
  - GermlineAnnotateMaf--- annotate MAF, vcf2maf
  - GermlineAggregate --- collect outputs
-=======
- - AlignReads - Map reads with BWA mem output SAM
- - MergeBam - Merge BAM for the same samples from different lanes
- - MarkDuplicates - Mark Duplicates with GATK4
- - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
- - RecalibrateBam - Recalibrate Bam with PrintReads
-
-Somatic Analysis
-----------------
-- SomaticDellyCall
-- CreateScatteredIntervals
-- RunMutect2
-- SomaticCombineMutect2VCF
-- SomaticRunManta
-- SomaticRunStrelka
-- SomaticCombineChannel
-- SomaticRunBCFToolsFilterNorm
-- SomaticRunBCFToolsMerge
-- SomaticAnnotateMaf
-- SomaticDoSNPPileup
-- DoFacets
-- RunMsiSensor
-- Polysolver
-- LOHHLA
-- RunConpair
-- RunMutationSignatures
-- MetaDataParser
-
-Germline Analysis
------------------
-- GermlineDellyCall
-- CreateScatteredIntervals
-- GermlineRunHaplotypecaller
-- GermlineRunManta
-- GermlineRunStrelka
-- GermlineMergeDellyAndManta
-- GermlineAnnotateMaf
 
 */
 
