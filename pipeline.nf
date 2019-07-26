@@ -8,7 +8,6 @@ Processes overview:
 Alignment and QC
 ----------------
  - AlignReads - Map reads with BWA mem output SAM
- - SortBAM - Sort BAM with samtools
  - MergeBam - Merge BAM for the same samples from different lanes
  - MarkDuplicates - Mark Duplicates with GATK4
  - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
@@ -19,7 +18,6 @@ Somatic Analysis
 - SomaticDellyCall
 - CreateScatteredIntervals
 - RunMutect2
-- RunMutect2Filter
 - SomaticCombineMutect2VCF
 - SomaticRunManta
 - SomaticRunStrelka
