@@ -1709,6 +1709,7 @@ process SomaticAggregate {
     file(annotationFiles) from FacetsAnnotationOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
+    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
 
   output:
@@ -1747,7 +1748,7 @@ process SomaticAggregate {
   mv *.mutsig.txt mutsig/
 
   # Collect facets output to facets/
-  ## mkdir facets
+  mkdir facets
   mkdir facets/hisens
   mkdir facets/purity
   mkdir facets/hisensPurityOutput
@@ -1771,6 +1772,8 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > merged_genelevel.tsv
   awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
 
+  ## Move all FACETS output subdirectories into /facets
+  mv ${facetsOutputSubdirectories} facets/
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   for f in *.vcf.gz
