@@ -48,6 +48,43 @@ Germline Analysis
  - GermlineCombineChannel --- combined and filter germline calls, bcftools
  - GermlineAnnotateMaf--- annotate MAF, vcf2maf
  - GermlineAggregate --- collect outputs
+=======
+ - AlignReads - Map reads with BWA mem output SAM
+ - MergeBam - Merge BAM for the same samples from different lanes
+ - MarkDuplicates - Mark Duplicates with GATK4
+ - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
+ - RecalibrateBam - Recalibrate Bam with PrintReads
+
+Somatic Analysis
+----------------
+- SomaticDellyCall
+- CreateScatteredIntervals
+- RunMutect2
+- SomaticCombineMutect2VCF
+- SomaticRunManta
+- SomaticRunStrelka
+- SomaticCombineChannel
+- SomaticRunBCFToolsFilterNorm
+- SomaticRunBCFToolsMerge
+- SomaticAnnotateMaf
+- SomaticDoSNPPileup
+- DoFacets
+- RunMsiSensor
+- Polysolver
+- LOHHLA
+- RunConpair
+- RunMutationSignatures
+- MetaDataParser
+
+Germline Analysis
+-----------------
+- GermlineDellyCall
+- CreateScatteredIntervals
+- GermlineRunHaplotypecaller
+- GermlineRunManta
+- GermlineRunStrelka
+- GermlineMergeDellyAndManta
+- GermlineAnnotateMaf
 
 */
 
@@ -1290,8 +1327,6 @@ process DoFacets {
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
-
-
   """
 }
 
