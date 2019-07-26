@@ -1189,7 +1189,7 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "_vs_" + idNormal}
 
-  publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode 
+  if(publishAll) { publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
@@ -1773,7 +1773,6 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
 
   ## Move all FACETS output subdirectories into /facets
-  mv ${facetsOutputSubdirectories} facets/
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   for f in *.vcf.gz
