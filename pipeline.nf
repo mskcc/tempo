@@ -1593,7 +1593,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt") into NetMhcStatsOutput
+    file("${outputDir}/*.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: "neoantigen" in tools
@@ -1605,19 +1605,17 @@ process RunNeoantigen {
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"
   """
-  export TMPDIR="${tmpDirFullPath}"
-  mkdir -p "${tmpDir}"
-  chmod 777 "${tmpDir}"
+  export TMPDIR=${tmpDirFullPath}
+  mkdir -p ${tmpDir}
+  chmod 777 ${tmpDir}
 
   python /usr/local/bin/neoantigen/neoantigen.py \
     --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
-    --sample_id "${idTumor}_vs_${idNormal}" \
-    --hla_file "${polysolverFile}" \
-    --maf_file "${mafFile}" \
-    --output_dir "${outputDir}"
+    --sample_id ${idTumor}_vs_${idNormal} \
+    --hla_file ${polysolverFile} \
+    --maf_file ${mafFile} \
+    --output_dir ${outputDir}
 
-  ## add sampleID column to output
-  awk 'NR==1 {printf("%s\t%s\n", $0, "sampleID")}  NR>1 {printf("%s\t%s\n", $0, "${idTumor}_vs_${idNormal}") }' ${outputDir}/*.netmhcpan_netmhc_combined.output.txt > ${outputDir}/${idTumor}_vs_${idNormal}.netmhcpan_netmhc_combined.output.sampleID.txt
   """
 }
 
@@ -1700,7 +1698,7 @@ process SomaticAggregate {
 
   output:
     file("merged.maf") into MafFileOutput
-    file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
+    file("merged_all_neoantigen_predictions.txt") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
     file("merged.vcf.gz") into VcfBedPeChannel
@@ -1723,9 +1721,8 @@ process SomaticAggregate {
 
   # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
   mkdir netmhc_stats
-  mv *.netmhcpan_netmhc_combined.output.sampleID.txt netmhc_stats
-  cat netmhc_stats/*.output.sampleID.txt | grep ^algorithm | head -n1 > merged.netmhcpan_netmhc_combined.output.txt
-  cat netmhc_stats/*.output.sampleID.txt | grep -Ev "^algorithm" >> merged.netmhcpan_netmhc_combined.output.txt
+  mv *.all_neoantigen_predictions.txt netmhc_stats
+  awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > merged_all_neoantigen_predictions.txt 
 
   # Collect mutsig output to mutsig/
   mkdir mutsig
