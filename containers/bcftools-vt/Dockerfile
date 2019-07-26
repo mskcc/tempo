@@ -1,6 +1,7 @@
 FROM halllab/bcftools:v1.9
 
 LABEL maintainer="C. Allan Bolipata (bolipatc@mskcc.org)" \
+    contributor="Philip Jonsson (jonssonp@mskcc.org)" \
     version.image="1.1.1" \
     version.vt="0.57721" \
     version.filter-vcf="0.1.1" \
