@@ -1238,8 +1238,6 @@ process DoFacets {
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
-
-
   """
 }
 
