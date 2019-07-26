@@ -540,6 +540,7 @@ if (params.bam_pairing){
   
 }
 
+
 // GATK SplitIntervals, CreateScatteredIntervals
 
 process CreateScatteredIntervals {
@@ -1618,6 +1619,7 @@ process FacetsAnnotation {
 
 
 (mafFileForNeoantigen, facetsAnnotationForMetaData, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(3)
+
 
 //Formatting the channel to be: idTumor, idNormal, target, MAF
 
