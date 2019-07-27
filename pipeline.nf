@@ -1762,7 +1762,7 @@ process SomaticAggregate {
     file(annotationFiles) from FacetsAnnotationOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
-    facetsOutputSubdirectories from FacetsOutputSubdirectories.collect()
+    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
 
   output:
