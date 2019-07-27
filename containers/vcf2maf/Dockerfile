@@ -2,6 +2,7 @@ FROM ubuntu:18.04
 
 LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
+      contributor="Philip Jonsson (jonssonp@mskcc.org)" \
       version.image="1.2.2" \
       version.vcf2maf="1.6.17" \
       version.vep="88" \
