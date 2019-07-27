@@ -1837,7 +1837,9 @@ process SomaticAggregate {
     vcf_delly_manta/*delly.manta.vcf.gz
 
   ## Collect metadata *tsv file into merged_metadata.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' *_metadata.tsv > merged_metadata.tsv
+  mkdir metadata
+  mv *_metadata.tsv metadata 
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.tsv > merged_metadata.tsv
 
   """
 }
