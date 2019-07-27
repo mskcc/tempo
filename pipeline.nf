@@ -7,45 +7,51 @@ Processes overview:
 
 Alignment and QC
 ----------------
- - AlignReads - Map reads with BWA mem output SAM
- - SortBAM - Sort BAM with samtools
- - MergeBam - Merge BAM for the same samples from different lanes
- - MarkDuplicates - Mark Duplicates with GATK4
- - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
- - RecalibrateBam - Recalibrate Bam with PrintReads
+ - AlignReads
+    --- Map paired-end FASTQs with bwa mem
+    --- Sort BAM with samtools sort
+    --- FASTQ QC with FastP 
+ - MergeBam --- Merge BAM for the same samples from different lanes, samtools merge
+ - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
+ - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
+ - RecalibrateBam --- Recalibrate Bam with GATK4 ApplyBQSR
 
 Somatic Analysis
 ----------------
-- SomaticDellyCall
-- CreateScatteredIntervals
-- RunMutect2
-- RunMutect2Filter
-- SomaticCombineMutect2VCF
-- SomaticRunManta
-- SomaticRunStrelka
-- SomaticCombineChannel
-- SomaticRunBCFToolsFilterNorm
-- SomaticRunBCFToolsMerge
-- SomaticAnnotateMaf
-- SomaticDoSNPPileup
-- DoFacets
-- RunMsiSensor
-- Polysolver
-- LOHHLA
-- RunConpair
-- RunMutationSignatures
+ - CreateScatteredIntervals --- GATK4 SplitIntervals
+ - CollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
+ - RunMutect2 --- somatic SNV calling, MuTect2
+ - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small InDel calling by default
+ - SomaticCombineMutect2Vcf --- combine Mutect2 calls,bcftools
+ - SomaticRunManta --- somatic SV calling, Manta
+ - SomaticDellyCall --- somatic SV calling, Delly
+ - SomaticMergeDellyAndManta --- combine Manta and Delly VCFs
+ - SomaticCombineChannel --- combine and filter VCFs, bcftools
+ - SomaticAnnotateMaf --- annotate MAF, vcf2maf
+ - RunMsiSensor --- MSIsensor
+ - DoFacets --- facets-suite: mafAnno.R, geneLevel.R, armLevel.R
+ - RunPolysolver --- Polysolver
+ - RunLOHHLA --- LOH in HLA
+ - RunConpair --- Tumor-Normal quality/contamination
+ - RunMutationSignatures --- mutational signatures
+ - FacetsAnnotation --- annotate FACETS
+ - RunNeoantigen --- NetMHCpan 4.0
+ - MetaDataParser --- python script to parse metadata into single *tsv
+ - SomaticAggregate --- collect outputs
 
 Germline Analysis
 -----------------
-- GermlineDellyCall
-- GermlineDellyFilter
-- CreateScatteredIntervals
-- GermlineRunHaplotypecaller
-- GermlineRunManta
-- GermlineRunStrelka
-- GermlineRunBcfToolsFilterNorm
-- GermlineRunBcfToolsMerge
-- GermlineAnnotateMaf
+ - CreateScatteredIntervals --- (run once) GATK4 SplitIntervals
+ - GermlineDellyCall --- germline SV calling and filtering, Delly
+ - GermlineRunManta --- germline SV calling, Manta
+ - GermlineMergeDellyAndManta --- merge SV calls from Delly and Manta
+ - GermlineRunHaplotypecaller --- germline SNV calling, GATK4
+ - GermlineCombineHaplotypecallerVcf --- concatenate VCFs of GATK4 HaplotypeCaller
+ - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
+ - GermlineCombineChannel --- combined and filter germline calls, bcftools
+ - GermlineAnnotateMaf--- annotate MAF, vcf2maf
+ - GermlineAggregate --- collect outputs
+
 */
 
 /*
@@ -83,11 +89,26 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 if (params.mapping) {
   mappingPath = params.mapping
 
+  
   if (mappingPath && !check_for_duplicated_rows(mappingPath)) {
     println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
+
+  // check for mixed assay
+  if (mappingPath && !check_for_mixed_assay(mappingPath)) {
+    println "ERROR: Multiple assays found in mapping file. Users can either run WES or WGS, but not both. Please fix the error and re-run the pipeline."
+    exit 1
+  }
+
+  // check that each value in LANE is unique
+  if (mappingPath && !checkForUniqueSampleLanes(mappingPath)) {
+    println "The combination of SAMPLE_LANE values must be unique. Duplicate non-unique values cause errors. Please fix the error and re-run the pipeline."
+    exit 1
+  }
+
 }
+
 
 if (params.pairing) {
   pairingPath = params.pairing
@@ -309,7 +330,7 @@ if (!params.bam_pairing){
       ])
 
     output:
-      set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+      set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
       val(idSample) into currentSample
       file("${idSample}.recal.bam") into currentBam
@@ -402,6 +423,55 @@ if (!params.bam_pairing){
       }
     }
   }
+  
+
+  // GATK CollectHsMetrics, WES only
+
+  process CollectHsMetrics{
+    tag {idSample}
+
+    publishDir "${params.outDir}/CollectHsMetrics/${idSample}", mode: params.publishDirMode
+
+    input:
+      set idSample, file(bam), file(bai), assay, target from recalibratedBamForCollectHsMetrics
+
+      set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+        referenceMap.genomeFile,
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict
+      ])
+      set file(idtTargetsList), file(agilentTargetsList), file(idtBaitsList), file(agilentBaitsList) from Channel.value([
+        referenceMap.idtTargetsList,
+        referenceMap.agilentTargetsList, 
+        referenceMap.idtBaitsList,
+        referenceMap.agilentBaitsList      
+      ])
+
+    output:
+      file("${idSample}_output_hs_metrics.txt") into CollectHsMetricsStats
+
+    when: 'wes' in assay && !params.test
+
+    script:
+    bait_intervals = ""
+    target_intervals = ""
+    if (target == 'agilent'){
+      bait_intervals = "${agilentBaitsList}"
+      target_intervals = "${agilentTargetsList}"
+    }
+    if (target == 'idt'){
+      bait_intervals = "${idtBaitsList}"
+      target_intervals = "${idtTargetsList}"
+    }
+    """
+    gatk CollectHsMetrics \
+      --INPUT  ${bam} \
+      --OUTPUT ${idSample}_output_hs_metrics.txt \
+      --REFERENCE_SEQUENCE ${genomeFile} \
+      --BAIT_INTERVALS ${bait_intervals}\
+      --TARGET_INTERVALS ${target_intervals} 
+    """
+  }
 
 
   // Alfred, BAM 
@@ -451,6 +521,7 @@ if (!params.bam_pairing){
   
 }
 
+
 /*
 ================================================================================
 =                                SOMATIC PIPELINE                              =
@@ -470,8 +541,9 @@ if (params.bam_pairing){
   bamPairingfile = file(bamPairingPath)
 
   bamFiles = extractBAM(bamPairingfile)
-
+  
 }
+
 
 // GATK SplitIntervals, CreateScatteredIntervals
 
@@ -1172,7 +1244,7 @@ process RunMsiSensor {
     ])
 
   output:
-    file("${idTumor}_vs_${idNormal}.msisensor.tsv") into msiOutput 
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.msisensor.tsv") into msiOutput 
 
   when: "msisensor" in tools
 
@@ -1186,6 +1258,9 @@ process RunMsiSensor {
     -o ${outputPrefix}
   """
 }
+
+
+(msiOutputForMetaData, msiOutput) = msiOutput.into(2)
 
 // --- Run FACETS
 
@@ -1205,6 +1280,7 @@ process DoFacets {
     set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
+    file("${tag}_OUT.txt") into FacetsPurityHisensOutput
 
   when: 'facets' in tools && runSomatic
 
@@ -1239,6 +1315,11 @@ process DoFacets {
     --R_lib /usr/lib/R/library \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
+
+  python3 /usr/bin/facets-suite/summarize_project.py -p ${tag} \
+    -c ${outputDir}/*cncf.txt \
+    -o ${outputDir}/*out \
+    -s ${outputDir}/*seg  
   """
 }
 
@@ -1423,6 +1504,9 @@ facetsForLOHHLA = facetsForLOHHLA.map{
     return [ idTumor, idNormal, target, purity_out ]
   }
 
+// create channel for MetaDataParser, using *purity.out from FACETS,
+
+(facetsForLOHHLA, facetsForMetaDataParser) = facetsForLOHHLA.into(2)
 
 (hlaOutputForLOHHLA, hlaOutput) = hlaOutput.into(2)
 
@@ -1485,7 +1569,7 @@ process RunMutationSignatures {
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
   output:
-    file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
+    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.mutsig.txt") into mutSigOutput
 
   when: "mutect2" in tools && "manta" in tools && "strelka2" in tools && "mutsig" in tools && runSomatic
 
@@ -1536,7 +1620,7 @@ process FacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsAnnotationOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsAnnotationOutputs
 
   when: 'facets' in tools && "mutect2" in tools && "manta" in tools && "strelka2" in tools && runSomatic
 
@@ -1563,7 +1647,8 @@ process FacetsAnnotation {
 }
 
 
-(mafFileForNeoantigen, FacetsAnnotationOutput) = FacetsAnnotationOutput.into(2)
+(mafFileForNeoantigen, facetsAnnotationForMetaData, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(3)
+
 
 //Formatting the channel to be: idTumor, idNormal, target, MAF
 
@@ -1581,6 +1666,7 @@ mafFileForNeoantigen = mafFileForNeoantigen.map{
 
 hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
 
+(hlaOutputForMetaDataParser, hlaOutput) = hlaOutput.into(2)
 
 process RunNeoantigen {
   tag {idTumor + "_vs_" + idNormal}
@@ -1621,6 +1707,68 @@ process RunNeoantigen {
   """
 }
 
+// [idTumor, idNormal, target, armLevel]
+facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
+  item -> 
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def target = item[2]
+    def mafFile = item[3]
+    def armLevel = item[4]
+    def geneLevel = item[5]
+    def tsg_manual_review = item[6]
+    return [idTumor, idNormal, target, armLevel]
+  }
+
+(mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
+
+
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
+
+// facetsForMetaDataParser
+
+process MetaDataParser {
+  tag {idSample}
+
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+ 
+  input:
+    set idTumor, idNormal, target, file(purity_out), file(armLevel), file(msifile), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
+    set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
+      referenceMap.idtCodingBed,
+      referenceMap.agilentCodingBed, 
+      referenceMap.wgsCodingBed
+    ]) 
+
+  output:
+    file("*_metadata.tsv") into MetaDataOutputs
+
+  when: runSomatic
+
+  script:
+  coding_regions_bed = ""
+  if (target == 'idt'){
+    coding_regions_bed = "${idtCodingBed}"
+  }
+  else if (target == 'agilent'){
+    coding_regions_bed = "${agilentCodingBed}"
+  }
+  else if (target == 'wgs'){
+    coding_regions_bed = "${wgsCodingBed}"
+  }
+  """
+  python3 /usr/bin/create_metadata_file.py --sampleID ${idTumor}_vs_${idNormal} \
+      --facetsPurity_out ${purity_out} \
+      --facetsArmLevel  ${armLevel} \
+      --MSIsensor_output ${msifile} \
+      --mutational_signatures_output ${mutSigOutput} \
+      --polysolver_output ${polysolverFile} \
+      --MAF_input ${mafFile} \
+      --coding_baits_BED ${coding_regions_bed}
+  """
+}
+
+
 
 process SomaticAggregate {
  
@@ -1632,7 +1780,10 @@ process SomaticAggregate {
     file(mutsigFile) from mutSigOutput.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
+    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
+    file(annotationFiles) from FacetsAnnotationOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+    file(metaDataFile) from MetaDataOutputs.collect()
 
 
   output:
@@ -1640,7 +1791,10 @@ process SomaticAggregate {
     file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
+    set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg") into FacetsMergedChannel
+    set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
     file("merged.vcf.gz") into VcfBedPeChannel
+    file("merged_metadata.tsv") into MetaDataOutputChannel
 
   when: "neoantigen" in tools
     
@@ -1671,8 +1825,27 @@ process SomaticAggregate {
   mkdir facets
   mkdir facets/hisens
   mkdir facets/purity
+  mkdir facets/hisensPurityOutput
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
+  mv *_OUT.txt facets/hisensPurityOutput
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > merged_hisens.cncf.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > merged_purity.cncf.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > merged_hisens.seg
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > merged_purity.seg 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > merged_hisensPurity_out.txt  
+
+  ## Move and merge FacetsAnnotation outputs
+  mkdir facets/armLevel
+  mkdir facets/geneLevel
+  mkdir facets/manualReview
+  mv *armlevel.tsv facets/armLevel
+  mv *genelevel.tsv facets/geneLevel
+  mv *genelevel_TSG_ManualReview.txt  facets/manualReview
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > merged_armlevel.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > merged_genelevel.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
+
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   for f in *.vcf.gz
@@ -1689,8 +1862,14 @@ process SomaticAggregate {
     --output-type z \
     --output merged.vcf.gz \
     vcf_delly_manta/*delly.manta.vcf.gz
+
+  ## Collect metadata *tsv file into merged_metadata.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' *_metadata.tsv > merged_metadata.tsv
+
   """
 }
+
+
 
 /*
 ================================================================================
@@ -2326,11 +2505,15 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
-    // Target BED files
+    // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
+    'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
+    'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
+    'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
@@ -2364,6 +2547,10 @@ def defineReferenceMap() {
     // files for neoantigen & NetMHC
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
+    // coding region BED files for calculating TMB
+    result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
+    result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
+    result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
 }
@@ -2470,13 +2657,17 @@ def returnFile(it) {
   return file(it)
 }
 
+
 def check_for_duplicated_rows(pairingFilePath) {
   def entries = []
   file( pairingFilePath ).eachLine { line ->
-    entries << line
+    if (!line.isEmpty()){
+      entries << line
+    }
   }
   return entries.toSet().size() == entries.size()
 }
+
 
 def check_for_mixed_assay(mappingFilePath) {
   def wgs = false
@@ -2491,4 +2682,19 @@ def check_for_mixed_assay(mappingFilePath) {
     }
   return !(wgs && wes)
   }
+}
+
+// check LANE values are unique in input mapping *tsv 
+def checkForUniqueSampleLanes(inputFilename) {
+  def totalList = []
+  // parse tsv
+  file(inputFilename).eachLine { line ->
+      if (!line.isEmpty()){
+          def (sample, lane, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
+          totalList << sample + "_" + lane
+      }
+  }
+  // remove header 'SAMPLE_LANE'
+  totalList.removeAll{ it == 'SAMPLE_LANE'} 
+  return totalList.size() == totalList.unique().size()
 }
