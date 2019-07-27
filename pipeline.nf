@@ -430,7 +430,7 @@ if (!params.bam_pairing){
   process CollectHsMetrics{
     tag {idSample}
 
-    publishDir "${params.outDir}/CollectHsMetrics/${idSample}", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc/collecthsmetrics/${idSample}", mode: params.publishDirMode
 
     input:
       set idSample, file(bam), file(bai), assay, target from recalibratedBamForCollectHsMetrics
