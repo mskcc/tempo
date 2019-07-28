@@ -4,7 +4,7 @@ The three main functions of the pipeline are:
 - Somatic variant detection
 - Germline variant detection
 
-Below are described the separate Nextflow processes and associated with each module and the tools used. This [diagram](pipeline-flowchart.png) outlines the workflow.
+Below are described the separate Nextflow processes and associated with each module and the tools used. This ![diagram](./pipeline-flowchart.png) outlines the workflow. 
 
 <small>Note: The pipeline can be run with already aligned BAM files as input, which avoids the first of these three modules.</small>
 
