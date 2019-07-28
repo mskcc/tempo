@@ -8,6 +8,6 @@ This page provides a basic reference to cloud computing concepts and AWS termino
 
 * __EBS Volumes__: [Amazon Elastic Block Store (Amazon EBS)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AmazonEBS.html) is the storage volumes used for EC2 instances for computation. 
 
-* __AWS Batch__:
+* __AWS Batch__: [AWS Batch](https://aws.amazon.com/batch/) is a relatively new feature for AWS customers which schedules and executes batch computing workloads. It works as a relatively simple job scheduler used by HPC clusters (e.g. SGE or LSF), using both EC2 instances and Spot instances.
 
-* __EBS Autoscaling__:
+* __EBS Autoscaling__: Feature which allows ncrease volume size, adjust performance, or change the volume type while the volume is in use, e.g. the disk size will increase automatically while processes are running. 
