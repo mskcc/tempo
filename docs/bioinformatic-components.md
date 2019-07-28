@@ -32,6 +32,6 @@ Vaporware accepts as input sequencing reads from one or multiple FASTQ file pair
 
 ## Germline analyses
 
-## Genome versus exome
+## WGS vs. WES
 
 Contact us if you are interest in support for other sequencing assays or capture kits.
