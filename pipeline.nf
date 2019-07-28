@@ -706,8 +706,7 @@ process RunMutect2 {
   mutect2Vcf = "${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"
   prefix = "${mutect2Vcf}".replaceFirst('.vcf.gz', '')
   """
-  # Xmx hard-coded for now due to lsf bug
-  # Wrong intervals set here
+  # Xmx -- set maximum Java heap size; Java option to set max. size of memory allocation pool
   gatk --java-options -Xmx8g \
     Mutect2 \
     --reference ${genomeFile} \
@@ -1877,8 +1876,6 @@ process GermlineRunHaplotypecaller {
 
   script:
   """
-  # Xmx hard-coded for now due to lsf bug
-  # Wrong intervals set here
   gatk --java-options -Xmx8g \
     HaplotypeCaller \
     --reference ${genomeFile} \
