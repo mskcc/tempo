@@ -1,6 +1,6 @@
 ---
 home: true
-heroImage: /vaporware_logo.jpg
+heroImage: /vaporwareLogo.jpg
 actionText: Get Started →
 actionLink: /installation/
 features:
