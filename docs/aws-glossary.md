@@ -8,6 +8,7 @@ This page provides a basic reference to cloud computing concepts and AWS termino
 
 * __EBS Volumes__: [Amazon Elastic Block Store (Amazon EBS)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AmazonEBS.html) is the storage volumes used for EC2 instances for computation. 
 
-* __AWS Batch__: [Amazon Batch](https://aws.amazon.com/batch/) dynamically provisions the optimal quantity and type of compute resources necessary for analysis. You can read this [blog](https://aws.amazon.com/blogs/compute/building-high-throughput-genomics-batch-workflows-on-aws-introduction-part-1-of-4/) for more informations related to using AWS Batch for running Genomics Workflows.
+* __AWS Batch__: [Amazon Batch](https://aws.amazon.com/batch/) dynamically provisions the optimal quantity and type of compute resources (both Spot or On-Demand) necessary for analysis. You can read this [blog post](https://aws.amazon.com/blogs/compute/building-high-throughput-genomics-batch-workflows-on-aws-introduction-part-1-of-4/) for more informations related to using AWS Batch for running Genomics Workflows.
 
 * __EBS Autoscaling__: [Autoscalling EBS](https://docs.opendata.aws/genomics-workflows/core-env/create-custom-compute-resources/) EC2 instances have a running process which monitors disk usage and add more EBS volumes on the fly to expand the free space based on the capacity threshold.
+

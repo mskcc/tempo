@@ -4,9 +4,11 @@ The three main functions of the pipeline are:
 - Somatic variant detection
 - Germline variant detection
 
-Below are described the separate Nextflow processes and associated with each module and the tools used. This [diagram](pipeline-flowchart.png) outlines the workflow.
+Below are described the separate Nextflow processes and associated with each module and the tools used. The following diagram outlines the workflow:
 
-<small>Note: The pipeline can be run with already aligned BAM files as input, which avoids the first of these three modules.</small>
+![diagram](./pipeline-flowchart.png)
+
+<small>Note: The pipeline can be run with already-aligned BAM files as input, which avoids the first of these three modules.</small>
 
 ## Read alignment
 Vaporware accepts as input sequencing reads from one or multiple FASTQ file pairs (corresponding to separate sequencing lanes) per sample, as [described](run-pipeline.md#the-mapping-file). These are aligned against the human genome using common practices.
@@ -32,6 +34,6 @@ Vaporware accepts as input sequencing reads from one or multiple FASTQ file pair
 
 ## Germline analyses
 
-## Genome versus exome
+## WGS vs. WES
 
 Contact us if you are interest in support for other sequencing assays or capture kits.
