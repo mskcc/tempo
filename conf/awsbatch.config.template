@@ -1,3 +1,11 @@
+/*
+ * -------------------------------------------------
+ * AWSBatch template config 
+ * -------------------------------------------------
+ * Template config file for AWSBatch
+ * -------------------------------------------------
+ */
+
 // from https://www.nextflow.io/docs/latest/awscloud.html#aws-batch
 
 // NOTE: this setting is only required if the AWS CLI tool is installed in a custom AMI
