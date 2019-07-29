@@ -898,7 +898,7 @@ process SomaticMergeDellyAndManta {
 
 // --- Run Strelka2
 
-mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2])
+mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2,3])
 
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
