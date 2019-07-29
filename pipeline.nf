@@ -1655,7 +1655,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    file("${outputDir}/${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
+    file("${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: "neoantigen" in tools
