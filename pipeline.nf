@@ -7,46 +7,50 @@ Processes overview:
 
 Alignment and QC
 ----------------
- - AlignReads - Map reads with BWA mem output SAM
- - SortBAM - Sort BAM with samtools
- - MergeBam - Merge BAM for the same samples from different lanes
- - MarkDuplicates - Mark Duplicates with GATK4
- - CreateRecalibrationTable - Create Recalibration Table with BaseRecalibrator
- - RecalibrateBam - Recalibrate Bam with PrintReads
+ - AlignReads
+    --- Map paired-end FASTQs with bwa mem
+    --- Sort BAM with samtools sort
+    --- FASTQ QC with FastP 
+ - MergeBam --- Merge BAM for the same samples from different lanes, samtools merge
+ - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
+ - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
+ - RecalibrateBam --- Recalibrate Bam with GATK4 ApplyBQSR
 
 Somatic Analysis
 ----------------
-- SomaticDellyCall
-- CreateScatteredIntervals
-- RunMutect2
-- RunMutect2Filter
-- SomaticCombineMutect2VCF
-- SomaticRunManta
-- SomaticRunStrelka
-- SomaticCombineChannel
-- SomaticRunBCFToolsFilterNorm
-- SomaticRunBCFToolsMerge
-- SomaticAnnotateMaf
-- SomaticDoSNPPileup
-- DoFacets
-- RunMsiSensor
-- Polysolver
-- LOHHLA
-- RunConpair
-- RunMutationSignatures
-- MetaDataParser
+ - CreateScatteredIntervals --- GATK4 SplitIntervals
+ - CollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
+ - RunMutect2 --- somatic SNV calling, MuTect2
+ - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small InDel calling by default
+ - SomaticCombineMutect2Vcf --- combine Mutect2 calls,bcftools
+ - SomaticRunManta --- somatic SV calling, Manta
+ - SomaticDellyCall --- somatic SV calling, Delly
+ - SomaticMergeDellyAndManta --- combine Manta and Delly VCFs
+ - SomaticCombineChannel --- combine and filter VCFs, bcftools
+ - SomaticAnnotateMaf --- annotate MAF, vcf2maf
+ - RunMsiSensor --- MSIsensor
+ - DoFacets --- facets-suite: mafAnno.R, geneLevel.R, armLevel.R
+ - RunPolysolver --- Polysolver
+ - RunLOHHLA --- LOH in HLA
+ - RunConpair --- Tumor-Normal quality/contamination
+ - RunMutationSignatures --- mutational signatures
+ - FacetsAnnotation --- annotate FACETS
+ - RunNeoantigen --- NetMHCpan 4.0
+ - MetaDataParser --- python script to parse metadata into single *tsv
+ - SomaticAggregate --- collect outputs
 
 Germline Analysis
 -----------------
-- GermlineDellyCall
-- GermlineDellyFilter
-- CreateScatteredIntervals
-- GermlineRunHaplotypecaller
-- GermlineRunManta
-- GermlineRunStrelka
-- GermlineRunBcfToolsFilterNorm
-- GermlineRunBcfToolsMerge
-- GermlineAnnotateMaf
+ - CreateScatteredIntervals --- (run once) GATK4 SplitIntervals
+ - GermlineDellyCall --- germline SV calling and filtering, Delly
+ - GermlineRunManta --- germline SV calling, Manta
+ - GermlineMergeDellyAndManta --- merge SV calls from Delly and Manta
+ - GermlineRunHaplotypecaller --- germline SNV calling, GATK4
+ - GermlineCombineHaplotypecallerVcf --- concatenate VCFs of GATK4 HaplotypeCaller
+ - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
+ - GermlineCombineChannel --- combined and filter germline calls, bcftools
+ - GermlineAnnotateMaf--- annotate MAF, vcf2maf
+ - GermlineAggregate --- collect outputs
 
 */
 
@@ -326,7 +330,7 @@ if (!params.bam_pairing){
       ])
 
     output:
-      set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bai"), assay, targetFile into recalibratedBam, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+      set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
       val(idSample) into currentSample
       file("${idSample}.recal.bam") into currentBam
@@ -419,6 +423,55 @@ if (!params.bam_pairing){
       }
     }
   }
+  
+
+  // GATK CollectHsMetrics, WES only
+
+  process CollectHsMetrics{
+    tag {idSample}
+
+    publishDir "${params.outDir}/CollectHsMetrics/${idSample}", mode: params.publishDirMode
+
+    input:
+      set idSample, file(bam), file(bai), assay, target from recalibratedBamForCollectHsMetrics
+
+      set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+        referenceMap.genomeFile,
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict
+      ])
+      set file(idtTargetsList), file(agilentTargetsList), file(idtBaitsList), file(agilentBaitsList) from Channel.value([
+        referenceMap.idtTargetsList,
+        referenceMap.agilentTargetsList, 
+        referenceMap.idtBaitsList,
+        referenceMap.agilentBaitsList      
+      ])
+
+    output:
+      file("${idSample}_output_hs_metrics.txt") into CollectHsMetricsStats
+
+    when: 'wes' in assay && !params.test
+
+    script:
+    bait_intervals = ""
+    target_intervals = ""
+    if (target == 'agilent'){
+      bait_intervals = "${agilentBaitsList}"
+      target_intervals = "${agilentTargetsList}"
+    }
+    if (target == 'idt'){
+      bait_intervals = "${idtBaitsList}"
+      target_intervals = "${idtTargetsList}"
+    }
+    """
+    gatk CollectHsMetrics \
+      --INPUT  ${bam} \
+      --OUTPUT ${idSample}_output_hs_metrics.txt \
+      --REFERENCE_SEQUENCE ${genomeFile} \
+      --BAIT_INTERVALS ${bait_intervals}\
+      --TARGET_INTERVALS ${target_intervals} 
+    """
+  }
 
 
   // Alfred, BAM 
@@ -488,7 +541,7 @@ if (params.bam_pairing){
   bamPairingfile = file(bamPairingPath)
 
   bamFiles = extractBAM(bamPairingfile)
-
+  
 }
 
 
@@ -1240,8 +1293,6 @@ process DoFacets {
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
-
-
   """
 }
 
@@ -1790,6 +1841,8 @@ process SomaticAggregate {
 
   """
 }
+
+
 
 /*
 ================================================================================
@@ -2428,8 +2481,12 @@ def defineReferenceMap() {
     // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
+    'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
+    'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+    'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
+    'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
