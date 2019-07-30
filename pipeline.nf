@@ -406,7 +406,7 @@ if (!params.bam_pairing) {
   process CollectHsMetrics {
     tag {idSample}
 
-    publishDir "${params.outDir}/CollectHsMetrics/${idSample}", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc/collecthsmetrics/${idSample}", mode: params.publishDirMode
 
     input:
       set idSample, file(bam), file(bai), assay, target from recalibratedBamForCollectHsMetrics
@@ -1700,7 +1700,10 @@ process SomaticAggregate {
     vcf_delly_manta/*delly.manta.vcf.gz
 
   ## Collect metadata *tsv file into merged_metadata.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' *_metadata.tsv > merged_metadata.tsv
+  mkdir metadata
+  mv *_metadata.tsv metadata 
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.tsv > merged_metadata.tsv
+
   """
 }
 
