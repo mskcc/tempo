@@ -1406,7 +1406,7 @@ process RunLOHHLA {
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
-// --- Run Mutational Signatures, github.com/mskcc/mutation-signatures, original Alexandrov et al 2013
+// --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
 process RunMutationSignatures {
   tag {idTumor + "_vs_" + idNormal}
 
