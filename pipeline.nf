@@ -1681,7 +1681,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    file("${outputDir}/*.netmhcpan_netmhc_combined.output.txt") into NetMhcStatsOutput
+    file("${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: "neoantigen" in tools
@@ -1703,6 +1703,9 @@ process RunNeoantigen {
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
+
+  awk 'NR==1 {printf("%s\\t%s\\n", \$0, "sampleID")}  NR>1 {printf("%s\\t%s\\n", \$0, "${idTumor}_vs_${idNormal}") }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
+
   """
 }
 
@@ -1787,7 +1790,7 @@ process SomaticAggregate {
 
   output:
     file("merged.maf") into MafFileOutput
-    file("merged.netmhcpan_netmhc_combined.output.txt") into NetMhcChannel
+    file("merged_all_neoantigen_predictions.txt") into NetMhcChannel
     file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
     set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg") into FacetsMergedChannel
@@ -1812,9 +1815,8 @@ process SomaticAggregate {
 
   # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
   mkdir netmhc_stats
-  mv *.netmhcpan_netmhc_combined.output.txt netmhc_stats
-  cat netmhc_stats/*.output.txt | grep ^algorithm | head -n1 > merged.netmhcpan_netmhc_combined.output.txt
-  cat netmhc_stats/*.output.txt | grep -Ev "^algorithm" >> merged.netmhcpan_netmhc_combined.output.txt
+  mv *.all_neoantigen_predictions.txt netmhc_stats
+  awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > merged_all_neoantigen_predictions.txt 
 
   # Collect mutsig output to mutsig/
   mkdir mutsig
