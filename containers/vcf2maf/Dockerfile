@@ -2,7 +2,8 @@ FROM ubuntu:18.04
 
 LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
-      version.image="1.2.1" \
+      contributor="Philip Jonsson (jonssonp@mskcc.org)" \
+      version.image="1.2.2" \
       version.vcf2maf="1.6.17" \
       version.vep="88" \
       version.htslib="1.9" \
@@ -11,7 +12,7 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       version.perl="5.26.2-r1" \
       version.alpine="3.8" \
       version.oncokb_annotator="1.1.0" \
-      version.filter_somatic_maf="0.3.0" \
+      version.filter_somatic_maf="0.4.0" \
       version.filter_germline_maf="0.1.0" \
       version.annotateMaf="1.0.0" \
       source.vcf2maf="https://github.com/mskcc/vcf2maf/releases/tag/v1.6.17" \
