@@ -1283,6 +1283,8 @@ process RunConpair {
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
     set file("${idTumor}_${idNormal}_concordance.txt"), file("${idTumor}_${idNormal}_contamination.txt") into conpairOutput
 
+  when: !params.test
+
   script:
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
   conpairPath = "/usr/bin/conpair"
