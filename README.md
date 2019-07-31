@@ -39,9 +39,6 @@ $ which singularity
 /opt/local/singularity/3.1.1/bin/singularity
 ```
 
-**NOTE:** In order to run successfully on `juno`, you must set `NXF_SINGULARITY_CACHEDIR`. Use e.g. 
-`export NXF_SINGULARITY_CACHEDIR=$HOME/.singularity`
-
 See here for details: https://www.nextflow.io/docs/latest/config.html
 
 ```
