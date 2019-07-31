@@ -1183,6 +1183,7 @@ process DoFacets {
   outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
   tag = "${idTumor}_vs_${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
+  outputFacetsSubdirectory = tag
   """
   snp-pileup \
     --count-orphans \
@@ -1217,9 +1218,9 @@ process DoFacets {
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
   
-  mkdir ${tag}_facets
-  cp -rf ${outputDir} ${tag}_facets
-  cp -rf  ${outfile} ${tag}_facets
+  mkdir ${outputFacetsSubdirectory}
+  cp -rf ${outfile} ${outputFacetsSubdirectory}
+  cp -rf ${outputDir} ${outputFacetsSubdirectory}
   """
 }
 
