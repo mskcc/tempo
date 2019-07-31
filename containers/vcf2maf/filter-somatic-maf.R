@@ -2,7 +2,7 @@
 
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.4.0"
+# __version__ = "0.5.0"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
@@ -53,8 +53,9 @@ maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 # Filters not used:
 # gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier
 
-# Tag hotspots ----------------------------------------------------------------------------------------------------
+# Tag and whitelist hotspots --------------------------------------------------------------------------------------
 maf = hotspot_annotate_maf(maf)
+maf[Hotspot == TRUE & t_var_freq >= 0.02, FILTER := 'PASS']
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
 maf = as.data.table(maf) # necessary because of the class of output from previous call
