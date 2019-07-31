@@ -1065,9 +1065,9 @@ process SomaticCombineChannel {
     --output ${outputPrefix}.genotyped.vcf 
   
   bgzip ${outputPrefix}.filtered.vcf
-  bgzip ${idNormal}.genotyped.vcf
+  bgzip ${outputPrefix}.genotyped.vcf
   tabix --preset vcf ${outputPrefix}.filtered.vcf.gz
-  tabix --preset vcf ${idNormal}.genotyped.vcf.gz
+  tabix --preset vcf ${outputPrefix}.genotyped.vcf.gz
 
   bcftools annotate \
     --annotations ${outputPrefix}.genotyped.vcf.gz \
