@@ -173,10 +173,10 @@ if (!params.bam_pairing) {
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
     if (params.mem_per_core) { 
-      mem = task.memory.toString().split(" ")[0].toInteger() - 1 
+      mem = task.memory.toString().split(" ")[0].toInteger() - 5
     }
     else {
-      mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+      mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 5
     } 
     """
     set -e
