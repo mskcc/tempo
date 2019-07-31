@@ -925,7 +925,7 @@ process SomaticCombineChannel {
 
   script:
   outputPrefix = "${idTumor}_vs_${idNormal}"
-  isec_dir = "${idTumor}.isec"
+  isecDir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWgsVcf
   if (target == "wgs") {
@@ -945,66 +945,71 @@ process SomaticCombineChannel {
   echo -e "##INFO=<ID=PoN,Number=1,Type=Integer,Description=\"Count in panel of normals\">" > vcf.pon.header
   echo -e "##FORMAT=<ID=alt_count_raw,Number=1,Type=Integer,Description=\"Raw normal alternate allele depth\">" > vcf.ad_n.header
 
-  # Get set differences of variant calls
+  # Get set differences of variant calls:
+  # 0000: MuTect2 only
+  # 0001: Strelka2 only
+  # 0002: MuTect2 calls shared by Strelka2
+  # 0003: Strelka2 calls shared by MuTect2
+
   bcftools isec \
     --output-type z \
-    --prefix ${isec_dir} \
+    --prefix ${isecDir} \
     ${mutectCombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.vcf.gz \
+    --annotations ${isecDir}/0003.vcf.gz \
     --include 'FILTER!=\"PASS\"' \
     --mark-sites \"+Strelka2FILTER\" \
     -k \
     --output-type z \
-    --output ${isec_dir}/0003.annot.vcf.gz \
-    ${isec_dir}/0003.vcf.gz
+    --output ${isecDir}/0003.annot.vcf.gz \
+    ${isecDir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0000.vcf.gz \
+    --annotations ${isecDir}/0000.vcf.gz \
     --mark-sites +MuTect2 \
     --output-type z \
-    --output ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0000.vcf.gz
+    --output ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0000.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0002.vcf.gz \
+    --annotations ${isecDir}/0002.vcf.gz \
     --mark-sites \"+MuTect2;Strelka2\" \
     --output-type z \
-    --output ${isec_dir}/0002.tmp.vcf.gz \
-    ${isec_dir}/0002.vcf.gz
+    --output ${isecDir}/0002.tmp.vcf.gz \
+    ${isecDir}/0002.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
-  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isecDir}/0003.annot.vcf.gz
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --annotations ${isecDir}/0003.annot.vcf.gz \
     --columns +FORMAT,Strelka2FILTER \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
-    ${isec_dir}/0002.tmp.vcf.gz
+    --output ${isecDir}/0002.annot.vcf.gz \
+    ${isecDir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0001.vcf.gz \
+    --annotations ${isecDir}/0001.vcf.gz \
     --mark-sites +Strelka2 \
     --output-type z \
-    --output ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0001.vcf.gz
+    --output ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0001.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0000.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0000.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0001.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.annot.vcf.gz
 
   # Concatenate the different sets, annotate with blacklists
   bcftools concat \
     --allow-overlaps \
     --rm-dups all \
-    ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0002.annot.vcf.gz | \
+    ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0002.annot.vcf.gz | \
   bcftools sort | \
   bcftools annotate \
     --header-lines vcf.rm.header \
@@ -1052,20 +1057,20 @@ process SomaticCombineChannel {
 
   # Add normal read count, using all reads
   GetBaseCountsMultiSample \
-    --thread 4 \
+    --thread ${task.cpus} \
     --maq 0 \
     --fasta ${genomeFile} \
     --bam ${idTumor}:${bamTumor} ${idNormal}:${bamNormal} \
-    --vcf ${idTumor}_vs_${idNormal}.filtered.vcf \
-    --output ${idTumor}_vs_${idNormal}.genotyped.vcf 
+    --vcf ${outputPrefix}.filtered.vcf \
+    --output ${outputPrefix}.genotyped.vcf 
   
-  bgzip ${idTumor}_vs_${idNormal}.filtered.vcf
+  bgzip ${outputPrefix}.filtered.vcf
   bgzip ${idNormal}.genotyped.vcf
-  tabix --preset vcf ${idTumor}_vs_${idNormal}.filtered.vcf.gz
+  tabix --preset vcf ${outputPrefix}.filtered.vcf.gz
   tabix --preset vcf ${idNormal}.genotyped.vcf.gz
 
   bcftools annotate \
-    --annotations ${idNormal}.genotyped.vcf.gz \
+    --annotations ${outputPrefix}.genotyped.vcf.gz \
     --header-lines vcf.ad_n.header \
     --columns FORMAT/alt_count_raw:=FORMAT/AD,FORMAT/alt_count_raw_fwd:=FORMAT/ADP,FORMAT/alt_count_raw_rev:=FORMAT/ADN,FORMAT/depth_raw:=FORMAT/DP,FORMAT/depth_raw_fwd:=FORMAT/DPP,FORMAT/depth_raw_rev:=FORMAT/DPN \
     --output-type v \
@@ -1092,11 +1097,18 @@ process SomaticAnnotateMaf {
 
   script:
   outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
-  if (target == 'wgs') {
-    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax,MQ"
+  mutect2InfoCols = "MBQ,MFRL,MMQ,MPOS,OCM,RPA,STR"
+  strelka2InfoCols = "RU,IC,MQ,SNVSB"
+  strelka2FormatCols = "FDP,SUBDP"
+  formatCols = "alt_count_raw,alt_count_raw_fwd,alt_count_raw_rev,depth_raw,depth_fwd,depth_rev"
+  formatCols = formatCols + "," + strelka2FormatCols
+  if (target == "wgs") {
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+    infoCols = infoCols + "," + mutect2InfoCols + "," + strelka2InfoCols
   }
   else {
-    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax,MQ"
+    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+    infoCols = infoCols + "," + mutect2InfoCols + "," + strelka2InfoCols
   }
   """
   perl /opt/vcf2maf.pl \
@@ -1111,7 +1123,7 @@ process SomaticAnnotateMaf {
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
     --retain-info ${infoCols} \
-    --retain-fmt alt_count_raw,alt_count_raw_fwd,alt_count_raw_rev,depth_raw,depth_fwd,depth_rev \
+    --retain-fmt ${formatCols} \
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
