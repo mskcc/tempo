@@ -308,11 +308,11 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-      set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
+      set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+      set idSample, val("${idSample}.bam"), val("${idSample}.bai"), assay, targetFile into recalibratedBamTSV
       val(idSample) into currentSample
-      file("${idSample}.recal.bam") into currentBam
-      file("${idSample}.recal.bai") into currentBai
+      file("${idSample}.bam") into currentBam
+      file("${idSample}.bai") into currentBai
       val(assay) into assays
       val(targetFile) into targets
 
@@ -323,9 +323,9 @@ if (!params.bam_pairing) {
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
       --input ${bam} \
-      --output ${idSample}.recal.bam
+      --output ${idSample}.bam
       
-    cp -p ${idSample}.recal.bai ${idSample}.recal.bam.bai
+    cp -p ${idSample}.bai ${idSample}.bam.bai
     """
   }
 
