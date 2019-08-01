@@ -3,12 +3,12 @@ import nextflow.Channel
 
 class VaporwareUtils {
 
-  def checkParamReturnFile(item) {
+  static def checkParamReturnFile(item) {
     params."${item}" = params.genomes[params.genome]."${item}"
     return file(params."${item}")
   }
 
-  def defineReferenceMap() {
+  static def defineReferenceMap() {
     if (!(params.genome in params.genomes)) exit 1, "Genome ${params.genome} not found in configuration"
     result_array = [
       'dbsnp' : checkParamReturnFile("dbsnp"),
@@ -78,13 +78,13 @@ class VaporwareUtils {
     return result_array
   }
 
-  def debug(channel) {
+  static def debug(channel) {
     channel.subscribe { Object obj ->
       println "DEBUG: ${obj.toString()};"
     }
   }
 
-  def extractPairing(tsvFile) {
+  static def extractPairing(tsvFile) {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
@@ -92,7 +92,7 @@ class VaporwareUtils {
     }
   }
 
-  def extractFastq(tsvFile) {
+  static def extractFastq(tsvFile) {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
@@ -122,7 +122,7 @@ class VaporwareUtils {
     }
   }
 
-  def extractBAM(tsvFile) {
+  static def extractBAM(tsvFile) {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
@@ -144,7 +144,7 @@ class VaporwareUtils {
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
-  def validateBamIndexFormat(it) {
+  static def validateBamIndexFormat(it) {
     bamFilename = it.take(it.lastIndexOf('.'))
     // Check BAM index extension
     if (file(bamFilename + ".bai").exists()){
@@ -158,23 +158,23 @@ class VaporwareUtils {
   }
 
   // Check file extension
-  def checkFileExtension(it, extension) {
+  static def checkFileExtension(it, extension) {
     if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
   }
 
   // Check if a row has the expected number of item
-  def checkNumberOfItem(row, number) {
+  static def checkNumberOfItem(row, number) {
     if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
     return true
   }
 
   // Return file if it exists
-  def returnFile(it) {
+  static def returnFile(it) {
     if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
     return file(it)
   }
 
-  def check_for_duplicated_rows(pairingFilePath) {
+  static def check_for_duplicated_rows(pairingFilePath) {
     def entries = []
     file( pairingFilePath ).eachLine { line ->
       if (!line.isEmpty()){
@@ -184,7 +184,7 @@ class VaporwareUtils {
     return entries.toSet().size() == entries.size()
   }
 
-  def check_for_mixed_assay(mappingFilePath) {
+  static def check_for_mixed_assay(mappingFilePath) {
     def wgs = false
     def wes = false
     file( mappingFilePath ).eachLine { line ->
@@ -200,7 +200,7 @@ class VaporwareUtils {
   }
 
   // check lane names are unique in input mapping *tsv 
-  def checkForUniqueSampleLanes(inputFilename) {
+  static def checkForUniqueSampleLanes(inputFilename) {
     def totalList = []
     // parse tsv
     file(inputFilename).eachLine { line ->
