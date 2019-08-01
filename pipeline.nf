@@ -1833,7 +1833,8 @@ process GermlineCombineHaplotypecallerVcf {
 
   when: 'haplotypecaller' in tools && runGermline 
 
-  script:
+  script: 
+  outfile="${idNormal}.haplotypecaller.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
