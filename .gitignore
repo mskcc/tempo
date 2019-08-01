@@ -18,3 +18,4 @@ nf.*
 *.gz
 *.bam.*
 Result/
+*.Rhistory
