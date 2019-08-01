@@ -3,223 +3,216 @@ import nextflow.Channel
 
 class VaporwareUtils {
 
+  def checkParamReturnFile(item) {
+    params."${item}" = params.genomes[params.genome]."${item}"
+    return file(params."${item}")
+  }
+
+  def defineReferenceMap() {
+    if (!(params.genome in params.genomes)) exit 1, "Genome ${params.genome} not found in configuration"
+    result_array = [
+      'dbsnp' : checkParamReturnFile("dbsnp"),
+      'dbsnpIndex' : checkParamReturnFile("dbsnpIndex"),
+      // genome reference dictionary
+      'genomeDict' : checkParamReturnFile("genomeDict"),
+      // FASTA genome reference
+      'genomeFile' : checkParamReturnFile("genomeFile"),
+      // genome .fai file
+      'genomeIndex' : checkParamReturnFile("genomeIndex"),
+      // BWA index files
+      'bwaIndex' : checkParamReturnFile("bwaIndex"), 
+      // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
+      'knownIndels' : checkParamReturnFile("knownIndels"),
+      'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
+      'msiSensorList' : checkParamReturnFile("msiSensorList"),
+      'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
+      'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
+      'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
+      // Target and Bait BED files
+      'idtTargets' : checkParamReturnFile("idtTargets"),
+      'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
+      'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
+      'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
+      'agilentTargets' : checkParamReturnFile("agilentTargets"),
+      'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
+      'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
+      'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
+      'wgsTargets' : checkParamReturnFile("wgsTargets"),
+      'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    ]
+
+    if (!params.test) {
+      result_array << ['vepCache' : checkParamReturnFile("vepCache")]
+      // for SNP Pileup
+      result_array << ['facetsVcf' : checkParamReturnFile("facetsVcf")]
+      // intervals file for spread-and-gather processes
+      result_array << ['intervals' : checkParamReturnFile("intervals")]
+      // files for CombineChannel, needed by bcftools annotate
+      result_array << ['repeatMasker' : checkParamReturnFile("repeatMasker")]
+      result_array << ['repeatMaskerIndex' : checkParamReturnFile("repeatMaskerIndex")]
+      result_array << ['mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist")]
+      result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
+      // isoforms needed by vcf2maf
+      result_array << ['isoforms' : checkParamReturnFile("isoforms")]
+      // PON files
+      result_array << ['exomePoN' : checkParamReturnFile("exomePoN")]
+      result_array << ['exomePoNIndex' : checkParamReturnFile("exomePoNIndex")]
+      result_array << ['wgsPoN' : checkParamReturnFile("wgsPoN")]
+      result_array << ['wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")]
+      // gnomAD resources
+      result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
+      result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
+      result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
+      result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
+      // HLA FASTA and *dat for LOHHLA 
+      result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
+      result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
+      // files for neoantigen & NetMHC
+      result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
+      result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
+      // coding region BED files for calculating TMB
+      result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
+      result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
+      result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
+    }
+    return result_array
+  }
+
+  def debug(channel) {
+    channel.subscribe { Object obj ->
+      println "DEBUG: ${obj.toString()};"
+    }
+  }
+
+  def extractPairing(tsvFile) {
+    Channel.from(tsvFile)
+    .splitCsv(sep: '\t', header: true)
+    .map { row ->
+      [row.TUMOR_ID, row.NORMAL_ID]
+    }
+  }
+
+  def extractFastq(tsvFile) {
+    Channel.from(tsvFile)
+    .splitCsv(sep: '\t', header: true)
+    .map { row ->
+      checkNumberOfItem(row, 6)
+      def idSample = row.SAMPLE
+      def lane = row.LANE
+      def assayValue = row.ASSAY
+      def targetFile = row.TARGET
+      def fastqFile1 = returnFile(row.FASTQ_PE1)
+      def sizeFastqFile1 = fastqFile1.size()
+      def fastqFile2 = returnFile(row.FASTQ_PE2)
+      def sizeFastqFile2 = fastqFile2.size()
+
+      def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+      if ((assay == "genome") || (assay == "wgs")) {
+        assay = "wgs"
+      }
+      if ((assay == "exome") || (assay == "wes")) {
+        assay = "wes"
+      }
+
+      checkFileExtension(fastqFile1,".fastq.gz")
+      checkFileExtension(fastqFile2,".fastq.gz")
+
+      [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
+    }
+  }
+
+  def extractBAM(tsvFile) {
+    Channel.from(tsvFile)
+    .splitCsv(sep: '\t', header: true)
+    .map { row ->
+      checkNumberOfItem(row, 6)
+      def idTumor = row.TUMOR_ID
+      def idNormal = row.NORMAL_ID
+      def assay = row.ASSAY
+      def target = row.TARGET
+      def bamTumor = returnFile(row.TUMOR_BAM)
+      // check if using bamTumor.bai or bamTumor.bam.bai
+      def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM))
+      // def sizeTumorBamFile = tumorBamFile.size()
+      def bamNormal = returnFile(row.NORMAL_BAM)
+      def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
+      // def sizeNormalBamFile = normalBamFile.size()
+
+      [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
+    }
+  }
+
+  // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
+  def validateBamIndexFormat(it) {
+    bamFilename = it.take(it.lastIndexOf('.'))
+    // Check BAM index extension
+    if (file(bamFilename + ".bai").exists()){
+      return(file("${bamFilename}.bai"))
+    } else if (file(bamFilename + ".bam.bai").exists()){
+      return(file("${bamFilename}.bam.bai"))
+    } else {
+      println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+      exit 1
+    }
+  }
+
   // Check file extension
-  static def checkFileExtension(it, extension) {
+  def checkFileExtension(it, extension) {
     if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
   }
 
   // Check if a row has the expected number of item
-  static def checkNumberOfItem(row, number) {
+  def checkNumberOfItem(row, number) {
     if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
     return true
   }
 
-  // Check parameter existence
-  static def checkParameterExistence(it, list) {
-    if (!list.contains(it)) {
-      println("Unknown parameter: ${it}")
-      return false
-    }
-    return true
-  }
-
-  def defineReferenceMap() {
-  if (!(params.genome in params.genomes)) exit 1, "Genome ${params.genome} not found in configuration"
-  return [
-    'dbsnp'            : checkParamReturnFile("dbsnp"),
-    'dbsnpIndex'       : checkParamReturnFile("dbsnpIndex"),
-    // genome reference dictionary
-    'genomeDict'       : checkParamReturnFile("genomeDict"),
-    // FASTA genome reference
-    'genomeFile'       : checkParamReturnFile("genomeFile"),
-    // genome .fai file
-    'genomeIndex'      : checkParamReturnFile("genomeIndex"),
-    // BWA index files
-    'bwaIndex'         : checkParamReturnFile("bwaIndex"), 
-    // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
-    'knownIndels'      : checkParamReturnFile("knownIndels"),
-    'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
-  ]
-}
-
-  // Compare each parameter with a list of parameters
-  static def checkParameterList(list, realList) {
-    return list.every{ checkParameterExistence(it, realList) }
-  }
-
-  // Return element in list of allowed params
-  static def checkParams(it) {
-    return it in [
-      'annotate-tools',
-      'annotate-VCF',
-      'annotateTools',
-      'annotateVCF',
-      'awsqueue',
-      'awsqueue_tiny',
-      'build',
-      'call-name',
-      'callName',
-      'contact-mail',
-      'contactMail',
-      'container-path',
-      'containerPath',
-      'containers',
-      'docker',
-      'download',
-      'explicit-bqsr-needed',
-      'explicitBqsrNeeded',
-      'genome_base',
-      'genome',
-      'genomes',
-      'help',
-      'localReportDir',
-      'local-report-dir',
-      'markdup_java_options',
-      'max_cpus',
-      'max_memory',
-      'max_time',
-      'more',
-      'nf-required-version',
-      'nfRequiredVersion',
-      'no-BAMQC',
-      'no-GVCF',
-      'no-reports',
-      'noBAMQC',
-      'noGVCF',
-      'noReports',
-      'nucleotides-per-second',
-      'nucleotidesPerSecond',
-      'only-QC',
-      'onlyQC',
-      'out-dir',
-      'outDir',
-      'params',
-      'project',
-      'publish-dir-mode',
-      'publishDirMode',
-      'push',
-      'ref-dir',
-      'refDir',
-      'repository',
-      'run-time',
-      'runTime',
-      'sample-dir',
-      'sample',
-      'sampleDir',
-      'sequencing_center',
-      'single-CPUMem',
-      'singleCPUMem',
-      'singularity',
-      'step',
-      'strelka-BP',
-      'strelkaBP',
-      'tag',
-      'target-BED',
-      'targetBED',
-      'test',
-      'tools',
-      'total-memory',
-      'totalMemory',
-      'vcflist',
-      'verbose',
-      'version']
-  }
-
-  // Loop through all the references files to check their existence
-  static def checkReferenceMap(referenceMap) {
-    referenceMap.every {
-      referenceFile, fileToCheck ->
-      VaporwareUtils.checkRefExistence(referenceFile, fileToCheck)
-    }
-  }
-
-  // Loop through all the references files to check their existence
-
-  static def checkRefExistence(referenceFile, fileToCheck) {
-    if (fileToCheck instanceof List) return fileToCheck.every{ VaporwareUtils.checkRefExistence(referenceFile, it) }
-    def f = file(fileToCheck)
-    // this is an expanded wildcard: we can assume all files exist
-    if (f instanceof List && f.size() > 0) return true
-    else if (!f.exists()) {
-			println  "Missing references: ${referenceFile} ${fileToCheck}"
-      return false
-    }
-    return true
-  }
-
-  // Define map of directories
-  // Needs to be changed
-  static def defineDirectoryMap(outDir) {
-    return [
-    'duplicateMarked'  : "${outDir}/Preprocessing/DuplicateMarked",
-    'recalibrated'     : "${outDir}/Preprocessing/Recalibrated",
-    'ascat'            : "${outDir}/VariantCalling/Ascat",
-    'freebayes'        : "${outDir}/VariantCalling/FreeBayes",
-    'gvcf-hc'          : "${outDir}/VariantCalling/HaplotypeCallerGVCF",
-    'haplotypecaller'  : "${outDir}/VariantCalling/HaplotypeCaller",
-    'manta'            : "${outDir}/VariantCalling/Manta",
-    'mutect2'          : "${outDir}/VariantCalling/MuTect2",
-    'strelka'          : "${outDir}/VariantCalling/Strelka",
-    'strelkabp'        : "${outDir}/VariantCalling/StrelkaBP",
-    'snpeff'           : "${outDir}/Annotation/SnpEff",
-    'vep'              : "${outDir}/Annotation/VEP",
-    'bamQC'            : "${outDir}/Reports/bamQC",
-    'bcftoolsStats'    : "${outDir}/Reports/BCFToolsStats",
-    'fastQC'           : "${outDir}/Reports/FastQC",
-    'markDuplicatesQC' : "${outDir}/Reports/MarkDuplicates",
-    'multiQC'          : "${outDir}/Reports/MultiQC",
-    'samtoolsStats'    : "${outDir}/Reports/SamToolsStats",
-    'snpeffReports'    : "${outDir}/Reports/SnpEff",
-    'vcftools'         : "${outDir}/Reports/VCFTools",
-    'version'          : "${outDir}/Reports/ToolsVersion"
-    ]
-  }
-
-  // Channeling the TSV file containing BAM.
-  // Format is: "subject gender status sample bam bai"
-  static def extractBams(tsvFile, mode) {
-    Channel.from(tsvFile)
-      .splitCsv(sep: '\t')
-      .map { row ->
-        VaporwareUtils.checkNumberOfItem(row, 6)
-        def idPatient = row[0]
-        def gender    = row[1]
-        def status    = VaporwareUtils.returnStatus(row[2].toInteger())
-        def idSample  = row[3]
-        def bamFile   = VaporwareUtils.returnFile(row[4])
-        def baiFile   = VaporwareUtils.returnFile(row[5])
-
-        VaporwareUtils.checkFileExtension(bamFile,".bam")
-        VaporwareUtils.checkFileExtension(baiFile,".bai")
-
-        if (mode == "germline") return [ idPatient, status, idSample, bamFile, baiFile ]
-        else return [ idPatient, gender, status, idSample, bamFile, baiFile ]
-      }
-  }
-
-  // Compare params to list of verified params
-  static def isAllowedParams(params) {
-    def test = true
-    params.each{
-      if (!checkParams(it.toString().split('=')[0])) {
-        println "params ${it.toString().split('=')[0]} is unknown"
-        test = false
-      }
-    }
-    return test
-  }
-
   // Return file if it exists
-  static def returnFile(it) {
+  def returnFile(it) {
     if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
     return file(it)
   }
 
-  // Return status [0,1]
-  // 0 == Normal, 1 == Tumor
-  static def returnStatus(it) {
-    if (!(it in [0, 1])) exit 1, "Status is not recognized in TSV file: ${it}, see --help for more information"
-    return it
+  def check_for_duplicated_rows(pairingFilePath) {
+    def entries = []
+    file( pairingFilePath ).eachLine { line ->
+      if (!line.isEmpty()){
+        entries << line
+      }
+    }
+    return entries.toSet().size() == entries.size()
   }
+
+  def check_for_mixed_assay(mappingFilePath) {
+    def wgs = false
+    def wes = false
+    file( mappingFilePath ).eachLine { line ->
+      currentLine = line.toLowerCase()
+      if (currentLine.contains('\tgenome\t') || currentLine.contains('\twgs\t')) {
+        wgs = true
+      }
+      if (currentLine.contains('\texome\t') || currentLine.contains('\twes\t')) {
+        wes = true
+      }
+    return !(wgs && wes)
+    }
+  }
+
+  // check lane names are unique in input mapping *tsv 
+  def checkForUniqueSampleLanes(inputFilename) {
+    def totalList = []
+    // parse tsv
+    file(inputFilename).eachLine { line ->
+        if (!line.isEmpty()){
+            def (sample, lane, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
+            totalList << sample + "_" + lane
+        }
+    }
+    // remove header 'SAMPLE_LANE'
+    totalList.removeAll{ it == 'SAMPLE_LANE'} 
+    return totalList.size() == totalList.unique().size()
+  }
+
 
 }
