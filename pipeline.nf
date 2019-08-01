@@ -1187,12 +1187,13 @@ process DoFacets {
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
     file("${tag}_OUT.txt") into FacetsPurityHisensOutput
+    file("${outputFacetsSubdirectory}") into FacetsOutputSubdirectories
 
   when: "facets" in tools && runSomatic
 
   script:
   outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
-  tag = "${idTumor}_vs_${idNormal}"
+  tag = outputFacetsSubdirectory = "${idTumor}_vs_${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   snp-pileup \
@@ -1227,6 +1228,10 @@ process DoFacets {
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
+  
+  mkdir ${outputFacetsSubdirectory}
+  cp -rf ${outfile} ${outputFacetsSubdirectory}
+  cp -rf ${outputDir} ${outputFacetsSubdirectory}
   """
 }
 
@@ -1663,6 +1668,7 @@ process SomaticAggregate {
     file(annotationFiles) from FacetsAnnotationOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
+    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
     file("merged.maf") into MafFileOutput
@@ -1721,6 +1727,9 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > merged_armlevel.tsv
   awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > merged_genelevel.tsv
   awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
+
+  ## Move all FACETS output subdirectories into /facets
+  mv ${facetsOutputSubdirectories} facets/
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   for f in *.vcf.gz
