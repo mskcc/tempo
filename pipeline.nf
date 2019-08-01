@@ -1193,9 +1193,8 @@ process DoFacets {
 
   script:
   outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
-  tag = "${idTumor}_vs_${idNormal}"
+  tag = outputFacetsSubdirectory = "${idTumor}_vs_${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
-  outputFacetsSubdirectory = tag
   """
   snp-pileup \
     --count-orphans \
