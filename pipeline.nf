@@ -181,7 +181,7 @@ if (!params.bam_pairing) {
     """
     set -e
     set -o pipefail
-    fastp --html ${lane}.html --in1 ${fastqFile1} --in2 ${fastqFile2} 
+    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2} 
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
     samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
