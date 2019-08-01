@@ -1835,7 +1835,6 @@ process GermlineCombineHaplotypecallerVcf {
 
   script: 
   outfile="${idNormal}.haplotypecaller.vcf.gz"
-
   """
   bcftools concat \
     --allow-overlaps \
