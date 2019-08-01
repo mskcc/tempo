@@ -1878,12 +1878,9 @@ process GermlineCombineHaplotypecallerVcf {
 
   when: 'haplotypecaller' in tools && runGermline 
 
-  script:
-  idTumor = id.toString().split("_vs_")[0]
-  idNormal = id.toString().split("@")[0].split("_vs_")[1]
-  target = id.toString().split("@")[1]
-  outfile="${idNormal}.haplotypecaller.vcf.gz"
 
+  script:
+  outfile="${idNormal}.haplotypecaller.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
