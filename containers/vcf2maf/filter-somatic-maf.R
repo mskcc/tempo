@@ -55,10 +55,10 @@ maf[PoN >= 10, FILTER := add_tag(FILTER, 'PoN')]
 
 # Tag and whitelist hotspots --------------------------------------------------------------------------------------
 maf = hotspot_annotate_maf(maf)
+maf = as.data.table(maf) # necessary because of the class of output from previous call
 maf[Hotspot == TRUE & t_var_freq >= 0.02, FILTER := 'PASS']
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
-maf = as.data.table(maf) # necessary because of the class of output from previous call
 filter_maf = maf[FILTER == 'PASS']
 
 fwrite(maf, paste0(output_prefix, '.unfiltered.maf'), sep = '\t')

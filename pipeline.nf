@@ -1060,7 +1060,8 @@ process SomaticCombineChannel {
     --thread ${task.cpus} \
     --maq 0 \
     --fasta ${genomeFile} \
-    --bam ${idTumor}:${bamTumor} ${idNormal}:${bamNormal} \
+    --bam ${idTumor}:${bamTumor} \
+    --bam ${idNormal}:${bamNormal} \
     --vcf ${outputPrefix}.filtered.vcf \
     --output ${outputPrefix}.genotyped.vcf 
   
