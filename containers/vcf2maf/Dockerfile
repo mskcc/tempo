@@ -35,7 +35,8 @@ RUN apt-get update --fix-missing && apt-get install -y \
     tcsh \
     libnss-sss \
     git \
-    python3-pip \
+    python2.7 \
+    python-pip \
     build-essential \
     wget \
     && apt-get clean && apt-get purge \
@@ -52,8 +53,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install python dependencies
-RUN pip3 install --upgrade pip
-RUN pip3 install matplotlib
+RUN pip install --upgrade pip
+RUN pip install matplotlib
 
 RUN apt-get update && apt-get install -y libnet-ssleay-perl libcrypt-ssleay-perl libextutils-pkgconfig-perl
 
