@@ -1175,7 +1175,7 @@ process DoFacets {
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
     file("${tag}_OUT.txt") into FacetsPurityHisensOutput
-    file("${tag}_facets") into FacetsOutputSubdirectories
+    file("${outputFacetsSubdirectory}") into FacetsOutputSubdirectories
 
   when: 'facets' in tools && runSomatic
 
