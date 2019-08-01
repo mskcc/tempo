@@ -1612,7 +1612,7 @@ mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationFo
 process MetaDataParser {
   tag {idSample}
 
-  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+  if (publishAll) { publishDir "${params.outDir}/somatic/", mode: params.publishDirMode }
  
   input:
     set idTumor, idNormal, target, file(purityOut), file(armLevel), file(msifile), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
