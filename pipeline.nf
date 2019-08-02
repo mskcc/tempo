@@ -171,7 +171,7 @@ if (!params.bam_pairing) {
 
     script:
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
+    // Different resource requirements for AWS and LSF
     if (params.mem_per_core) { 
       mem = task.memory.toString().split(" ")[0].toInteger() - 1 
     }
@@ -181,7 +181,7 @@ if (!params.bam_pairing) {
     """
     set -e
     set -o pipefail
-    fastp -h ${lane}.html -i ${fastqFile1} -I ${fastqFile2}
+    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2} 
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
     samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
@@ -308,11 +308,11 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set idSample, file("${idSample}.recal.bam"), file("${idSample}.recal.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-      set idSample, val("${idSample}.recal.bam"), val("${idSample}.recal.bai"), assay, targetFile into recalibratedBamTSV
+      set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+      set idSample, val("${idSample}.bam"), val("${idSample}.bai"), assay, targetFile into recalibratedBamTSV
       val(idSample) into currentSample
-      file("${idSample}.recal.bam") into currentBam
-      file("${idSample}.recal.bai") into currentBai
+      file("${idSample}.bam") into currentBam
+      file("${idSample}.bai") into currentBai
       val(assay) into assays
       val(targetFile) into targets
 
@@ -323,9 +323,9 @@ if (!params.bam_pairing) {
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
       --input ${bam} \
-      --output ${idSample}.recal.bam
+      --output ${idSample}.bam
       
-    cp -p ${idSample}.recal.bai ${idSample}.recal.bam.bai
+    cp -p ${idSample}.bai ${idSample}.bam.bai
     """
   }
 
@@ -419,7 +419,7 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      file("${idSample}_output_hs_metrics.txt") into CollectHsMetricsStats
+      file("${idSample}.hs_metrics.txt") into CollectHsMetricsStats
 
     when: 'wes' in assay && !params.test
 
@@ -437,7 +437,7 @@ if (!params.bam_pairing) {
     """
     gatk CollectHsMetrics \
       --INPUT ${bam} \
-      --OUTPUT ${idSample}_output_hs_metrics.txt \
+      --OUTPUT ${idSample}.hs_metrics.txt \
       --REFERENCE_SEQUENCE ${genomeFile} \
       --BAIT_INTERVALS ${baitIntervals} \
       --TARGET_INTERVALS ${targetIntervals} 
@@ -470,7 +470,7 @@ if (!params.bam_pairing) {
       if (target == "idt") options = "--bed ${idtTargets}"
     }
     def ignore = ignore_rg ? "--ignore" : ""
-    def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.RG.tsv.gz"
+    def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.per_readgroup.tsv.gz"
     """
     alfred qc ${options} \
       --reference ${genomeFile} \
@@ -1286,11 +1286,12 @@ process RunConpair {
 
   output:
     set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    set file("${idTumor}_${idNormal}_concordance.txt"), file("${idTumor}_${idNormal}_contamination.txt") into conpairOutput
+    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairOutput
 
   when: !params.test
 
   script:
+  outPrefix = "${idTumor}_vs_${idNormal}"
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
   conpairPath = "/usr/bin/conpair"
   
@@ -1341,14 +1342,17 @@ process RunConpair {
     --markers=${markersTxt} \
     --pairing=pairing.txt \
     --normal_homozygous_markers_only \
-    --outpre=${idTumor}_${idNormal}
+    --outpre=${outPrefix}
 
   ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
     --tumor_pileup=${idTumor}.pileup \
     --normal_pileup=${idNormal}.pileup \
     --markers=${markersTxt} \
     --pairing=pairing.txt \
-    --outpre=${idTumor}_${idNormal}
+    --outpre=${outPrefix}
+  
+  mv ${outPrefix}_concordance.txt ${outPrefix}.concordance.txt
+  mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
   """
 }
 
