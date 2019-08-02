@@ -171,7 +171,7 @@ if (!params.bam_pairing) {
 
     script:
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    // Refactor when https://github.com/nextflow-io/nextflow/pull/1035 is merged
+    // Different resource requirements for AWS and LSF
     if (params.mem_per_core) { 
       mem = task.memory.toString().split(" ")[0].toInteger() - 1 
     }
