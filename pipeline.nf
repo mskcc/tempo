@@ -707,7 +707,8 @@ process RunMutect2 {
 }
 
 //Formatting the channel to be keyed by idTumor, idNormal, and target
-// forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
+// group by groupKey(key, intervalBed.size())
+forMutect2Combine = forMutect2Combine.groupTuple()
 
 // Combine Mutect2 VCFs, bcftools
 process SomaticCombineMutect2Vcf {
@@ -1872,9 +1873,10 @@ process GermlineRunHaplotypecaller {
 }
 
 //Formatting the channel to be grouped by idTumor, idNormal, and target
+// group by groupKey(key, intervalBed.size())
+haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 
-
-// Merge VCFs from GATK HaplotypeCaller
+// merge VCFs, GATK HaplotypeCaller
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
