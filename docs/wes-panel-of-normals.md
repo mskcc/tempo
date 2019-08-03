@@ -1,10 +1,10 @@
-# Creating a panel of normals (PoN) for exomes
+# Creating a Panel of Normals (PoN) for exomes
 
 "Somatic" variants that occur in a panel of normal samples can be considered sequencing artifacts. We can generate a VCF file to filter against by calling variants in normal samples that look "clean", i.e. absent of tumor contamination. We use a similar variant calling strategy as for the somatic variant calling in tumor samples
 
 For each normal sample call variants with `Strelka2` and `MuTect2`.
 
-### Strelka2
+## Strelka2
 
 Run `Manta` to seed indel calling, otherwise run as if the normal sample is an unmatched tumor sample. Parse output with `bcftools`, subsetting on variants supported by more than one alternate read.
 
@@ -39,7 +39,7 @@ bcftools filter \
 tabix --preset vcf pon/$NORMAL_NAME.strelka2.vcf.gz
 ```
 
-### MuTect2
+## MuTect2
 
 `MuTect2` provides a variant calling mode for normal samples for this purpose. Process the output similarly to above. Fix some VCF header tags so that the files can be combined downstream. As opposed to the somatic variant calling in tumor samples, here retain any calls at multiallelic loci.
 
