@@ -172,11 +172,23 @@ if (!params.bam_pairing) {
     script:
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     // Different resource requirements for AWS and LSF
+    // WES should use mem - 1 for bwa mem & samtools sort
+    // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
     if (params.mem_per_core) { 
-      mem = task.memory.toString().split(" ")[0].toInteger() - 3
+      if ('wes' in assay){
+        mem = task.memory.toString().split(" ")[0].toInteger() - 1
+      }
+      else if ('wgs' in assay){
+        mem = task.memory.toString().split(" ")[0].toInteger() - 3
+      }
     }
     else {
-      mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
+      if ('wes' in assay){
+        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+      }
+      else if ('wgs' in assay){
+        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
+      }
     } 
     """
     set -e
