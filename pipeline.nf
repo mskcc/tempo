@@ -15,11 +15,13 @@ Alignment and QC
  - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
  - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
  - RecalibrateBam --- Recalibrate Bam with GATK4 ApplyBQSR
+ - Alfred - BAM QC metrics
+ - CollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
+ - AggregateBamQC --- aggregates information from Alfred and CollectHsMetrics across all samples
 
 Somatic Analysis
 ----------------
  - CreateScatteredIntervals --- GATK4 SplitIntervals
- - CollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
  - RunMutect2 --- somatic SNV calling, MuTect2
  - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small InDel calling by default
  - SomaticCombineMutect2Vcf --- combine Mutect2 calls,bcftools
@@ -419,7 +421,7 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      file("${idSample}.hs_metrics.txt") into CollectHsMetricsStats
+      set assay, file("${idSample}.hs_metrics.txt") into collectHsMetricsStats
 
     when: 'wes' in assay && !params.test
 
@@ -445,7 +447,7 @@ if (!params.bam_pairing) {
   }
 
   // Alfred, BAM QC
-  ignore_read_groups = Channel.from( true , false )
+  ignore_read_groups = Channel.from(true, false)
   process Alfred {
     tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
@@ -461,11 +463,11 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set ignore_rg, idSample, file("*.tsv.gz"), file("*.tsv.gz.pdf") into bamsQCStats
+      set file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into bamsQcStats
 
     script:
     options = ""
-    if (assay == "exome") {
+    if (assay == "wes") {
       if (target == "agilent") options = "--bed ${agilentTargets}"
       if (target == "idt") options = "--bed ${idtTargets}"
     }
@@ -478,6 +480,34 @@ if (!params.bam_pairing) {
       --outfile ${outfile} \
       ${bam} && \
       Rscript /opt/alfred/scripts/stats.R ${outfile}
+    """
+  }
+  
+  assayType = Channel.create()
+  collectHsMetrics = Channel.create()
+  bamsQcMetrics = Channel.create()
+  bamQcPdf = Channel.create()
+  collectHsMetricsStats.separate(assayType, collectHsMetrics)
+  bamsQcStats.separate(bamsQcMetrics, bamQcPdf)
+
+  (collectHsMetrics, testChannel) = collectHsMetrics.into(2)
+
+  testChannel.subscribe { println it }
+
+  process AggregateBamQc {
+    
+    publishDir "${params.outDir}", mode: params.publishDirMode
+
+    input:
+      val(assay) from assayType 
+      file(hsMetrics) from collectHsMetrics.collect()
+      file(alfredQc) from bamsQcMetrics.collect()
+
+    script:
+    options = ""
+    if (assay == "wes") options = "wes"
+    """
+    create-aggregate-qc-file.py ${options}
     """
   }
 }
@@ -1646,7 +1676,7 @@ process MetaDataParser {
     codingRegionsBed = "${wgsCodingBed}"
   }
   """
-  python3 /usr/bin/create_metadata_file.py \
+  python3 create_metadata_file.py \
     --sampleID ${idTumor}_vs_${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel  ${armLevel} \
@@ -1847,7 +1877,7 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
-  outfile="${idNormal}.haplotypecaller.vcf.gz"
+  outfile = "${idNormal}.haplotypecaller.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
