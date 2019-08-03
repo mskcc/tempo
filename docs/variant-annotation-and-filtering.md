@@ -1,9 +1,9 @@
-# Variant annotation
+# Variant Annotation
 
 ## GRCh37
 
-### SNVs and indels
-Basic annotation of merged `vcf` files from the individual variants callers is carried out in two steps. First, the combined `vcf` is annotated with information from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html). These files are retrieved from the [UCSC genome browser](https://genome.ucsc.edu) and parsed as such:
+### SNVs and InDels
+Basic annotation of merged `vcf` files from the individual variants callers is carried out in two steps. First, the combined `vcf` is annotated with information from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html). These files are retrieved from the [UCSC Genome Browser](https://genome.ucsc.edu) and parsed as such:
 
 ``` shell
 wget http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz
@@ -30,3 +30,10 @@ t2 %>%
     dplyr::bind_rows(., t1) %>%
     readr::write_tsv('isoforms')
 ```
+
+
+## GRCh38
+[GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38).
+
+**Note:** Support for hg38 is currently somewhat limited. Please raise an issue at https://github.com/mskcc/vaporware/issues if you would like to process data with GRch38. However, please note that hg38 reference files are easily avilable from UCSC. 
+
