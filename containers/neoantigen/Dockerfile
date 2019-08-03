@@ -1,5 +1,10 @@
 FROM ubuntu:18.04 
 
+LABEL maintainer="Allan Bolipata <bolipatc@mskcc.org>, Evan Biederstedt <evan.biederstedt@gmail.com>" \
+    version.image="0.3.0" \
+    version.neantigen-dev="0.3.0" \
+    version.python="2.7.15rc1"
+
 ENV TMPDIR="/tmp"
 
 RUN apt-get update && apt-get install -y \
@@ -40,10 +45,13 @@ RUN cd /usr/local/bin/netMHCpan-4.0/ \
 
 # Add neoantigen-dev
 COPY neoantigen-docker.config /tmp
-COPY neoantigen-dev-0.0.2.tar.gz /tmp
+COPY neoantigen-dev-0.3.0.tar.gz /tmp
 
-RUN tar -xvf /tmp/neoantigen-dev-0.0.2.tar.gz -C /usr/local/bin \
-    && mv /usr/local/bin/neoantigen-dev-0.0.2/ /usr/local/bin/neoantigen/ \
+RUN tar -xvf /tmp/neoantigen-dev-0.3.0.tar.gz -C /usr/local/bin \
+    && mv /usr/local/bin/neoantigen-dev-0.3.0/ /usr/local/bin/neoantigen/ \
     && cd /usr/local/bin/neoantigen/ \
     && pip install -r requirements.txt \
     && cp /tmp/neoantigen-docker.config .
+
+
+
