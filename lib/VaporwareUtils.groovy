@@ -3,81 +3,6 @@ import nextflow.Channel
 
 class VaporwareUtils {
 
-  static def checkParamReturnFile(item) {
-    params."${item}" = params.genomes[params.genome]."${item}"
-    return file(params."${item}")
-  }
-
-  static def defineReferenceMap() {
-    if (!(params.genome in params.genomes)) exit 1, "Genome ${params.genome} not found in configuration"
-    result_array = [
-      'dbsnp' : checkParamReturnFile("dbsnp"),
-      'dbsnpIndex' : checkParamReturnFile("dbsnpIndex"),
-      // genome reference dictionary
-      'genomeDict' : checkParamReturnFile("genomeDict"),
-      // FASTA genome reference
-      'genomeFile' : checkParamReturnFile("genomeFile"),
-      // genome .fai file
-      'genomeIndex' : checkParamReturnFile("genomeIndex"),
-      // BWA index files
-      'bwaIndex' : checkParamReturnFile("bwaIndex"), 
-      // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
-      'knownIndels' : checkParamReturnFile("knownIndels"),
-      'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
-      'msiSensorList' : checkParamReturnFile("msiSensorList"),
-      'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
-      'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
-      'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
-      // Target and Bait BED files
-      'idtTargets' : checkParamReturnFile("idtTargets"),
-      'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
-      'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
-      'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
-      'agilentTargets' : checkParamReturnFile("agilentTargets"),
-      'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
-      'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
-      'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
-      'wgsTargets' : checkParamReturnFile("wgsTargets"),
-      'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
-    ]
-
-    if (!params.test) {
-      result_array << ['vepCache' : checkParamReturnFile("vepCache")]
-      // for SNP Pileup
-      result_array << ['facetsVcf' : checkParamReturnFile("facetsVcf")]
-      // intervals file for spread-and-gather processes
-      result_array << ['intervals' : checkParamReturnFile("intervals")]
-      // files for CombineChannel, needed by bcftools annotate
-      result_array << ['repeatMasker' : checkParamReturnFile("repeatMasker")]
-      result_array << ['repeatMaskerIndex' : checkParamReturnFile("repeatMaskerIndex")]
-      result_array << ['mapabilityBlacklist' : checkParamReturnFile("mapabilityBlacklist")]
-      result_array << ['mapabilityBlacklistIndex' : checkParamReturnFile("mapabilityBlacklistIndex")]
-      // isoforms needed by vcf2maf
-      result_array << ['isoforms' : checkParamReturnFile("isoforms")]
-      // PON files
-      result_array << ['exomePoN' : checkParamReturnFile("exomePoN")]
-      result_array << ['exomePoNIndex' : checkParamReturnFile("exomePoNIndex")]
-      result_array << ['wgsPoN' : checkParamReturnFile("wgsPoN")]
-      result_array << ['wgsPoNIndex' : checkParamReturnFile("wgsPoNIndex")]
-      // gnomAD resources
-      result_array << ['gnomadWesVcf' : checkParamReturnFile("gnomadWesVcf")]
-      result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
-      result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
-      result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
-      // HLA FASTA and *dat for LOHHLA 
-      result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
-      result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
-      // files for neoantigen & NetMHC
-      result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
-      result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
-      // coding region BED files for calculating TMB
-      result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
-      result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
-      result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
-    }
-    return result_array
-  }
-
   static def debug(channel) {
     channel.subscribe { Object obj ->
       println "DEBUG: ${obj.toString()};"
@@ -144,7 +69,7 @@ class VaporwareUtils {
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
-  static def validateBamIndexFormat(it) {
+  def validateBamIndexFormat(it) {
     bamFilename = it.take(it.lastIndexOf('.'))
     // Check BAM index extension
     if (file(bamFilename + ".bai").exists()){
@@ -214,5 +139,8 @@ class VaporwareUtils {
     return totalList.size() == totalList.unique().size()
   }
 
-
 }
+
+
+
+
