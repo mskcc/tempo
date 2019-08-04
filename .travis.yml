@@ -9,8 +9,11 @@ services:
   - docker
 
 before_install:
-  - export NXF_VER=19.07.0 && curl -fsSL get.nextflow.io | bash 
-  - chmod 777 nextflow
+  # Install Nextflow
+  - mkdir /tmp/nextflow
+  - cd /tmp/nextflow
+  - wget -qO- get.nextflow.io | bash
+  - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
   - wget -O test-data.tar.gz --no-check-certificate 'https://docs.google.com/uc?export=download&id=1Jgsj4FEnwhNybaNuovyIdSXG6-iBzAIf'
   - tar -xzvf test-data.tar.gz 
 
