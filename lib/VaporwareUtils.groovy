@@ -118,12 +118,11 @@ class VaporwareUtils {
   static def check_for_mixed_assay(mappingFilePath) {
     def wgs = false
     def wes = false
-    file( mappingFilePath ).eachLine { line ->
-      currentLine = line.toLowerCase()
-      if (currentLine.contains('\tgenome\t') || currentLine.contains('\twgs\t')) {
+    file( mappingFilePath ).eachLine { line -> 
+      if (line.toLowerCase().contains('\tgenome\t') || line.toLowerCase().contains('\twgs\t')) {
         wgs = true
       }
-      if (currentLine.contains('\texome\t') || currentLine.contains('\twes\t')) {
+      if (line.toLowerCase().contains('\texome\t') || line.toLowerCase().contains('\twes\t')) {
         wes = true
       }
     return !(wgs && wes)
