@@ -131,7 +131,7 @@ outname = params.outname
 runGermline = params.germline
 runSomatic = params.somatic
 
-referenceMap = defineReferenceMap()
+referenceMap = VaporwareUtils.defineReferenceMap()
 
 /*
 ================================================================================
