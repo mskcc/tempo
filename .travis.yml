@@ -19,5 +19,6 @@ before_install:
 
 script:
   # Run test script here
+  - pwd
   - python3 tests/test_runner.py tests/tests.json
  
