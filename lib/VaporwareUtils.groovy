@@ -1,6 +1,11 @@
 import static nextflow.Nextflow.file
 import nextflow.Channel
 
+// NOTE: 
+// static methods in Groovy are meant to be accessed directly from the class
+// e.g. VaporewareUtils.debug()
+//
+
 class VaporwareUtils {
 
   static def debug(channel) {
@@ -69,6 +74,7 @@ class VaporwareUtils {
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
+  // not a static method, as currently written
   def validateBamIndexFormat(it) {
     bamFilename = it.take(it.lastIndexOf('.'))
     // Check BAM index extension
