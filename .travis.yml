@@ -10,10 +10,7 @@ services:
 
 before_install:
   # Install Nextflow
-  - mkdir /tmp/nextflow
-  - cd /tmp/nextflow
   - export NXF_VER=0.30.2 && wget -qO- get.nextflow.io | bash
-  - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
   - wget -O test-data.tar.gz --no-check-certificate 'https://docs.google.com/uc?export=download&id=1Jgsj4FEnwhNybaNuovyIdSXG6-iBzAIf'
   - tar -xzvf test-data.tar.gz 
 
