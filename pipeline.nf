@@ -1318,7 +1318,6 @@ process RunConpair {
     markersTxt = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.txt"
   }
 
-  mem = 0
   if (params.mem_per_core) {
     mem = task.memory.toString().split(" ")[0].toInteger() - 1
   }
