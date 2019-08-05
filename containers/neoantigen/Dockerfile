@@ -2,7 +2,7 @@ FROM ubuntu:18.04
 
 LABEL maintainer="Allan Bolipata <bolipatc@mskcc.org>, Evan Biederstedt <evan.biederstedt@gmail.com>" \
     version.image="0.3.0" \
-    version.neantigen-dev="0.3.0" \
+    version.neoantigen-dev="0.3.0" \
     version.python="2.7.15rc1"
 
 ENV TMPDIR="/tmp"
