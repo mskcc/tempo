@@ -4,8 +4,8 @@ This basic command shows how to run Vaporware, using test input provided in the 
 ```shell
 nextflow run pipeline.nf \
     --somatic --germline --outDir test_output -profile juno \
-    --mapping $REPO/test_inputs/lsf/test_make_bam_and_qc.tsv \
-    --pairing $REPO/test_inputs/lsf/test_make_bam_and_qc_pairing.tsv
+    --mapping $REPO/test_inputs/local/test_make_bam_and_qc.tsv \
+    --pairing $REPO/test_inputs/local/test_make_bam_and_qc_pairing.tsv
 ```
 
 * The `--somatic` and `--germline` flags indicate to run the somatic and germline variant calling modules, respectively. 
