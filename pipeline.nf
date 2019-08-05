@@ -1823,8 +1823,7 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
-        file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput
+    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1877,22 +1876,23 @@ process GermlineRunHaplotypecaller {
 haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 
 // merge VCFs, GATK HaplotypeCaller
+
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
-
-  if (publishAll) { publishDir "${params.outDir}/germline/haplotypecaller", mode: params.publishDirMode }
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
 
   input:
     set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
     ])
 
   output:
     set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcfOutput
 
   when: 'haplotypecaller' in tools && runGermline 
-
 
   script:
   outfile="${idNormal}.haplotypecaller.vcf.gz"
@@ -2031,6 +2031,7 @@ bamsForCombineChannel = bamsForCombineChannel.map{
     
     return [idTumor, idNormal, target, assay, bamTumor, baiTumor]
   }
+
 
 mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1,2])
 
