@@ -2,10 +2,6 @@ sudo: required
 language: java
 jdk: openjdk8
 
-cache:
-  directories:
-    - $HOME/.m2
-    
 os:
   - linux
 
@@ -21,4 +17,3 @@ before_install:
 script:
   # Run test script here
   - python3 tests/test_runner.py tests/tests.json
- 
