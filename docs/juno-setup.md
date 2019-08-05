@@ -21,7 +21,7 @@ or:
 ```shell
 export PATH=/opt/local/singularity/3.1.1/bin:$PATH
 ```
-The call `which singularity` should return `/opt/local/singularity/3.1.1/bin/singularity` if you have done this correctly. 
+The command `which singularity` should return `/opt/local/singularity/3.1.1/bin/singularity` if you have done this correctly. 
 
 
 ## Java Version

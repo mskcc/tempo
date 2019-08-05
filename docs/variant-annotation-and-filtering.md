@@ -35,5 +35,5 @@ t2 %>%
 ## GRCh38
 [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38).
 
-**Note:** Support for hg38 is currently somewhat limited. Please raise an issue at https://github.com/mskcc/vaporware/issues if you would like to process data with GRch38. However, please note that hg38 reference files are easily avilable from UCSC. 
+**Note:** Support for hg38 is currently somewhat limited. Please raise an issue at https://github.com/mskcc/vaporware/issues if you would like to process data with GRch38. However, please note that hg38 reference files are easily available from UCSC. 
 

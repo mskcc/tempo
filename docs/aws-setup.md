@@ -22,7 +22,7 @@ To prepare the AMI for your compute environment run the command below from the v
 
 ***NOTE: You can specify any name instead of `vaporwareAMI` for stack-name.***
 
-This command submits CloudFormation Stack for building the [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) for execution, which we will use for building Batch Compute Environment. When you submit the command you will get StackId ARN as a responce similar to this below.
+This command submits CloudFormation Stack for building the [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) for execution, which we will use for building Batch Compute Environment. When you submit the command you will get StackId ARN as a response similar to this below.
 
 ```
 {

@@ -149,7 +149,7 @@ export PATH=/opt/local/singularity/3.1.1/bin:$PATH
 
 We recommend that users check the [documentation for LSF](https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.2/lsf_command_ref/bsub.1.html) to clarify each of the arguments above. However,
 
-* `-W <hh:mm>` sets the time alloted for `nextflow run pipeline.nf` to run to completion. 
+* `-W <hh:mm>` sets the time allotted for `nextflow run pipeline.nf` to run to completion. 
 * `-n 1` is requesting one slot. This should be sufficient for `nextflow run pipeline.nf`
 * ` -o <LSF output file name>.out` is the name of the STDOUT file, which is quite informative for Nextflow. We **strongly** encourage users to set this.
 * ` -e <LSF output file name>.err` is the name of the STDERR file. Please set this. 
@@ -178,9 +178,9 @@ nextflow run pipeline.nf \
     --pairing <path_to_mapping_file>
 ```
 
-*NOTE:* Normally it's not a good idea to run things on the log-in nodes of the server. Consider scheduling an intervative sessioon via e.g. ` bsub -Is -n 1 -R "rusage[mem=20]" csh`
+*NOTE:* Normally it's not a good idea to run things on the log-in nodes of the server. Consider scheduling an interactive session via e.g. ` bsub -Is -n 1 -R "rusage[mem=20]" csh`
 
-Users welcome to use **nohup** or **tmux** as well. 
+Users are welcome to use **nohup** or **tmux** as well. 
 
 
 ## Running the pipeline on AWS

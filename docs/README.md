@@ -15,7 +15,7 @@ footer: MIT Licensed | Copyright © 2019-present
 
 # Vaporware documentation
 
-Vaporware is a computational pipeline for processing data of paired-end whole exome (WES) and whole genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Cencer and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the Center for Molecular Oncology.
+Vaporware is a computational pipeline for processing data of paired-end whole exome (WES) and whole genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the Center for Molecular Oncology.
 
 These pages contain instructions on how to run the Vaporware pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus sources and processing of all reference materials use. 
 
