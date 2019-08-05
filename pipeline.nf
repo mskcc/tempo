@@ -421,7 +421,7 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set assay, file("${idSample}.hs_metrics.txt") into collectHsMetricsStats
+      file("${idSample}.hs_metrics.txt") into collectHsMetrics
 
     when: 'wes' in assay && !params.test
 
@@ -463,7 +463,7 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into bamsQcStats
+      set assay, file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into bamsQcStats
 
     script:
     options = ""
@@ -484,30 +484,28 @@ if (!params.bam_pairing) {
   }
   
   assayType = Channel.create()
-  collectHsMetrics = Channel.create()
   bamsQcMetrics = Channel.create()
   bamQcPdf = Channel.create()
-  collectHsMetricsStats.separate(assayType, collectHsMetrics)
-  bamsQcStats.separate(bamsQcMetrics, bamQcPdf)
-
-  (collectHsMetrics, testChannel) = collectHsMetrics.into(2)
-
-  testChannel.subscribe { println it }
-
+  bamsQcStats.separate(assayType, bamsQcMetrics, bamQcPdf)
+  qcFiles = collectHsMetrics.concat(bamsQcMetrics).collect()  
+  
   process AggregateBamQc {
     
     publishDir "${params.outDir}", mode: params.publishDirMode
 
     input:
-      val(assay) from assayType 
-      file(hsMetrics) from collectHsMetrics.collect()
-      file(alfredQc) from bamsQcMetrics.collect()
+      val(assay) from assayType.unique()
+      file(metricsFile) from qcFiles
 
     script:
-    options = ""
-    if (assay == "wes") options = "wes"
+    if (assay == "wes") {
+      options = "wes"
+    }
+    else {
+      options = 'wgs'
+    }
     """
-    create-aggregate-qc-file.py ${options}
+    create-aggregate-qc-file.R ${options}
     """
   }
 }
