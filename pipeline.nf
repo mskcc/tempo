@@ -2281,7 +2281,7 @@ process GermlineDellyCall {
 
 dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2], size: 5)
 
-dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2]).unique()
+dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2])
 
 // --- Merge Delly and Manta VCFs 
 process GermlineMergeDellyAndManta {
