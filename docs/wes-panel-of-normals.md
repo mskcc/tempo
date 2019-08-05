@@ -6,7 +6,7 @@ For each normal sample call variants with `Strelka2` and `MuTect2`.
 
 ## Strelka2
 
-Run `Manta` to seed indel calling, otherwise run as if the normal sample is an unmatched tumor sample. Parse output with `bcftools`, subsetting on variants supported by more than one alternate read.
+Run `Manta` to seed InDel calling, otherwise run as if the normal sample is an unmatched tumor sample. Parse output with `bcftools`, subsetting on variants supported by more than one alternate read.
 
 ```shell
 $MANTA/configManta.py \
