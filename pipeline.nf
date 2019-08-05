@@ -946,6 +946,9 @@ process SomaticCombineChannel {
   echo -e "##FORMAT=<ID=alt_count_raw,Number=1,Type=Integer,Description=\"Raw alternate allele depth\">" > vcf.ad_n.header
   echo -e "##FORMAT=<ID=alt_count_raw_fwd,Number=1,Type=Integer,Description=\"Raw alternate allele depth on forward strand\">" >> vcf.ad_n.header
   echo -e "##FORMAT=<ID=alt_count_raw_rev,Number=1,Type=Integer,Description=\"Raw alternate allele depth on reverse strand\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=ref_count_raw,Number=1,Type=Integer,Description=\"Raw reference allele depth\">" > vcf.ad_n.header
+  echo -e "##FORMAT=<ID=ref_count_raw_fwd,Number=1,Type=Integer,Description=\"Raw reference allele depth on forward strand\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=ref_count_raw_rev,Number=1,Type=Integer,Description=\"Raw reference allele depth on reverse strand\">" >> vcf.ad_n.header
   echo -e "##FORMAT=<ID=depth_raw,Number=1,Type=Integer,Description=\"Raw total allele depth\">" >> vcf.ad_n.header
   echo -e "##FORMAT=<ID=depth_raw_fwd,Number=1,Type=Integer,Description=\"Raw total allele depth on forward strand\">" >> vcf.ad_n.header
   echo -e "##FORMAT=<ID=depth_raw_rev,Number=1,Type=Integer,Description=\"Raw total allele depth on reverse strand\">" >> vcf.ad_n.header
@@ -991,7 +994,7 @@ process SomaticCombineChannel {
 
   bcftools annotate \
     --annotations ${isecDir}/0003.annot.vcf.gz \
-    --columns +FORMAT,Strelka2FILTER \
+    --columns +INFO,+FORMAT,Strelka2FILTER \
     --output-type z \
     --output ${isecDir}/0002.annot.vcf.gz \
     ${isecDir}/0002.tmp.vcf.gz
@@ -1078,7 +1081,7 @@ process SomaticCombineChannel {
   bcftools annotate \
     --annotations ${outputPrefix}.genotyped.vcf.gz \
     --header-lines vcf.ad_n.header \
-    --columns FORMAT/alt_count_raw:=FORMAT/AD,FORMAT/alt_count_raw_fwd:=FORMAT/ADP,FORMAT/alt_count_raw_rev:=FORMAT/ADN,FORMAT/depth_raw:=FORMAT/DP,FORMAT/depth_raw_fwd:=FORMAT/DPP,FORMAT/depth_raw_rev:=FORMAT/DPN \
+    --columns FORMAT/alt_count_raw:=FORMAT/AD,FORMAT/ref_count_raw:=FORMAT/RD,FORMAT/alt_count_raw_fwd:=FORMAT/ADP,FORMAT/ref_count_raw_fwd:=FORMAT/RDP,FORMAT/alt_count_raw_rev:=FORMAT/ADN,FORMAT/ref_count_raw_rev:=FORMAT/RDN,FORMAT/depth_raw:=FORMAT/DP,FORMAT/depth_raw_fwd:=FORMAT/DPP,FORMAT/depth_raw_rev:=FORMAT/DPN \
     --output-type v \
     --output ${outputPrefix}.pass.vcf \
     ${outputPrefix}.filtered.vcf.gz
@@ -1106,7 +1109,7 @@ process SomaticAnnotateMaf {
   mutect2InfoCols = "MBQ,MFRL,MMQ,MPOS,OCM,RPA,STR"
   strelka2InfoCols = "RU,IC,MQ,SNVSB"
   strelka2FormatCols = "FDP,SUBDP"
-  formatCols = "alt_count_raw,alt_count_raw_fwd,alt_count_raw_rev,depth_raw,depth_raw_fwd,depth_raw_rev"
+  formatCols = "alt_count_raw,alt_count_raw_fwd,alt_count_raw_rev,ref_count_raw,ref_count_raw_fwd,ref_count_raw_rev,depth_raw,depth_raw_fwd,depth_raw_rev"
   formatCols = formatCols + "," + strelka2FormatCols
   if (target == "wgs") {
     infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
