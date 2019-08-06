@@ -1542,6 +1542,11 @@ process FacetsAnnotation {
 
 (mafFileForNeoantigen, facetsAnnotationForMetaData, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(3)
 
+armGeneLevelOutputs = Channel.create()
+otherOutputs = Channel.create()
+
+FacetsAnnotationOutputs.separate(otherOutputs, otherOutputs, otherOutputs, otherOutputs, armGeneLevelOutputs, armGeneLevelOutputs, armGeneLevelOutputs)
+
 //Formatting the channel to be: idTumor, idNormal, target, MAF
 
 mafFileForNeoantigen = mafFileForNeoantigen.map{
@@ -1669,7 +1674,7 @@ process SomaticAggregate {
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
-    file(annotationFiles) from FacetsAnnotationOutputs.collect()
+    file(annotationFiles) from armGeneLevelOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
     file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
