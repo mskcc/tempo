@@ -1674,7 +1674,7 @@ process MetaDataParser {
     codingRegionsBed = "${wgsCodingBed}"
   }
   """
-  python3 create_metadata_file.py \
+  create_metadata_file.py \
     --sampleID ${idTumor}_vs_${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel  ${armLevel} \
