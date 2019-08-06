@@ -1600,7 +1600,7 @@ process RunNeoantigen {
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
 
-  awk 'NR==1 {printf("%s\\t%s\\n", "sampleID", \$0)} NR>1 {printf("%s\\t%s\\n", "${idTumor}_vs_${idNormal}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${idTumor}_vs_${idNormal}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
   """
 }
 
@@ -1662,6 +1662,10 @@ process MetaDataParser {
   """
 }
 
+otherMutsigOutput = Channel.create()
+mutSig = Channel.create()
+mutSigOutput.separate(otherMutsigOutput, otherMutsigOutput, otherMutsigOutput, mutSig)
+
 process SomaticAggregate {
  
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
@@ -1669,7 +1673,7 @@ process SomaticAggregate {
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(mutsigFile) from mutSigOutput.collect()
+    file(mutsigFile) from mutSig.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
