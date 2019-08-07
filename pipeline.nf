@@ -477,7 +477,7 @@ if (!params.bam_pairing) {
 
     script:
     options = ""
-    if (assay == "exome") {
+    if (assay == "wes") {
       if (target == "agilent") options = "--bed ${agilentTargets}"
       if (target == "idt") options = "--bed ${idtTargets}"
     }
