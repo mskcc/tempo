@@ -431,8 +431,8 @@ if (!params.bam_pairing) {
       targetIntervals = "${agilentTargetsList}"
     }
     if (target == 'idt'){
-      bait_intervals = "${idtBaitsList}"
-      target_intervals = "${idtTargetsList}"
+      baitIntervals = "${idtBaitsList}"
+      targetIntervals = "${idtTargetsList}"
     }
     """
     gatk CollectHsMetrics \
@@ -465,7 +465,7 @@ if (!params.bam_pairing) {
 
     script:
     options = ""
-    if (assay == "exome") {
+    if (assay == "wes") {
       if (target == "agilent") options = "--bed ${agilentTargets}"
       if (target == "idt") options = "--bed ${idtTargets}"
     }
@@ -1623,7 +1623,7 @@ mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationFo
 
 // --- Generate sample-level metadata
 process MetaDataParser {
-  tag {idSample}
+  tag {idTumor + "_vs_" + idNormal}
 
   if (publishAll) { publishDir "${params.outDir}/", mode: params.publishDirMode }
  
@@ -1639,7 +1639,6 @@ process MetaDataParser {
   when: runSomatic
 
   script:
-  codingRegionsBed = ""
   if (target == "idt") {
     codingRegionsBed = "${idtCodingBed}"
   }
@@ -1653,7 +1652,7 @@ process MetaDataParser {
   python3 /usr/bin/create_metadata_file.py \
     --sampleID ${idTumor}_vs_${idNormal} \
     --facetsPurity_out ${purityOut} \
-    --facetsArmLevel  ${armLevel} \
+    --facetsArmLevel ${armLevel} \
     --MSIsensor_output ${msifile} \
     --mutational_signatures_output ${mutSigOutput} \
     --polysolver_output ${polysolverFile} \
@@ -1855,7 +1854,7 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
-  outfile="${idNormal}.haplotypecaller.vcf.gz"
+  outfile = "${idNormal}.haplotypecaller.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
