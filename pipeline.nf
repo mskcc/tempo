@@ -1466,6 +1466,7 @@ process RunMutationSignatures {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSigOutput
+    file("${outputPrefix}.mutsig.txt") into mutSigForAggregate
 
   when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
@@ -1617,9 +1618,7 @@ facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
     return [idTumor, idNormal, target, armLevel]
   }
 
-(mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
-
-mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutSigOutput, by: [0,1,2]).unique()
 
 // --- Generate sample-level metadata
 process MetaDataParser {
@@ -1661,10 +1660,6 @@ process MetaDataParser {
   """
 }
 
-otherMutsigOutput = Channel.create()
-mutSig = Channel.create()
-mutSigOutput.separate(otherMutsigOutput, otherMutsigOutput, otherMutsigOutput, mutSig)
-
 process SomaticAggregate {
  
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
@@ -1672,7 +1667,7 @@ process SomaticAggregate {
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(mutsigFile) from mutSig.collect()
+    file(mutsigFile) from mutSigForAggregate.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
