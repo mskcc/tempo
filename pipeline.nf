@@ -463,7 +463,8 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set assay, file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into bamsQcStats
+      set assay, file("${idSample}.alfred*tsv.gz") into bamsQcStats
+      file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
     options = ""
@@ -485,8 +486,7 @@ if (!params.bam_pairing) {
   
   assayType = Channel.create()
   bamsQcMetrics = Channel.create()
-  bamQcPdf = Channel.create()
-  bamsQcStats.separate(assayType, bamsQcMetrics, bamQcPdf)
+  bamsQcStats.separate(assayType, bamsQcMetrics)
   qcFiles = collectHsMetrics.concat(bamsQcMetrics).collect()  
   
   process AggregateBamQc {
@@ -496,6 +496,9 @@ if (!params.bam_pairing) {
     input:
       val(assay) from assayType.unique()
       file(metricsFile) from qcFiles
+
+    output:
+      file('alignment_qc.tsv') into alignmentQc
 
     script:
     if (assay == "wes") {
