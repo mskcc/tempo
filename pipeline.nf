@@ -174,11 +174,23 @@ if (!params.bam_pairing) {
     script:
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     // Different resource requirements for AWS and LSF
+    // WES should use mem - 1 for bwa mem & samtools sort
+    // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
     if (params.mem_per_core) { 
-      mem = task.memory.toString().split(" ")[0].toInteger() - 1 
+      if ('wes' in assay){
+        mem = task.memory.toString().split(" ")[0].toInteger() - 1
+      }
+      else if ('wgs' in assay){
+        mem = task.memory.toString().split(" ")[0].toInteger() - 3
+      }
     }
     else {
-      mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+      if ('wes' in assay){
+        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+      }
+      else if ('wgs' in assay){
+        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
+      }
     } 
     """
     set -e
@@ -1337,7 +1349,6 @@ process RunConpair {
     markersTxt = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.txt"
   }
 
-  mem = 0
   if (params.mem_per_core) {
     mem = task.memory.toString().split(" ")[0].toInteger() - 1
   }
