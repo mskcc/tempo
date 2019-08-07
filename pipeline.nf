@@ -431,8 +431,8 @@ if (!params.bam_pairing) {
       targetIntervals = "${agilentTargetsList}"
     }
     if (target == 'idt'){
-      bait_intervals = "${idtBaitsList}"
-      target_intervals = "${idtTargetsList}"
+      baitIntervals = "${idtBaitsList}"
+      targetIntervals = "${idtTargetsList}"
     }
     """
     gatk CollectHsMetrics \
