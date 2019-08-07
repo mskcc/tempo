@@ -433,8 +433,8 @@ if (!params.bam_pairing) {
       targetIntervals = "${agilentTargetsList}"
     }
     if (target == 'idt'){
-      bait_intervals = "${idtBaitsList}"
-      target_intervals = "${idtTargetsList}"
+      baitIntervals = "${idtBaitsList}"
+      targetIntervals = "${idtTargetsList}"
     }
     """
     gatk CollectHsMetrics \
@@ -1647,7 +1647,7 @@ mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationFo
 
 // --- Generate sample-level metadata
 process MetaDataParser {
-  tag {idSample}
+  tag {idTumor + "_vs_" + idNormal}
 
   if (publishAll) { publishDir "${params.outDir}/", mode: params.publishDirMode }
  
@@ -1663,7 +1663,6 @@ process MetaDataParser {
   when: runSomatic
 
   script:
-  codingRegionsBed = ""
   if (target == "idt") {
     codingRegionsBed = "${idtCodingBed}"
   }
@@ -1677,7 +1676,7 @@ process MetaDataParser {
   create_metadata_file.py \
     --sampleID ${idTumor}_vs_${idNormal} \
     --facetsPurity_out ${purityOut} \
-    --facetsArmLevel  ${armLevel} \
+    --facetsArmLevel ${armLevel} \
     --MSIsensor_output ${msifile} \
     --mutational_signatures_output ${mutSigOutput} \
     --polysolver_output ${polysolverFile} \
