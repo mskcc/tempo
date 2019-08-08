@@ -1477,6 +1477,7 @@ process RunMutationSignatures {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSigOutput
+    file("${outputPrefix}.mutsig.txt") into mutSigForAggregate
 
   when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
@@ -1525,7 +1526,8 @@ process FacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsAnnotationOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv") into FacetsAnnotationOutputs
+    set file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1551,7 +1553,7 @@ process FacetsAnnotation {
   """
 }
 
-(mafFileForNeoantigen, facetsAnnotationForMetaData, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(3)
+(mafFileForNeoantigen, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(2)
 
 //Formatting the channel to be: idTumor, idNormal, target, MAF
 
@@ -1562,8 +1564,6 @@ mafFileForNeoantigen = mafFileForNeoantigen.map{
     def target = item[2]
     def mafFile = item[3]
     def armLevel = item[4]
-    def geneLevel = item[5]
-    def tsg_manual_review = item[6]
     return [idTumor, idNormal, target, mafFile]
   }
 
@@ -1606,27 +1606,22 @@ process RunNeoantigen {
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
 
-  awk 'NR==1 {printf("%s\\t%s\\n", \$0, "sampleID")}  NR>1 {printf("%s\\t%s\\n", \$0, "${idTumor}_vs_${idNormal}") }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
-
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${idTumor}_vs_${idNormal}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
   """
 }
 
 // [idTumor, idNormal, target, armLevel]
-facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
+FacetsAnnotationOutputs = FacetsAnnotationOutputs.map{
   item -> 
     def idTumor = item[0]
     def idNormal = item[1]
     def target = item[2]
     def mafFile = item[3]
     def armLevel = item[4]
-    def geneLevel = item[5]
-    def tsg_manual_review = item[6]
     return [idTumor, idNormal, target, armLevel]
   }
 
-(mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
-
-mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(FacetsAnnotationOutputs, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutSigOutput, by: [0,1,2]).unique()
 
 // --- Generate sample-level metadata
 process MetaDataParser {
@@ -1675,11 +1670,11 @@ process SomaticAggregate {
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(mutsigFile) from mutSigOutput.collect()
+    file(mutsigFile) from mutSigForAggregate.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
-    file(annotationFiles) from FacetsAnnotationOutputs.collect()
+    file(annotationFiles) from FacetsArmGeneOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
     file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
@@ -2194,7 +2189,6 @@ process GermlineAnnotateMaf {
   filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
   """
   }
-
 
 // --- Call germline SVs with Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
