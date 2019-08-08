@@ -1561,14 +1561,16 @@ FacetsforMafAnno = FacetsforMafAnno.map{
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
-FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
+(FacetsforMafAnno, FacetsforMafAnnoGermline) = FacetsforMafAnno.into(2)
+facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
+
 
 // --- Do FACETS MAF annotation and post processing
-process FacetsAnnotation {
+process SomaticFacetsAnnotation {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv") into FacetsAnnotationOutputs
@@ -1595,6 +1597,8 @@ process FacetsAnnotation {
   /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.tsv
+
+  annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
@@ -2203,7 +2207,7 @@ process GermlineAnnotateMaf {
     ])
 
   output:
-    file("${outputPrefix}.maf") into mafFileGermline
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
@@ -2235,6 +2239,41 @@ process GermlineAnnotateMaf {
   filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
   """
   }
+
+(mafFileGermline, mafFileGermlineFacets) = mafFileGermline.into(2)
+
+mafFileGermlineFacets = mafFileGermlineFacets.groupTuple(by: [0,1,2])
+
+facetsMafFileGermline = FacetsforMafAnnoGermline.combine(mafFileGermlineFacets, by: [0,1,2]).unique()
+
+process GermlineFacetsAnnotation {
+  tag {idNormal}
+
+  if (publishAll) { publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode }
+
+  input:
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileGermline
+
+  output:
+    file("${outputPrefix}.facets.zygosity.maf") into mafFileAnnotatedGermline
+
+  when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
+
+  script:
+  mapFile = "${idTumor}_${idNormal}.map"
+  outputPrefix = "${idTumor}_vs_${idNormal}.germline"
+  """
+  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
+  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
+
+  /usr/bin/facets-suite/mafAnno.R \
+    --facets_files ${mapFile} \
+    --maf ${maf} \
+    --out_maf ${outputPrefix}.facets.maf
+
+  annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  """
+}
 
 // --- Call germline SVs with Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
@@ -2343,7 +2382,7 @@ process GermlineAggregate {
   publishDir "${params.outDir}/germline/", mode: params.publishDirMode
 
   input:
-    file(mafFile) from mafFileGermline.collect()
+    file(mafFile) from mafFileAnnotatedGermline.collect()
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
