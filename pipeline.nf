@@ -1495,6 +1495,7 @@ process RunMutationSignatures {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSigOutput
+    file("${outputPrefix}.mutsig.txt") into mutSigForAggregate
 
   when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
@@ -1533,17 +1534,19 @@ FacetsforMafAnno = FacetsforMafAnno.map{
 
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
-FacetsMafFileCombine = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+(FacetsforMafAnno, FacetsforMafAnnoGermline) = FacetsforMafAnno.into(2)
+facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
 
 // --- Do FACETS MAF annotation and post processing
-process FacetsAnnotation {
+process SomaticFacetsAnnotation {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from FacetsMafFileCombine
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsAnnotationOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv") into FacetsAnnotationOutputs
+    set file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1566,10 +1569,12 @@ process FacetsAnnotation {
   /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.tsv
+
+  annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
-(mafFileForNeoantigen, facetsAnnotationForMetaData, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(3)
+(mafFileForNeoantigen, FacetsAnnotationOutputs) = FacetsAnnotationOutputs.into(2)
 
 //Formatting the channel to be: idTumor, idNormal, target, MAF
 
@@ -1580,8 +1585,6 @@ mafFileForNeoantigen = mafFileForNeoantigen.map{
     def target = item[2]
     def mafFile = item[3]
     def armLevel = item[4]
-    def geneLevel = item[5]
-    def tsg_manual_review = item[6]
     return [idTumor, idNormal, target, mafFile]
   }
 
@@ -1624,27 +1627,22 @@ process RunNeoantigen {
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
 
-  awk 'NR==1 {printf("%s\\t%s\\n", \$0, "sampleID")}  NR>1 {printf("%s\\t%s\\n", \$0, "${idTumor}_vs_${idNormal}") }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
-
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${idTumor}_vs_${idNormal}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
   """
 }
 
 // [idTumor, idNormal, target, armLevel]
-facetsAnnotationForMetaData = facetsAnnotationForMetaData.map{
+FacetsAnnotationOutputs = FacetsAnnotationOutputs.map{
   item -> 
     def idTumor = item[0]
     def idNormal = item[1]
     def target = item[2]
     def mafFile = item[3]
     def armLevel = item[4]
-    def geneLevel = item[5]
-    def tsg_manual_review = item[6]
     return [idTumor, idNormal, target, armLevel]
   }
 
-(mutsigMetaData, mutSigOutput) = mutSigOutput.into(2)
-
-mergedChannelMetaDataParser = facetsForMetaDataParser.combine(facetsAnnotationForMetaData, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutsigMetaData, by: [0,1,2]).unique()
+mergedChannelMetaDataParser = facetsForMetaDataParser.combine(FacetsAnnotationOutputs, by: [0,1,2]).combine(msiOutputForMetaData, by: [0,1,2]).combine(hlaOutputForMetaDataParser, by: [0,1,2]).combine(mutSigOutput, by: [0,1,2]).unique()
 
 // --- Generate sample-level metadata
 process MetaDataParser {
@@ -1693,11 +1691,11 @@ process SomaticAggregate {
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(mutsigFile) from mutSigOutput.collect()
+    file(mutsigFile) from mutSigForAggregate.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
-    file(annotationFiles) from FacetsAnnotationOutputs.collect()
+    file(annotationFiles) from FacetsArmGeneOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
     file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
@@ -2180,7 +2178,7 @@ process GermlineAnnotateMaf {
     ])
 
   output:
-    file("${outputPrefix}.maf") into mafFileGermline
+    set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
@@ -2213,6 +2211,40 @@ process GermlineAnnotateMaf {
   """
   }
 
+(mafFileGermline, mafFileGermlineFacets) = mafFileGermline.into(2)
+
+mafFileGermlineFacets = mafFileGermlineFacets.groupTuple(by: [0,1,2])
+
+facetsMafFileGermline = FacetsforMafAnnoGermline.combine(mafFileGermlineFacets, by: [0,1,2]).unique()
+
+process GermlineFacetsAnnotation {
+  tag {idNormal}
+
+  if (publishAll) { publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode }
+
+  input:
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileGermline
+
+  output:
+    file("${outputPrefix}.facets.zygosity.maf") into mafFileAnnotatedGermline
+
+  when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
+
+  script:
+  mapFile = "${idTumor}_${idNormal}.map"
+  outputPrefix = "${idTumor}_vs_${idNormal}.germline"
+  """
+  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
+  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
+
+  /usr/bin/facets-suite/mafAnno.R \
+    --facets_files ${mapFile} \
+    --maf ${maf} \
+    --out_maf ${outputPrefix}.facets.maf
+
+  annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  """
+}
 
 // --- Call germline SVs with Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
@@ -2321,7 +2353,7 @@ process GermlineAggregate {
   publishDir "${params.outDir}/germline/", mode: params.publishDirMode
 
   input:
-    file(mafFile) from mafFileGermline.collect()
+    file(mafFile) from mafFileAnnotatedGermline.collect()
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
