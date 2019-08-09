@@ -512,6 +512,8 @@ if (!params.bam_pairing) {
     output:
       file('alignment_qc.tsv') into alignmentQc
 
+    when: !params.test
+
     script:
     if (assay == "wes") {
       options = "wes"
