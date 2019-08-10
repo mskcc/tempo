@@ -3,7 +3,7 @@ FROM frolvlad/alpine-glibc:alpine-3.9
 LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="2.1.0" \
+      version.image="2.2.0" \
       version.facets_suite="1.5.9" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
@@ -15,7 +15,9 @@ LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
       version.htstools="0.1.1" \
       version.htslib="1.5" \
       source.htstools="https://github.com/mskcc/htstools/releases/tag/snp_pileup_0.1.1" \
-      source.htslib="https://github.com/samtools/htslib/releases/tag/1.5"
+      source.htslib="https://github.com/samtools/htslib/releases/tag/1.5" \
+      version.annotate_with_zygosity_somatic="0.1.0" \
+      version.annotate_with_zygosity_germline="0.1.0" 
 
 ENV HTSTOOLS_VERSION 0.1.1
 ENV HTSLIB_VERSION 1.5
@@ -59,35 +61,40 @@ RUN apk add --update \
     # download and unzip facets, facets-suite, pctGCdata
         && cd /tmp \
 	    && wget https://github.com/mskcc/facets-suite/archive/${FACETS_SUITE_VERSION}.tar.gz -O facets-suite-${FACETS_SUITE_VERSION}.tar.gz \
-        # download Facets
-            && wget https://github.com/mskcc/facets/archive/v${FACETS_VERSION}.tar.gz -O facets-v${FACETS_VERSION}.tar.gz \
-        # download pctGCdata
-            && wget https://github.com/mskcc/pctGCdata/archive/v${PCTGCDATA}.tar.gz \
-        # unpack Facets
-            && tar xvzf facets-v${FACETS_VERSION}.tar.gz \
-        # unpack pctGCdata
-            && tar xvzf v${PCTGCDATA}.tar.gz \
-        # unpack Facets_Suite
-            && tar xvzf facets-suite-${FACETS_SUITE_VERSION}.tar.gz \
+    # download Facets
+        && wget https://github.com/mskcc/facets/archive/v${FACETS_VERSION}.tar.gz -O facets-v${FACETS_VERSION}.tar.gz \
+    # download pctGCdata
+        && wget https://github.com/mskcc/pctGCdata/archive/v${PCTGCDATA}.tar.gz \
+    # unpack Facets
+        && tar xvzf facets-v${FACETS_VERSION}.tar.gz \
+    # unpack pctGCdata
+        && tar xvzf v${PCTGCDATA}.tar.gz \
+    # unpack Facets_Suite
+        && tar xvzf facets-suite-${FACETS_SUITE_VERSION}.tar.gz \
     # install
-        # install pctGCdata
-            && cd /tmp/pctGCdata-${PCTGCDATA} \
-            && R CMD INSTALL . \
-        # install Facets
-            && cd /tmp/facets-${FACETS_VERSION} \
-            && R CMD INSTALL . \
-        # install Facets-Suite R dependencies
-            && R -e "install.packages(c('ggplot2','Cairo','argparse','data.table','gtable','gridExtra','bit64','plyr', 'dplyr','tidyr','jsonlite','stringr','reshape2'), repos='http://cran.us.r-project.org')" \
-	    && R -e "source('https://bioconductor.org/biocLite.R'); biocLite('rtracklayer')" \ 
-        # install Facets-Suite
-            && cd /tmp/facets-suite-${FACETS_SUITE_VERSION} \
-            # correct shebang line
-                && sed -i "s/opt\/common\/CentOS_6-dev\/R\/R-3.2.2\//usr\//g" *.R \
-            # copy execs to /usr/bin/facets-suite
-                && mkdir -p /usr/bin/facets-suite/ \
-                && cp -r /tmp/facets-suite-${FACETS_SUITE_VERSION}/* /usr/bin/facets-suite/ \
+    # install pctGCdata
+        && cd /tmp/pctGCdata-${PCTGCDATA} \
+        && R CMD INSTALL . \
+    # install Facets
+        && cd /tmp/facets-${FACETS_VERSION} \
+        && R CMD INSTALL . \
+    # install Facets-Suite R dependencies
+        && R -e "install.packages(c('ggplot2','Cairo','argparse','data.table','gtable','gridExtra','bit64','plyr', 'dplyr','tidyr','jsonlite','stringr','reshape2', 'binom'), repos='http://cran.us.r-project.org')" \
+        && R -e "source('https://bioconductor.org/biocLite.R'); biocLite('rtracklayer')" \ 
+    # install Facets-Suite
+        && cd /tmp/facets-suite-${FACETS_SUITE_VERSION} \
+    # correct shebang line
+        && sed -i "s/opt\/common\/CentOS_6-dev\/R\/R-3.2.2\//usr\//g" *.R \
+    # copy execs to /usr/bin/facets-suite
+        && mkdir -p /usr/bin/facets-suite/ \
+        && cp -r /tmp/facets-suite-${FACETS_SUITE_VERSION}/* /usr/bin/facets-suite/ \
     # clean up
         && rm -rf /var/cache/apk/* /tmp/*
 
 ENV PYTHONNOUSERSITE set
 ENV FACETS_OVERRIDE_EXITCODE set
+
+COPY annotate-with-zygosity-somatic.R /usr/bin
+COPY annotate-with-zygosity-germline.R /usr/bin
+RUN chmod +x /usr/bin/annotate-with-zygosity-somatic.R
+RUN chmod +x /usr/bin/annotate-with-zygosity-germline.R
