@@ -15,18 +15,22 @@ Users are welcomed and encouraged to submit changes they would like to see to Va
 Once you have forked the repo, you need to create your code contributions within a new branch of your forked repo. For general background on creating and managing branches within GitHub, see: [Git Branching and Merging](https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging).
 
 * To begin, create a topic branch from where you want to base your work.
-* For a new feature, this is usually the **develop**.  For documentation and bug fixes, this is usually the branch **master**.
+* For a new feature, this is usually the branch **develop**.  We regularly release changes in **develop** into a formal versioned release in the **master** branch.
 
-You usually create a branch like so:
+Users usually create a branch like so:
 
 ```
 git checkout develop
 git checkout -b [name_of_your_new_branch]
 ```
 
-You then commit code changes, and push your branch back to GitHub like so:
+Then commit any code changes and push your branch back to GitHub like this:
 
-```git push origin [name_of_your_new_branch]```
+```
+git add . 
+git commit -m "give a detailed commit message here"
+git push origin [name_of_your_new_branch]
+```
 
 A few tips:
 
