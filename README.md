@@ -6,4 +6,3 @@ For further details of how to begin processing data with Vaporware, please view 
 
 The inspiration for this project derives from [Sarek](https://github.com/SciLifeLab/Sarek), developed at [SciLifeLab](https://github.com/SciLifeLab).
 
-
