@@ -198,4 +198,3 @@ if MAF_input is not None and coding_baits_BED is not None:
 
 ## write to *tsv
 results.to_csv(str(sampleID + '_metadata.tsv'), sep="\t", index=False)
-
