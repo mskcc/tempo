@@ -3,7 +3,7 @@
 ## GRCH37
 
 ### Genome
-Create [a `bed` of the auto- and allosomes in b37](/juno/work/taylorlab/cmopipeline/mskcc-igenomes/grch37/genome/b37.bed) by downloading chromosome sizes and parsing the output into proper format:
+Create a `bed` of the auto- and allosomes in b37 (refer to `/juno/work/taylorlab/cmopipeline/mskcc-igenomes/grch37/genome/b37.bed`) by downloading chromosome sizes and parsing the output into proper format:
 ``` shell
 wget https://raw.githubusercontent.com/igvteam/igv/master/genomes/sizes/b37.chrom.sizes
 paste <(cut -f1 b37.chrom.sizes | head -24) \
@@ -59,3 +59,7 @@ bedtools slop \
 ```
 
 ## GRCh38
+[GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38).
+
+**Note:** Support for hg38 is currently somewhat limited. Please raise an issue at https://github.com/mskcc/vaporware/issues if you would like to process data with GRch38. However, please note that hg38 reference files are easily avilable from UCSC. 
+
