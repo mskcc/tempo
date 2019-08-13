@@ -570,9 +570,10 @@ process CreateScatteredIntervals {
       ])
   
   output:
-    file("agilent*.interval_list") into agilentIntervals mode flatten
-    file("idt*.interval_list") into idtIntervals mode flatten
-    file("wgs*.interval_list") into wgsIntervals mode flatten
+    set file("agilent*.interval_list"), val("agilent") into agilentIList
+    set file("idt*.interval_list"), val("idt") into idtIList
+    set file("wgs*.interval_list"), val("wgs") into wgsIList
+
 
   when: runSomatic || runGermline
 
@@ -620,21 +621,57 @@ process CreateScatteredIntervals {
   """
 }
 
+
 (bamsForIntervals, bamFiles) = bamFiles.into(2)
 
-// Associating interval_list files with BAM files, putting them into one channel
-agilentIList = agilentIntervals.map{ n -> [ n, "agilent" ] }
-idtIList = idtIntervals.map{ n -> [ n, "idt" ] }
-wgsIList = wgsIntervals.map{ n -> [ n, "wgs" ] }
+
+//Associating interval_list files with BAM files, putting them into one channel
 
 (aBamList, iBamList, wBamList) = bamsForIntervals.into(3)
 
-aMergedChannel = aBamList.combine(agilentIList, by: 1).unique() 
-bMergedChannel = iBamList.combine(idtIList, by: 1).unique() 
-wMergedChannel = wBamList.combine(wgsIList, by: 1).unique() 
+aMergedChannel = aBamList.combine(agilentIList, by: 1)
+iMergedChannel = iBamList.combine(idtIList, by: 1)
+wMergedChannel = wBamList.combine(wgsIList, by: 1)
 
 // These will go into mutect2 and haplotypecaller
-(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) 
+
+// //(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
+
+// From Nextflow Doc: However there are use cases in which each tuple has a different size depending grouping key. In this cases use the built-in function groupKey that allows you to create a special grouping key object to which it's possible to associate the group size for a given key.
+// Reference: https://github.com/nextflow-io/nextflow/issues/796
+// using groupKey() function to create a unique key for each TN pair, and the key also includes number of intervalBeds for each samples
+// this change will allow the merging processes of each sample only wait for relative children processes from the previous step, instead of waiting for all the processes to be done
+// change from .concat to .mix because .concat will wait for all the items proceeding from the first channel were emitted
+(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.mix( iMergedChannel, wMergedChannel).map{
+  item ->
+    def key = item[2]+"_vs_"+item[3]+"@"+item[0] // adding one unique key
+    def target = item[0]
+    def assay = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def tumorBam = item[4]
+    def normalBam = item[5]
+    def tumorBai = item[6]
+    def normalBai = item[7]
+    def intervalBed = item[8]
+
+    return [ key, target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
+}.map{ 
+    key, target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> 
+    tuple ( 
+         groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
+         target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed
+    )
+}.transpose().into(2)
+
+
+
+// if using strelka2, one should have manta for small InDels
+
+if('strelka2' in tools) {
+  tools.add('manta')
+}
+
 
 // --- Run Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
@@ -681,13 +718,14 @@ process RunMutect2 {
   tag {idTumor + "_vs_" + idNormal + "@" + intervalBed.baseName}
 
   input:
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
+    // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
+    set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
 
   output:
-    set idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine mode flatten
+    set id, idTumor, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forMutect2Combine
 
   when: "mutect2" in tools && runSomatic
 
@@ -714,14 +752,15 @@ process RunMutect2 {
 }
 
 //Formatting the channel to be keyed by idTumor, idNormal, and target
-forMutect2Combine = forMutect2Combine.groupTuple(by: [0,1,2])
+// group by groupKey(key, intervalBed.size())
+forMutect2Combine = forMutect2Combine.groupTuple()
 
 // Combine Mutect2 VCFs, bcftools
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
+    set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -732,7 +771,10 @@ process SomaticCombineMutect2Vcf {
   when: "mutect2" in tools && runSomatic
 
   script:
-  outfile = "${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
+  idTumor = id.toString().split("_vs_")[0]
+  idNormal = id.toString().split("@")[0].split("_vs_")[1]
+  target = id.toString().split("@")[1]
+  outfile="${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
@@ -768,8 +810,9 @@ process SomaticRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("Manta_${outputPrefix}.somaticSV.vcf.gz") into mantaOutput mode flatten
-    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("Manta_${outputPrefix}.candidateSmallIndels.vcf.gz"), file("Manta_${outputPrefix}.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka mode flatten
+    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput
+    set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantatbi
+    set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: "manta" in tools && runSomatic
 
@@ -811,11 +854,10 @@ process SomaticRunManta {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-mantaOutput = mantaOutput.groupTuple(by: [0,1,2])
 
-dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2])
+dellyFilterOutput = dellyFilterOutput.groupTuple(by: [0,1,2], size: 5)
 
-dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2]).unique()
+dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2])
 
 // --- Process Delly and Manta VCFs 
 (sampleIdsForDellyMantaMerge, bamFiles) = bamFiles.into(2)
@@ -873,9 +915,9 @@ process SomaticMergeDellyAndManta {
   """
 }
 
-mantaToStrelka = mantaToStrelka.groupTuple(by: [0,1,2,3])
 
 // --- Run Strelka2
+
 process SomaticRunStrelka2 {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -949,9 +991,12 @@ process SomaticRunStrelka2 {
   """
 }
 
-mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).unique()
 
-// Combine VCFs from MuTect2 and Strelka2
+
+mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2])
+
+// Combined Somatic VCFs
+
 process SomaticCombineChannel {
   tag {idTumor + "_vs_" + idNormal}
 
@@ -1459,7 +1504,7 @@ facetsForLOHHLA = facetsForLOHHLA.map{
 
 //apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
-mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2]).unique()
+mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2])
 
 // Run LOHHLA
 process RunLOHHLA {
@@ -1472,7 +1517,7 @@ process RunLOHHLA {
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    file("*") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.xls"), file("Figures/*.pdf") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -1550,7 +1595,8 @@ FacetsforMafAnno = FacetsforMafAnno.map{
 mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
 (FacetsforMafAnno, FacetsforMafAnnoGermline) = FacetsforMafAnno.into(2)
-facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).unique()
+facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
+
 
 // --- Do FACETS MAF annotation and post processing
 process SomaticFacetsAnnotation {
@@ -1603,7 +1649,7 @@ mafFileForNeoantigen = mafFileForNeoantigen.map{
     return [idTumor, idNormal, target, mafFile]
   }
 
-hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2]).unique()
+hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2])
 
 (hlaOutputForMetaDataParser, hlaOutput) = hlaOutput.into(2)
 
@@ -1812,14 +1858,14 @@ process GermlineRunHaplotypecaller {
   if (publishAll) { publishDir "${params.outDir}/germline/haplotypecaller", mode: params.publishDirMode }
 
   input:
-    set target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
+    // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
+    set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"),
-    file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput mode flatten
+    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1868,18 +1914,21 @@ process GermlineRunHaplotypecaller {
 }
 
 //Formatting the channel to be grouped by idTumor, idNormal, and target
-haplotypecallerOutput = haplotypecallerOutput.groupTuple(by: [0,1,2])
+// group by groupKey(key, intervalBed.size())
+haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 
-// Merge VCFs from GATK HaplotypeCaller
+// merge VCFs, GATK HaplotypeCaller
+
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
-
-  if (publishAll) { publishDir "${params.outDir}/germline/haplotypecaller", mode: params.publishDirMode }
+//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
+    set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict
     ])
 
   output:
@@ -1888,7 +1937,11 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
+  idTumor = id.toString().split("_vs_")[0]
+  idNormal = id.toString().split("@")[0].split("_vs_")[1]
+  target = id.toString().split("@")[1]
   outfile = "${idNormal}.haplotypecaller.vcf.gz"
+  
   """
   bcftools concat \
     --allow-overlaps \
@@ -2007,10 +2060,7 @@ process GermlineRunStrelka2 {
 }
 
 // Join HaploTypeCaller and Strelka outputs,  bcftools
-
-hcv = haplotypecallerCombinedVcfOutput.groupTuple(by: [0,1,2])
-
-haplotypecallerStrelkaChannel = hcv.combine(strelkaOutputGermline, by: [0,1,2]).unique()
+haplotypecallerStrelkaChannel = haplotypecallerCombinedVcfOutput.combine(strelkaOutputGermline, by: [0,1,2])
 
 (bamsForCombineChannel, bamFiles) = bamFiles.into(2)
 
@@ -2028,7 +2078,8 @@ bamsForCombineChannel = bamsForCombineChannel.map{
     return [idTumor, idNormal, target, assay, bamTumor, baiTumor]
   }
 
-mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1,2]).unique()
+
+mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1,2])
 
 // --- Combine VCFs with germline calls from Haplotypecaller and Strelka2
 process GermlineCombineChannel {
@@ -2308,10 +2359,10 @@ process GermlineDellyCall {
 
 // filter Delly & Manta via bcftools
 
-mantaOutputGermline = mantaOutputGermline.groupTuple(by: [0,1,2])
-dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2])
 
-dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2]).unique()
+dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2], size: 5)
+
+dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermline, by: [0,1,2])
 
 // --- Merge Delly and Manta VCFs 
 process GermlineMergeDellyAndManta {
