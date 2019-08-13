@@ -2508,7 +2508,7 @@ def extractFastq(tsvFile) {
     def targetFile = row.TARGET
     def fastqFile1 = returnFile(row.FASTQ_PE1)
     def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = returnFile(row.FASTQ_PE2)
+    def fastqFile2 = returnFile(row.FASTQ_PE2.trim())
     def sizeFastqFile2 = fastqFile2.size()
 
     def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
@@ -2540,7 +2540,7 @@ def extractBAM(tsvFile) {
     // check if using bamTumor.bai or bamTumor.bam.bai
     def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM))
     // def sizeTumorBamFile = tumorBamFile.size()
-    def bamNormal = returnFile(row.NORMAL_BAM)
+    def bamNormal = returnFile(row.NORMAL_BAM.trim())
     def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
     // def sizeNormalBamFile = normalBamFile.size()
 
