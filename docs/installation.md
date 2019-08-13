@@ -1,7 +1,7 @@
 # Installation
 
 ## Installing Nextflow
-[Nextflow](https://www.nextflow.io) requires Java 8 or later. You can check the version on your system with the command `java --version`.
+[Nextflow](https://www.nextflow.io) requires Java 8 or later. You can check the version on your system with the command `java -version`.
 
 Install Nextflow in the current directory by running:
 ```shell
