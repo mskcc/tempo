@@ -1752,7 +1752,6 @@ process SomaticAggregate {
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(mutsigFile) from mutSigForAggregate.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
@@ -1764,7 +1763,6 @@ process SomaticAggregate {
   output:
     file("merged.maf") into MafFileOutput
     file("merged_all_neoantigen_predictions.txt") into NetMhcChannel
-    file("mutsig/*") into MutSigFilesOutput
     file("facets/*") into FacetsChannel
     set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg") into FacetsMergedChannel
     set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
@@ -1782,17 +1780,13 @@ process SomaticAggregate {
   # Collect MAF files from neoantigen to maf_files/ and merge into one maf
   mkdir maf_files
   mv *.maf maf_files
-  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
-  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > mut_somatic.maf
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_somatic.maf
 
   # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
   mkdir netmhc_stats
   mv *.all_neoantigen_predictions.txt netmhc_stats
-  awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > merged_all_neoantigen_predictions.txt 
-
-  # Collect mutsig output to mutsig/
-  mkdir mutsig
-  mv *.mutsig.txt mutsig/
+  awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > mut_somatic_neoantigen_preds.txt
 
   # Collect facets output to facets/
   mkdir facets
@@ -1802,11 +1796,11 @@ process SomaticAggregate {
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
   mv *_OUT.txt facets/hisensPurityOutput
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > merged_hisens.cncf.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > merged_purity.cncf.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > merged_hisens.seg
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > merged_purity.seg 
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > merged_hisensPurity_out.txt  
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > cna_cncf_hisense_interger_calls.txt 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > cna_cncf_purity_interger_calls.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > cna_hisens_run_segmentation.seg 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > cna_purity_run_segmentation.seg
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > cna_facets_output.txt
 
   ## Move and merge FacetsAnnotation outputs
   mkdir facets/armLevel
@@ -1815,9 +1809,9 @@ process SomaticAggregate {
   mv *armlevel.tsv facets/armLevel
   mv *genelevel.tsv facets/geneLevel
   mv *genelevel_TSG_ManualReview.txt  facets/manualReview
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > merged_armlevel.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > merged_genelevel.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > cna_armlevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > cna_genelevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
 
   ## Move all FACETS output subdirectories into /facets
   mv ${facetsOutputSubdirectories} facets/
@@ -1835,13 +1829,13 @@ process SomaticAggregate {
     --force-samples \
     --merge none \
     --output-type z \
-    --output merged.vcf.gz \
+    --output somatic_sv.vcf.gz \
     vcf_delly_manta/*delly.manta.vcf.gz
 
   ## Collect metadata *tsv file into merged_metadata.tsv
   mkdir metadata
   mv *_metadata.tsv metadata 
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.tsv > merged_metadata.tsv
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.tsv > sample-level-metadata.txt 
   """
 }
 
@@ -2437,8 +2431,8 @@ process GermlineAggregate {
   # Collect MAF files from neoantigen to maf_files/ and merge into one maf
   mkdir maf_files
   mv *.maf maf_files
-  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
-  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > germline_variants.maf 
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >>  germline_variants.maf 
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   mkdir vcf_delly_manta
@@ -2448,7 +2442,7 @@ process GermlineAggregate {
     --force-samples \
     --merge none \
     --output-type z \
-    --output merged.vcf.gz \
+    --output germline_sv.vcf.gz \
     vcf_delly_manta/*.delly.manta.vcf.gz
   """
 }
