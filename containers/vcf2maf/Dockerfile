@@ -31,7 +31,7 @@ ENV BCFTOOLS_VERSION 1.9
 ENV ONCOKB_VERSION 1.1.0
 ENV ANNOTATE_MAF 1.0.1
 
-RUN apt-get update --fix-missing  && apt-get install -y \
+RUN apt-get update --fix-missing && apt-get install -y \
     tcsh \
     libnss-sss \
     git \
