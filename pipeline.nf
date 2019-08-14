@@ -323,8 +323,6 @@ if (!params.bam_pairing) {
 
     output:
       set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-      set idSample, val("${idSample}.bam"), val("${idSample}.bai"), assay, targetFile into recalibratedBamTSV
-      val(idSample) into currentSample
       file("${idSample}.bam") into currentBam
       file("${idSample}.bai") into currentBai
       val(assay) into assays
@@ -339,7 +337,7 @@ if (!params.bam_pairing) {
       --input ${bam} \
       --output ${idSample}.bam
       
-    cp -p ${idSample}.bai ${idSample}.bam.bai
+    mv ${idSample}.bai ${idSample}.bam.bai
     """
   }
 
