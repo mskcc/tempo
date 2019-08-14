@@ -1,0 +1,42 @@
+title: Vaporware
+description: Processing WES & WGS Tumor Samples
+themeConfig:
+  logo: /vaporware_stairs.jpg
+  sidebar:
+    - "/"
+    - "/overview"
+    - title: Setup
+      collapsable: false
+      children:
+        - "/installation"
+        - "/juno-setup"
+        - "/aws-setup"
+    - title: Usage
+      collapsable: false
+      children:
+        - "/run-pipeline"
+        - "/nextflow-basics"
+        - "/working-with-containers"
+    - title: Bioinformatics Components
+      collapsable: false
+      children:
+        - "/bioinformatic-components"
+        - "/variant-annotation-and-filtering"
+        - "/wes-panel-of-normals"
+    - title: Reference Files
+      collapsable: false
+      children:
+        - "/reference-files"
+        - "/intervals"
+    - "/aws-glossary"
+    - "/troubleshooting"
+    - "/contributing-to-vaporware"
+  repo: mskcc/vaporware
+  docsBranch: 'feature/documentation_vuepress'
+plugins:
+- - vuepress-plugin-medium-zoom
+  - selector: "#diagram"
+    delay: 1000
+    options:
+      margin: 24
+      scrollOffset: 0
