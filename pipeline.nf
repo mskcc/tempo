@@ -866,6 +866,7 @@ process SomaticRunStrelka2 {
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
+    --reportEVSFeatures \
     --callRegions ${intervals} \
     --referenceFasta ${genomeFile} \
     --indelCandidates ${mantaCSI} \
