@@ -322,7 +322,7 @@ if (!params.bam_pairing) {
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options -Xmx" + memMultiplier * task.memory.toString().split(" ")[0].toInteger() + "g"
-    sparkConf = "--conf spark.executor.cores = " + task.cpus
+    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
 
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
@@ -375,7 +375,7 @@ if (!params.bam_pairing) {
     }
 
     javaOptions = "--java-options -Xmx" + task.memory.toString().split(" ")[0].toInteger() + "g"
-    sparkConf = "--conf spark.executor.cores = " + task.cpus
+    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
 
     """
     gatk ApplyBQSRSpark \
