@@ -35,6 +35,7 @@ RUN apt-get update --fix-missing && apt-get install -y \
     tcsh \
     libnss-sss \
     git \
+    python2.7 \
     python-pip \
     build-essential \
     wget \
