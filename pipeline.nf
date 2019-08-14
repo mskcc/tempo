@@ -1119,7 +1119,7 @@ process SomaticAnnotateMaf {
 
   script:
   outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
-  mutect2InfoCols = "MBQ,MFRL,MMQ,MPOS,OCM,RPA,STR"
+  mutect2InfoCols = "MBQ,MFRL,MMQ,MPOS,OCM,RPA,STR,ECNT"
   strelka2InfoCols = "RU,IC,MQ,SNVSB"
   strelka2FormatCols = "FDP,SUBDP"
   formatCols = "alt_count_raw,alt_count_raw_fwd,alt_count_raw_rev,ref_count_raw,ref_count_raw_fwd,ref_count_raw_rev,depth_raw,depth_raw_fwd,depth_raw_rev"

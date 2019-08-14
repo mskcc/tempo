@@ -9,7 +9,7 @@ Output: 'input_filename.filter.vcf'
 
 __author__  = "Philip Jonsson"
 __email__   = "jonssonp@mskcc.org"
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 __status__  = "Dev"
 
 import sys, os
@@ -21,10 +21,11 @@ normal = vcf_in.header.samples[0]
 tumor = vcf_in.header.samples[1]
 
 ## Add new headers
-vcf_in.header.filters.add('multiallelic2', None, None, 'Multiple alleles at same locus') # Note that MuTect2 already has a FILTER tag for this, which requires a new name for this one
-vcf_in.header.filters.add('part_of_mnv', None, None, 'Variant is part of previous variant')
-vcf_in.header.filters.add('strand_bias', None, None, 'Variant suffering from strand bias') # Note that MuTect2 already has a FILTER tag for this, but this works
+# vcf_in.header.filters.add('multiallelic2', None, None, 'Multiple alleles at same locus') # Note that MuTect2 already has a FILTER tag for this, which requires a new name for this one
+# vcf_in.header.filters.add('part_of_mnv', None, None, 'Variant is part of previous variant')
+# vcf_in.header.filters.add('strand_bias', None, None, 'Variant suffering from strand bias') # Note that MuTect2 already has a FILTER tag for this, but this works
 vcf_in.header.info.add('Ref_Tri', 1, 'String', 'Normalize trinucleotide context of SNVs')
+vcf_in.header.info.add('Custom_filters', 1, 'String', 'Custom filters, semi-colon separated')
 
 ## Filter tags not used
 # vcf_in.header.filters.add('short_repeat', None, None, 'Variant part of a short repeat')
@@ -120,10 +121,11 @@ for var in vcf_in.fetch():
 
     # Add new FILTER tags
     if len(new_flags) > 0:
-        if "PASS" in var.filter.keys():
-            var.filter.clear()
-        for flag in new_flags:
-            var.filter.add(flag)    
+        var.info.__setitem__('Custom_filters', ';'.join(new_flags))
+        # if "PASS" in var.filter.keys():
+        #     var.filter.clear()
+        # for flag in new_flags:
+        #     var.filter.add(flag)    
 
     prev_var = var
 
