@@ -50,7 +50,8 @@ import pandas as pd
 import pybedtools
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--sampleID', help = 'sample ID from channel, should always exist', required = True)
+parser.add_argument('--tumorID', help = 'tumor ID from channel, should always exist', required = True)
+parser.add_argument('--normalID', help = 'normal ID from channel, should always exist', required = True)
 parser.add_argument('--facetsPurity_out', help = 'FACETS purity output, *_purity.out; used to measure ploidy and purity', required = False)
 parser.add_argument('--facetsArmLevel', help = 'FACETS armLevel output, *armlevel.tsv; used to measure WGD', required = False)
 parser.add_argument('--MSIsensor_output', help = 'MSIsensor output, *.msisensor.tsv', required = False)
@@ -67,7 +68,8 @@ parser.add_argument('--coding_baits_BED', help = 'BED of assay-specific baits in
 
 args = parser.parse_args()
 
-sampleID = args.sampleID
+tumorID = args.tumorID
+normalID = args.normalID
 facetsPurityPloidy = args.facetsPurity_out
 facetsArmLevel = args.facetsArmLevel
 MSIoutput = args.MSIsensor_output
@@ -80,8 +82,9 @@ coding_baits_BED = args.coding_baits_BED
 
 results = pd.DataFrame()
 
-## create sampleID column
-results = results.assign(sample=[sampleID])
+## create Tumor Normal column
+results = results.assign(sample=[tumorID])
+results = results.assign(sample=[normalID])
 
 if facetsPurityPloidy is not None:
     ## parse purity and ploidy from FACETS *_purity.out
@@ -197,4 +200,4 @@ if MAF_input is not None and coding_baits_BED is not None:
     results['TMB']=[tmb]
 
 ## write to *tsv
-results.to_csv(str(sampleID + '_metadata.tsv'), sep="\t", index=False)
+results.to_csv(str(sampleID + '_metadata.txt'), sep="\t", index=False)
