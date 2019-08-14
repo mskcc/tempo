@@ -1,0 +1,14 @@
+# You can use this file to create a conda environment for this pipeline:
+# conda env create -f environment.yml
+name: strelka2-manta-bcftools-vt
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  - bcftools=1.9
+  - vt=0.57721
+  - pysam=0.15.2
+  - strelka=2.9.10
+  - manta=1.5.0
