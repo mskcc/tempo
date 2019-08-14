@@ -510,7 +510,7 @@ if (!params.bam_pairing) {
       file(metricsFile) from qcFiles
 
     output:
-      file('alignment_qc.tsv') into alignmentQc
+      file('alignment_qc.txt') into alignmentQc
 
     when: !params.test
 
@@ -1606,8 +1606,8 @@ process SomaticFacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
+    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1625,11 +1625,11 @@ process SomaticFacetsAnnotation {
   
   /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
-    --outfile ${outputPrefix}.genelevel.tsv
+    --outfile ${outputPrefix}.genelevel.txt
 
   /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.tsv
+    --outfile ${outputPrefix}.armlevel.txt
 
   annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
@@ -1718,7 +1718,7 @@ process MetaDataParser {
     ]) 
 
   output:
-    file("*_metadata.tsv") into MetaDataOutputs
+    file("*_metadata.txt") into MetaDataOutputs
 
   when: runSomatic
 
@@ -1761,13 +1761,13 @@ process SomaticAggregate {
     file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
-    file("merged.maf") into MafFileOutput
-    file("merged_all_neoantigen_predictions.txt") into NetMhcChannel
+    file("mut_somatic.maf") into MafFileOutput
+    file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
     file("facets/*") into FacetsChannel
     set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg") into FacetsMergedChannel
-    set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
-    file("merged.vcf.gz") into VcfBedPeChannel
-    file("merged_metadata.tsv") into MetaDataOutputChannel
+    set file("cna_armlevel.txt"), file("merged_armlevel.txt"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
+    file("somatic_sv.vcf.gz") into VcfBedPeChannel
+    file("sample-level-metadata.txt") into MetaDataOutputChannel
 
   when: runSomatic
     
@@ -1796,7 +1796,7 @@ process SomaticAggregate {
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
   mv *_OUT.txt facets/hisensPurityOutput
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > cna_cncf_hisense_interger_calls.txt 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > cna_cncf_hisens_interger_calls.txt 
   awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > cna_cncf_purity_interger_calls.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > cna_hisens_run_segmentation.seg 
   awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > cna_purity_run_segmentation.seg
@@ -1806,11 +1806,11 @@ process SomaticAggregate {
   mkdir facets/armLevel
   mkdir facets/geneLevel
   mkdir facets/manualReview
-  mv *armlevel.tsv facets/armLevel
-  mv *genelevel.tsv facets/geneLevel
+  mv *armlevel.txt facets/armLevel
+  mv *genelevel.txt facets/geneLevel
   mv *genelevel_TSG_ManualReview.txt  facets/manualReview
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > cna_armlevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > cna_genelevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.txt > cna_armlevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.txt > cna_genelevel.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
 
   ## Move all FACETS output subdirectories into /facets
@@ -1832,10 +1832,10 @@ process SomaticAggregate {
     --output somatic_sv.vcf.gz \
     vcf_delly_manta/*delly.manta.vcf.gz
 
-  ## Collect metadata *tsv file into merged_metadata.tsv
+  ## Collect metadata *tsv file into merged_metadata.txt
   mkdir metadata
-  mv *_metadata.tsv metadata 
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.tsv > sample-level-metadata.txt 
+  mv *_metadata.txt metadata 
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.txt > sample-level-metadata.txt 
   """
 }
 
@@ -2417,8 +2417,8 @@ process GermlineAggregate {
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
-    file("merged.maf") into GermlineMafFileOutput
-    file("merged.vcf.gz") into GermlineVcfBedPeChannel
+    file("germline_variants.maf") into GermlineMafFileOutput
+    file("germline_sv.vcf.gz") into GermlineVcfBedPeChannel
   
   when: runGermline
 
