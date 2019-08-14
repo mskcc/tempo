@@ -756,8 +756,6 @@ forMutect2Combine = forMutect2Combine.groupTuple()
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "_vs_" + idNormal}
 
-//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/mutect2", mode: params.publishDirMode
-
   input:
     set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -798,9 +796,6 @@ process SomaticCombineMutect2Vcf {
 // --- Run Manta
 process SomaticRunManta {
   tag {idTumor + "_vs_" + idNormal}
-
-//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", pattern: "*.gz", mode: params.publishDirMode
-//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/somatic_variants/manta", pattern: "*.gz.tbi", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -868,14 +863,12 @@ dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2])
 process SomaticMergeDellyAndManta {
   tag {idTumor + "_vs_" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/structural_variants", mode: params.publishDirMode }
-
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
 
   output:
-    file("{outputPrefix}.delly.manta.vcf.gz") into vcfDellyMantaMergedOutput
-    file("{outputPrefix}.delly.manta.vcf.gz.tbi") into vcfDellyMantaMergedtbi
+    file("${outputPrefix}.delly.manta.vcf.gz") into vcfDellyMantaMergedOutput
+    file("${outputPrefix}.delly.manta.vcf.gz.tbi") into vcfDellyMantaMergedtbi
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -1247,7 +1240,7 @@ process RunMsiSensor {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msiOutput 
+    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msiOutput
 
   when: "msisensor" in tools && runSomatic
 
@@ -1922,9 +1915,6 @@ haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
-//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
-
-//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
 
   input:
     set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
@@ -1981,8 +1971,6 @@ process GermlineRunManta {
 
   output:
     set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline
-    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutputGermlineVCF
-    set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantaOutputGermlineVCFtbi
 
   when: 'manta' in tools && runGermline
 
@@ -2375,8 +2363,8 @@ process GermlineMergeDellyAndManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.delly.manta.filtered.merge.vcf.gz"), file("${idNormal}.delly.manta.filtered.merge.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
-    set file("${idNormal}.delly.manta.filtered.merge.vcf.gz"), file("${idNormal}.delly.manta.filtered.merge.vcf.gz.tbi") into germlineVcfBedPe
+    set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
+    set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into germlineVcfBedPe
 
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
@@ -2404,10 +2392,10 @@ process GermlineMergeDellyAndManta {
     --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
     --include 'FILTER=\"PASS\"' \
     --output-type z \
-    --output ${idNormal}.delly.manta.filtered.merge.vcf.gz \
+    --output ${idNormal}.delly.manta.vcf.gz \
     ${idNormal}.delly.manta.unfiltered.vcf.gz 
     
-  tabix --preset vcf ${idNormal}.delly.manta.filtered.merge.vcf.gz
+  tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
 }
 
