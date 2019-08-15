@@ -2420,7 +2420,7 @@ process GermlineAggregate {
 
   input:
     file(mafFile) from mafFileAnnotatedGermline.collect()
-    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+    file(dellyMantaVcf) from germlineVcfBedPe.unique { it.getName() }.collect()
 
   output:
     file("merged.maf") into GermlineMafFileOutput
