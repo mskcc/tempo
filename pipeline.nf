@@ -2272,9 +2272,7 @@ process GermlineAnnotateMaf {
 
 (mafFileGermline, mafFileGermlineFacets) = mafFileGermline.into(2)
 
-mafFileGermlineFacets = mafFileGermlineFacets.groupTuple(by: [0,1,2])
-
-facetsMafFileGermline = FacetsforMafAnnoGermline.combine(mafFileGermlineFacets, by: [0,1,2]).unique()
+facetsMafFileGermline = FacetsforMafAnnoGermline.combine(mafFileGermlineFacets, by: [0,1,2])
 
 process GermlineFacetsAnnotation {
   tag {idNormal}
