@@ -306,7 +306,7 @@ if (!params.bam_pairing) {
 
     output:
       set idSample, file("${idSample}.recal.table") into recalibrationTable
-      set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
+      set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bam.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
 
