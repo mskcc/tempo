@@ -1244,7 +1244,16 @@ process SomaticAnnotateMaf {
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
     
-  filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
+  filter-somatic-maf.R \
+    --tumor-vaf ${params.somaticVariant.tumorVaf} \
+    --tumor-depth ${params.somaticVariant.tumorDepth} \
+    --tumor-count ${params.somaticVariant.tumorCount} \
+    --normal-depth ${params.somaticVariant.normalDepth} \
+    --normal-count ${params.somaticVariant.normalCount} \
+    --gnomad-allele-frequency ${params.somaticVariant.gnomadAf} \
+    --normal-panel-count ${params.somaticVariant.ponCount} \
+    --maf_file ${outputPrefix}.raw.oncokb.maf \
+    --output-prefix ${outputPrefix}
   """
 }
 
