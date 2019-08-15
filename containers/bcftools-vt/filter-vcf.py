@@ -116,8 +116,8 @@ for var in vcf_in.fetch():
     #     new_flags.append('short_repeat') 
 
     ## Conflicting MuTect2 and Strelka2 filters
-    # if "PASS" in filter and "Strelka2FAIL" in info:
-    #     new_flags.append('caller_conflict')
+    if "PASS" in filter and "Strelka2FAIL" in info:
+        new_flags.append('caller_conflict')
 
     # Add new FILTER tags
     if len(new_flags) > 0:

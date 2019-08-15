@@ -38,12 +38,10 @@ parser$add_argument('-gaf', '--gnomad-allele-frequency', required = FALSE,
 parser$add_argument('-pon', '--normal-panel-count', required = FALSE,
                     default = 10, help = 'Panel of normals count cut-off [default %(default)s]')
                 
-    
+# Get inputs
 args = parser$parse_args()
-
 maf = args$maf_file
 output_prefix = args$output_prefix
-
 tumor_vaf_cutoff = args$tumor_vaf
 tumor_depth_cutoff = args$tumor_depth
 tumor_readcount_cutoff = args$tumor_count
