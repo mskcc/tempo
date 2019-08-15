@@ -324,7 +324,7 @@ if (!params.bam_pairing) {
     output:
       set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       file("${idSample}.bam") into currentBam
-      file("${idSample}.bai") into currentBai
+      file("${idSample}.bam.bai") into currentBai
       val(assay) into assays
       val(targetFile) into targets
 
