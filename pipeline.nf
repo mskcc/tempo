@@ -151,11 +151,7 @@ if (!params.bam_pairing) {
   pairingTN = extractPairing(pairingFile)
   fastqFiles = extractFastq(mappingFile)
 
-  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.set{ groupedFastqs }
-
-  groupedFastqs.into { fastPFiles; fastqFiles }
-  fastPFiles = fastPFiles.transpose()
-  fastqFiles = fastqFiles.transpose()
+  fastqFiles = fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -172,26 +168,31 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    // Different resource requirements for AWS and LSF
-    // WES should use mem - 1 for bwa mem & samtools sort
-    // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
-    if (params.mem_per_core) { 
-      if ('wes' in assay){
-        mem = task.memory.toString().split(" ")[0].toInteger() - 1
-      }
-      else if ('wgs' in assay){
-        mem = task.memory.toString().split(" ")[0].toInteger() - 3
-      }
+
+    if(sizeFastqFile1/1024**3 > 10){
+      task.time = { 32.h * task.attempt }
+    }
+    else if (sizeFastqFile1/1024**3 < 7 ){
+      task.time = { 3.h * task.attempt }
+    }
+    else{
+      task.time = { 6.h * task.attempt }
+    }
+
+    taskMemMultiplier = params.mem_per_core ? 1 : task.cpus
+    if (sizeFastqFile1/1024**3 < 0.5) {
+        mem = 1
+        task.memory = { (mem * taskMemMultiplier + 1) + ' GB' }
+    }
+    else if (sizeFastqFile1/1024**3 > 8) {
+        mem = 96 - 5
     }
     else {
-      if ('wes' in assay){
-        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-      }
-      else if ('wgs' in assay){
-        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
-      }
-    } 
+        mem = (2 * sizeFastqFile1/1024**3).toInteger()
+        task.memory = { (mem * taskMemMultiplier + 2) + ' GB' }
+    }
+
+    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     """
     set -e
     set -o pipefail
@@ -253,8 +254,23 @@ if (!params.bam_pairing) {
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
+
+    if(bam.size()/1024**3 > 100){
+      task.time = { 6.h * task.attempt }
+    }
+    else if (bam.size()/1024**3 > 200){
+      task.time = { 32.h * task.attempt }
+    }
+    else{
+      task.time = { 3.h * task.attempt }
+    }
+
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    javaOptions = "--java-options '-Xms4000m -Xmx" + memMultiplier * task.memory.toString().split(" ")[0].toInteger() + "g'"
+
     """
-    gatk MarkDuplicates --java-options ${params.markdup_java_options} \
+    gatk MarkDuplicates \
+      ${javaOptions} \
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
@@ -438,6 +454,17 @@ if (!params.bam_pairing) {
     when: 'wes' in assay && !params.test
 
     script:
+
+    if(bam.size()/1024**3 > 150){
+      task.time = { 6.h * task.attempt }
+    }
+    else if (bam.size()/1024**3 > 300){
+      task.time = { 32.h * task.attempt }
+    }
+    else{
+      task.time = { 3.h * task.attempt }
+    }
+
     baitIntervals = ""
     targetIntervals = ""
     if (target == 'agilent'){
@@ -479,6 +506,17 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
+
+    if(bam.size()/1024**3 > 150){
+      task.time = { 6.h * task.attempt }
+    }
+    else if (bam.size()/1024**3 > 300){
+      task.time = { 32.h * task.attempt }
+    }
+    else{
+      task.time = { 3.h * task.attempt }
+    }
+
     options = ""
     if (assay == "wes") {
       if (target == "agilent") options = "--bed ${agilentTargets}"
