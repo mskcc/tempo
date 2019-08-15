@@ -358,7 +358,7 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.bam"), val("${idSample}.bam.bai"), assay, targetFile into recalibratedBamTSV
       val(idSample) into currentSample
       file("${idSample}.bam") into currentBam
-      file("${idSample}.bai") into currentBai
+      file("${idSample}.bam.bai") into currentBai
       val(assay) into assays
       val(targetFile) into targets
 
