@@ -3,7 +3,7 @@ FROM ubuntu:18.04
 LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="develop" \
+      version.image="1.2.3" \
       version.vcf2maf="1.6.17" \
       version.vep="88" \
       version.htslib="1.9" \
@@ -13,8 +13,8 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       version.alpine="3.8" \
       version.oncokb_annotator="1.1.0" \
       version.filter_somatic_maf="0.6.0" \
-      version.filter_germline_maf="0.1.0" \
-      version.annotateMaf="1.0.0" \
+      version.filter_germline_maf="0.2.0" \
+      version.annotateMaf="1.0.1" \
       source.vcf2maf="https://github.com/mskcc/vcf2maf/releases/tag/v1.6.17" \
       source.vep="http://dec2016.archive.ensembl.org/info/docs/tools/vep/script/vep_download.html#versions" \
       source.htslib="https://github.com/samtools/htslib/releases/tag/1.9" \
@@ -130,7 +130,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     r-base-core r-base-dev
 
-RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools'), repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}')"
+RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools', 'argparse'), repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}')"
 
 # install oncokb-annotator
 RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \

@@ -1252,7 +1252,7 @@ process SomaticAnnotateMaf {
     --normal-count ${params.somaticVariant.normalCount} \
     --gnomad-allele-frequency ${params.somaticVariant.gnomadAf} \
     --normal-panel-count ${params.somaticVariant.ponCount} \
-    --maf_file ${outputPrefix}.raw.oncokb.maf \
+    --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
   """
 }
@@ -2139,14 +2139,11 @@ process GermlineCombineChannel {
 
   script:  
   isec_dir = "${idNormal}.isec"
-  gnomad = gnomadWgsVcf
   if (target == 'wgs') {
     gnomad = gnomadWgsVcf
-    gnomadCutoff = 'AF_popmax>0.02'
   }
-  else {
+  else if (target == 'wes') {
     gnomad = gnomadWesVcf
-    gnomadCutoff = 'non_cancer_AF_popmax>0.02'
   }
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
@@ -2238,7 +2235,7 @@ process GermlineCombineChannel {
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
   bcftools filter \
-    --exclude \"${gnomadCutoff}\" \
+    --exclude \"${params.germlineVariant.gnomadAf}\" \
     --output-type v \
     --output ${idNormal}.union.gnomad.vcf 
 
@@ -2304,7 +2301,11 @@ process GermlineAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
+  filter-germline-maf.R \
+    --normal-depth ${params.germlineVariant.normalDepth} \
+    --normal-vaf ${params.germlineVariant.normalVaf} \
+    --maf-file ${outputPrefix}.raw.maf \
+    --output-prefix ${outputPrefix}
   """
   }
 
