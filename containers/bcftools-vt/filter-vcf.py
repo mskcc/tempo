@@ -25,7 +25,7 @@ tumor = vcf_in.header.samples[1]
 # vcf_in.header.filters.add('part_of_mnv', None, None, 'Variant is part of previous variant')
 # vcf_in.header.filters.add('strand_bias', None, None, 'Variant suffering from strand bias') # Note that MuTect2 already has a FILTER tag for this, but this works
 vcf_in.header.info.add('Ref_Tri', 1, 'String', 'Normalize trinucleotide context of SNVs')
-vcf_in.header.info.add('Custom_filters', 1, 'String', 'Custom filters, semi-colon separated')
+vcf_in.header.info.add('Custom_filters', '.', 'String', 'Custom filters, semi-colon separated')
 
 ## Filter tags not used
 # vcf_in.header.filters.add('short_repeat', None, None, 'Variant part of a short repeat')
@@ -121,7 +121,7 @@ for var in vcf_in.fetch():
 
     # Add new FILTER tags
     if len(new_flags) > 0:
-        var.info.__setitem__('Custom_filters', ';'.join(new_flags))
+        var.info.__setitem__('Custom_filters', ','.join(new_flags))
         # if "PASS" in var.filter.keys():
         #     var.filter.clear()
         # for flag in new_flags:

@@ -19,23 +19,23 @@ if (is.null(args) | length(args)<1) {
 }
 
 parser = ArgumentParser(description = 'Flag and filter somatic variants in input MAF file, output is a filtered and unfiltered but filter-tagged MAF file.')
-parser$add_argument('-m', '--maf-file', required = TRUE,
+parser$add_argument('-m', '--maf-file', type = 'character', required = TRUE,
                     help = 'VEP-annotated MAF file')
-parser$add_argument('-o', '--output-prefix', required = TRUE,
+parser$add_argument('-o', '--output-prefix', type = 'character', required = TRUE,
                     help = 'Prefix of output files')
-parser$add_argument('-tv', '--tumor-vaf', required = FALSE,
+parser$add_argument('-tv', '--tumor-vaf', type = 'double', required = FALSE,
                     default = 0.05, help = 'Tumor variant allele frequency cut-off [default %(default)s]')
-parser$add_argument('-td', '--tumor-depth', required = FALSE,
+parser$add_argument('-td', '--tumor-depth', type = 'integer', required = FALSE,
                     default = 20, help = 'Tumor variant loci total depth cut-off [default %(default)s]')
-parser$add_argument('-tc', '--tumor-count', required = FALSE,
+parser$add_argument('-tc', '--tumor-count', type = 'integer', required = FALSE,
                     default = 3, help = 'Tumor variant read support cut-off [default %(default)s]')                    
-parser$add_argument('-nd', '--normal-depth', required = FALSE,
+parser$add_argument('-nd', '--normal-depth', type = 'integer', required = FALSE,
                     default = 10, help = 'Normal variant loci total depth cut-off [default %(default)s]')
-parser$add_argument('-nc', '--normal-count', required = FALSE,
+parser$add_argument('-nc', '--normal-count', type = 'integer', required = FALSE,
                     default = 3, help = 'Normal variant read support cut-off [default %(default)s]')
-parser$add_argument('-gaf', '--gnomad-allele-frequency', required = FALSE,
+parser$add_argument('-gaf', '--gnomad-allele-frequency', type = 'double', required = FALSE,
                     default = 0.01, help = 'gnomAD allele frequency cut-off [default %(default)s]')
-parser$add_argument('-pon', '--normal-panel-count', required = FALSE,
+parser$add_argument('-pon', '--normal-panel-count', type = 'integer', required = FALSE,
                     default = 10, help = 'Panel of normals count cut-off [default %(default)s]')
                 
 # Get inputs
@@ -64,6 +64,7 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
             RepeatMasker = ifelse(is.na(RepeatMasker), '', RepeatMasker),
             gnomAD_FILTER = ifelse(is.na(gnomAD_FILTER), 0, 1),
+            Custom_filters = gsub(',', ';', Custom_filters), # note that semi-colons are not allowed in VCF INFO field
             FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER),
             alt_bias = t_depth_raw > 5 & (t_alt_count_raw_fwd == 0 | t_alt_count_raw_rev == 0),
             ref_bias = t_depth_raw > 5 & (t_depth_raw_fwd == 0 | t_depth_raw_fwd == 0)
