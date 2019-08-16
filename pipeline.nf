@@ -1517,7 +1517,7 @@ process RunLOHHLA {
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.txt"), file("Figures/*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.xls"), file("Figures/*.pdf") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
