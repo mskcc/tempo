@@ -1605,7 +1605,7 @@ process SomaticFacetsAnnotation {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
+    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -2404,6 +2404,10 @@ process GermlineMergeDellyAndManta {
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
 }
+
+germlineVcfBedPe = germlineVcfBedPe.unique { it.getName() }
+
+
 
 // --- Aggregate per-sample germline data
 process GermlineAggregate {
