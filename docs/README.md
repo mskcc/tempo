@@ -49,6 +49,8 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Intervals](intervals.md)
 
 #### 2.3. [Variant annotation and filtering](variant-annotation-and-filtering.md)
+* [Somatic SNVs and indels](variant-annotation-and-filtering.md#somatic-snvs-and-indels)
+* [Germline SNVs and indels](variant-annotation-and-filtering.md#germline-snvs-and-indels)
 * [Panel of normals for exomes](wes-panel-of-normals.md)
 
 ### 3. Help and other resources

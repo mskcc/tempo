@@ -2139,10 +2139,11 @@ process GermlineCombineChannel {
 
   script:  
   isec_dir = "${idNormal}.isec"
-  if (target == 'wgs') {
+  gnomad = gnomadWgsVcf
+  if (assay == 'wgs') {
     gnomad = gnomadWgsVcf
   }
-  else if (target == 'wes') {
+  else if (assay == 'wes') {
     gnomad = gnomadWesVcf
   }
   """

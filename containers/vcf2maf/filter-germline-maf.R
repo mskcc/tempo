@@ -19,18 +19,18 @@ if (is.null(args) | length(args)<1) {
 }
 
 parser = ArgumentParser(description = 'Flag and filter somatic variants in input MAF file, output is a filtered and unfiltered but filter-tagged MAF file.')
-parser$add_argument('-m', '--maf-file', required = TRUE,
+parser$add_argument('-m', '--maf-file', type = 'character', required = TRUE,
                     help = 'VEP-annotated MAF file')
-parser$add_argument('-o', '--output-prefix', required = TRUE,
+parser$add_argument('-o', '--output-prefix', type = 'character', required = TRUE,
                     help = 'Prefix of output files')
-parser$add_argument('-nd', '--normal-depth', required = FALSE,
+parser$add_argument('-nd', '--normal-depth', type = 'integer', required = FALSE,
                     default = 20, help = 'Normal variant loci total depth cut-off [default %(default)s]')
-parser$add_argument('-nv', '--normal-vaf', required = FALSE,
+parser$add_argument('-nv', '--normal-vaf', type = 'double', required = FALSE,
                     default = 0.35, help = 'Normal variant allele frequency cut-off [default %(default)s]')   
 
 # Get inputs
 args = parser$parse_args()
-args$maf_file
+maf = args$maf_file
 output_prefix = args$output_prefix
 normal_depth_cutoff = args$normal_depth
 normal_vaf_cutoff = args$normal_vaf
