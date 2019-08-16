@@ -1517,7 +1517,7 @@ process RunLOHHLA {
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.xls"), file("Figures/*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.txt"), file("Figures/*.pdf") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -1525,7 +1525,7 @@ process RunLOHHLA {
   """
   cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
   
-  PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
+  PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
