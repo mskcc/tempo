@@ -11,6 +11,8 @@ __status__  = "Dev"
 Parse pipeline outputs into a single *tsv file, a tab-delimited *tsv of metadata
 
 Usage: python3 create_metadata_file.py [-h] --sampleID SAMPLEID
+                               --tumorID TUMORID
+                               --normalID NORMALID
                                [--facetsPurity_out FACETSPURITY_OUT]
                                [--facetsArmLevel FACETSARMLEVEL]
                                [--MSIsensor_output MSISENSOR_OUTPUT]
@@ -50,6 +52,7 @@ import pandas as pd
 import pybedtools
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--sampleID', help = 'sample ID from channel, should always exist', required = True)
 parser.add_argument('--tumorID', help = 'tumor ID from channel, should always exist', required = True)
 parser.add_argument('--normalID', help = 'normal ID from channel, should always exist', required = True)
 parser.add_argument('--facetsPurity_out', help = 'FACETS purity output, *_purity.out; used to measure ploidy and purity', required = False)
@@ -61,13 +64,15 @@ parser.add_argument('--MAF_input', help = 'annotated MAF, *maf', required = Fals
 parser.add_argument('--coding_baits_BED', help = 'BED of assay-specific baits intersecting coding regions, ensGene.all_CODING_exons.reference.bed', required = False)
 
 
-## NOTE: only three asssys/BED files are acceptable for coding_baits_BED:
+## NOTE: 
+### Only three asssys/BED files are acceptable for coding_baits_BED:
 ### --- Agilent: AgilentExon_51MB_b37_v3_baits.coding.sorted.merged.bed
 ### --- IDT: IDT_Exome_v1_FP_b37_baits.coding.sorted.merged.bed
 ### --- WGS: b37_wgs_calling_regions.v1.coding.sorted.merged.bed
 
 args = parser.parse_args()
 
+sampleID = args.sampleID 
 tumorID = args.tumorID
 normalID = args.normalID
 facetsPurityPloidy = args.facetsPurity_out
@@ -83,8 +88,10 @@ coding_baits_BED = args.coding_baits_BED
 results = pd.DataFrame()
 
 ## create Tumor Normal column
+results = results.assign(sample=[sampleID])
 results = results.assign(sample=[tumorID])
 results = results.assign(sample=[normalID])
+
 
 if facetsPurityPloidy is not None:
     ## parse purity and ploidy from FACETS *_purity.out
