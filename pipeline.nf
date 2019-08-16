@@ -1482,8 +1482,8 @@ process RunLOHHLA {
   """
   cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
   
-  PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
-  PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+")
+  PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
+  PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
   Rscript /lohhla/LOHHLAscript.R \
