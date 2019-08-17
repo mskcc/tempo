@@ -1,9 +1,9 @@
 FROM continuumio/anaconda3:5.3.0
 
 LABEL authors="Evan Biederstedt (evan.biederstedt@gmail.com)" \
-      version.image="1.1.1" \
-      version.lohhla="1.1.1" \
-      source.lohhla="https://github.com/mskcc/lohhla/releases/tag/1.1.1"
+      version.image="1.1.2" \
+      version.lohhla="1.1.2" \
+      source.lohhla="https://github.com/mskcc/lohhla/releases/tag/1.1.2"
 
 
 RUN apt-get update && apt-get install -y procps
@@ -44,7 +44,7 @@ RUN conda update lohhla
 ## no working directory
 ## RUN git clone --single-branch --branch feature/work_with_Nexflow https://github.com/mskcc/lohhla.git
 
-RUN wget https://github.com/mskcc/lohhla/archive/1.1.1.zip && unzip 1.1.1.zip && mv /lohhla-1.1.1 /lohhla
+RUN wget https://github.com/mskcc/lohhla/archive/1.1.2.zip && unzip 1.1.2.zip && mv /lohhla-1.1.2 /lohhla
 
 RUN pwd
 
