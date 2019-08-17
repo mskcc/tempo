@@ -1732,6 +1732,8 @@ process MetaDataParser {
   """
   create_metadata_file.py \
     --sampleID ${idTumor}_vs_${idNormal} \
+    --tumorID  ${idTumor} \
+    --normalID ${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel ${armLevel} \
     --MSIsensor_output ${msifile} \
