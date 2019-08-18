@@ -2397,6 +2397,10 @@ process GermlineMergeDellyAndManta {
   """
 }
 
+
+germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
+
+
 // --- Aggregate per-sample germline data
 process GermlineAggregate {
  
