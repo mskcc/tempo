@@ -60,7 +60,7 @@ RUN apk add --update \
         && chmod  777 -R /tmp \
     # download and unzip facets, facets-suite, pctGCdata
         && cd /tmp \
-	    && wget https://github.com/mskcc/facets-suite/archive/${FACETS_SUITE_VERSION}.tar.gz -O facets-suite-${FACETS_SUITE_VERSION}.tar.gz \
+	&& wget https://github.com/mskcc/facets-suite/archive/${FACETS_SUITE_VERSION}.tar.gz -O facets-suite-${FACETS_SUITE_VERSION}.tar.gz \
     # download Facets
         && wget https://github.com/mskcc/facets/archive/v${FACETS_VERSION}.tar.gz -O facets-v${FACETS_VERSION}.tar.gz \
     # download pctGCdata
