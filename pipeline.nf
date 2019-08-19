@@ -266,7 +266,7 @@ if (!params.bam_pairing) {
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
-    javaOptions = "--java-options '-Xms4000m -Xmx" + memMultiplier * task.memory.toString().split(" ")[0].toInteger() + "g'"
+    javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 1) + "g'"
 
     """
     gatk MarkDuplicates \
