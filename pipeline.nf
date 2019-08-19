@@ -2435,6 +2435,10 @@ process GermlineMergeDellyAndManta {
   """
 }
 
+
+germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
+
+
 // --- Aggregate per-sample germline data
 process GermlineAggregate {
  
@@ -2566,7 +2570,7 @@ def extractPairing(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t', header: true)
   .map { row ->
-    [row.TUMOR_ID, row.NORMAL_ID]
+    [row.TUMOR_ID.trim(), row.NORMAL_ID.trim()]
   }
 }
 
@@ -2575,13 +2579,13 @@ def extractFastq(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 6)
-    def idSample = row.SAMPLE
-    def lane = row.LANE
-    def assayValue = row.ASSAY
-    def targetFile = row.TARGET
-    def fastqFile1 = returnFile(row.FASTQ_PE1)
+    def idSample = row.SAMPLE.trim()
+    def lane = row.LANE.trim()
+    def assayValue = row.ASSAY.trim()
+    def targetFile = row.TARGET.trim()
+    def fastqFile1 = returnFile(row.FASTQ_PE1.trim())
     def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = returnFile(row.FASTQ_PE2)
+    def fastqFile2 = returnFile(row.FASTQ_PE2.trim())
     def sizeFastqFile2 = fastqFile2.size()
 
     def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
@@ -2605,16 +2609,16 @@ def extractBAM(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 6)
-    def idTumor = row.TUMOR_ID
-    def idNormal = row.NORMAL_ID
-    def assay = row.ASSAY
-    def target = row.TARGET
-    def bamTumor = returnFile(row.TUMOR_BAM)
+    def idTumor = row.TUMOR_ID.trim()
+    def idNormal = row.NORMAL_ID.trim()
+    def assay = row.ASSAY.trim()
+    def target = row.TARGET.trim()
+    def bamTumor = returnFile(row.TUMOR_BAM.trim())
     // check if using bamTumor.bai or bamTumor.bam.bai
-    def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM))
+    def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM.trim()))
     // def sizeTumorBamFile = tumorBamFile.size()
-    def bamNormal = returnFile(row.NORMAL_BAM)
-    def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
+    def bamNormal = returnFile(row.NORMAL_BAM.trim())
+    def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM.trim()))
     // def sizeNormalBamFile = normalBamFile.size()
 
     [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
