@@ -245,7 +245,7 @@ if (!params.bam_pairing) {
     tag {idSample}
 
     input:
-      set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile from mergedBam
+      set idSample, lane, file(bam), assay, targetFile from mergedBam
 
     output:
       set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
@@ -574,7 +574,6 @@ process CreateScatteredIntervals {
     set file("idt*.interval_list"), val("idt") into idtIList
     set file("wgs*.interval_list"), val("wgs") into wgsIList
 
-
   when: runSomatic || runGermline
 
   script:
@@ -635,8 +634,6 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
 
 // These will go into mutect2 and haplotypecaller
 
-// //(mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.concat( bMergedChannel, wMergedChannel).into(2) // { mergedChannelSomatic, mergedChannelGermline }
-
 // From Nextflow Doc: However there are use cases in which each tuple has a different size depending grouping key. In this cases use the built-in function groupKey that allows you to create a special grouping key object to which it's possible to associate the group size for a given key.
 // Reference: https://github.com/nextflow-io/nextflow/issues/796
 // using groupKey() function to create a unique key for each TN pair, and the key also includes number of intervalBeds for each samples
@@ -663,7 +660,6 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
          target, assay, idTumor, idNormal, tumorBam, normalBam, tumorBai, normalBai, intervalBed
     )
 }.transpose().into(2)
-
 
 
 // if using strelka2, one should have manta for small InDels
@@ -754,6 +750,7 @@ process RunMutect2 {
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 // group by groupKey(key, intervalBed.size())
 forMutect2Combine = forMutect2Combine.groupTuple()
+
 
 // Combine Mutect2 VCFs, bcftools
 process SomaticCombineMutect2Vcf {
@@ -871,6 +868,7 @@ process SomaticMergeDellyAndManta {
 
   output:
     file("${outputPrefix}.delly.manta.vcf.gz") into vcfDellyMantaMergedOutput
+    file("${outputPrefix}.delly.manta.vcf.gz.tbi") into vcfDellyMantaMergedtbi
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -1273,18 +1271,18 @@ process RunMsiSensor {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.msisensor.tsv") into msiOutput 
+    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msiOutput
 
   when: "msisensor" in tools && runSomatic
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}.msisensor.tsv"
+  outputPrefix = "${idTumor}_vs_${idNormal}"
   """
   msisensor msi \
     -d ${msiSensorList} \
     -t ${bamTumor} \
     -n ${bamNormal} \
-    -o ${outputPrefix}
+    -o ${outputPrefix}.msisensor.tsv
   """
 }
 
@@ -1504,6 +1502,7 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 // [ idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") ]
 // [idTumor, idNormal, target, *purity.out, *purity.cncf.txt, *purity.Rdata, purity.seg, hisens.out, hisens.cncf.txt, hisens.Rdata, hisens.seg into FacetsOutput
 
+
 (facetsForLOHHLA, FacetsforMafAnno, FacetsOutput) = FacetsOutput.into(3)
 
 facetsForLOHHLA = facetsForLOHHLA.map{
@@ -1532,8 +1531,6 @@ facetsForLOHHLA = facetsForLOHHLA.map{
 (hlaOutputForLOHHLA, hlaOutput) = hlaOutput.into(2)
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER, with the above
-
-//apply *.groupTuple(by: [0,1,2]) in order to group the channel by idTumor, idNormal, and target
 
 mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsForLOHHLA, by: [0,1,2])
 
@@ -1621,9 +1618,6 @@ FacetsforMafAnno = FacetsforMafAnno.map{
     return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf]
   }
 
-//Formatting the channel to be grouped by idTumor, idNormal, and target
-
-mafFileForMafAnno = mafFileForMafAnno.groupTuple(by: [0,1,2])
 
 (FacetsforMafAnno, FacetsforMafAnnoGermline) = FacetsforMafAnno.into(2)
 facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
@@ -1952,7 +1946,6 @@ haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
-//  publishDir "${params.outDir}/${idTumor}_vs_${idNormal}/germline_variants/haplotypecaller", mode: params.publishDirMode
 
   input:
     set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
@@ -2008,7 +2001,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline mode flatten
+    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline
 
   when: 'manta' in tools && runGermline
 
@@ -2312,9 +2305,7 @@ process GermlineAnnotateMaf {
 
 (mafFileGermline, mafFileGermlineFacets) = mafFileGermline.into(2)
 
-mafFileGermlineFacets = mafFileGermlineFacets.groupTuple(by: [0,1,2])
-
-facetsMafFileGermline = FacetsforMafAnnoGermline.combine(mafFileGermlineFacets, by: [0,1,2]).unique()
+facetsMafFileGermline = FacetsforMafAnnoGermline.combine(mafFileGermlineFacets, by: [0,1,2])
 
 process GermlineFacetsAnnotation {
   tag {idNormal}
@@ -2384,13 +2375,6 @@ process GermlineDellyCall {
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-// filter Delly & Manta via bcftools
-
-
-// Put manta output and delly output into the same channel so they can be processed together in the group key
-// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-
-// filter Delly & Manta via bcftools
 
 
 dellyFilterOutputGermline = dellyFilterOutputGermline.groupTuple(by: [0,1,2], size: 5)
@@ -2445,6 +2429,10 @@ process GermlineMergeDellyAndManta {
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
 }
+
+
+germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
+
 
 // --- Aggregate per-sample germline data
 process GermlineAggregate {
@@ -2577,7 +2565,7 @@ def extractPairing(tsvFile) {
   Channel.from(tsvFile)
   .splitCsv(sep: '\t', header: true)
   .map { row ->
-    [row.TUMOR_ID, row.NORMAL_ID]
+    [row.TUMOR_ID.trim(), row.NORMAL_ID.trim()]
   }
 }
 
@@ -2586,13 +2574,13 @@ def extractFastq(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 6)
-    def idSample = row.SAMPLE
-    def lane = row.LANE
-    def assayValue = row.ASSAY
-    def targetFile = row.TARGET
-    def fastqFile1 = returnFile(row.FASTQ_PE1)
+    def idSample = row.SAMPLE.trim()
+    def lane = row.LANE.trim()
+    def assayValue = row.ASSAY.trim()
+    def targetFile = row.TARGET.trim()
+    def fastqFile1 = returnFile(row.FASTQ_PE1.trim())
     def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = returnFile(row.FASTQ_PE2)
+    def fastqFile2 = returnFile(row.FASTQ_PE2.trim())
     def sizeFastqFile2 = fastqFile2.size()
 
     def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
@@ -2616,16 +2604,16 @@ def extractBAM(tsvFile) {
   .splitCsv(sep: '\t', header: true)
   .map { row ->
     checkNumberOfItem(row, 6)
-    def idTumor = row.TUMOR_ID
-    def idNormal = row.NORMAL_ID
-    def assay = row.ASSAY
-    def target = row.TARGET
-    def bamTumor = returnFile(row.TUMOR_BAM)
+    def idTumor = row.TUMOR_ID.trim()
+    def idNormal = row.NORMAL_ID.trim()
+    def assay = row.ASSAY.trim()
+    def target = row.TARGET.trim()
+    def bamTumor = returnFile(row.TUMOR_BAM.trim())
     // check if using bamTumor.bai or bamTumor.bam.bai
-    def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM))
+    def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM.trim()))
     // def sizeTumorBamFile = tumorBamFile.size()
-    def bamNormal = returnFile(row.NORMAL_BAM)
-    def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
+    def bamNormal = returnFile(row.NORMAL_BAM.trim())
+    def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM.trim()))
     // def sizeNormalBamFile = normalBamFile.size()
 
     [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
