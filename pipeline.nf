@@ -1280,7 +1280,7 @@ process DoFacets {
   when: "facets" in tools && runSomatic
 
   script:
-  outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
+  outfile = idTumor + "__" + idNormal + ".snp_pileup.dat.gz"
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
