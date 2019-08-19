@@ -1,6 +1,6 @@
-# Variant annotation and filtering
+# Variant Annotation and Filtering
 
-## Somatic SNVs and indels
+## Somatic SNVs and Indels
 Variant-level annotation, filtering, and flagging of variants with further filter flags occur in the `SomaticCombineChannel` and `SomaticAnnotateMaf` processes. The union of variants that pass the somatic scoring models intrinsic to the callers (`FILTER="PASS"` in the VCF files) are combined, giving precedence to MuTect2 for any site where both callers detected a variant. 
 
 The functional effect of variants is predicted using [VEP](https://www.ensembl.org/vep) using [vcf2maf](https://github.com/mskcc/vcf2maf), which also converts from VCF into a tab-delimited MAF file. See notes on use of [preferred transcript isoforms](reference-resources.md#preferred-transcript-isoforms) and [VEP annotation outputs](https://useast.ensembl.org/info/docs/tools/vep/vep_formats.html#output).
@@ -9,7 +9,7 @@ The functional effect of variants is predicted using [VEP](https://www.ensembl.o
 The following columns are added to the final MAF file, in addition to those added during the VEP annotation:
 - `Strelka2FILTER`: Indicates that Strelka2 detected the variant but did not classify it as a somatic variant.
 - `gnomAD_FILTER`: Indicates that the variant was detected in the gnomAD workflow, but ultimately _not_ classified as a _germline_ variant. Note that this is not used in current filtering schema.
-- `RepeatMasker` and `EncodeDacMapability`: The variant locus is in a repeat, low-mapability, or hard-to-sequence region. More details in the [reference file description](reference-resources.md#repeatmasker-and-mappability-blacklist).
+- `RepeatMasker` and `EncodeDacMapability`: The variant locus is in a repeat, low-mappability, or hard-to-sequence region. More details in the [reference file description](reference-resources.md#repeatmasker-and-mappability-blacklist).
 - `PoN`: Panel-of-normals, the number of normal samples in which the variant was detected. [More details on the implementation for exomes](wes-panel-of-normals.md). Under development for genomes, currently applies exome PoN. 
 - `Ref_Tri`: Trinucleotide context of SNVs, normalized to pyrimidine-to-purine transversions.
 - gnomAD allele frequencies, [more details here](gnomad.md):
@@ -50,18 +50,18 @@ The `FILTER` column in the unfiltered MAF file, can contain any semi colon-separ
 - `multiallelic2`: Multiallelic loci, likely artifact. For variants called by Strelka2. The `2` is added due the presence of `multiallelic` flag in the MuTect2 VCFs.
 - `strand_bias`, variants likely artifactual due to strand bias:
     - For variants called by Mutect2, if all supporting reads come from one strand and there are a least 10 reads on both strands in either normal or tumor sample.
-    - For variants called by Strelka2, if the the total alternate read count is above 10 and all of these fall on either strand; or low mapping-quality variant suffering from bias in both supporting reads and total reads.
-- `caller_conflict`: Variant was detected by both callers, but did not pass Strelka2's tresholds for somatic variant calling.
+    - For variants called by Strelka2, if the total alternate read count is above 10 and all of these fall on either strand; or low mapping-quality variant suffering from bias in both supporting reads and total reads.
+- `caller_conflict`: Variant was detected by both callers, but did not pass Strelka2's thresholds for somatic variant calling.
 - The following read depth-based flags are parameterized according to the sequencing platform, see the `exome.config` and `genome.config` files.
-    - `low_vaf`: Variant falls below lower treshold for tumor variant allele fraction (VAF).
-    - `low_t_depth`: Variant falls below lower treshold for total depth in the tumor.
-    - `low_t_alt_count`: Variant falls below lower treshold for reads supporting variant allele in tumor.
+    - `low_vaf`: Variant falls below lower threshold for tumor variant allele fraction (VAF).
+    - `low_t_depth`: Variant falls below lower threshold for total depth in the tumor.
+    - `low_t_alt_count`: Variant falls below lower threshold for reads supporting variant allele in tumor.
     - `low_n_depth`: Variant falls below lower threshold for total depth in normal.
     - `high_n_alt_count`: Variant exceeds upper threshold for reads supporting variant allele normal.
-    - `mapability`/`repeatmasker`: Variant falls in blacklisted genomic region.
+    - `mappability`/`repeatmasker`: Variant falls in blacklisted genomic region.
     - `high_gnomad_pop_af`: Variant exceeds upper threshold for allele fraction in gnomAD.
     - `PoN`: Variant exceeds upper threshold for count in panel of normals.
-    - `low_mapping_quality`: For indels called by Strelka2, variant falls below lower mapping quality treshhold. 
+    - `low_mapping_quality`: For indels called by Strelka2, variant falls below lower mapping quality threshold. 
 
 <small><sup>1</sup>See the MuTect2 documentation for more information: https://software.broadinstitute.org/gatk/documentation/article?id=11005</small>\
 <small><sup>2</sup>See the Strelka2 documentation for more information: https://github.com/Illumina/strelka/blob/v2.9.x/docs/userGuide/README.md</small>

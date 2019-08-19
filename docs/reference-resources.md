@@ -1,7 +1,7 @@
 # Reference resources
 
-## RepeatMasker and mapability blacklist
-BED files with with genomic repeat and mapability information are used to annotate the VCFs with somatic and germline SNV/indels. These data are from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html), and the files are retrieved from the [UCSC Genome Browser](https://genome.ucsc.edu) and parsed as such:
+## RepeatMasker and mappability blacklist
+BED files with genomic repeat and mappability information are used to annotate the VCFs with somatic and germline SNV/indels. These data are from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html), and the files are retrieved from the [UCSC Genome Browser](https://genome.ucsc.edu) and parsed as such:
 
 ``` shell
 wget http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/rmsk.txt.gz
@@ -20,7 +20,7 @@ tabix --preset bed wgEncodeDacMapabilityConsensusExcludable.bed.gz
 ``` 
 
 ## Preferred transcript isoforms
-The `--custom-enst` argument to vcf2maf takes a list of preferred gene transcript isoforms which mtations are mapped onto. We supply a consensus list of [`isoform_overrides_at_mskcc` and `isoform_overrides_uniprot`](https://github.com/mskcc/vcf2maf/tree/master/data), generated as such:
+The `--custom-enst` argument to vcf2maf takes a list of preferred gene transcript isoforms which mutations are mapped onto. We supply a consensus list of [`isoform_overrides_at_mskcc` and `isoform_overrides_uniprot`](https://github.com/mskcc/vcf2maf/tree/master/data), generated as such:
 ``` r
 t1 = readr::read_tsv('isoform_overrides_at_mskcc')
 t2 = readr::read_tsv('isoform_overrides_uniprot')
@@ -42,7 +42,7 @@ Functional mutation effects and predicted oncogenicity of variants, as well as l
 ### Genome
 [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/gatk-legacy-bundles/b37).
 
-### SNV and InDel calling
+### SNV and indel calling
 For genomes, use [`bed` file of "callable"](https://github.mskcc/vaporware/blob/master/docs/INTERVALS.md#genome) regions from GATK's bundle.
 
 For exomes, use `bed` file corresponding to the platform used for target capture, see [documentation on intervals](https://github.mskcc/vaporware/blob/master/docs/INTERVALS.md#exome-capture-platform).
