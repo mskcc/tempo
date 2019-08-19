@@ -99,6 +99,7 @@ maf = hotspot_annotate_maf(maf)
 maf = as.data.table(maf) # necessary because of the class of output from previous call
 maf[Hotspot == TRUE & t_var_freq >= 0.02 & FILTER == 'low_vaf', FILTER := 'PASS'] # note: variants flagged by other filters will not be rescued by this
 maf[Hotspot == TRUE & FILTER == 'low_mapping_quality', FILTER := 'PASS']
+maf[Hotspot == TRUE & FILTER == 'low_t_depth', FILTER := 'PASS']
 maf[Hotspot == TRUE & FILTER == 'strand_bias', FILTER := 'PASS']
 
 # Write filtered and tagged input MAF -----------------------------------------------------------------------------
