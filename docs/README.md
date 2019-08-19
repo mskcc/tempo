@@ -17,7 +17,7 @@ footer: MIT Licensed | Copyright © 2019-present
 
 Vaporware is a computational pipeline for processing data of paired-end whole exome (WES) and whole genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the Center for Molecular Oncology.
 
-These pages contain instructions on how to run the Vaporware pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus sources and processing of all reference materials use. 
+These pages contain instructions on how to run the Vaporware pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus sources and processing of reference resources used. 
 
 If there are any questions or comments, you are welcome to [raise an issue](https://github.com/mskcc/vaporware/issues/new?title=[User%20question]).
 
@@ -45,13 +45,18 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Somatic analyses](bioinformatic-components.md#somatic-analyses)
 * [Germline analyses](bioinformatic-components.md#germline-analyses)
 
-#### 2.2. [Reference files](reference-files.md)
+#### 2.2. [Reference resources](reference-resources.md)
 * [Intervals](intervals.md)
+* [RepeatMasker and mapability blacklist](reference-resources.md#repeatmasker-and-mapability-blacklist)
+* [Preferred transcript isoforms](reference-resources.md#preferred-transcript-isoforms)
+* [Hotspot annotation](reference-resources.md#hotspot-annotation.md)
+* [OncoKB annotation](reference-resources.md#oncokb.md)
+* [gnomAD](gnomad.md)
+* [Panel of normals for exomes](wes-panel-of-normals.md)
 
 #### 2.3. [Variant annotation and filtering](variant-annotation-and-filtering.md)
 * [Somatic SNVs and indels](variant-annotation-and-filtering.md#somatic-snvs-and-indels)
 * [Germline SNVs and indels](variant-annotation-and-filtering.md#germline-snvs-and-indels)
-* [Panel of normals for exomes](wes-panel-of-normals.md)
 
 ### 3. Help and other resources
 * [Troubleshooting](troubleshooting.md)
