@@ -1,4 +1,4 @@
-# Creating a Panel of Normals (PoN) for exomes
+# Creating a panel of normals (PoN) for exomes
 
 "Somatic" variants that occur in a panel of normal samples can be considered sequencing artifacts. We can generate a VCF file to filter against by calling variants in normal samples that look "clean", i.e. absent of tumor contamination. We use a similar variant calling strategy as for the somatic variant calling in tumor samples
 
@@ -6,10 +6,10 @@ For each normal sample call variants with `Strelka2` and `MuTect2`.
 
 ## Strelka2
 
-Run `Manta` to seed InDel calling, otherwise run as if the normal sample is an unmatched tumor sample. Parse output with `bcftools`, subsetting on variants supported by more than one alternate read.
+Run `Manta` to seed indel calling, then run as if the normal sample is an unmatched tumor sample. Parse output with `bcftools`, subsetting on variants supported by more than one alternate read.
 
 ```shell
-$MANTA/configManta.py \
+$MANTA_PATH/configManta.py \
     --referenceFasta $REF \
     --runDir pon/manta/$NORMAL_NAME \
     --exome \
@@ -18,7 +18,7 @@ $MANTA/configManta.py \
 
 pon/manta/$NORMAL_NAME/runWorkflow.py --mode local
 
-$STRELKA/configureStrelkaGermlineWorkflow.py \
+$STRELKA_PATH/configureStrelkaGermlineWorkflow.py \
     --ref $REF \
     --runDir mutations/pon/strelka2/$NORMAL_NAME \
     --exome \
@@ -41,10 +41,10 @@ tabix --preset vcf pon/$NORMAL_NAME.strelka2.vcf.gz
 
 ## MuTect2
 
-`MuTect2` provides a variant calling mode for normal samples for this purpose. Process the output similarly to above. Fix some VCF header tags so that the files can be combined downstream. As opposed to the somatic variant calling in tumor samples, here retain any calls at multiallelic loci.
+`MuTect2` provides a variant calling mode for normal samples. Process the output similarly to above. Fix some VCF header tags so that the files can be combined downstream. As opposed to the somatic variant calling in tumor samples, here retain any calls at multiallelic loci.
 
 ```shell
-$GATK Mutect2 \
+gatk Mutect2 \
     --reference $REF \
     --intervals $TARGETS \
     --input $NORMAL_BAM \
@@ -82,4 +82,4 @@ bcftools +fill-tags pon.vcf.gz \
 tabix --preset vcf pon.annot.vcf.gz
 ```
 
-Now, `pon.annot.vcf.gz` is ready to use to [annotate somatic variant calls from tumor samples](https://github.com/mskcc/vaporware/blob/135719e430b7e7338a1aff25831968b97267b343/pipeline.nf#L931).
+Now, `pon.annot.vcf.gz` is ready to use to annotate somatic variant calls from tumor samples.

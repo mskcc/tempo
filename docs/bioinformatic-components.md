@@ -22,7 +22,7 @@ Vaporware accepts as input sequencing reads from one or multiple FASTQ file pair
 * __Alfred__: BAM file QC using [Alfred](https://github.com/tobiasrausch/alfred).
 
 ## Somatic analyses
-* SNVs and InDels are called using [MuTect2](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.4/org_broadinstitute_hellbender_tools_walkers_mutect_Mutect2.php) and [Strelka2](https://github.com/Illumina/strelka).
+* SNVs and indels are called using [MuTect2](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.4/org_broadinstitute_hellbender_tools_walkers_mutect_Mutect2.php) and [Strelka2](https://github.com/Illumina/strelka). See the [description of variant annotation and filtering](variant-annotation-and-filtering.md#somatic-snvs-and-indels) for more details.
 * Structural variants are detected by [Delly](https://github.com/dellytools/delly) and [Manta](https://github.com/Illumina/manta).
 * Copy-number analysis is performed with [FACETS](https://github.com/mskcc/facets) and processed using [facets-suite](https://github.com/mskcc/facets-suite).
 * Microsatellite instability is detected using [MSIsensor](https://github.com/ding-lab/msisensor).
