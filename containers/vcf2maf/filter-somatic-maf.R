@@ -76,7 +76,7 @@ maf[t_depth < tumor_depth_cutoff, FILTER := add_tag(FILTER, 'low_t_depth')]
 maf[t_alt_count < tumor_readcount_cutoff, FILTER := add_tag(FILTER, 'low_t_alt_count')]
 maf[n_depth < normal_depth_cutoff, FILTER := add_tag(FILTER, 'low_n_depth')]
 maf[n_alt_count > normal_readcount_cutoff | n_alt_count_raw > normal_readcount_cutoff, FILTER := add_tag(FILTER, 'high_n_alt_count')]
-maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mapability')]
+maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mappability')]
 maf[RepeatMasker != '', FILTER := add_tag(FILTER, 'repeatmasker')]
 if ('non_cancer_AF_popmax' %in% names(maf)) {
     maf[non_cancer_AF_popmax > gnomad_af_cutoff, FILTER := add_tag(FILTER, 'high_gnomad_pop_af')]

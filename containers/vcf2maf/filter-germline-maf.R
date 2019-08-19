@@ -60,7 +60,7 @@ maf[!ch_gene & n_var_freq < normal_vaf_cutoff & !Variant_Classification %in% c('
 maf[!ch_gene & n_var_freq < (normal_vaf_cutoff - 0.10) & Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
 maf[ch_gene & n_var_freq < normal_vaf_cutoff & t_var_freq < .25, FILTER := add_tag(FILTER, 'ch_mutation')]
 maf[t_var_freq > 3 * n_var_freq, FILTER := add_tag(FILTER, 't_in_n_contamination')]
-maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mapability')]
+maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mappability')]
 maf[RepeatMasker != '', FILTER := add_tag(FILTER, 'repeatmasker')]
 maf[gnomAD_FILTER == 1, FILTER := add_tag(FILTER, 'gnomad_filter')]
 

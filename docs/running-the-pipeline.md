@@ -1,4 +1,4 @@
-# Running the Vaporware pipeline
+# Running the Pipeline
 
 ## Overview 
 
@@ -33,11 +33,11 @@ nextflow run pipeline.nf --somatic --germline \
     --outDir results
 ```
 
-## Input files
+## Input Files
 
 For processing paired-end FASTQ inputs, users must provide both a mapping file and pairing file, as described below.
 
-### The mapping file
+### The Mapping File
 
 This file is necessary to map the input FASTQ pairs from one or more sequencing lanes to sample names. Additionally, this file tells the pipeline whether the samples are exome or genome samples. In the case of the former, the capture kit used is also input.
 
@@ -59,7 +59,7 @@ Read further details on these parameters [here](bioinformatics-components.md#gen
 
 _Note: It is important that **LANE** values be descriptive, as the combination of *SAMPLE* and *LANE* values must be unique. Duplicate non-unique values cause errors._
 
-### The pairing file
+### The Pairing File
 The pipeline needs to know which tumor and normal samples are to be analyzed as matched pairs. This files provides that pairing by referring to the sample names as provided in the **SAMPLE** column in the mapping file.
 
 _Note: The header line is mandatory but not the order of columns._
@@ -85,7 +85,7 @@ nextflow run pipeline.nf --somatic --germline \
 ```
 The `bam_pairing` input file is also a tab-separated file, see a further description below.
 
-### The BAM pairing file
+### The BAM Pairing File
 Given BAMs as inputs, the user must specify which tumor and normal samples are to be analyzed as matched pairs. The following format is used:
 
 _Note 1: The header line is mandatory but not the order of columns._
@@ -100,9 +100,9 @@ Example:
 |...|...|...|...|...|...|
 |normal_sample_n|tumor_sample_n|wes|agilent|/path/to/file/tumor_n.bam|/path/to/file/normal_n.bam|
 
-## Running the pipeline on Juno
+## Running the Pipeline on Juno
 
-### Submitting to the pipeline to LSF
+### Submitting the Pipeline to LSF
 
 We recommend submitting your `nextflow run pipeline.nf <...>` command to the cluster via `bsub`, which will launch a leader job from which individual processes are submitted as jobs to the cluster.
 
@@ -133,17 +133,17 @@ bsub -W 80:00 -n 1 -R "rusage[mem=15]" -o nf_output.out -e nf_output.err \
     -profile juno
 ```
 
-### Running from a `screen` session
+### Running From a `screen` Session
 
 Another option is to use a `screen` session for running the pipeline interactively, for example naming and entering a screen session as follows:
 
 `screen -RD new_screen_name`
 
-It is normally not a good idea to run things on the log-in nodes of the cluster, instead we recommend scheduling an interactive session via e.g. ` bsub -Is -n 1 -R "rusage[mem=20]" csh` and running the `screen` within that session.
+It is normally not a good idea to run things on the log-in nodes of the cluster. Instead we recommend scheduling an interactive session via e.g. ` bsub -Is -n 1 -R "rusage[mem=20]" csh` and running the `screen` within that session.
 
 Users are welcome to use `nohup` or `tmux` as well. 
 
-## Running the pipeline on AWS
+## Running the Pipeline on AWS
 
 These instructions will assume the user is moderately knowledgeable of AWS. Please refer to [AWS Setup](aws-setup.md) and the [AWS Glossary](aws-glossary.md) we have curated.
 

@@ -1,4 +1,4 @@
-# Creating a panel of normals (PoN) for exomes
+# Creating a Panel of Normals (PoN) for Exomes
 
 "Somatic" variants that occur in a panel of normal samples can be considered sequencing artifacts. We can generate a VCF file to filter against by calling variants in normal samples that look "clean", i.e. absent of tumor contamination. We use a similar variant calling strategy as for the somatic variant calling in tumor samples
 
