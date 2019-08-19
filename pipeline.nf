@@ -641,7 +641,7 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
 // change from .concat to .mix because .concat will wait for all the items proceeding from the first channel were emitted
 (mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.mix( iMergedChannel, wMergedChannel).map{
   item ->
-    def key = item[2]+"_vs_"+item[3]+"@"+item[0] // adding one unique key
+    def key = item[2]+"__"+item[3]+"@"+item[0] // adding one unique key
     def target = item[0]
     def assay = item[1]
     def idTumor = item[2]
@@ -686,7 +686,7 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
+    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
 
   when: "delly" in tools && runSomatic
 
@@ -696,7 +696,7 @@ process SomaticDellyCall {
     --svtype ${svType} \
     --genome ${genomeFile} \
     --exclude ${svCallingExcludeRegions} \
-    --outfile ${idTumor}_vs_${idNormal}_${svType}.bcf \
+    --outfile ${idTumor}__${idNormal}_${svType}.bcf \
     ${bamTumor} ${bamNormal}
 
   echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
@@ -704,8 +704,8 @@ process SomaticDellyCall {
   delly filter \
     --filter somatic \
     --samples samples.tsv \
-    --outfile ${idTumor}_vs_${idNormal}_${svType}.filter.bcf \
-    ${idTumor}_vs_${idNormal}_${svType}.bcf
+    --outfile ${idTumor}__${idNormal}_${svType}.filter.bcf \
+    ${idTumor}__${idNormal}_${svType}.bcf
   """
 }
 
@@ -726,7 +726,7 @@ process RunMutect2 {
   when: "mutect2" in tools && runSomatic
 
   script:
-  mutect2Vcf = "${idTumor}_vs_${idNormal}_${intervalBed.baseName}.vcf.gz"
+  mutect2Vcf = "${idTumor}__${idNormal}_${intervalBed.baseName}.vcf.gz"
   prefix = "${mutect2Vcf}".replaceFirst(".vcf.gz", "")
   """
   gatk --java-options -Xmx8g \
@@ -768,10 +768,10 @@ process SomaticCombineMutect2Vcf {
   when: "mutect2" in tools && runSomatic
 
   script:
-  idTumor = id.toString().split("_vs_")[0]
-  idNormal = id.toString().split("@")[0].split("_vs_")[1]
+  idTumor = id.toString().split("__")[0]
+  idNormal = id.toString().split("@")[0].split("__")[1]
   target = id.toString().split("@")[1]
-  outfile="${idTumor}_vs_${idNormal}.mutect2.filtered.vcf.gz"
+  outfile="${idTumor}__${idNormal}.mutect2.filtered.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
@@ -814,7 +814,7 @@ process SomaticRunManta {
   when: "manta" in tools && runSomatic
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   options = ""
   if (assay == "wes") options = "--exome"
   """
@@ -873,7 +873,7 @@ process SomaticMergeDellyAndManta {
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   """ 
   for f in *.bcf
   do 
@@ -963,19 +963,19 @@ process SomaticRunStrelka2 {
     --jobs ${task.cpus}
 
   mv Strelka/results/variants/somatic.indels.vcf.gz \
-    Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz
+    Strelka_${idTumor}__${idNormal}_somatic_indels.vcf.gz
   mv Strelka/results/variants/somatic.indels.vcf.gz.tbi \
-    Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz.tbi
+    Strelka_${idTumor}__${idNormal}_somatic_indels.vcf.gz.tbi
   mv Strelka/results/variants/somatic.snvs.vcf.gz \
-    Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz
+    Strelka_${idTumor}__${idNormal}_somatic_snvs.vcf.gz
   mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
-    Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz.tbi
+    Strelka_${idTumor}__${idNormal}_somatic_snvs.vcf.gz.tbi
 
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
   
   bcftools concat \
     --allow-overlaps \
-    Strelka_${idTumor}_vs_${idNormal}_somatic_indels.vcf.gz Strelka_${idTumor}_vs_${idNormal}_somatic_snvs.vcf.gz | \
+    Strelka_${idTumor}__${idNormal}_somatic_indels.vcf.gz Strelka_${idTumor}__${idNormal}_somatic_snvs.vcf.gz | \
   bcftools reheader \
     --samples samples.txt | \
   bcftools sort | \
@@ -1022,7 +1022,7 @@ process SomaticCombineChannel {
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
   
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   isec_dir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWgsVcf
@@ -1145,8 +1145,8 @@ process SomaticCombineChannel {
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
-    --output ${idTumor}_vs_${idNormal}.filtered.vcf \
-    ${idTumor}_vs_${idNormal}.vcf
+    --output ${idTumor}__${idNormal}.filtered.vcf \
+    ${idTumor}__${idNormal}.vcf
 
   # Add normal read count, using all reads
   GetBaseCountsMultiSample \
@@ -1154,12 +1154,12 @@ process SomaticCombineChannel {
     --maq 0 \
     --fasta ${genomeFile} \
     --bam ${idNormal}:${bamNormal} \
-    --vcf ${idTumor}_vs_${idNormal}.filtered.vcf \
+    --vcf ${idTumor}__${idNormal}.filtered.vcf \
     --output ${idNormal}.genotyped.vcf 
   
-  bgzip ${idTumor}_vs_${idNormal}.filtered.vcf
+  bgzip ${idTumor}__${idNormal}.filtered.vcf
   bgzip ${idNormal}.genotyped.vcf
-  tabix --preset vcf ${idTumor}_vs_${idNormal}.filtered.vcf.gz
+  tabix --preset vcf ${idTumor}__${idNormal}.filtered.vcf.gz
   tabix --preset vcf ${idNormal}.genotyped.vcf.gz
 
   bcftools annotate \
@@ -1191,7 +1191,7 @@ process SomaticAnnotateMaf {
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}.somatic"
+  outputPrefix = "${idTumor}__${idNormal}.somatic"
   if (target == 'wgs') {
     infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
   }
@@ -1245,7 +1245,7 @@ process RunMsiSensor {
   when: "msisensor" in tools && runSomatic
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   """
   msisensor msi \
     -d ${msiSensorList} \
@@ -1281,7 +1281,7 @@ process DoFacets {
 
   script:
   outfile = idTumor + "_" + idNormal + ".snp_pileup.dat.gz"
-  tag = outputFacetsSubdirectory = "${idTumor}_vs_${idNormal}"
+  tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   snp-pileup \
@@ -1364,7 +1364,7 @@ process RunPolysolver {
 process RunConpair {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/qc/conpair/${idTumor}_vs_${idNormal}", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/conpair/${idTumor}__${idNormal}", mode: params.publishDirMode
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForConpair
@@ -1379,7 +1379,7 @@ process RunConpair {
   when: !params.test
 
   script:
-  outPrefix = "${idTumor}_vs_${idNormal}"
+  outPrefix = "${idTumor}__${idNormal}"
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
   conpairPath = "/usr/bin/conpair"
   
@@ -1527,7 +1527,7 @@ process RunLOHHLA {
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
   Rscript /lohhla/LOHHLAscript.R \
-    --patientId ${idTumor}_vs_${idNormal} \
+    --patientId ${idTumor}__${idNormal} \
     --normalBAMfile ${bamNormal} \
     --tumorBAMfile ${bamTumor} \
     --HLAfastaLoc ${hlaFasta} \
@@ -1557,7 +1557,7 @@ process RunMutationSignatures {
   when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   """
   python /mutation-signatures/main.py \
     /mutation-signatures/Stratton_signatures30.txt \
@@ -1607,7 +1607,7 @@ process SomaticFacetsAnnotation {
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
-  outputPrefix = "${idTumor}_vs_${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
@@ -1661,7 +1661,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    file("${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
+    file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
@@ -1677,12 +1677,12 @@ process RunNeoantigen {
 
   python /usr/local/bin/neoantigen/neoantigen.py \
     --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
-    --sample_id ${idTumor}_vs_${idNormal} \
+    --sample_id ${idTumor}__${idNormal} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
 
-  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${idTumor}_vs_${idNormal}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}_vs_${idNormal}.all_neoantigen_predictions.txt
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${idTumor}__${idNormal}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}__${idNormal}.all_neoantigen_predictions.txt
   """
 }
 
@@ -1728,7 +1728,7 @@ process MetaDataParser {
   }
   """
   create_metadata_file.py \
-    --sampleID ${idTumor}_vs_${idNormal} \
+    --sampleID ${idTumor}__${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel ${armLevel} \
     --MSIsensor_output ${msifile} \
@@ -1930,8 +1930,8 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
-  idTumor = id.toString().split("_vs_")[0]
-  idNormal = id.toString().split("@")[0].split("_vs_")[1]
+  idTumor = id.toString().split("__")[0]
+  idNormal = id.toString().split("@")[0].split("__")[1]
   target = id.toString().split("@")[1]
   outfile = "${idNormal}.haplotypecaller.vcf.gz"
   
@@ -2095,7 +2095,7 @@ process GermlineCombineChannel {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}_vs_${idNormal}.germline.vcf") into vcfMergedOutputGermline
+    set idTumor, idNormal, target, file("${idTumor}__${idNormal}.germline.vcf") into vcfMergedOutputGermline
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
@@ -2216,7 +2216,7 @@ process GermlineCombineChannel {
   tabix --preset vcf ${idTumor}.genotyped.vcf.gz
 
   bcftools merge \
-    --output ${idTumor}_vs_${idNormal}.germline.vcf \
+    --output ${idTumor}__${idNormal}.germline.vcf \
     --output-type v \
     ${idNormal}.union.gnomad.vcf.gz \
     ${idTumor}.genotyped.vcf.gz
@@ -2242,7 +2242,7 @@ process GermlineAnnotateMaf {
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
   script:
-  outputPrefix = "${idTumor}_vs_${idNormal}.germline"
+  outputPrefix = "${idTumor}__${idNormal}.germline"
   if (target == 'wgs') {
     infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
   }
@@ -2289,7 +2289,7 @@ process GermlineFacetsAnnotation {
 
   script:
   mapFile = "${idTumor}_${idNormal}.map"
-  outputPrefix = "${idTumor}_vs_${idNormal}.germline"
+  outputPrefix = "${idTumor}__${idNormal}.germline"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
