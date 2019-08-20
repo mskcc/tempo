@@ -1,6 +1,6 @@
 # Juno Setup
 
-The Juno compute cluster is accessible to most researchers at MSKCC. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us).
+The Juno compute cluster is accessible to most researchers at MSKCC. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler and Vaporware has been tailored to work with LSF.
 
 ## Singularity Containers
 

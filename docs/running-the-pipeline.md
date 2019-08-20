@@ -147,10 +147,14 @@ Users are welcome to use `nohup` or `tmux` as well.
 
 These instructions will assume the user is moderately knowledgeable of AWS. Please refer to [AWS Setup](aws-setup.md) and the [AWS Glossary](aws-glossary.md) we have curated.
 
-...
+## Modifying or Resuming Pipeline Run
 
+Nextflow supports [modify and resume](https://www.nextflow.io/docs/latest/getstarted.html?#modify-and-resume). 
 
+To resume an interrupted Nextflow pipeline run, add `-resume` (note the single dash) to your command-line call to access Nextflow's cache history and continue a job from where it left off. This will trigger a check of which jobs already completed before starting unfinished jobs in the pipeline.
 
+This function also allows you to make changes to values in the `pipeline.nf` script and continue from where you left off. Nextflow will use the cached information from the unchanged sections while running only the modified processes. If you want to make changes to processes that already successfully completed, you have to manually delete the subdirectories in `work` where those processes where run. 
 
+_Note 1: if you use `-resume` for the first time of a timeline run, Nextflow will recognize this as superfluous, and continue._
 
-
+_Note 2: To peacefully interrupt an ongoing Nextflow pipeline run, do `control+C` once and wait for Nextflow to kill submitted jobs. Otherwise orphan jobs might be left on the cluster._
