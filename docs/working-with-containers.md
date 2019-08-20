@@ -1,4 +1,4 @@
-# Working with containers
+# Working With Containers
 
 Vaporware relies upon containers for reproducibility and portability. In Nextflow, each process can be executed within the environment of a specified container built on the [Docker](https://www.docker.com/) or [Singularity](https://singularity.lbl.gov) platform. This page contains a basic introduction to containers and how-to's for running Vaporware with containers.
 
