@@ -41,6 +41,8 @@ Somatic Analysis
  - MetaDataParser --- python script to parse metadata into single *tsv
  - SomaticAggregate --- collect outputs
 
+
+
 Germline Analysis
 -----------------
  - CreateScatteredIntervals --- (run once) GATK4 SplitIntervals
@@ -52,7 +54,8 @@ Germline Analysis
  - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
  - GermlineCombineChannel --- combined and filter germline calls, bcftools
  - GermlineAnnotateMaf--- annotate MAF, vcf2maf
- - GermlineAggregate --- collect outputs
+ - GermlineAggregateMaf --- collect outputs, MAF
+ - GermlineAggregateSv --- collect outputs, SVs
 
 */
 
@@ -1022,7 +1025,7 @@ process SomaticCombineChannel {
   
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  isec_dir = "${idTumor}.isec"
+  isecDir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWgsVcf
   if (target == "wgs") {
@@ -1770,56 +1773,16 @@ process MetaDataParser {
 }
 
 
-process SomaticAggregateMetadata {
+
+process SomaticAggregateMaf {
  
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
 
   input:
-    file(metaDataFile) from MetaDataOutputs.collect()
-
-  output:
-    file("sample-level-metadata.txt") into MetaDataOutputChannel
-
-  when: runSomatic
-    
-  script:
-  """
-  # Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-
-  ## Collect metadata *tsv file into merged_metadata.txt
-  mkdir metadata
-  mv *_metadata.txt metadata 
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.txt > sample-level-metadata.txt 
-  """
-}
-
-
-
-process SomaticAggregate {
- 
-  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
-
-  input:
-    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(purityFiles) from FacetsPurity.collect()
-    file(hisensFiles) from FacetsHisens.collect()
-    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
-    file(annotationFiles) from FacetsArmGeneOutputs.collect()
-    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
-    file(metaDataFile) from MetaDataOutputs.collect()
-    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
     file("mut_somatic.maf") into MafFileOutput
-    file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
-    file("facets/*") into FacetsChannel
-    set file("cna_cncf_hisens_interger_calls.txt"), file("cna_cncf_purity_interger_calls.txt"), file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
-    file("somatic_sv.vcf.gz") into VcfBedPeChannel
-    file("sample-level-metadata.txt") into MetaDataOutputChannel
 
   when: runSomatic
     
@@ -1834,11 +1797,60 @@ process SomaticAggregate {
   mv *.maf maf_files
   cat maf_files/*.maf | grep ^Hugo | head -n1 > mut_somatic.maf
   cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_somatic.maf
+  """
+}
+
+
+process SomaticAggregateNetMHC {
+ 
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+
+  input:
+    file(mafFile) from NeoantigenMafOutput.collect()
+
+  output:
+    file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
 
   # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
   mkdir netmhc_stats
   mv *.all_neoantigen_predictions.txt netmhc_stats
   awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > mut_somatic_neoantigen_preds.txt
+
+  """
+}
+
+
+
+process SomaticAggregateFacets {
+ 
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+
+  input:
+    file(purityFiles) from FacetsPurity.collect()
+    file(hisensFiles) from FacetsHisens.collect()
+    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
+    file(annotationFiles) from FacetsArmGeneOutputs.collect()
+
+  output:
+    file("facets/*") into FacetsChannel
+    set file("cna_cncf_hisens_interger_calls.txt"), file("cna_cncf_purity_interger_calls.txt"), file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
 
   # Collect facets output to facets/
   mkdir facets
@@ -1868,6 +1880,30 @@ process SomaticAggregate {
   ## Move all FACETS output subdirectories into /facets
   mv ${facetsOutputSubdirectories} facets/
 
+  """
+}
+
+
+
+
+process SomaticAggregateSv {
+ 
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+
+  output:
+    file("somatic_sv.vcf.gz") into VcfBedPeChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   for f in *.vcf.gz
   do
@@ -1883,6 +1919,28 @@ process SomaticAggregate {
     --output-type z \
     --output somatic_sv.vcf.gz \
     vcf_delly_manta/*delly.manta.vcf.gz
+
+  """
+}
+
+
+process SomaticAggregateMetadata {
+ 
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+
+  input:
+    file(metaDataFile) from MetaDataOutputs.collect()
+
+  output:
+    file("sample-level-metadata.txt") into MetaDataOutputChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
 
   ## Collect metadata *tsv file into merged_metadata.txt
   mkdir metadata
