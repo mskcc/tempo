@@ -2631,7 +2631,7 @@ process QcConpairAll {
 
 process QcConpairAggregate {
 
-  publishDir "${params.outDir}/qc/conpair/${idTumor}_vs_${idNormal}", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/conpairAll/", mode: params.publishDirMode
 
   input:
     file(concordance) from conpairAllConcordance.collect()
