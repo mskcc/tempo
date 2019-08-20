@@ -1769,6 +1769,34 @@ process MetaDataParser {
   """
 }
 
+
+process SomaticAggregateMetadata {
+ 
+  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+
+  input:
+    file(metaDataFile) from MetaDataOutputs.collect()
+
+  output:
+    file("sample-level-metadata.txt") into MetaDataOutputChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect metadata *tsv file into merged_metadata.txt
+  mkdir metadata
+  mv *_metadata.txt metadata 
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.txt > sample-level-metadata.txt 
+  """
+}
+
+
+
 process SomaticAggregate {
  
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
@@ -1862,6 +1890,11 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.txt > sample-level-metadata.txt 
   """
 }
+
+
+
+
+
 
 /*
 ================================================================================
