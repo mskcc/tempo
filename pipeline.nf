@@ -2443,6 +2443,191 @@ process GermlineAggregate {
 
 /*
 ================================================================================
+=                              Quality Control                                 =
+================================================================================
+*/
+
+
+(bamsForPileup, bamFiles) = bamFiles.into(2)
+
+allBamFiles = bamsForPileup.map{
+  item ->
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def bamTumor = item[4]
+    def bamNormal = item[5]
+    def baiTumor = item[6]
+    def baiNormal = item[7]
+
+    return [[idTumor, idNormal], [bamTumor, bamNormal], [baiTumor, baiNormal]]
+}.transpose()
+
+process QcPileup {
+  tag {idSample}
+
+  input:
+    set idSample, file(bam), file(bai) from allBamFiles
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+    ])
+
+  output:
+    set idSample, file("${idSample}.pileup") into (tumorPileup, normalPileup, Pileup)
+
+  when: !params.test
+
+  script:
+  gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
+  conpairPath = "/usr/bin/conpair"
+  markersBed = ""
+  if (params.genome == "GRCh37") {
+    markersBed = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.bed"
+  }
+  else {
+    markersBed = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.bed"
+  }
+
+  if (params.mem_per_core) {
+    mem = task.memory.toString().split(" ")[0].toInteger() - 1
+  }
+  else {
+    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+  }
+  javaMem = "${mem}g"
+  """
+  ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
+    --gatk=${gatkPath} \
+    --bam=${bam} \
+    --markers=${markersBed} \
+    --reference=${genomeFile} \
+    --xmx_java=${javaMem} \
+    --outfile=${idSample}.pileup
+  """
+}
+
+(bamsForPileupTumor, bamsForPileupNormal, bamFiles) = bamFiles.into(3)
+
+tumorPileup = bamsForPileupTumor.combine(tumorPileup)
+			 .filter{ item ->
+                            def assay = item[0]
+                            def target = item[1]
+                            def idTumor = item[2]
+                            def idNormal = item[3]
+                            def bamTumor = item[4]
+                            def bamNormal = item[5]
+                            def baiTumor = item[6]
+                            def baiNormal = item[7]
+			    def idSample = item[8]
+			    def samplePileup = item[9]
+			    idSample == idTumor
+			 }.map { item ->
+                            def assay = item[0]
+                            def target = item[1]
+                            def idTumor = item[2]
+                            def samplePileup = item[9]
+
+			    return [ assay, target, idTumor, samplePileup ]
+			 }
+normalPileup = bamsForPileupNormal.combine(normalPileup)
+                         .filter{ item ->
+                            def assay = item[0]
+                            def target = item[1]
+                            def idTumor = item[2]
+                            def idNormal = item[3]
+                            def bamTumor = item[4]
+                            def bamNormal = item[5]
+                            def baiTumor = item[6]
+                            def baiNormal = item[7]
+                            def idSample = item[8]
+                            def samplePileup = item[9]
+                            idSample == idNormal
+                         }.map { item ->
+                            def assay = item[0]
+                            def target = item[1]
+                            def idNormal = item[3]
+                            def samplePileup = item[9]
+
+                            return [ assay, target, idNormal, samplePileup ]
+                         }
+
+pairedPileup = tumorPileup.combine(normalPileup, by: [0,1])
+
+process QcConpairAll {
+  tag {idTumor + "@" + idNormal}
+
+  input:
+    set assay, target, idTumor, file(pileupTumor), idNormal, file(pileupNormal) from pairedPileup
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+    ])
+
+  output:
+    file("${outPrefix}.concordance.txt") into conpairAllConcordance
+    file("${outPrefix}.contamination.txt") into conpairAllContamination
+
+  when: !params.test
+
+  script:
+  outPrefix = "${idTumor}_vs_${idNormal}"
+  conpairPath = "/usr/bin/conpair"
+
+  markersTxt = ""
+  if (params.genome == "GRCh37") {
+    markersTxt = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.txt"
+  }
+  else {
+    markersTxt = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.txt"
+  }
+
+  """
+  # Make pairing file
+  echo "${idNormal}\t${idTumor}" > pairing.txt
+
+   # Verify concordance
+  ${conpairPath}/scripts/verify_concordances.py \
+    --tumor_pileup=${idTumor}.pileup \
+    --normal_pileup=${idNormal}.pileup \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --normal_homozygous_markers_only \
+    --outpre=${outPrefix}
+
+  ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
+    --tumor_pileup=${idTumor}.pileup \
+    --normal_pileup=${idNormal}.pileup \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --outpre=${outPrefix}
+
+  mv ${outPrefix}_concordance.txt ${outPrefix}.concordance.txt
+  mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
+  """
+}
+
+process QcConpairAggregate {
+
+  publishDir "${params.outDir}/qc/conpair/${idTumor}_vs_${idNormal}", mode: params.publishDirMode
+
+  input:
+    file(concordance) from conpairAllConcordance.collect()
+    file(contamination) from conpairAllContamination.collect()
+
+  output:
+    set file('ConpairAll-concordance.txt'), file('ConpairAll-contamination.txt') into conpairAggregated
+
+  when: !params.test
+
+  script:
+  """
+  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 > ConpairAll-concordance.txt
+  echo -e "Pairs\tSample_Type\tSample_ID\tContamination" > ConpairAll-contamination.txt
+  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> ConpairAll-contamination.txt
+  """
+}
+
+
+/*
+================================================================================
 =                              AUXILLIARY FUNCTIONS                            =
 ================================================================================
 */
