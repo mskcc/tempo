@@ -1400,6 +1400,8 @@ process RunConpair {
   }
   javaMem = "${mem}g"
   """
+  touch .Rprofile
+  
   # Make pileup files
   ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
     --gatk=${gatkPath} \
