@@ -75,7 +75,7 @@ class VaporwareUtils {
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
   // not a static method, as currently written
-  def validateBamIndexFormat(it) {
+  static def validateBamIndexFormat(it) {
     bamFilename = it.take(it.lastIndexOf('.'))
     // Check BAM index extension
     if (file(bamFilename + ".bai").exists()){
