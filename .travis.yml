@@ -9,12 +9,12 @@ services:
   - docker
 
 before_install:
-  - export NXF_VER=19.05.0-edge && curl -fsSL get.nextflow.io | bash 
-  - chmod +x nextflow
+  # Install Nextflow
+  - export NXF_VER=19.07.0 && curl -fsSL get.nextflow.io | bash 
+  - chmod 777 nextflow
   - wget -O test-data.tar.gz --no-check-certificate 'https://docs.google.com/uc?export=download&id=1Jgsj4FEnwhNybaNuovyIdSXG6-iBzAIf'
   - tar -xzvf test-data.tar.gz 
 
 script:
   # Run test script here
   - python3 tests/test_runner.py tests/tests.json
- 
