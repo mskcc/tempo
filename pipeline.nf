@@ -323,10 +323,8 @@ if (!params.bam_pairing) {
 
     output:
       set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
-      set idSample, val("${idSample}.bam"), val("${idSample}.bai"), assay, targetFile into recalibratedBamTSV
-      val(idSample) into currentSample
       file("${idSample}.bam") into currentBam
-      file("${idSample}.bai") into currentBai
+      file("${idSample}.bam.bai") into currentBai
       val(assay) into assays
       val(targetFile) into targets
 
@@ -339,7 +337,7 @@ if (!params.bam_pairing) {
       --input ${bam} \
       --output ${idSample}.bam
       
-    cp -p ${idSample}.bai ${idSample}.bam.bai
+    mv ${idSample}.bai ${idSample}.bam.bai
     """
   }
 
@@ -510,7 +508,7 @@ if (!params.bam_pairing) {
       file(metricsFile) from qcFiles
 
     output:
-      file('alignment_qc.tsv') into alignmentQc
+      file('alignment_qc.txt') into alignmentQc
 
     when: !params.test
 
@@ -1522,10 +1520,9 @@ process RunLOHHLA {
   """
   cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
   
-  PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+")
-  PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+")
+  PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
+  PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
-
   Rscript /lohhla/LOHHLAscript.R \
     --patientId ${idTumor}__${idNormal} \
     --normalBAMfile ${bamNormal} \
@@ -1600,8 +1597,8 @@ process SomaticFacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.tsv") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.tsv"), file("${outputPrefix}.genelevel.tsv"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
+    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1619,11 +1616,11 @@ process SomaticFacetsAnnotation {
   
   /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
-    --outfile ${outputPrefix}.genelevel.tsv
+    --outfile ${outputPrefix}.genelevel.txt
 
   /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.tsv
+    --outfile ${outputPrefix}.armlevel.txt
 
   annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
@@ -1712,7 +1709,7 @@ process MetaDataParser {
     ]) 
 
   output:
-    file("*_metadata.tsv") into MetaDataOutputs
+    file("*_metadata.txt") into MetaDataOutputs
 
   when: runSomatic
 
@@ -1729,6 +1726,8 @@ process MetaDataParser {
   """
   create_metadata_file.py \
     --sampleID ${idTumor}__${idNormal} \
+    --tumorID  ${idTumor} \
+    --normalID ${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel ${armLevel} \
     --MSIsensor_output ${msifile} \
@@ -1746,7 +1745,6 @@ process SomaticAggregate {
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(mutsigFile) from mutSigForAggregate.collect()
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
@@ -1756,14 +1754,13 @@ process SomaticAggregate {
     file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
-    file("merged.maf") into MafFileOutput
-    file("merged_all_neoantigen_predictions.txt") into NetMhcChannel
-    file("mutsig/*") into MutSigFilesOutput
+    file("mut_somatic.maf") into MafFileOutput
+    file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
     file("facets/*") into FacetsChannel
-    set file("merged_hisens.cncf.txt"), file("merged_purity.cncf.txt"), file("merged_hisens.seg"), file("merged_purity.seg") into FacetsMergedChannel
-    set file("merged_armlevel.tsv"), file("merged_armlevel.tsv"), file("merged_genelevel_TSG_ManualReview.txt"), file("merged_hisensPurity_out.txt") into FacetsAnnotationMergedChannel
-    file("merged.vcf.gz") into VcfBedPeChannel
-    file("merged_metadata.tsv") into MetaDataOutputChannel
+    set file("cna_cncf_hisens_interger_calls.txt"), file("cna_cncf_purity_interger_calls.txt"), file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
+    file("somatic_sv.vcf.gz") into VcfBedPeChannel
+    file("sample-level-metadata.txt") into MetaDataOutputChannel
 
   when: runSomatic
     
@@ -1776,17 +1773,13 @@ process SomaticAggregate {
   # Collect MAF files from neoantigen to maf_files/ and merge into one maf
   mkdir maf_files
   mv *.maf maf_files
-  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
-  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > mut_somatic.maf
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_somatic.maf
 
   # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
   mkdir netmhc_stats
   mv *.all_neoantigen_predictions.txt netmhc_stats
-  awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > merged_all_neoantigen_predictions.txt 
-
-  # Collect mutsig output to mutsig/
-  mkdir mutsig
-  mv *.mutsig.txt mutsig/
+  awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > mut_somatic_neoantigen_preds.txt
 
   # Collect facets output to facets/
   mkdir facets
@@ -1796,22 +1789,22 @@ process SomaticAggregate {
   mv *purity.* facets/purity
   mv *hisens.* facets/hisens
   mv *_OUT.txt facets/hisensPurityOutput
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > merged_hisens.cncf.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > merged_purity.cncf.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > merged_hisens.seg
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > merged_purity.seg 
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > merged_hisensPurity_out.txt  
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > cna_cncf_hisens_interger_calls.txt 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > cna_cncf_purity_interger_calls.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > cna_hisens_run_segmentation.seg 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > cna_purity_run_segmentation.seg
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > cna_facets_output.txt
 
   ## Move and merge FacetsAnnotation outputs
   mkdir facets/armLevel
   mkdir facets/geneLevel
   mkdir facets/manualReview
-  mv *armlevel.tsv facets/armLevel
-  mv *genelevel.tsv facets/geneLevel
+  mv *armlevel.txt facets/armLevel
+  mv *genelevel.txt facets/geneLevel
   mv *genelevel_TSG_ManualReview.txt  facets/manualReview
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.tsv > merged_armlevel.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.tsv > merged_genelevel.tsv
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > merged_genelevel_TSG_ManualReview.txt 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.txt > cna_armlevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.txt > cna_genelevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
 
   ## Move all FACETS output subdirectories into /facets
   mv ${facetsOutputSubdirectories} facets/
@@ -1829,13 +1822,13 @@ process SomaticAggregate {
     --force-samples \
     --merge none \
     --output-type z \
-    --output merged.vcf.gz \
+    --output somatic_sv.vcf.gz \
     vcf_delly_manta/*delly.manta.vcf.gz
 
-  ## Collect metadata *tsv file into merged_metadata.tsv
+  ## Collect metadata *tsv file into merged_metadata.txt
   mkdir metadata
-  mv *_metadata.tsv metadata 
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.tsv > merged_metadata.tsv
+  mv *_metadata.txt metadata 
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.txt > sample-level-metadata.txt 
   """
 }
 
@@ -2397,7 +2390,6 @@ process GermlineMergeDellyAndManta {
   """
 }
 
-
 germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
 
 
@@ -2411,8 +2403,8 @@ process GermlineAggregate {
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
-    file("merged.maf") into GermlineMafFileOutput
-    file("merged.vcf.gz") into GermlineVcfBedPeChannel
+    file("germline_variants.maf") into GermlineMafFileOutput
+    file("germline_sv.vcf.gz") into GermlineVcfBedPeChannel
   
   when: runGermline
 
@@ -2425,8 +2417,8 @@ process GermlineAggregate {
   # Collect MAF files from neoantigen to maf_files/ and merge into one maf
   mkdir maf_files
   mv *.maf maf_files
-  cat maf_files/*.maf | grep ^Hugo | head -n1 > merged.maf
-  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> merged.maf
+  cat maf_files/*.maf | grep ^Hugo | head -n1 > germline_variants.maf 
+  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >>  germline_variants.maf 
 
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   mkdir vcf_delly_manta
@@ -2436,7 +2428,7 @@ process GermlineAggregate {
     --force-samples \
     --merge none \
     --output-type z \
-    --output merged.vcf.gz \
+    --output germline_sv.vcf.gz \
     vcf_delly_manta/*.delly.manta.vcf.gz
   """
 }
