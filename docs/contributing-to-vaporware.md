@@ -10,7 +10,7 @@ We use the "fork and pull" model for collaborative software development, as expl
 
 Users are welcomed and encouraged to submit changes they would like to see to Vaporware!
 
-### Contributing code changes: making a pull request
+### Contributing Code Changes: Making a Pull Request
 
 Once you have forked the repo, you need to create your code contributions within a new branch of your forked repo. For general background on creating and managing branches within GitHub, see: [Git Branching and Merging](https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging).
 
