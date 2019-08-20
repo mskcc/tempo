@@ -1806,7 +1806,7 @@ process SomaticAggregateNetMHC {
   publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
 
   input:
-    file(mafFile) from NeoantigenMafOutput.collect()
+    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
 
   output:
     file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
