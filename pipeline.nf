@@ -2423,21 +2423,17 @@ process GermlineMergeDellyAndManta {
   """
 }
 
-germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
 
-
-// --- Aggregate per-sample germline data
-process GermlineAggregate {
+// --- Aggregate per-sample germline data, MAF
+process GermlineAggregateMaf {
  
   publishDir "${params.outDir}/germline/", mode: params.publishDirMode
 
   input:
     file(mafFile) from mafFileAnnotatedGermline.collect()
-    file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
     file("germline_variants.maf") into GermlineMafFileOutput
-    file("germline_sv.vcf.gz") into GermlineVcfBedPeChannel
   
   when: runGermline
 
@@ -2453,6 +2449,30 @@ process GermlineAggregate {
   cat maf_files/*.maf | grep ^Hugo | head -n1 > germline_variants.maf 
   cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >>  germline_variants.maf 
 
+  """
+}
+
+germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
+
+// --- Aggregate per-sample germline data, SVs
+process GermlineAggregateSv {
+ 
+  publishDir "${params.outDir}/germline/", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+
+  output:
+    file("germline_sv.vcf.gz") into GermlineVcfBedPeChannel
+  
+  when: runGermline
+
+  script:
+  """
+  # Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
   # Collect delly and manta vcf outputs into vcf_delly_manta/
   mkdir vcf_delly_manta
   mv  *.delly.manta.vcf.gz* vcf_delly_manta
@@ -2465,6 +2485,7 @@ process GermlineAggregate {
     vcf_delly_manta/*.delly.manta.vcf.gz
   """
 }
+
 
 /*
 ================================================================================
