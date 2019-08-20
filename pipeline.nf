@@ -1060,7 +1060,7 @@ process SomaticCombineChannel {
   
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  isec_dir = "${idTumor}.isec"
+  isecDir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWgsVcf
   if (target == "wgs") {
