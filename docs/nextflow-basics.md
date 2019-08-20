@@ -1,4 +1,4 @@
-# Nextflow basics
+# Nextflow Basics
 
 [Nextflow](https://nextflow.io) is a workflow framework that creation of computational pipelines that work in any POSIX-based environment. Nextflow is written in the Java-based [Groovy](https://groovy-lang.org/) language. A Nextflow script is executed by running `nextflow run script.nf`, followed by optional arguments. This page contains some useful information for Vaporware users, for more read the [Nextflow documentation](https://www.nextflow.io/docs/latest/basic.html).
 
