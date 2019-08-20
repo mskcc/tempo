@@ -1,14 +1,13 @@
 # Bioinformatics Components
 
 The three main functions of the pipeline are:
-- Sequencing read alignment
-- Somatic variant detection
-- Germline variant detection
+1. Sequencing read alignment
+2. Somatic variant detection
+3. Germline variant detection
 
 Below are described the separate Nextflow processes and associated with each module and the tools used. The following diagram outlines the workflow:
 
 <img id="diagram" src="./pipeline-flowchart.png"/>
-
 
 <small>Note: The pipeline can be run with already-aligned BAM files as input, which avoids the first of these three modules.</small>
 

@@ -7,8 +7,8 @@ This page provides instructions on how to run the pipeline through the `pipeline
 ```shell
 nextflow run pipeline.nf \
     --somatic --germline \
+    --assayType <string value: either "exome" or "genome"> \
     --outDir <path to output subdirectory> \ 
-    -w <path to temporary work directory with cached results> \
     -profile juno \
     --mapping <input mapping tsv file> \
     --pairing <input pairing tsv file>
@@ -16,11 +16,17 @@ nextflow run pipeline.nf \
 
 _Note: [The number of dashes matters](nextflow-basics.md)._
 
-* The `--somatic` and `--germline` flags indicate to run the somatic and germline variant calling modules, respectively. If not set, `pipeline.nf` will only align BAMs.
+**Recommended arguments:**
+* The `--somatic` and `--germline` flags are boolean that indicate to run the somatic and germline variant calling modules, respectively. If not set, the pipeline will only align BAMs.
+* `--assayType` ensures appropriate resources are allocated for indicated assay type.
 * `--outDir` is the directory where the output will end up. This directory does not need to exist. If not set, by default it will be set to run directory (i.e. the directory from which the command `nextflow run` is executed.)
-* `-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively.
-* The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the `test_inputs` subdirectory.
+* The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the [test inputs subdirectory](../test_inputs).
+
+**Optional arguments:**
+* `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
+* `-publishAll` is a boolean, resulting in retention of intermediate output files.
+* `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
 
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
@@ -157,3 +163,7 @@ This function also allows you to make changes to values in the `pipeline.nf` scr
 _Note 1: if you use `-resume` for the first time of a timeline run, Nextflow will recognize this as superfluous, and continue._
 
 _Note 2: To peacefully interrupt an ongoing Nextflow pipeline run, do `control+C` once and wait for Nextflow to kill submitted jobs. Otherwise orphan jobs might be left on the cluster._
+
+## After Successful Run
+
+Nextflow creates a lot of intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will occupy a lot of space and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. Once these files are removed, modifications to or resumptions of a pipeline run **cannot** be done.
