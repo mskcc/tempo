@@ -7,6 +7,7 @@ The Juno compute cluster is accessible to most researchers at MSKCC. If you do n
 As described in the page about [containers](working-with-containers.md), execution of Vaporware on Juno requires Singularity. 
 
  In order to save time and space, you can use image files stored in a common cache directory by setting the environment variable `NXF_SINGULARITY_CACHEDIR` to the directory `/juno/work/taylorlab/cmopipeline/singularity_images`. You can put this in your bash profile:
+
 ```shell
 export NXF_SINGULARITY_CACHEDIR=/juno/work/taylorlab/cmopipeline/singularity_images
 ```
