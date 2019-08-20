@@ -931,7 +931,7 @@ process SomaticRunStrelka2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal), file('*merged.filtered.vcf.gz'), file('*merged.filtered.vcf.gz.tbi') into strelkaOutputMerged
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file('*merged.filtered.vcf.gz'), file('*merged.filtered.vcf.gz.tbi') into strelkaOutputMerged
     set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput
 
   when: tools.containsAll(["manta", "strelka2"]) && runSomatic
@@ -949,6 +949,7 @@ process SomaticRunStrelka2 {
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
+    --reportEVSFeatures \
     --callRegions ${intervals} \
     --referenceFasta ${genomeFile} \
     --indelCandidates ${mantaCSI} \
@@ -997,7 +998,7 @@ process SomaticCombineChannel {
   tag {idTumor + "__" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(bamNormal), file(baiNormal), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
+    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex
     ])
@@ -1039,68 +1040,81 @@ process SomaticCombineChannel {
   echo -e "##INFO=<ID=RepeatMasker,Number=1,Type=String,Description=\"RepeatMasker\">" > vcf.rm.header
   echo -e "##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description=\"EncodeDacMapability\">" > vcf.map.header
   echo -e "##INFO=<ID=PoN,Number=1,Type=Integer,Description=\"Count in panel of normals\">" > vcf.pon.header
-  echo -e "##FORMAT=<ID=alt_count_raw,Number=1,Type=Integer,Description=\"Raw normal alternate allele depth\">" > vcf.ad_n.header
+  echo -e "##FORMAT=<ID=alt_count_raw,Number=1,Type=Integer,Description=\"Raw alternate allele depth\">" > vcf.ad_n.header
+  echo -e "##FORMAT=<ID=alt_count_raw_fwd,Number=1,Type=Integer,Description=\"Raw alternate allele depth on forward strand\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=alt_count_raw_rev,Number=1,Type=Integer,Description=\"Raw alternate allele depth on reverse strand\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=ref_count_raw,Number=1,Type=Integer,Description=\"Raw reference allele depth\">" > vcf.ad_n.header
+  echo -e "##FORMAT=<ID=ref_count_raw_fwd,Number=1,Type=Integer,Description=\"Raw reference allele depth on forward strand\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=ref_count_raw_rev,Number=1,Type=Integer,Description=\"Raw reference allele depth on reverse strand\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=depth_raw,Number=1,Type=Integer,Description=\"Raw total allele depth\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=depth_raw_fwd,Number=1,Type=Integer,Description=\"Raw total allele depth on forward strand\">" >> vcf.ad_n.header
+  echo -e "##FORMAT=<ID=depth_raw_rev,Number=1,Type=Integer,Description=\"Raw total allele depth on reverse strand\">" >> vcf.ad_n.header
 
-  # Get set differences of variant calls
+  # Get set differences of variant calls:
+  # 0000: MuTect2 only
+  # 0001: Strelka2 only
+  # 0002: MuTect2 calls shared by Strelka2
+  # 0003: Strelka2 calls shared by MuTect2
+
   bcftools isec \
     --output-type z \
-    --prefix ${isec_dir} \
+    --prefix ${isecDir} \
     ${mutectCombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.vcf.gz \
+    --annotations ${isecDir}/0003.vcf.gz \
     --include 'FILTER!=\"PASS\"' \
     --mark-sites \"+Strelka2FILTER\" \
     -k \
     --output-type z \
-    --output ${isec_dir}/0003.annot.vcf.gz \
-    ${isec_dir}/0003.vcf.gz
+    --output ${isecDir}/0003.annot.vcf.gz \
+    ${isecDir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0000.vcf.gz \
+    --annotations ${isecDir}/0000.vcf.gz \
     --mark-sites +MuTect2 \
     --output-type z \
-    --output ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0000.vcf.gz
+    --output ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0000.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0002.vcf.gz \
+    --annotations ${isecDir}/0002.vcf.gz \
     --mark-sites \"+MuTect2;Strelka2\" \
     --output-type z \
-    --output ${isec_dir}/0002.tmp.vcf.gz \
-    ${isec_dir}/0002.vcf.gz
+    --output ${isecDir}/0002.tmp.vcf.gz \
+    ${isecDir}/0002.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
-  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isecDir}/0003.annot.vcf.gz
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.annot.vcf.gz \
-    --columns +FORMAT,Strelka2FILTER \
+    --annotations ${isecDir}/0003.annot.vcf.gz \
+    --columns +INFO,+FORMAT,Strelka2FILTER \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
-    ${isec_dir}/0002.tmp.vcf.gz
+    --output ${isecDir}/0002.annot.vcf.gz \
+    ${isecDir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0001.vcf.gz \
+    --annotations ${isecDir}/0001.vcf.gz \
     --mark-sites +Strelka2 \
     --output-type z \
-    --output ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0001.vcf.gz
+    --output ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0001.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0000.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0000.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0001.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.annot.vcf.gz
 
   # Concatenate the different sets, annotate with blacklists
   bcftools concat \
     --allow-overlaps \
     --rm-dups all \
-    ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0002.annot.vcf.gz | \
+    ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0002.annot.vcf.gz | \
   bcftools sort | \
   bcftools annotate \
     --header-lines vcf.rm.header \
@@ -1148,22 +1162,23 @@ process SomaticCombineChannel {
 
   # Add normal read count, using all reads
   GetBaseCountsMultiSample \
-    --thread 4 \
+    --thread ${task.cpus} \
     --maq 0 \
     --fasta ${genomeFile} \
+    --bam ${idTumor}:${bamTumor} \
     --bam ${idNormal}:${bamNormal} \
-    --vcf ${idTumor}__${idNormal}.filtered.vcf \
-    --output ${idNormal}.genotyped.vcf 
+    --vcf ${outputPrefix}.filtered.vcf \
+    --output ${outputPrefix}.genotyped.vcf 
   
-  bgzip ${idTumor}__${idNormal}.filtered.vcf
-  bgzip ${idNormal}.genotyped.vcf
-  tabix --preset vcf ${idTumor}__${idNormal}.filtered.vcf.gz
-  tabix --preset vcf ${idNormal}.genotyped.vcf.gz
+  bgzip ${outputPrefix}.filtered.vcf
+  bgzip ${outputPrefix}.genotyped.vcf
+  tabix --preset vcf ${outputPrefix}.filtered.vcf.gz
+  tabix --preset vcf ${outputPrefix}.genotyped.vcf.gz
 
   bcftools annotate \
-    --annotations ${idNormal}.genotyped.vcf.gz \
+    --annotations ${outputPrefix}.genotyped.vcf.gz \
     --header-lines vcf.ad_n.header \
-    --columns FORMAT/alt_count_raw:=FORMAT/AD \
+    --columns FORMAT/alt_count_raw:=FORMAT/AD,FORMAT/ref_count_raw:=FORMAT/RD,FORMAT/alt_count_raw_fwd:=FORMAT/ADP,FORMAT/ref_count_raw_fwd:=FORMAT/RDP,FORMAT/alt_count_raw_rev:=FORMAT/ADN,FORMAT/ref_count_raw_rev:=FORMAT/RDN,FORMAT/depth_raw:=FORMAT/DP,FORMAT/depth_raw_fwd:=FORMAT/DPP,FORMAT/depth_raw_rev:=FORMAT/DPN \
     --output-type v \
     --output ${outputPrefix}.pass.vcf \
     ${outputPrefix}.filtered.vcf.gz
@@ -1190,11 +1205,18 @@ process SomaticAnnotateMaf {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}.somatic"
-  if (target == 'wgs') {
-    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+  mutect2InfoCols = "MBQ,MFRL,MMQ,MPOS,OCM,RPA,STR,ECNT"
+  strelka2InfoCols = "RU,IC,MQ,SNVSB"
+  strelka2FormatCols = "FDP,SUBDP"
+  formatCols = "alt_count_raw,alt_count_raw_fwd,alt_count_raw_rev,ref_count_raw,ref_count_raw_fwd,ref_count_raw_rev,depth_raw,depth_raw_fwd,depth_raw_rev"
+  formatCols = formatCols + "," + strelka2FormatCols
+  if (target == "wgs") {
+    infoCols = "MuTect2,Strelka2,Custom_filters,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+    infoCols = infoCols + "," + mutect2InfoCols + "," + strelka2InfoCols
   }
   else {
-    infoCols = "MuTect2,Strelka2,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+    infoCols = "MuTect2,Strelka2,Custom_filters,Strelka2FILTER,RepeatMasker,EncodeDacMapability,PoN,Ref_Tri,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+    infoCols = infoCols + "," + mutect2InfoCols + "," + strelka2InfoCols
   }
   """
   perl /opt/vcf2maf.pl \
@@ -1209,7 +1231,7 @@ process SomaticAnnotateMaf {
     --input-vcf ${vcfMerged} \
     --ref-fasta ${genomeFile} \
     --retain-info ${infoCols} \
-    --retain-fmt alt_count_raw \
+    --retain-fmt ${formatCols} \
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
@@ -1218,7 +1240,16 @@ process SomaticAnnotateMaf {
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
     
-  filter-somatic-maf.R ${outputPrefix}.raw.oncokb.maf ${outputPrefix}
+  filter-somatic-maf.R \
+    --tumor-vaf ${params.somaticVariant.tumorVaf} \
+    --tumor-depth ${params.somaticVariant.tumorDepth} \
+    --tumor-count ${params.somaticVariant.tumorCount} \
+    --normal-depth ${params.somaticVariant.normalDepth} \
+    --normal-count ${params.somaticVariant.normalCount} \
+    --gnomad-allele-frequency ${params.somaticVariant.gnomadAf} \
+    --normal-panel-count ${params.somaticVariant.ponCount} \
+    --maf-file ${outputPrefix}.raw.oncokb.maf \
+    --output-prefix ${outputPrefix}
   """
 }
 
@@ -2095,13 +2126,11 @@ process GermlineCombineChannel {
   script:  
   isec_dir = "${idNormal}.isec"
   gnomad = gnomadWgsVcf
-  if (target == 'wgs') {
+  if (assay == 'wgs') {
     gnomad = gnomadWgsVcf
-    gnomadCutoff = 'AF_popmax>0.02'
   }
-  else {
+  else if (assay == 'wes') {
     gnomad = gnomadWesVcf
-    gnomadCutoff = 'non_cancer_AF_popmax>0.02'
   }
   """
   echo -e "##INFO=<ID=HaplotypeCaller,Number=0,Type=Flag,Description=\"Variant was called by HaplotypeCaller\">" > vcf.header
@@ -2193,7 +2222,7 @@ process GermlineCombineChannel {
     --columns INFO \
     ${idNormal}.union.pass.vcf.gz | \
   bcftools filter \
-    --exclude \"${gnomadCutoff}\" \
+    --exclude \"${params.germlineVariant.gnomadAf}\" \
     --output-type v \
     --output ${idNormal}.union.gnomad.vcf 
 
@@ -2259,7 +2288,11 @@ process GermlineAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-germline-maf.R ${outputPrefix}.raw.maf ${outputPrefix}
+  filter-germline-maf.R \
+    --normal-depth ${params.germlineVariant.normalDepth} \
+    --normal-vaf ${params.germlineVariant.normalVaf} \
+    --maf-file ${outputPrefix}.raw.maf \
+    --output-prefix ${outputPrefix}
   """
   }
 
