@@ -1,10 +1,9 @@
 title: Vaporware
-description: Processing WES & WGS Tumor Samples
+description: Computational Pipeline for Whole-Genome and Whole-Exome Sequencing
 themeConfig:
   logo: /vaporware_stairs.jpg
   sidebar:
     - "/"
-    - "/overview"
     - title: Setup
       collapsable: false
       children:
@@ -32,7 +31,7 @@ themeConfig:
     - "/troubleshooting"
     - "/contributing-to-vaporware"
   repo: mskcc/vaporware
-  docsBranch: 'feature/documentation_vuepress'
+  docsBranch: 'develop'
 plugins:
 - - vuepress-plugin-medium-zoom
   - selector: "#diagram"

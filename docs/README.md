@@ -13,7 +13,7 @@ features:
 footer: MIT Licensed | Copyright © 2019-present
 ---
 
-# Vaporware: Computational Pipeline for Genome and Exome Sequencing
+# Vaporware: Computational Pipeline for Whole-Genome and Whole-Exome Sequencing
 
 Vaporware is a computational pipeline for processing data of paired-end whole-exome (WES) and whole-genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the Center for Molecular Oncology.
 
@@ -25,6 +25,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ---
 
+[[toc]]
 ## Table of Contents
 
 ### 1. Getting Started
@@ -33,11 +34,19 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Set up on Juno](juno-setup.md)
 * [Set up on AWS](aws-setup.md)
 
-#### 1.2. [Usage](usage.md)
+#### 1.2. Usage
 * [Nextflow Basics](nextflow-basics.md)
 * [Working With Containers](working-with-containers.md)
 * [Running the Pipeline](running-the-pipeline.md)
-* [Modifying or Resuming Pipeline Run](running-the-pipeline.md#modifying-or-resuming-pipeline-run)
+    * [Modifying or Resuming Pipeline Run](running-the-pipeline.md#modifying-or-resuming-pipeline-run)
+    * [After Successful Run](running-the-pipeline.md#after-successful-run)
+
+#### 1.3 [Outputs](outputs.md)
+* [BAM Files](outputs.md#bam-files)
+* [QC Outputs](outputs.md#qc-outputs)
+* [Somatic Data](outputs.md#somatic-data)
+* [Germline Data](outputs.md#germline-data)
+* [Extended Outputs](outputs.md#extended-outputs)
 
 ### 2. Pipeline contents
 
