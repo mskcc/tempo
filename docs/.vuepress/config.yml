@@ -20,13 +20,11 @@ themeConfig:
       collapsable: false
       children:
         - "/bioinformatic-components"
-        - "/variant-annotation-and-filtering"
-        - "/wes-panel-of-normals"
-    - title: Reference Files
-      collapsable: false
-      children:
-        - "/reference-files"
         - "/intervals"
+        - "/reference-resources"
+        - "/gnomad"
+        - "/wes-panel-of-normals"
+        - "/variant-annotation-and-filtering"
     - "/aws-glossary"
     - "/troubleshooting"
     - "/contributing-to-vaporware"
