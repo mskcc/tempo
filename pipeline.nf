@@ -2497,7 +2497,7 @@ process QcPileup {
     ])
 
   output:
-    set idSample, file("${idSample}.pileup") into (tumorPileup, normalPileup, Pileup)
+    set idSample, file("${idSample}.pileup") into (tumorPileup, normalPileup)
 
   when: !params.test
 
