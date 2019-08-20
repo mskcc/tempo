@@ -86,7 +86,7 @@ if (!interactive()) {
         outMatrix[, MedianCoverage:=NULL]
     }
     
-    fwrite(outMatrix, 'alignment_qc.tsv', sep = '\t')
+    fwrite(outMatrix, 'alignment_qc.txt', sep = '\t')
 
 }
 
