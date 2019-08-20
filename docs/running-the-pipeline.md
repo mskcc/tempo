@@ -6,16 +6,15 @@ This page provides instructions on how to run the pipeline through the `pipeline
 
 ```shell
 nextflow run pipeline.nf \
-    --somatic --germline --outDir <path to output subdirectory> \ 
+    --somatic --germline \
+    --outDir <path to output subdirectory> \ 
     -w <path to temporary work directory with cached results> \
     -profile juno \
-    --mapping <input mapping tsv file>  \
-    --pairing <input pairing tsv file>  \
-    -assayType <string value: either "exome" or "genome">
-    -with-report <name of html file> \ 
-    -with-trace <name of html file> 
+    --mapping <input mapping tsv file> \
+    --pairing <input pairing tsv file>
 ```
-**NOTE:** The number of dashes [matters](nextflow-basics.md)
+
+_Note: [The number of dashes matters](nextflow-basics.md)._
 
 * The `--somatic` and `--germline` flags indicate to run the somatic and germline variant calling modules, respectively. If not set, `pipeline.nf` will only align BAMs.
 * `--outDir` is the directory where the output will end up. This directory does not need to exist. If not set, by default it will be set to run directory (i.e. the directory from which the command `nextflow run` is executed.)
