@@ -674,8 +674,6 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process SomaticDellyCall {
   tag {idTumor + "__" + idNormal + '@' + svType}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/delly", mode: params.publishDirMode }
-
   input:
     each svType from svTypes
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDelly
@@ -754,6 +752,10 @@ forMutect2Combine = forMutect2Combine.groupTuple()
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "__" + idNormal}
 
+  if (publishAll) {
+    publishDir "${params.outDir}/somatic/mutect2", mode: params.publishDirMode, pattern: "${outfile}*"
+    }
+
   input:
     set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -769,7 +771,7 @@ process SomaticCombineMutect2Vcf {
   idTumor = id.toString().split("__")[0]
   idNormal = id.toString().split("@")[0].split("__")[1]
   target = id.toString().split("@")[1]
-  outfile="${idTumor}__${idNormal}.mutect2.filtered.vcf.gz"
+  outfile = "${idTumor}__${idNormal}.mutect2.filtered.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
@@ -861,6 +863,11 @@ dellyMantaCombineChannel = dellyFilterOutput.combine(mantaOutput, by: [0,1,2])
 process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
+  if (publishAll) {
+    publishDir "${params.outDir}/somatic/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+    publishDir "${params.outDir}/somatic/manta", mode: params.publishDirMode, pattern: "${outputPrefix}.manta.vcf.{gz,gz.tbi}"
+  }
+
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
 
@@ -886,16 +893,16 @@ process SomaticMergeDellyAndManta {
   bcftools view \
     --samples ${idTumor},${idNormal} \
     --output-type z \
-    --output-file Manta_${outputPrefix}.somaticSV.tmp.vcf.gz \
+    --output-file ${outputPrefix}.manta.vcf.gz \
     Manta_${outputPrefix}.somaticSV.vcf.gz 
     
-  tabix --preset vcf Manta_${outputPrefix}.somaticSV.tmp.vcf.gz
+  tabix --preset vcf ${outputPrefix}.manta.vcf.gz
 
   bcftools concat \
     --allow-overlaps \
     --output-type z \
     --output ${outputPrefix}.delly.manta.unfiltered.vcf.gz \
-    *.delly.vcf.gz Manta_${outputPrefix}.somaticSV.tmp.vcf.gz
+    *.delly.vcf.gz ${outputPrefix}.manta.vcf.gz
   
   tabix --preset vcf ${outputPrefix}.delly.manta.unfiltered.vcf.gz
 
@@ -917,7 +924,9 @@ process SomaticMergeDellyAndManta {
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/strelka2", mode: params.publishDirMode }
+  if (publishAll) {
+    publishDir "${params.outDir}/somatic/strelka2", mode: params.publishDirMode, pattern: "${outfile}*"
+  }
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -944,7 +953,7 @@ process SomaticRunStrelka2 {
     if (target == 'agilent') intervals = agilentTargets
     if (target == 'idt') intervals = idtTargets
   }
-  prefix = "${idTumor}_${idNormal}_${target}.strelka.merged"
+  prefix = "${idTumor}_${idNormal}.strelka.merged"
   outfile = "${prefix}.filtered.vcf.gz"
   """
   configureStrelkaSomaticWorkflow.py \
@@ -987,7 +996,6 @@ process SomaticRunStrelka2 {
   tabix --preset vcf ${outfile}
   """
 }
-
 
 
 mutectStrelkaChannel = mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2])
@@ -1189,7 +1197,9 @@ process SomaticCombineChannel {
 process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode }
+  if (publishAll) {
+    publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode, pattern: "${outputPrefix}.*.maf"
+  }
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput 
@@ -1200,6 +1210,7 @@ process SomaticAnnotateMaf {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFile
+    file("${outputPrefix}.unfiltered.maf") into unfilteredMafFile
 
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
 
@@ -1239,7 +1250,6 @@ process SomaticAnnotateMaf {
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
-    
 
   Rscript --no-init-file /usr/bin/filter-somatic-maf.R \
     --tumor-vaf ${params.somaticVariant.tumorVaf} \
@@ -1251,7 +1261,6 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
-
   """
 }
 
@@ -1294,7 +1303,7 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode }
+  // if (publishAll) { publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
@@ -1360,7 +1369,7 @@ process DoFacets {
 process RunPolysolver {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/hla", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/polysolver", mode: params.publishDirMode }
   
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
@@ -1371,6 +1380,7 @@ process RunPolysolver {
   when: "polysolver" in tools && runSomatic
   
   script:
+  outPrefix = "${idTumor}__${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
   """
@@ -1386,6 +1396,8 @@ process RunPolysolver {
     STDFQ \
     0 \
     ${outputDir}
+
+  mv winners.hla.txt ${outputPrefix}.hla.txt
   """
 }
 
@@ -1552,13 +1564,13 @@ process RunLOHHLA {
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
   script:
+  outputPrefix = "${idTumor}__${idNormal}"
   """
-  cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
+  cat ${outputPrefix}.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
   
   PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
-
 
   Rscript --no-init-file /lohhla/LOHHLAscript.R \
     --patientId ${idTumor}__${idNormal} \
@@ -1701,6 +1713,7 @@ process RunNeoantigen {
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
+  outputPrefix = "${idTumor}__${idNormal}"
   outputDir = "neoantigen"
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
@@ -1711,12 +1724,12 @@ process RunNeoantigen {
 
   python /usr/local/bin/neoantigen/neoantigen.py \
     --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \
-    --sample_id ${idTumor}__${idNormal} \
+    --sample_id ${outputPrefix} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
 
-  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${idTumor}__${idNormal}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${idTumor}__${idNormal}.all_neoantigen_predictions.txt
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
   """
 }
 
