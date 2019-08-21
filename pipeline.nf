@@ -185,7 +185,7 @@ if (!params.bam_pairing) {
         task.memory = { (mem * taskMemMultiplier + 1) + ' GB' }
     }
     else if (sizeFastqFile1/1024**3 > 8) {
-        mem = 96 - 5
+        mem = 11
     }
     else {
         mem = (2 * sizeFastqFile1/1024**3).toInteger()
