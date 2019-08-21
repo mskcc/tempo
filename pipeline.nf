@@ -1647,6 +1647,7 @@ process SomaticFacetsAnnotation {
   
   /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
+    --targetFile /usr/bin/facets-suite/data/Homo_sapiens.GRCh37.75.canonical_exons.bed \
     --outfile ${outputPrefix}.genelevel.txt
 
   /usr/bin/facets-suite/armLevel.R \
