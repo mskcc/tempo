@@ -1573,7 +1573,7 @@ process RunLOHHLA {
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
   Rscript --no-init-file /lohhla/LOHHLAscript.R \
-    --patientId ${idTumor}__${idNormal} \
+    --patientId ${outputPrefix} \
     --normalBAMfile ${bamNormal} \
     --tumorBAMfile ${bamTumor} \
     --HLAfastaLoc ${hlaFasta} \
@@ -1591,7 +1591,7 @@ process RunLOHHLA {
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll){ publishDir "${params.outDir}/somatic/mutation_signatures", mode: params.publishDirMode }
+  if (publishAll){ publishDir "${params.outDir}/somatic/mutsig", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
@@ -1697,7 +1697,7 @@ hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2])
 process RunNeoantigen {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic", mode: params.publishDirMode }
+  // if (publishAll) { publishDir "${params.outDir}/somatic", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
@@ -1750,7 +1750,7 @@ mergedChannelMetaDataParser = facetsForMetaDataParser.combine(FacetsAnnotationOu
 process MetaDataParser {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/", mode: params.publishDirMode }
+  // if (publishAll) { publishDir "${params.outDir}/", mode: params.publishDirMode }
  
   input:
     set idTumor, idNormal, target, file(purityOut), file(armLevel), file(msifile), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
@@ -1892,8 +1892,6 @@ process SomaticAggregate {
 process GermlineRunHaplotypecaller {
   tag {idNormal + "@" + intervalBed.baseName}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/haplotypecaller", mode: params.publishDirMode }
-
   input:
     // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
     set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
@@ -1959,6 +1957,8 @@ haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
+  if (publishAll) { publishDir "${params.outDir}/germline/haplotypecaller", mode: params.publishDirMode }
+
   input:
     set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -1973,11 +1973,8 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
-  idTumor = id.toString().split("__")[0]
-  idNormal = id.toString().split("@")[0].split("__")[1]
   target = id.toString().split("@")[1]
-  outfile = "${idNormal}.haplotypecaller.vcf.gz"
-  
+  outfile = "${idNormal}.haplotypecaller.vcf.gz"  
   """
   bcftools concat \
     --allow-overlaps \
@@ -2001,8 +1998,6 @@ process GermlineCombineHaplotypecallerVcf {
 process GermlineRunManta {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/manta", mode: params.publishDirMode }
-
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
     set file(genomeFile), file(genomeIndex) from Channel.value([
@@ -2013,7 +2008,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("Manta_${idNormal}.diploidSV.vcf.gz") into mantaOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}.manta.vcf.gz"), file("${idNormal}.manta.vcf.gz.tbi") into mantaOutputGermline
 
   when: 'manta' in tools && runGermline
 
@@ -2042,9 +2037,9 @@ process GermlineRunManta {
   mv Manta/results/variants/candidateSV.vcf.gz.tbi \
     Manta_${idNormal}.candidateSV.vcf.gz.tbi
   mv Manta/results/variants/diploidSV.vcf.gz \
-    Manta_${idNormal}.diploidSV.vcf.gz
+    ${idNormal}.manta.vcf.gz
   mv Manta/results/variants/diploidSV.vcf.gz.tbi \
-    Manta_${idNormal}.diploidSV.vcf.gz.tbi
+    ${idNormal}.manta.vcf.gz.tbi
   """
 }
 
@@ -2268,7 +2263,9 @@ process GermlineCombineChannel {
 process GermlineAnnotateMaf {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode }
+  if (publishAll) {
+    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "${outputPrefix}.*.maf"
+  }
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutputGermline
@@ -2279,6 +2276,7 @@ process GermlineAnnotateMaf {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
+    file("${outputPrefix}.unfiltered.maf") into unfilteredMafFileGermline
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
@@ -2307,13 +2305,11 @@ process GermlineAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-
   Rscript --no-init-file /usr/bin/filter-germline-maf.R \
     --normal-depth ${params.germlineVariant.normalDepth} \
     --normal-vaf ${params.germlineVariant.normalVaf} \
     --maf-file ${outputPrefix}.raw.maf \
     --output-prefix ${outputPrefix}
-
   """
   }
 
@@ -2357,8 +2353,6 @@ svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/delly", mode: params.publishDirMode }
-
   input:
     each svType from svTypes
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForDellyGermline
@@ -2399,10 +2393,14 @@ dellyMantaChannelGermline = dellyFilterOutputGermline.combine(mantaOutputGermlin
 process GermlineMergeDellyAndManta {
   tag {idNormal}
 
+  if (publishAll) {
+    publishDir "${params.outDir}/germline/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+    publishDir "${params.outDir}/germline/manta", mode: params.publishDirMode, pattern: "${outputPrefix}.manta.vcf.{gz,gz.tbi}"
+  }
   if (publishAll) { publishDir "${params.outDir}/germline/structural_variants", mode: params.publishDirMode }
 
   input:
-    set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf) from dellyMantaChannelGermline
+    set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
