@@ -52,6 +52,22 @@ class VaporwareUtils {
     }
   }
 
+  // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
+  // not a static method, as currently written
+  static def validateBamIndexFormat(it) {
+    bamFilename = it.take(it.lastIndexOf('.'))
+    // Check BAM index extension
+    if (file(bamFilename + ".bai").exists()){
+      return(file("${bamFilename}.bai"))
+    } else if (file(bamFilename + ".bam.bai").exists()){
+      return(file("${bamFilename}.bam.bai"))
+    } else {
+      println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+      exit 1
+    }
+  }
+
+  
   static def extractBAM(tsvFile) {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
@@ -72,22 +88,8 @@ class VaporwareUtils {
       [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
     }
   }
-
-  // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
-  // not a static method, as currently written
-   def validateBamIndexFormat(it) {
-    bamFilename = it.toString().take(it.toString().lastIndexOf('.'))
-    // Check BAM index extension
-    if (file(bamFilename + ".bai").exists()){
-      return(file("${bamFilename}.bai"))
-    } else if (file(bamFilename + ".bam.bai").exists()){
-      return(file("${bamFilename}.bam.bai"))
-    } else {
-      println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
-      exit 1
-    }
-  }
-
+  
+  
   // Check file extension
   static def checkFileExtension(it, extension) {
     if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
