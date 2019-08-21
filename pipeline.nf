@@ -1346,9 +1346,11 @@ process DoFacets {
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
   
+  # For aggregation, we keep only certain outputs
   mkdir ${outputFacetsSubdirectory}
+  mkdir ${outputFacetsSubdirectory}/${outputDir}
   cp -rf ${outfile} ${outputFacetsSubdirectory}
-  cp -rf ${outputDir} ${outputFacetsSubdirectory}
+  cp -rf ${outputDir}/*.{Rdata,png} ${outputFacetsSubdirectory}/${outputDir}
   """
 }
 
@@ -1771,7 +1773,9 @@ process MetaDataParser {
 
 process SomaticAggregate {
  
-  publishDir "${params.outDir}/somatic/", mode: params.publishDirMode
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  if (publishAll) { publishDir "${params.outDir}/somatic/{mut,neoantigen,sv}", mode: params.publishDirMode }
 
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
@@ -1788,78 +1792,65 @@ process SomaticAggregate {
     file("mut_somatic.maf") into MafFileOutput
     file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
     file("facets/*") into FacetsChannel
-    set file("cna_cncf_hisens_interger_calls.txt"), file("cna_cncf_purity_interger_calls.txt"), file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
-    file("somatic_sv.vcf.gz") into VcfBedPeChannel
-    file("sample-level-metadata.txt") into MetaDataOutputChannel
+    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
+    file("sv_somatic.vcf.gz") into VcfBedPeChannel
+    file("sample_metadata.txt") into MetaDataOutputChannel
 
   when: runSomatic
-    
+
   script:
   """
   # Making a temp directory that is needed for some reason...
   mkdir tmp
   TMPDIR=./tmp
 
-  # Collect MAF files from neoantigen to maf_files/ and merge into one maf
-  mkdir maf_files
-  mv *.maf maf_files
-  cat maf_files/*.maf | grep ^Hugo | head -n1 > mut_somatic.maf
-  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_somatic.maf
+  # Collect and merge MAF files
+  mkdir mut
+  mv *.maf mut
+  cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
+  cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
 
-  # Collect netmhc/netmhcpan combined files from neoantigen to netmhc_stats
-  mkdir netmhc_stats
-  mv *.all_neoantigen_predictions.txt netmhc_stats
-  awk 'FNR==1 && NR!=1{next;}{print}' netmhc_stats/*.all_neoantigen_predictions.txt > mut_somatic_neoantigen_preds.txt
+  # Collect and merge neoantigen prediction
+  mkdir neoantigen
+  mv *.all_neoantigen_predictions.txt neoantigen
+  awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigen_predictions.txt
 
-  # Collect facets output to facets/
-  mkdir facets
-  mkdir facets/hisens
-  mkdir facets/purity
-  mkdir facets/hisensPurityOutput
-  mv *purity.* facets/purity
-  mv *hisens.* facets/hisens
-  mv *_OUT.txt facets/hisensPurityOutput
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.cncf.txt > cna_cncf_hisens_interger_calls.txt 
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.cncf.txt > cna_cncf_purity_interger_calls.txt
+  # Collect and merge FACETS outputs
+  mkdir facets_tmp
+  mv *_OUT.txt facets_tmp
   awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > cna_hisens_run_segmentation.seg 
   awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > cna_purity_run_segmentation.seg
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > cna_facets_output.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > cna_facets_run_info.txt
 
-  ## Move and merge FacetsAnnotation outputs
-  mkdir facets/armLevel
-  mkdir facets/geneLevel
-  mkdir facets/manualReview
-  mv *armlevel.txt facets/armLevel
-  mv *genelevel.txt facets/geneLevel
-  mv *genelevel_TSG_ManualReview.txt  facets/manualReview
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.txt > cna_armlevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.txt > cna_genelevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
+  mkdir facets_tmp
+  mv *armlevel.txt facets_tmp
+  mv *genelevel.txt facets_tmp
+  mv *genelevel_TSG_ManualReview.txt facets_tmp
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*armlevel.txt > cna_armlevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel.txt > cna_genelevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
+  rm -rf facets_tmp
 
-  ## Move all FACETS output subdirectories into /facets
-  mv ${facetsOutputSubdirectories} facets/
+  # Collect all FACETS output subdirectories
+  mv ${facetsOutputSubdirectories} cna
 
-  # Collect delly and manta vcf outputs into vcf_delly_manta/
-  for f in *.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
-
-  mkdir vcf_delly_manta
-  mv *delly.manta.vcf.gz* vcf_delly_manta
+  # Collect and merge Delly and Manta VCFs
+  mkdir sv
+  mv *delly.manta.vcf.gz* sv
 
   bcftools merge \
     --force-samples \
     --merge none \
     --output-type z \
-    --output somatic_sv.vcf.gz \
+    --output sv_somatic.vcf.gz \
     vcf_delly_manta/*delly.manta.vcf.gz
 
-  ## Collect metadata *tsv file into merged_metadata.txt
-  mkdir metadata
-  mv *_metadata.txt metadata 
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata/*_metadata.txt > sample-level-metadata.txt 
+  # Collect and merged metadata TSV file
+  mkdir metadata_tmp
+  mv *_metadata.txt metadata_tmp 
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*_metadata.txt > sample_metadata.txt 
+  rm -rf metadata_tmp
   """
 }
 
