@@ -866,7 +866,7 @@ process SomaticMergeDellyAndManta {
 
   output:
     file("${outputPrefix}.delly.manta.vcf.gz") into vcfDellyMantaMergedOutput
-    file("${outputPrefix}.delly.manta.vcf.gz.tbi") into vcfDellyMantaMergedtbi
+    file("${outputPrefix}.delly.manta.vcf.gz.tbi") into vcfDellyMantaMergedOutputIndex
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -1789,16 +1789,17 @@ process SomaticAggregate {
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
     file(annotationFiles) from FacetsArmGeneOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+    file(dellyMantaVcfIndex) from vcfDellyMantaMergedOutputIndex.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
     file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
     file("mut_somatic.maf") into MafFileOutput
-    file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
-    file("facets/*") into FacetsChannel
+    file("mut_somatic_neoantigens.txt") into NetMhcChannel
+    file("cna/*") into FacetsChannel
     set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
     set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
-    file("sv_somatic.vcf.gz") into VcfBedPeChannel
+    file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
     file("sample_metadata.txt") into MetaDataOutputChannel
 
   when: runSomatic
@@ -1811,36 +1812,35 @@ process SomaticAggregate {
 
   # Collect and merge MAF files
   mkdir mut
-  mv *.maf mut
+  mv *.maf mut/
   cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
   cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
 
   # Collect and merge neoantigen prediction
   mkdir neoantigen
-  mv *.all_neoantigen_predictions.txt neoantigen
-  awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigen_predictions.txt
+  mv *.all_neoantigen_predictions.txt neoantigen/
+  awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigens.txt
 
   # Collect and merge FACETS outputs
   mkdir facets_tmp
-  mv *_OUT.txt facets_tmp
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisens/*_hisens.seg > cna_hisens_run_segmentation.seg 
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/purity/*_purity.seg > cna_purity_run_segmentation.seg
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/hisensPurityOutput/*_OUT.txt > cna_facets_run_info.txt
+  mv *_OUT.txt facets_tmp/
+  mv *{purity,hisens}.seg facets_tmp/
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg 
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
 
-  mkdir facets_tmp
-  mv *armlevel.txt facets_tmp
-  mv *genelevel.txt facets_tmp
-  mv *genelevel_TSG_ManualReview.txt facets_tmp
+  mv *{genelevel,armlevel}.txt facets_tmp/
+  mv *genelevel_TSG_ManualReview.txt facets_tmp/
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*armlevel.txt > cna_armlevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel.txt > cna_genelevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel.txt | grep -v "DIPLOID" > cna_genelevel.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
-  rm -rf facets_tmp
-
+  
   # Collect all FACETS output subdirectories
-  mv ${facetsOutputSubdirectories} cna
+  mkdir cna
+  mv ${facetsOutputSubdirectories} cna/
 
   # Collect and merge Delly and Manta VCFs
-  mkdir sv
+  mkdir sv/
   mv *delly.manta.vcf.gz* sv
 
   bcftools merge \
@@ -1848,11 +1848,13 @@ process SomaticAggregate {
     --merge none \
     --output-type z \
     --output sv_somatic.vcf.gz \
-    vcf_delly_manta/*delly.manta.vcf.gz
+    sv/*delly.manta.vcf.gz
+  
+  tabix --preset vcf sv_somatic.vcf.gz
 
   # Collect and merged metadata TSV file
   mkdir metadata_tmp
-  mv *_metadata.txt metadata_tmp 
+  mv *_metadata.txt metadata_tmp/
   awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*_metadata.txt > sample_metadata.txt 
   rm -rf metadata_tmp
   """
