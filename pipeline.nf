@@ -1775,8 +1775,6 @@ process SomaticAggregate {
  
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/{mut,neoantigen,sv}", mode: params.publishDirMode }
-
   input:
     file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
