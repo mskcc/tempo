@@ -55,13 +55,15 @@ class VaporwareUtils {
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
   // not a static method, as currently written
   static def validateBamIndexFormat(it) {
-    bamFilename = it.take(it.lastIndexOf('.'))
+    def bamFilename = it.take(it.lastIndexOf('.'))
     // Check BAM index extension
     if (file(bamFilename + ".bai").exists()){
-      return(file("${bamFilename}.bai"))
-    } else if (file(bamFilename + ".bam.bai").exists()){
-      return(file("${bamFilename}.bam.bai"))
-    } else {
+      return("${bamFilename}.bai")
+    } 
+    else if (file(bamFilename + ".bam.bai").exists()){
+      return("${bamFilename}.bam.bai")
+    } 
+    else {
       println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
       exit 1
     }
