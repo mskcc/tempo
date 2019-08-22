@@ -72,13 +72,13 @@ Mutational hotspots, where the value in `Hotspot` is `TRUE`, are retained in the
 - Are flagged with `low_mapping_quality`, `low_t_depth`, or `strand_bias`.
 _Note that combinations of above filter flags results in filtering of the variant._
 
-### Allele-Specific Copy-Number and Zygosity
+### Clonality and Zygosity Analyses
 
 ## Germline SNVs and Indels
 
 TBD
 
-### Allele-Specific Copy-Number and Zygosity
+### Zygosity Analysis
 
 ## Somatic and Germline SVs
 
