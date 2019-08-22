@@ -490,7 +490,7 @@ if (!params.bam_pairing) {
       ${ignore} \
       --outfile ${outfile} \
       ${bam} && \
-      Rscript /opt/alfred/scripts/stats.R ${outfile}
+      Rscript --no-init-file /opt/alfred/scripts/stats.R ${outfile}
     """
   }
   
@@ -520,7 +520,7 @@ if (!params.bam_pairing) {
       options = 'wgs'
     }
     """
-    create-aggregate-qc-file.R ${options}
+    Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
     """
   }
 }
@@ -1240,7 +1240,8 @@ process SomaticAnnotateMaf {
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
     
-  filter-somatic-maf.R \
+
+  Rscript --no-init-file /usr/bin/filter-somatic-maf.R \
     --tumor-vaf ${params.somaticVariant.tumorVaf} \
     --tumor-depth ${params.somaticVariant.tumorDepth} \
     --tumor-count ${params.somaticVariant.tumorCount} \
@@ -1250,6 +1251,7 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
+
   """
 }
 
@@ -1323,7 +1325,7 @@ process DoFacets {
 
   mkdir ${outputDir}
 
-  /usr/bin/facets-suite/doFacets.R \
+  Rscript --no-init-file /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
     --snp_nbhd ${params.facets.snp_nbhd} \
     --ndepth ${params.facets.ndepth} \
@@ -1431,6 +1433,8 @@ process RunConpair {
   }
   javaMem = "${mem}g"
   """
+  touch .Rprofile
+  
   # Make pileup files
   ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
     --gatk=${gatkPath} \
@@ -1536,14 +1540,16 @@ mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).com
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  // test run 
+  // if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode 
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.xls"), file("Figures/*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.txt"), file("Figures/*") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -1554,7 +1560,9 @@ process RunLOHHLA {
   PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
-  Rscript /lohhla/LOHHLAscript.R \
+
+
+  Rscript --no-init-file /lohhla/LOHHLAscript.R \
     --patientId ${idTumor}__${idNormal} \
     --normalBAMfile ${bamNormal} \
     --tumorBAMfile ${bamTumor} \
@@ -1566,6 +1574,7 @@ process RunLOHHLA {
     --novoDir /opt/conda/bin
   """
 }
+
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
@@ -1640,20 +1649,20 @@ process SomaticFacetsAnnotation {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R \
+  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
     --facets_files ${mapFile} \
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
   
-  /usr/bin/facets-suite/geneLevel.R \
+  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
     --outfile ${outputPrefix}.genelevel.txt
 
-  /usr/bin/facets-suite/armLevel.R \
+  Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.txt
 
-  annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
@@ -2189,7 +2198,7 @@ process GermlineCombineChannel {
 
   tabix --preset vcf ${isecDir}/0000.annot.vcf.gz
   tabix --preset vcf ${isecDir}/0001.annot.vcf.gz
-  tabix --preset vcf ${isecdir}/0002.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.annot.vcf.gz
 
   bcftools concat \
     --allow-overlaps \
@@ -2288,11 +2297,13 @@ process GermlineAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-germline-maf.R \
+
+  Rscript --no-init-file /usr/bin/filter-germline-maf.R \
     --normal-depth ${params.germlineVariant.normalDepth} \
     --normal-vaf ${params.germlineVariant.normalVaf} \
     --maf-file ${outputPrefix}.raw.maf \
     --output-prefix ${outputPrefix}
+
   """
   }
 
@@ -2320,12 +2331,12 @@ process GermlineFacetsAnnotation {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R \
+  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
     --facets_files ${mapFile} \
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
 
-  annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
