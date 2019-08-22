@@ -547,7 +547,7 @@ if ("strelka2" in tools) {
   tools.add("manta")
 }
 
-// If using running either conpair or conpairAll, run Manta as well to generate candidate indels
+// If using running either conpair or conpairAll, run pileup as well to generate pileups
 if ("conpair" in tools || "conpairAll" in tools) {
   tools.add("pileup")
 }
