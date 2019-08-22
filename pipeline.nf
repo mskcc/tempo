@@ -1536,14 +1536,16 @@ mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).com
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  // test run 
+  // if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode 
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.xls"), file("Figures/*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.txt"), file("Figures/*") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -1566,6 +1568,7 @@ process RunLOHHLA {
     --novoDir /opt/conda/bin
   """
 }
+
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
