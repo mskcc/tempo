@@ -504,7 +504,7 @@ if (!params.bam_pairing) {
   
   process AggregateBamQc {
     
-    publishDir "${params.outDir}", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
     input:
       val(assay) from assayType.unique()
