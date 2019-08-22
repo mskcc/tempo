@@ -1647,6 +1647,7 @@ process SomaticFacetsAnnotation {
   
   /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
+    --targetFile exome \ 
     --outfile ${outputPrefix}.genelevel.txt
 
   /usr/bin/facets-suite/armLevel.R \
