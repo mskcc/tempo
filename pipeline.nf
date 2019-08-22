@@ -2190,7 +2190,7 @@ process GermlineCombineChannel {
 
   tabix --preset vcf ${isecDir}/0000.annot.vcf.gz
   tabix --preset vcf ${isecDir}/0001.annot.vcf.gz
-  tabix --preset vcf ${isecdir}/0002.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.annot.vcf.gz
 
   bcftools concat \
     --allow-overlaps \
