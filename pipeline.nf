@@ -2121,7 +2121,7 @@ process GermlineCombineChannel {
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
   script:  
-  isec_dir = "${idNormal}.isec"
+  isecDir = "${idNormal}.isec"
   gnomad = gnomadWgsVcf
   if (assay == 'wgs') {
     gnomad = gnomadWgsVcf
@@ -2138,62 +2138,62 @@ process GermlineCombineChannel {
 
   bcftools isec \
     --output-type z \
-    --prefix ${isec_dir} \
+    --prefix ${isecDir} \
     ${haplotypecallercombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.vcf.gz \
+    --annotations ${isecDir}/0003.vcf.gz \
     --include 'FILTER!=\"PASS\"' \
     --mark-sites \"+Strelka2FILTER\" \
     -k \
     --output-type z \
-    --output ${isec_dir}/0003.annot.vcf.gz \
-    ${isec_dir}/0003.vcf.gz
+    --output ${isecDir}/0003.annot.vcf.gz \
+    ${isecDir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0000.vcf.gz \
+    --annotations ${isecDir}/0000.vcf.gz \
     --mark-sites +HaplotypeCaller \
     --output-type z \
-    --output ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0000.vcf.gz
+    --output ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0000.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0002.vcf.gz \
+    --annotations ${isecDir}/0002.vcf.gz \
     --mark-sites \"+HaplotypeCaller;Strelka2\" \
     --output-type z \
-    --output ${isec_dir}/0002.tmp.vcf.gz \
-    ${isec_dir}/0002.vcf.gz
+    --output ${isecDir}/0002.tmp.vcf.gz \
+    ${isecDir}/0002.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
-  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isecDir}/0003.annot.vcf.gz
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --annotations ${isecDir}/0003.annot.vcf.gz \
     --columns +FORMAT,Strelka2FILTER \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
-    ${isec_dir}/0002.tmp.vcf.gz
+    --output ${isecDir}/0002.annot.vcf.gz \
+    ${isecDir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0001.vcf.gz \
+    --annotations ${isecDir}/0001.vcf.gz \
     --mark-sites +Strelka2 \
     --output-type z \
-    --output ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0001.vcf.gz
+    --output ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0001.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0000.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0000.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0001.annot.vcf.gz
+  tabix --preset vcf ${isecdir}/0002.annot.vcf.gz
 
   bcftools concat \
     --allow-overlaps \
     --rm-dups all \
-    ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0002.annot.vcf.gz | \
+    ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0002.annot.vcf.gz | \
   bcftools sort | \
   bcftools annotate \
     --header-lines vcf.rm.header \
