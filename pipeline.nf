@@ -528,7 +528,7 @@ if (!params.bam_pairing) {
       ${ignore} \
       --outfile ${outfile} \
       ${bam} && \
-      Rscript /opt/alfred/scripts/stats.R ${outfile}
+      Rscript --no-init-file /opt/alfred/scripts/stats.R ${outfile}
     """
   }
   
@@ -558,7 +558,7 @@ if (!params.bam_pairing) {
       options = 'wgs'
     }
     """
-    create-aggregate-qc-file.R ${options}
+    Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
     """
   }
 }
@@ -1278,7 +1278,8 @@ process SomaticAnnotateMaf {
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
     
-  filter-somatic-maf.R \
+
+  Rscript --no-init-file /usr/bin/filter-somatic-maf.R \
     --tumor-vaf ${params.somaticVariant.tumorVaf} \
     --tumor-depth ${params.somaticVariant.tumorDepth} \
     --tumor-count ${params.somaticVariant.tumorCount} \
@@ -1288,6 +1289,7 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
+
   """
 }
 
@@ -1361,7 +1363,7 @@ process DoFacets {
 
   mkdir ${outputDir}
 
-  /usr/bin/facets-suite/doFacets.R \
+  Rscript --no-init-file /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
     --snp_nbhd ${params.facets.snp_nbhd} \
     --ndepth ${params.facets.ndepth} \
@@ -1469,6 +1471,8 @@ process RunConpair {
   }
   javaMem = "${mem}g"
   """
+  touch .Rprofile
+  
   # Make pileup files
   ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
     --gatk=${gatkPath} \
@@ -1594,7 +1598,9 @@ process RunLOHHLA {
   PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
-  Rscript /lohhla/LOHHLAscript.R \
+
+
+  Rscript --no-init-file /lohhla/LOHHLAscript.R \
     --patientId ${idTumor}__${idNormal} \
     --normalBAMfile ${bamNormal} \
     --tumorBAMfile ${bamTumor} \
@@ -1681,20 +1687,20 @@ process SomaticFacetsAnnotation {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R \
+  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
     --facets_files ${mapFile} \
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
   
-  /usr/bin/facets-suite/geneLevel.R \
+  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
     --outfile ${outputPrefix}.genelevel.txt
 
-  /usr/bin/facets-suite/armLevel.R \
+  Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.txt
 
-  annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
@@ -2329,11 +2335,13 @@ process GermlineAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-germline-maf.R \
+
+  Rscript --no-init-file /usr/bin/filter-germline-maf.R \
     --normal-depth ${params.germlineVariant.normalDepth} \
     --normal-vaf ${params.germlineVariant.normalVaf} \
     --maf-file ${outputPrefix}.raw.maf \
     --output-prefix ${outputPrefix}
+
   """
   }
 
@@ -2361,12 +2369,12 @@ process GermlineFacetsAnnotation {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R \
+  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
     --facets_files ${mapFile} \
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
 
-  annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
