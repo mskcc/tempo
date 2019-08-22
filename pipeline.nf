@@ -89,17 +89,17 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 if (params.mapping) {
   mappingPath = params.mapping
   
-  if (mappingPath && !check_for_duplicated_rows(mappingPath)) {
+  if (mappingPath && !VaporwareUtils.check_for_duplicated_rows(mappingPath)) {
     println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
 
-  if (mappingPath && !check_for_mixed_assay(mappingPath)) {
+  if (mappingPath && !VaporwareUtils.check_for_mixed_assay(mappingPath)) {
     println "ERROR: Multiple assays found in mapping file. Users can either run exomes or genomes, but not both. Please fix the error and re-run the pipeline."
     exit 1
   }
 
-  if (mappingPath && !checkForUniqueSampleLanes(mappingPath)) {
+  if (mappingPath && !VaporwareUtils.checkForUniqueSampleLanes(mappingPath)) {
     println "ERROR: The combination of sample ID and lane names values must be unique. Duplicate lane names for one sample cause errors. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -110,7 +110,7 @@ if (params.mapping) {
 if (params.pairing) {
   pairingPath = params.pairing
 
-  if (!check_for_duplicated_rows(pairingPath)) {
+  if (!VaporwareUtils.check_for_duplicated_rows(pairingPath)) {
     println "ERROR: Duplicated row found in pairing file. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -121,7 +121,7 @@ if (params.pairing) {
 if (params.bam_pairing) {
   bamPairingPath = params.bam_pairing
 
-  if (bamPairingPath && !check_for_duplicated_rows(bamPairingPath)) {
+  if (bamPairingPath && !VaporwareUtils.check_for_duplicated_rows(bamPairingPath)) {
     println "ERROR: Duplicated row found in BAM mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -148,8 +148,8 @@ if (!params.bam_pairing) {
   fastqFiles = Channel.empty() 
   mappingFile = file(mappingPath)
   pairingFile = file(pairingPath)
-  pairingTN = extractPairing(pairingFile)
-  fastqFiles = extractFastq(mappingFile)
+  pairingTN = VaporwareUtils.extractPairing(pairingFile)
+  fastqFiles = VaporwareUtils.extractFastq(mappingFile)
 
   fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.set{ groupedFastqs }
 
@@ -490,7 +490,7 @@ if (!params.bam_pairing) {
       ${ignore} \
       --outfile ${outfile} \
       ${bam} && \
-      Rscript /opt/alfred/scripts/stats.R ${outfile}
+      Rscript --no-init-file /opt/alfred/scripts/stats.R ${outfile}
     """
   }
   
@@ -520,7 +520,7 @@ if (!params.bam_pairing) {
       options = 'wgs'
     }
     """
-    create-aggregate-qc-file.R ${options}
+    Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
     """
   }
 }
@@ -556,7 +556,7 @@ if ("conpair" in tools || "conpairAll" in tools) {
 if (params.bam_pairing) {
   bamFiles = Channel.empty()
   bamPairingfile = file(bamPairingPath)
-  bamFiles = extractBAM(bamPairingfile)
+  bamFiles = VaporwareUtils.extractBAM(bamPairingfile)
 }
 
 // GATK SplitIntervals, CreateScatteredIntervals
@@ -1027,7 +1027,7 @@ process SomaticCombineChannel {
   
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  isec_dir = "${idTumor}.isec"
+  isecDir = "${idTumor}.isec"
   pon = wgsPoN
   gnomad = gnomadWgsVcf
   if (target == "wgs") {
@@ -1245,7 +1245,8 @@ process SomaticAnnotateMaf {
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
     
-  filter-somatic-maf.R \
+
+  Rscript --no-init-file /usr/bin/filter-somatic-maf.R \
     --tumor-vaf ${params.somaticVariant.tumorVaf} \
     --tumor-depth ${params.somaticVariant.tumorDepth} \
     --tumor-count ${params.somaticVariant.tumorCount} \
@@ -1255,6 +1256,7 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
+
   """
 }
 
@@ -1328,7 +1330,7 @@ process DoFacets {
 
   mkdir ${outputDir}
 
-  /usr/bin/facets-suite/doFacets.R \
+  Rscript --no-init-file /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
     --snp_nbhd ${params.facets.snp_nbhd} \
     --ndepth ${params.facets.ndepth} \
@@ -1457,14 +1459,16 @@ mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).com
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  // test run 
+  // if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode 
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.xls"), file("Figures/*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.txt"), file("Figures/*") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -1475,7 +1479,9 @@ process RunLOHHLA {
   PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
-  Rscript /lohhla/LOHHLAscript.R \
+
+
+  Rscript --no-init-file /lohhla/LOHHLAscript.R \
     --patientId ${idTumor}__${idNormal} \
     --normalBAMfile ${bamNormal} \
     --tumorBAMfile ${bamTumor} \
@@ -1487,6 +1493,7 @@ process RunLOHHLA {
     --novoDir /opt/conda/bin
   """
 }
+
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
@@ -1561,20 +1568,20 @@ process SomaticFacetsAnnotation {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R \
+  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
     --facets_files ${mapFile} \
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
   
-  /usr/bin/facets-suite/geneLevel.R \
+  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
     --outfile ${outputPrefix}.genelevel.txt
 
-  /usr/bin/facets-suite/armLevel.R \
+  Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.txt
 
-  annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
@@ -2045,7 +2052,7 @@ process GermlineCombineChannel {
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
   script:  
-  isec_dir = "${idNormal}.isec"
+  isecDir = "${idNormal}.isec"
   gnomad = gnomadWgsVcf
   if (assay == 'wgs') {
     gnomad = gnomadWgsVcf
@@ -2062,62 +2069,62 @@ process GermlineCombineChannel {
 
   bcftools isec \
     --output-type z \
-    --prefix ${isec_dir} \
+    --prefix ${isecDir} \
     ${haplotypecallercombinedVcf} ${strelkaVcf}
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.vcf.gz \
+    --annotations ${isecDir}/0003.vcf.gz \
     --include 'FILTER!=\"PASS\"' \
     --mark-sites \"+Strelka2FILTER\" \
     -k \
     --output-type z \
-    --output ${isec_dir}/0003.annot.vcf.gz \
-    ${isec_dir}/0003.vcf.gz
+    --output ${isecDir}/0003.annot.vcf.gz \
+    ${isecDir}/0003.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0000.vcf.gz \
+    --annotations ${isecDir}/0000.vcf.gz \
     --mark-sites +HaplotypeCaller \
     --output-type z \
-    --output ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0000.vcf.gz
+    --output ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0000.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0002.vcf.gz \
+    --annotations ${isecDir}/0002.vcf.gz \
     --mark-sites \"+HaplotypeCaller;Strelka2\" \
     --output-type z \
-    --output ${isec_dir}/0002.tmp.vcf.gz \
-    ${isec_dir}/0002.vcf.gz
+    --output ${isecDir}/0002.tmp.vcf.gz \
+    ${isecDir}/0002.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0002.tmp.vcf.gz
-  tabix --preset vcf ${isec_dir}/0003.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.tmp.vcf.gz
+  tabix --preset vcf ${isecDir}/0003.annot.vcf.gz
 
   bcftools annotate \
-    --annotations ${isec_dir}/0003.annot.vcf.gz \
+    --annotations ${isecDir}/0003.annot.vcf.gz \
     --columns +FORMAT,Strelka2FILTER \
     --output-type z \
-    --output ${isec_dir}/0002.annot.vcf.gz \
-    ${isec_dir}/0002.tmp.vcf.gz
+    --output ${isecDir}/0002.annot.vcf.gz \
+    ${isecDir}/0002.tmp.vcf.gz
 
   bcftools annotate \
     --header-lines vcf.header \
-    --annotations ${isec_dir}/0001.vcf.gz \
+    --annotations ${isecDir}/0001.vcf.gz \
     --mark-sites +Strelka2 \
     --output-type z \
-    --output ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0001.vcf.gz
+    --output ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0001.vcf.gz
 
-  tabix --preset vcf ${isec_dir}/0000.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0001.annot.vcf.gz
-  tabix --preset vcf ${isec_dir}/0002.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0000.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0001.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.annot.vcf.gz
 
   bcftools concat \
     --allow-overlaps \
     --rm-dups all \
-    ${isec_dir}/0000.annot.vcf.gz \
-    ${isec_dir}/0001.annot.vcf.gz \
-    ${isec_dir}/0002.annot.vcf.gz | \
+    ${isecDir}/0000.annot.vcf.gz \
+    ${isecDir}/0001.annot.vcf.gz \
+    ${isecDir}/0002.annot.vcf.gz | \
   bcftools sort | \
   bcftools annotate \
     --header-lines vcf.rm.header \
@@ -2209,11 +2216,13 @@ process GermlineAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
 
-  filter-germline-maf.R \
+
+  Rscript --no-init-file /usr/bin/filter-germline-maf.R \
     --normal-depth ${params.germlineVariant.normalDepth} \
     --normal-vaf ${params.germlineVariant.normalVaf} \
     --maf-file ${outputPrefix}.raw.maf \
     --output-prefix ${outputPrefix}
+
   """
   }
 
@@ -2241,12 +2250,12 @@ process GermlineFacetsAnnotation {
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  /usr/bin/facets-suite/mafAnno.R \
+  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
     --facets_files ${mapFile} \
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
 
-  annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
 }
 
@@ -2386,6 +2395,7 @@ process GermlineAggregate {
     vcf_delly_manta/*.delly.manta.vcf.gz
   """
 }
+
 
 /*
 ================================================================================
@@ -2631,11 +2641,6 @@ process QcConpairAggregate {
 }
 
 
-/*
-================================================================================
-=                              AUXILLIARY FUNCTIONS                            =
-================================================================================
-*/
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
@@ -2712,138 +2717,5 @@ def defineReferenceMap() {
   return result_array
 }
 
-def debug(channel) {
-  channel.subscribe { Object obj ->
-    println "DEBUG: ${obj.toString()};"
-  }
-}
 
-def extractPairing(tsvFile) {
-  Channel.from(tsvFile)
-  .splitCsv(sep: '\t', header: true)
-  .map { row ->
-    [row.TUMOR_ID.trim(), row.NORMAL_ID.trim()]
-  }
-}
 
-def extractFastq(tsvFile) {
-  Channel.from(tsvFile)
-  .splitCsv(sep: '\t', header: true)
-  .map { row ->
-    checkNumberOfItem(row, 6)
-    def idSample = row.SAMPLE.trim()
-    def lane = row.LANE.trim()
-    def assayValue = row.ASSAY.trim()
-    def targetFile = row.TARGET.trim()
-    def fastqFile1 = returnFile(row.FASTQ_PE1.trim())
-    def sizeFastqFile1 = fastqFile1.size()
-    def fastqFile2 = returnFile(row.FASTQ_PE2.trim())
-    def sizeFastqFile2 = fastqFile2.size()
-
-    def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
-
-    if ((assay == "genome") || (assay == "wgs")) {
-      assay = "wgs"
-    }
-    if ((assay == "exome") || (assay == "wes")) {
-      assay = "wes"
-    }
-
-    checkFileExtension(fastqFile1,".fastq.gz")
-    checkFileExtension(fastqFile2,".fastq.gz")
-
-    [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
-  }
-}
-
-def extractBAM(tsvFile) {
-  Channel.from(tsvFile)
-  .splitCsv(sep: '\t', header: true)
-  .map { row ->
-    checkNumberOfItem(row, 6)
-    def idTumor = row.TUMOR_ID.trim()
-    def idNormal = row.NORMAL_ID.trim()
-    def assay = row.ASSAY.trim()
-    def target = row.TARGET.trim()
-    def bamTumor = returnFile(row.TUMOR_BAM.trim())
-    // check if using bamTumor.bai or bamTumor.bam.bai
-    def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM.trim()))
-    // def sizeTumorBamFile = tumorBamFile.size()
-    def bamNormal = returnFile(row.NORMAL_BAM.trim())
-    def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM.trim()))
-    // def sizeNormalBamFile = normalBamFile.size()
-
-    [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
-  }
-}
-
-// Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
-def validateBamIndexFormat(it) {
-  bamFilename = it.take(it.lastIndexOf('.'))
-  // Check BAM index extension
-  if (file(bamFilename + ".bai").exists()){
-    return(file("${bamFilename}.bai"))
-  } else if (file(bamFilename + ".bam.bai").exists()){
-    return(file("${bamFilename}.bam.bai"))
-  } else {
-    println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
-    exit 1
-  }
-}
-
-// Check file extension
-def checkFileExtension(it, extension) {
-  if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
-}
-
-// Check if a row has the expected number of item
-def checkNumberOfItem(row, number) {
-  if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
-  return true
-}
-
-// Return file if it exists
-def returnFile(it) {
-  if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
-  return file(it)
-}
-
-def check_for_duplicated_rows(pairingFilePath) {
-  def entries = []
-  file( pairingFilePath ).eachLine { line ->
-    if (!line.isEmpty()){
-      entries << line
-    }
-  }
-  return entries.toSet().size() == entries.size()
-}
-
-def check_for_mixed_assay(mappingFilePath) {
-  def wgs = false
-  def wes = false
-  file( mappingFilePath ).eachLine { line ->
-    currentLine = line.toLowerCase()
-    if (currentLine.contains('\tgenome\t') || currentLine.contains('\twgs\t')) {
-      wgs = true
-    }
-    if (currentLine.contains('\texome\t') || currentLine.contains('\twes\t')) {
-      wes = true
-    }
-  return !(wgs && wes)
-  }
-}
-
-// check lane names are unique in input mapping *tsv 
-def checkForUniqueSampleLanes(inputFilename) {
-  def totalList = []
-  // parse tsv
-  file(inputFilename).eachLine { line ->
-      if (!line.isEmpty()){
-          def (sample, lane, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
-          totalList << sample + "_" + lane
-      }
-  }
-  // remove header 'SAMPLE_LANE'
-  totalList.removeAll{ it == 'SAMPLE_LANE'} 
-  return totalList.size() == totalList.unique().size()
-}
