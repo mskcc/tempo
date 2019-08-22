@@ -1638,7 +1638,7 @@ process SomaticFacetsAnnotation {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
+    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1799,7 +1799,7 @@ process SomaticAggregate {
     file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
     file("facets/*") into FacetsChannel
     set file("cna_cncf_hisens_interger_calls.txt"), file("cna_cncf_purity_interger_calls.txt"), file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt") file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
     file("somatic_sv.vcf.gz") into VcfBedPeChannel
     file("sample-level-metadata.txt") into MetaDataOutputChannel
 
@@ -1842,10 +1842,8 @@ process SomaticAggregate {
   mkdir facets/manualReview
   mv *armlevel.txt facets/armLevel
   mv *genelevel.txt facets/geneLevel
-  mv *genelevel_TSG_ManualReview.txt  facets/manualReview
   awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.txt > cna_armlevel.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.txt > cna_genelevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/manualReview/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
 
   ## Move all FACETS output subdirectories into /facets
   mv ${facetsOutputSubdirectories} facets/
