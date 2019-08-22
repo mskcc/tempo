@@ -1799,7 +1799,7 @@ process SomaticAggregate {
     file("mut_somatic_neoantigen_preds.txt") into NetMhcChannel
     file("facets/*") into FacetsChannel
     set file("cna_cncf_hisens_interger_calls.txt"), file("cna_cncf_purity_interger_calls.txt"), file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt") file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_output.txt") into FacetsAnnotationMergedChannel
     file("somatic_sv.vcf.gz") into VcfBedPeChannel
     file("sample-level-metadata.txt") into MetaDataOutputChannel
 
