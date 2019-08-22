@@ -294,9 +294,26 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
+
+    if(bam.size()/1024/1024/1024 > 100){
+      task.time = { 6.h * task.attempt }
+    }
+    else if (bam.size()/1024/1024/1024 > 200){
+      task.time = { 32.h * task.attempt }
+    }
+    else{
+      task.time = { 3.h * task.attempt }
+    }
+
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
+
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
-    gatk BaseRecalibrator \
+    gatk BaseRecalibratorSpark \
+      ${javaOptions} \
+      ${sparkConf} \
       --tmp-dir /tmp \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
@@ -329,15 +346,30 @@ if (!params.bam_pairing) {
       val(targetFile) into targets
 
     script:
+
+    if(bam.size()/1024/1024/1024 > 80){
+      task.time = { 6.h * task.attempt }
+    }
+    else if (bam.size()/1024/1024/1024 > 160){
+      task.time = { 32.h * task.attempt }
+    }
+    else{
+      task.time = { 3.h * task.attempt }
+    }
+
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
+
     """
-    gatk ApplyBQSR \
+    gatk ApplyBQSRSpark \
+      ${javaOptions} \
+      ${sparkConf} \
       --reference ${genomeFile} \
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
       --input ${bam} \
       --output ${idSample}.bam
-      
-    mv ${idSample}.bai ${idSample}.bam.bai
     """
   }
 
