@@ -6,22 +6,29 @@ This page provides instructions on how to run the pipeline through the `pipeline
 
 ```shell
 nextflow run pipeline.nf \
-    --somatic --germline --outDir <path to output subdirectory> \ 
-    -w <path to temporary work directory with cached results> \
+    --somatic --germline \
+    --assayType <string value: either "exome" or "genome"> \
+    --outDir <path to output subdirectory> \ 
     -profile juno \
-    --mapping <input mapping tsv file>  \
-    --pairing <input pairing tsv file>  \
-    -assayType <string value: either "exome" or "genome">
-    -with-report <name of html file> \ 
-    -with-trace <name of html file> 
+    --mapping <input mapping tsv file> \
+    --pairing <input pairing tsv file>
 ```
-**NOTE:** The number of dashes [matters](nextflow-basics.md)
 
-* The `--somatic` and `--germline` flags indicate to run the somatic and germline variant calling modules, respectively. If not set, `pipeline.nf` will only align BAMs.
+_Note: [The number of dashes matters](nextflow-basics.md)._
+
+**Recommended arguments:**
+* The `--somatic` and `--germline` flags are boolean that indicate to run the somatic and germline variant calling modules, respectively. If not set, the pipeline will only align BAMs.
+* `--assayType` ensures appropriate resources are allocated for indicated assay type.
 * `--outDir` is the directory where the output will end up. This directory does not need to exist. If not set, by default it will be set to run directory (i.e. the directory from which the command `nextflow run` is executed.)
-* `-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively.
-* The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the `test_inputs` subdirectory.
+* The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the [test inputs subdirectory](../test_inputs).
+
+_Note: The `assayType` argument is for resource allocation. This should also be specified in [the mapping file](running-the-pipeline.md#the-mapping-file), but for the purpose of correct reference file usage._
+
+**Optional arguments:**
+* `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
+* `-publishAll` is a boolean, resulting in retention of intermediate output files.
+* `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
 
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
@@ -147,10 +154,18 @@ Users are welcome to use `nohup` or `tmux` as well.
 
 These instructions will assume the user is moderately knowledgeable of AWS. Please refer to [AWS Setup](aws-setup.md) and the [AWS Glossary](aws-glossary.md) we have curated.
 
-...
+## Modifying or Resuming Pipeline Run
 
+Nextflow supports [modify and resume](https://www.nextflow.io/docs/latest/getstarted.html?#modify-and-resume). 
 
+To resume an interrupted Nextflow pipeline run, add `-resume` (note the single dash) to your command-line call to access Nextflow's cache history and continue a job from where it left off. This will trigger a check of which jobs already completed before starting unfinished jobs in the pipeline.
 
+This function also allows you to make changes to values in the `pipeline.nf` script and continue from where you left off. Nextflow will use the cached information from the unchanged sections while running only the modified processes. If you want to make changes to processes that already successfully completed, you have to manually delete the subdirectories in `work` where those processes where run. 
 
+_Note 1: if you use `-resume` for the first time of a timeline run, Nextflow will recognize this as superfluous, and continue._
 
+_Note 2: To peacefully interrupt an ongoing Nextflow pipeline run, do `control+C` once and wait for Nextflow to kill submitted jobs. Otherwise orphan jobs might be left on the cluster._
 
+## After Successful Run
+
+Nextflow creates a lot of intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will occupy a lot of space and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. Once these files are removed, modifications to or resumptions of a pipeline run **cannot** be done.
