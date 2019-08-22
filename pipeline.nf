@@ -501,7 +501,7 @@ if (!params.bam_pairing) {
   
   process AggregateBamQc {
     
-    publishDir "${params.outDir}", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
     input:
       val(assay) from assayType.unique()
@@ -1258,6 +1258,7 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
+
   """
 }
 
@@ -1549,7 +1550,9 @@ mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).com
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  // test run 
+  // if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode 
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
@@ -1583,6 +1586,7 @@ process RunLOHHLA {
   mv Figures/*.pdf .
   """
 }
+
 
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
@@ -2206,7 +2210,7 @@ process GermlineCombineChannel {
 
   tabix --preset vcf ${isecDir}/0000.annot.vcf.gz
   tabix --preset vcf ${isecDir}/0001.annot.vcf.gz
-  tabix --preset vcf ${isecdir}/0002.annot.vcf.gz
+  tabix --preset vcf ${isecDir}/0002.annot.vcf.gz
 
   bcftools concat \
     --allow-overlaps \
@@ -2313,6 +2317,7 @@ process GermlineAnnotateMaf {
     --normal-vaf ${params.germlineVariant.normalVaf} \
     --maf-file ${outputPrefix}.raw.maf \
     --output-prefix ${outputPrefix}
+
   """
   }
 
