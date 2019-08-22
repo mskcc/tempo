@@ -71,3 +71,15 @@ Mutational hotspots, where the value in `Hotspot` is `TRUE`, are retained in the
 - Are flagged with `low_vaf` but the tumor VAF is at least 0.02.
 - Are flagged with `low_mapping_quality`, `low_t_depth`, or `strand_bias`.
 _Note that combinations of above filter flags results in filtering of the variant._
+
+### Clonality and Zygosity Analyses
+
+## Germline SNVs and Indels
+
+TBD
+
+### Zygosity Analysis
+
+## Somatic and Germline SVs
+
+TBD
