@@ -16,18 +16,47 @@ themeConfig:
         - "/run-pipeline"
         - "/nextflow-basics"
         - "/working-with-containers"
+    - title: Outputs
+      collapsable: false
+      children:
+        - "/bam-files"
+        - "/qc-outputs"
+        - "/somatic-data"
+        - "/germline-data"
+        - "/extended-outputs"
     - title: Bioinformatics Components
       collapsable: false
       children:
-        - "/bioinformatic-components"
-        - "/intervals"
-        - "/reference-resources"
+        - "/read-alignment"
+        - "/somatic-analyses"
+        - "/germline-analyses"
+    - title: Reference Resources
+      collapsable: false
+      children:
+        - "/genome-assembly"
+        - "/genomic-intervals"
+        - "/repeatmasker-and-mappability-blacklist"
+        - "/preferred-transcript-isoforms"
+        - "/hotspot-annotation"
+        - "/oncokb-annotation"
         - "/gnomad"
-        - "/wes-panel-of-normals"
-        - "/variant-annotation-and-filtering"
-    - "/aws-glossary"
-    - "/troubleshooting"
-    - "/contributing-to-vaporware"
+        - "/panel-of-normals-for-exomes"
+    - title: Variant Annotation and Filtering 
+      collapsable: false
+      children:
+        - "/somatic-snvs-and-indels"
+        - "/germline-snvs-and-indels"
+        - "/somatic-and-germline-svs"
+    - title: Help and Other Resources 
+      collapsable: false
+      children:
+        - "/troubleshooting"
+        - "/aws-glossary"
+        - "/somatic-and-germline-svs"
+    - title: Contributing
+      collapsable: false
+      children:
+        - "/contributing-to-vaporware"
   repo: mskcc/vaporware
   docsBranch: 'develop'
 plugins:

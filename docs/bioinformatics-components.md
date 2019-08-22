@@ -5,7 +5,7 @@ The three main functions of the pipeline are:
 2. Somatic variant detection
 3. Germline variant detection
 
-Below are described the separate Nextflow processes and associated with each module and the tools used. The following diagram outlines the workflow:
+Additionally, various QC metrics are generated. Below are described the separate Nextflow processes, their function and tools used. The following diagram outlines the workflow:
 
 <img id="diagram" src="./pipeline-flowchart.png"/>
 
@@ -29,12 +29,12 @@ Vaporware accepts as input sequencing reads from one or multiple FASTQ file pair
 * Mutational signatures with https://github.com/mskcc/mutation-signatures
 * Class I MHC Binding Affinity Prediction with [NetMHC 4.0](https://www.ncbi.nlm.nih.gov/pubmed/28978689)
 
-
 ## Germline Analyses
 * SNVs and indels are called using [MuTect2](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.4/org_broadinstitute_hellbender_tools_walkers_mutect_Mutect2.php) and [Strelka2](https://github.com/Illumina/strelka).
 * Structural variants are detected by [Delly](https://github.com/dellytools/delly) and [Manta](https://github.com/Illumina/manta).
 * We currently do not have a special module dedicated to germline CNVs besides that provided by the germline SV calls. 
 
+## Quality Control
 
 ## WGS versus WES
 

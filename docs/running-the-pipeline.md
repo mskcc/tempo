@@ -23,6 +23,8 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively.
 * The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the [test inputs subdirectory](../test_inputs).
 
+_Note: The `assayType` argument is for resource allocation. This should also be specified in [the mapping file](running-the-pipeline.md#the-mapping-file), but for the purpose of correct reference file usage._
+
 **Optional arguments:**
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
 * `-publishAll` is a boolean, resulting in retention of intermediate output files.

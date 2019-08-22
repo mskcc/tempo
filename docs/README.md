@@ -35,11 +35,11 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Set up on AWS](aws-setup.md)
 
 #### 1.2. Usage
-* [Nextflow Basics](nextflow-basics.md)
-* [Working With Containers](working-with-containers.md)
 * [Running the Pipeline](running-the-pipeline.md)
     * [Modifying or Resuming Pipeline Run](running-the-pipeline.md#modifying-or-resuming-pipeline-run)
     * [After Successful Run](running-the-pipeline.md#after-successful-run)
+* [Nextflow Basics](nextflow-basics.md)
+* [Working With Containers](working-with-containers.md)
 
 #### 1.3 [Outputs](outputs.md)
 * [BAM Files](outputs.md#bam-files)
@@ -58,7 +58,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 #### 2.2. [Reference Resources](reference-resources.md)
 * [Genome Assembly](reference-resources.md#genome-assembly)
 * [Genomic Intervals](reference-resources.md#genomic-intervals)
-* [RepeatMasker and Mapability Blacklist](reference-resources.md#repeatmasker-and-mapability-blacklist)
+* [RepeatMasker and Mappability Blacklist](reference-resources.md#repeatmasker-and-mappability-blacklist)
 * [Preferred Transcript Isoforms](reference-resources.md#preferred-transcript-isoforms)
 * [Hotspot Annotation](reference-resources.md#hotspot-annotation.md)
 * [OncoKB Annotation](reference-resources.md#oncokb.md)
