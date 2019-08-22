@@ -30,6 +30,7 @@ themeConfig:
         - "/read-alignment"
         - "/somatic-analyses"
         - "/germline-analyses"
+        - "/quality-control"
     - title: Reference Resources
       collapsable: false
       children:

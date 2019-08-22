@@ -54,6 +54,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Read Alignment](bioinformatic-components.md#read-alignment)
 * [Somatic Analyses](bioinformatic-components.md#somatic-analyses)
 * [Germline Analyses](bioinformatic-components.md#germline-analyses)
+* [Quality Control](bioinformatic-components.md#quality-control)
 
 #### 2.2. [Reference Resources](reference-resources.md)
 * [Genome Assembly](reference-resources.md#genome-assembly)
