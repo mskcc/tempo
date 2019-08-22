@@ -752,9 +752,7 @@ forMutect2Combine = forMutect2Combine.groupTuple()
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/somatic/mutect2", mode: params.publishDirMode, pattern: "${outfile}*"
-    }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mut/mutect2", mode: params.publishDirMode }
 
   input:
     set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
@@ -771,7 +769,7 @@ process SomaticCombineMutect2Vcf {
   idTumor = id.toString().split("__")[0]
   idNormal = id.toString().split("@")[0].split("__")[1]
   target = id.toString().split("@")[1]
-  outfile = "${idTumor}__${idNormal}.mutect2.filtered.vcf.gz"
+  outfile = "${idTumor}__${idNormal}.mutect2.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
@@ -864,8 +862,8 @@ process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
-    publishDir "${params.outDir}/somatic/manta", mode: params.publishDirMode, pattern: "${outputPrefix}.manta.vcf.{gz,gz.tbi}"
+    publishDir "${params.outDir}/somatic/sv/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+    publishDir "${params.outDir}/somatic/sv/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
   }
 
   input:
@@ -924,9 +922,7 @@ process SomaticMergeDellyAndManta {
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/somatic/strelka2", mode: params.publishDirMode, pattern: "${outfile}*"
-  }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mut/strelka2", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -940,8 +936,7 @@ process SomaticRunStrelka2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file('*merged.filtered.vcf.gz'), file('*merged.filtered.vcf.gz.tbi') into strelkaOutputMerged
-    set idTumor, idNormal, target, file("*indels.vcf.gz"), file("*indels.vcf.gz.tbi"), file("*snvs.vcf.gz"), file("*snvs.vcf.gz.tbi") into strelkaOutput
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelkaOutputMerged
 
   when: tools.containsAll(["manta", "strelka2"]) && runSomatic
 
@@ -953,8 +948,8 @@ process SomaticRunStrelka2 {
     if (target == 'agilent') intervals = agilentTargets
     if (target == 'idt') intervals = idtTargets
   }
-  prefix = "${idTumor}_${idNormal}.strelka.merged"
-  outfile = "${prefix}.filtered.vcf.gz"
+  outputPrefix = "${idTumor}__${idNormal}"
+  outfile = "${outputPrefix}.strelka2.vcf.gz"
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \
@@ -971,19 +966,19 @@ process SomaticRunStrelka2 {
     --jobs ${task.cpus}
 
   mv Strelka/results/variants/somatic.indels.vcf.gz \
-    Strelka_${idTumor}__${idNormal}_somatic_indels.vcf.gz
+    Strelka_${outputPrefix}_somatic_indels.vcf.gz
   mv Strelka/results/variants/somatic.indels.vcf.gz.tbi \
-    Strelka_${idTumor}__${idNormal}_somatic_indels.vcf.gz.tbi
+    Strelka_${outputPrefix}_somatic_indels.vcf.gz.tbi
   mv Strelka/results/variants/somatic.snvs.vcf.gz \
-    Strelka_${idTumor}__${idNormal}_somatic_snvs.vcf.gz
+    Strelka_${outputPrefix}_somatic_snvs.vcf.gz
   mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
-    Strelka_${idTumor}__${idNormal}_somatic_snvs.vcf.gz.tbi
+    Strelka_${outputPrefix}_somatic_snvs.vcf.gz.tbi
 
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
   
   bcftools concat \
     --allow-overlaps \
-    Strelka_${idTumor}__${idNormal}_somatic_indels.vcf.gz Strelka_${idTumor}__${idNormal}_somatic_snvs.vcf.gz | \
+    Strelka_${outputPrefix}_somatic_indels.vcf.gz Strelka_${outputPrefix}_somatic_snvs.vcf.gz | \
   bcftools reheader \
     --samples samples.txt | \
   bcftools sort | \
@@ -1198,7 +1193,7 @@ process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode, pattern: "${outputPrefix}.*.maf"
+    publishDir "${params.outDir}/somatic/mut", mode: params.publishDirMode, pattern: "*.maf"
   }
 
   input:
@@ -1303,7 +1298,7 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  // if (publishAll) { publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/cna", mode: params.publishDirMode }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
@@ -1375,12 +1370,12 @@ process RunPolysolver {
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/winners.hla.txt") into hlaOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput
 
   when: "polysolver" in tools && runSomatic
   
   script:
-  outPrefix = "${idTumor}__${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
   """
@@ -1559,14 +1554,14 @@ process RunLOHHLA {
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.xls"), file("Figures/*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.xls"), file("*.pdf") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  cat ${outputPrefix}.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
+  cat winners.hla.txt | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
   
   PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
@@ -1582,6 +1577,8 @@ process RunLOHHLA {
     --hlaPath massaged.winners.hla.txt \
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
+
+  mv Figures/*.pdf .
   """
 }
 
@@ -1591,7 +1588,7 @@ process RunLOHHLA {
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll){ publishDir "${params.outDir}/somatic/mutsig", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mut", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
@@ -1641,6 +1638,10 @@ facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
 // --- Do FACETS MAF annotation and post processing
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
+
+  if (publishAll) {
+    publishDir "${params.outDir}/somatic/cna", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt"
+  }
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
@@ -1973,7 +1974,7 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
-  target = id.toString().split("@")[1]
+  idNormal = id.toString().split("@")[0].split("__")[1]
   outfile = "${idNormal}.haplotypecaller.vcf.gz"  
   """
   bcftools concat \
@@ -1997,7 +1998,9 @@ process GermlineCombineHaplotypecallerVcf {
 // --- Run Manta, germline
 process GermlineRunManta {
   tag {idNormal}
-
+  
+  if (publishAll) { publishDir "${params.outDir}/germline/manta", mode: params.publishDirMode }
+  
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
     set file(genomeFile), file(genomeIndex) from Channel.value([
@@ -2085,8 +2088,8 @@ process GermlineRunStrelka2 {
     --mode local \
     --jobs ${task.cpus}
 
-  mv Strelka/results/variants/variants.vcf.gz Strelka_${idNormal}_variants.vcf.gz
-  mv Strelka/results/variants/variants.vcf.gz.tbi Strelka_${idNormal}_variants.vcf.gz.tbi
+  mv Strelka/results/variants/variants.vcf.gz ${idNormal}.strelka2.vcf.gz
+  mv Strelka/results/variants/variants.vcf.gz.tbi ${idNormal}.strelka2.vcf.gz.tbi
   """
 }
 
@@ -2264,7 +2267,7 @@ process GermlineAnnotateMaf {
   tag {idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "${outputPrefix}.*.maf"
+    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "*.maf"
   }
 
   input:
@@ -2395,9 +2398,7 @@ process GermlineMergeDellyAndManta {
 
   if (publishAll) {
     publishDir "${params.outDir}/germline/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
-    publishDir "${params.outDir}/germline/manta", mode: params.publishDirMode, pattern: "${outputPrefix}.manta.vcf.{gz,gz.tbi}"
   }
-  if (publishAll) { publishDir "${params.outDir}/germline/structural_variants", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
@@ -2408,6 +2409,7 @@ process GermlineMergeDellyAndManta {
   output:
     set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
     set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into germlineVcfBedPe
+    set file("${idNormal}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${idNormal}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into germlineDellyVcfs
 
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
@@ -2415,10 +2417,10 @@ process GermlineMergeDellyAndManta {
   """ 
   for f in *.bcf
   do 
-    bcftools view --output-type z \$f > \${f%.bcf}.delly.vcf.gz
+    bcftools view --output-type z \$f > \${f%%.*}.delly.vcf.gz
   done
 
-  for f in *.vcf.gz
+  for f in *.delly.vcf.gz
   do
     tabix --preset vcf \$f
   done
@@ -2427,7 +2429,7 @@ process GermlineMergeDellyAndManta {
     --allow-overlaps \
     --output-type z \
     --output ${idNormal}.delly.manta.unfiltered.vcf.gz \
-    *.delly.vcf.gz Manta_${idNormal}.diploidSV.vcf.gz
+    *.delly.vcf.gz ${idNormal}.manta.vcf.gz
 
   tabix --preset vcf ${idNormal}.delly.manta.unfiltered.vcf.gz
 
