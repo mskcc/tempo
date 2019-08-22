@@ -795,6 +795,8 @@ process SomaticCombineMutect2Vcf {
 process SomaticRunManta {
   tag {idTumor + "__" + idNormal}
 
+  publishDir "${params.outDir}/somatic/sv/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
+
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
     set file(genomeFile), file(genomeIndex) from Channel.value([
@@ -805,8 +807,8 @@ process SomaticRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("*.vcf.gz") into mantaOutput
-    set idTumor, idNormal, target, file("*.vcf.gz.tbi") into mantatbi
+    set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz") into mantaOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz.tbi") into mantatbi
     set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: "manta" in tools && runSomatic
@@ -841,9 +843,9 @@ process SomaticRunManta {
   mv Manta/results/variants/diploidSV.vcf.gz.tbi \
     Manta_${outputPrefix}.diploidSV.vcf.gz.tbi
   mv Manta/results/variants/somaticSV.vcf.gz \
-    Manta_${outputPrefix}.somaticSV.vcf.gz
+    ${outputPrefix}.manta.vcf.gz
   mv Manta/results/variants/somaticSV.vcf.gz.tbi \
-    Manta_${outputPrefix}.somaticSV.vcf.gz.tbi
+    ${outputPrefix}.manta.vcf.gz.tbi
   """
 }
 
@@ -862,9 +864,8 @@ process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/sv/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
-    publishDir "${params.outDir}/somatic/sv/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
-  }
+    publishDir "${params.outDir}/somatic/sv/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
+    }
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
@@ -872,6 +873,7 @@ process SomaticMergeDellyAndManta {
   output:
     file("${outputPrefix}.delly.manta.vcf.gz") into vcfDellyMantaMergedOutput
     file("${outputPrefix}.delly.manta.vcf.gz.tbi") into vcfDellyMantaMergedtbi
+    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somatiDellyVcfs
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -880,7 +882,7 @@ process SomaticMergeDellyAndManta {
   """ 
   for f in *.bcf
   do 
-    bcftools view --output-type z \$f > \${f%.bcf}.delly.vcf.gz
+    bcftools view --output-type z \$f > \${f%%.*}.delly.vcf.gz
   done
 
   for f in *.vcf.gz
@@ -891,16 +893,16 @@ process SomaticMergeDellyAndManta {
   bcftools view \
     --samples ${idTumor},${idNormal} \
     --output-type z \
-    --output-file ${outputPrefix}.manta.vcf.gz \
-    Manta_${outputPrefix}.somaticSV.vcf.gz 
+    --output-file ${outputPrefix}.manta.swap.vcf.gz \
+    ${outputPrefix}.manta.vcf.gz 
     
-  tabix --preset vcf ${outputPrefix}.manta.vcf.gz
+  tabix --preset vcf ${outputPrefix}.manta.swap.vcf.gz
 
   bcftools concat \
     --allow-overlaps \
     --output-type z \
     --output ${outputPrefix}.delly.manta.unfiltered.vcf.gz \
-    *.delly.vcf.gz ${outputPrefix}.manta.vcf.gz
+    *.delly.vcf.gz ${outputPrefix}.manta.swap.vcf.gz
   
   tabix --preset vcf ${outputPrefix}.delly.manta.unfiltered.vcf.gz
 
@@ -1298,7 +1300,7 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/cna", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/cna", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt" }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
@@ -1958,7 +1960,7 @@ haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/haplotypecaller", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/germline/mut/haplotypecaller", mode: params.publishDirMode }
 
   input:
     set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
@@ -1999,7 +2001,7 @@ process GermlineCombineHaplotypecallerVcf {
 process GermlineRunManta {
   tag {idNormal}
   
-  if (publishAll) { publishDir "${params.outDir}/germline/manta", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/germline/sv/manta", mode: params.publishDirMode }
   
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
@@ -2050,7 +2052,7 @@ process GermlineRunManta {
 process GermlineRunStrelka2 {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/strelka2", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/germline/mut/strelka2", mode: params.publishDirMode }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelkaGermline
@@ -2064,7 +2066,7 @@ process GermlineRunStrelka2 {
     ])
     
   output:
-    set idTumor, idNormal, target, file("Strelka_${idNormal}_variants.vcf.gz"), file("Strelka_${idNormal}_variants.vcf.gz.tbi") into strelkaOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into strelkaOutputGermline
 
   when: 'strelka2' in tools && runGermline
   
@@ -2118,8 +2120,6 @@ mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaCh
 // --- Combine VCFs with germline calls from Haplotypecaller and Strelka2
 process GermlineCombineChannel {
   tag {idNormal}
-
-  if (publishAll) { publishDir "${params.outDir}/germline/haplotypecaller_strelka2_vcf", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(baiTumor), file(haplotypecallercombinedVcf), file(haplotypecallercombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex) from mergedChannelVcfCombine
@@ -2267,7 +2267,7 @@ process GermlineAnnotateMaf {
   tag {idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "*.maf"
+    publishDir "${params.outDir}/germline/mut", mode: params.publishDirMode, pattern: "*.maf"
   }
 
   input:
