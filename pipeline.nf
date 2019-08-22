@@ -1847,6 +1847,7 @@ process SomaticAggregateFacets {
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
     file(annotationFiles) from FacetsArmGeneOutputs.collect()
+    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
     file("facets/*") into FacetsChannel
