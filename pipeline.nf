@@ -547,6 +547,11 @@ if ("strelka2" in tools) {
   tools.add("manta")
 }
 
+// If using running either conpair or conpairAll, run Manta as well to generate candidate indels
+if ("conpair" in tools || "conpairAll" in tools) {
+  tools.add("pileup")
+}
+
 // If starting with BAM files, parse BAM pairing input
 if (params.bam_pairing) {
   bamFiles = Channel.empty()
@@ -1387,90 +1392,6 @@ process RunPolysolver {
   """
 }
 
-(bamsForConpair, bamFiles) = bamFiles.into(2)
-
-// --- Run Conpair
-process RunConpair {
-  tag {idTumor + "__" + idNormal}
-
-  publishDir "${params.outDir}/qc/conpair/${idTumor}__${idNormal}", mode: params.publishDirMode
-
-  input:
-    set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForConpair
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
-    ])
-
-  output:
-    set file("${idNormal}.pileup"), file("${idTumor}.pileup") into conpairPileup
-    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairOutput
-
-  when: !params.test
-
-  script:
-  outPrefix = "${idTumor}__${idNormal}"
-  gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
-  conpairPath = "/usr/bin/conpair"
-  
-  markersBed = ""
-  markersTxt = ""
-  if (params.genome == "GRCh37") {
-    markersBed = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.bed"
-    markersTxt = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.txt"
-  }
-  else {
-    markersBed = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.bed"
-    markersTxt = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.txt"
-  }
-
-  if (params.mem_per_core) {
-    mem = task.memory.toString().split(" ")[0].toInteger() - 1
-  }
-  else {
-    mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-  }
-  javaMem = "${mem}g"
-  """
-  # Make pileup files
-  ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
-    --gatk=${gatkPath} \
-    --bam=${bamTumor} \
-    --markers=${markersBed} \
-    --reference=${genomeFile} \
-    --xmx_java=${javaMem} \
-    --outfile=${idTumor}.pileup
-
-  ${conpairPath}/scripts/run_gatk_pileup_for_sample.py \
-    --gatk=${gatkPath} \
-    --bam=${bamNormal} \
-    --markers=${markersBed} \
-    --reference=${genomeFile} \
-    --xmx_java=${javaMem} \
-    --outfile=${idNormal}.pileup
-
-  # Make pairing file
-  echo "${idNormal}\t${idTumor}" > pairing.txt
-
-  # Verify concordance
-  ${conpairPath}/scripts/verify_concordances.py \
-    --tumor_pileup=${idTumor}.pileup \
-    --normal_pileup=${idNormal}.pileup \
-    --markers=${markersTxt} \
-    --pairing=pairing.txt \
-    --normal_homozygous_markers_only \
-    --outpre=${outPrefix}
-
-  ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
-    --tumor_pileup=${idTumor}.pileup \
-    --normal_pileup=${idNormal}.pileup \
-    --markers=${markersTxt} \
-    --pairing=pairing.txt \
-    --outpre=${outPrefix}
-  
-  mv ${outPrefix}_concordance.txt ${outPrefix}.concordance.txt
-  mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
-  """
-}
 
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
 
@@ -2490,6 +2411,8 @@ allBamFiles = bamsForPileup.map{
 process QcPileup {
   tag {idSample}
 
+  publishDir "${params.outDir}/qc/pileup/", mode: params.publishDirMode
+
   input:
     set idSample, file(bam), file(bai) from allBamFiles
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -2499,7 +2422,7 @@ process QcPileup {
   output:
     set idSample, file("${idSample}.pileup") into (tumorPileup, normalPileup)
 
-  when: !params.test
+  when: !params.test && "pileup" in tools
 
   script:
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
@@ -2532,7 +2455,7 @@ process QcPileup {
 
 (bamsForPileupTumor, bamsForPileupNormal, bamFiles) = bamFiles.into(3)
 
-tumorPileup = bamsForPileupTumor.combine(tumorPileup)
+(tumorPileupConpairAll, tumorPileupConpair) = bamsForPileupTumor.combine(tumorPileup)
 			 .filter{ item ->
                             def assay = item[0]
                             def target = item[1]
@@ -2545,15 +2468,15 @@ tumorPileup = bamsForPileupTumor.combine(tumorPileup)
 			    def idSample = item[8]
 			    def samplePileup = item[9]
 			    idSample == idTumor
-			 }.map { item ->
-                            def assay = item[0]
-                            def target = item[1]
+                         }.map { item ->
+                            def conpair = "conpair"
                             def idTumor = item[2]
-                            def samplePileup = item[9]
+                            def idNormal = item[3]
+                            def TumorPileup = item[9]
 
-			    return [ assay, target, idTumor, samplePileup ]
-			 }
-normalPileup = bamsForPileupNormal.combine(normalPileup)
+                            return [ conpair, idTumor, idNormal, tumorPileup ]
+                         }.into(2)
+(normalPileupConpairAll, normalPileupConpair) = bamsForPileupNormal.combine(normalPileup)
                          .filter{ item ->
                             def assay = item[0]
                             def target = item[1]
@@ -2567,33 +2490,36 @@ normalPileup = bamsForPileupNormal.combine(normalPileup)
                             def samplePileup = item[9]
                             idSample == idNormal
                          }.map { item ->
-                            def assay = item[0]
-                            def target = item[1]
+                            def conpair = "conpair"
+                            def idTumor = item[2]
                             def idNormal = item[3]
-                            def samplePileup = item[9]
+                            def normalPileup = item[9]
 
-                            return [ assay, target, idNormal, samplePileup ]
-                         }
+                            return [ conpair, idTumor, idNormal, normalPileup ]
+                         }.into(2)
 
-pairedPileup = tumorPileup.combine(normalPileup, by: [0,1])
 
-process QcConpairAll {
-  tag {idTumor + "@" + idNormal}
+pileupConpair = tumorPileupConpair.combine(normalPileupConpair, by: [0, 1, 2])
+
+process QcConpair {
+  tag {idTumor + "__" + idNormal}
+
+  publishDir "${params.outDir}/qc/conpair/${idTumor}__${idNormal}", mode: params.publishDirMode
 
   input:
-    set assay, target, idTumor, file(pileupTumor), idNormal, file(pileupNormal) from pairedPileup
+    set conpair, idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
 
   output:
-    file("${outPrefix}.concordance.txt") into conpairAllConcordance
-    file("${outPrefix}.contamination.txt") into conpairAllContamination
+    file("${outPrefix}.concordance.txt") into conpairConcordance
+    file("${outPrefix}.contamination.txt") into conpairContamination
 
-  when: !params.test
+  when: !params.test && "conpair" in tools
 
   script:
-  outPrefix = "${idTumor}_vs_${idNormal}"
+  outPrefix = "${idTumor}__${idNormal}"
   conpairPath = "/usr/bin/conpair"
 
   markersTxt = ""
@@ -2610,16 +2536,70 @@ process QcConpairAll {
 
    # Verify concordance
   ${conpairPath}/scripts/verify_concordances.py \
-    --tumor_pileup=${idTumor}.pileup \
-    --normal_pileup=${idNormal}.pileup \
+    --tumor_pileup=${pileupTumor} \
+    --normal_pileup=${pileupNormal} \
     --markers=${markersTxt} \
     --pairing=pairing.txt \
     --normal_homozygous_markers_only \
     --outpre=${outPrefix}
 
   ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
-    --tumor_pileup=${idTumor}.pileup \
-    --normal_pileup=${idNormal}.pileup \
+    --tumor_pileup=${pileupTumor} \
+    --normal_pileup=${pileupNormal} \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --outpre=${outPrefix}
+
+  mv ${outPrefix}_concordance.txt ${outPrefix}.concordance.txt
+  mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
+  """
+}
+
+pileupConpairAll = tumorPileupConpairAll.combine(normalPileupConpairAll, by: [0])
+
+process QcConpairAll {
+  tag {idTumor + "@" + idNormal}
+
+  input:
+    set conpair, idTumor, idNormal_noUse, file(pileupTumor), idTumor_noUse, idNormal, file(pileupNormal) from pileupConpairAll
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+    ])
+
+  output:
+    file("${outPrefix}.concordance.txt") into conpairAllConcordance
+    file("${outPrefix}.contamination.txt") into conpairAllContamination
+
+  when: !params.test && "conpairAll" in tools
+
+  script:
+  outPrefix = "${idTumor}__${idNormal}"
+  conpairPath = "/usr/bin/conpair"
+
+  markersTxt = ""
+  if (params.genome == "GRCh37") {
+    markersTxt = "${conpairPath}/data/markers/GRCh37.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.txt"
+  }
+  else {
+    markersTxt = "${conpairPath}/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover.txt"
+  }
+
+  """
+  # Make pairing file
+  echo "${idNormal}\t${idTumor}" > pairing.txt
+
+   # Verify concordance
+  ${conpairPath}/scripts/verify_concordances.py \
+    --tumor_pileup=${pileupTumor} \
+    --normal_pileup=${pileupNormal} \
+    --markers=${markersTxt} \
+    --pairing=pairing.txt \
+    --normal_homozygous_markers_only \
+    --outpre=${outPrefix}
+
+  ${conpairPath}/scripts/estimate_tumor_normal_contaminations.py \
+    --tumor_pileup=${pileupTumor} \
+    --normal_pileup=${pileupNormal} \
     --markers=${markersTxt} \
     --pairing=pairing.txt \
     --outpre=${outPrefix}
