@@ -752,7 +752,7 @@ forMutect2Combine = forMutect2Combine.groupTuple()
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mut/mutect2", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/mutect2", mode: params.publishDirMode }
 
   input:
     set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
@@ -795,7 +795,7 @@ process SomaticCombineMutect2Vcf {
 process SomaticRunManta {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/sv/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/somatic/structural_variants/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -864,7 +864,7 @@ process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/sv/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
+    publishDir "${params.outDir}/somatic/structural_variants/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
     }
 
   input:
@@ -924,7 +924,7 @@ process SomaticMergeDellyAndManta {
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mut/strelka2", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/strelka2", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -1195,7 +1195,7 @@ process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/mut", mode: params.publishDirMode, pattern: "*.maf"
+    publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode, pattern: "*.maf"
   }
 
   input:
@@ -1258,7 +1258,6 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
-
   """
 }
 
@@ -1301,7 +1300,7 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/cna", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt" }
+  if (publishAll) { publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt" }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
@@ -1550,10 +1549,6 @@ mergedChannelLOHHLA = bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).com
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 
-  // test run 
-  // if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
-  publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode 
-
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
@@ -1587,14 +1582,13 @@ process RunLOHHLA {
   """
 }
 
-
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mut", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
@@ -1646,7 +1640,7 @@ process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/cna", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt"
+    publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt"
   }
 
   input:
@@ -1963,7 +1957,7 @@ haplotypecallerOutput = haplotypecallerOutput.groupTuple()
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/mut/haplotypecaller", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/germline/mutations/haplotypecaller", mode: params.publishDirMode }
 
   input:
     set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
@@ -2004,7 +1998,7 @@ process GermlineCombineHaplotypecallerVcf {
 process GermlineRunManta {
   tag {idNormal}
   
-  if (publishAll) { publishDir "${params.outDir}/germline/sv/manta", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/germline/structural_variants/manta", mode: params.publishDirMode }
   
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForMantaGermline
@@ -2055,7 +2049,7 @@ process GermlineRunManta {
 process GermlineRunStrelka2 {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/mut/strelka2", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/germline/mutations/strelka2", mode: params.publishDirMode }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForStrelkaGermline
@@ -2270,7 +2264,7 @@ process GermlineAnnotateMaf {
   tag {idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/germline/mut", mode: params.publishDirMode, pattern: "*.maf"
+    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "*.maf"
   }
 
   input:
@@ -2401,7 +2395,7 @@ process GermlineMergeDellyAndManta {
   tag {idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/germline/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+    publishDir "${params.outDir}/germline/structural_variants/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
   }
 
   input:
