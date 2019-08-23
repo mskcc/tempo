@@ -25,7 +25,6 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ---
 
-[[toc]]
 ## Table of Contents
 
 ### 1. Getting Started
