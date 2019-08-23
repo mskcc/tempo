@@ -1832,12 +1832,11 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg 
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
-
   mv *{genelevel,armlevel}.txt facets_tmp/
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*armlevel.txt | \
-    awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' \
-    > cna_armlevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel.txt | grep -v "DIPLOID" > cna_genelevel.txt
+  cat facets_tmp/*genelevel.txt | head -n 1 > cna_genelevel.txt
+  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' facets_tmp/*genelevel.txt >> cna_genelevel.txt
+  cat facets_tmp/*armlevel.txt | head -n 1 > cna_armlevel.txt
+  cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" > cna_armlevel.txt
   
   # Collect all FACETS output subdirectories
   mkdir cna
@@ -1845,10 +1844,9 @@ process SomaticAggregate {
 
   # Collect and merge Delly and Manta VCFs
   mkdir sv/
-  mv *delly.manta.vcf.gz* sv
+  mv *delly.manta.vcf.gz* sv/
 
   vcfs=(\$(ls sv/*delly.manta.vcf.gz))
-
   if [ \${#vcfs[@]} > 1 ]
   then
     bcftools merge \
@@ -1863,11 +1861,10 @@ process SomaticAggregate {
   
   tabix --preset vcf sv_somatic.vcf.gz
 
-  # Collect and merged metadata TSV file
+  # Collect and merge metadata file
   mkdir metadata_tmp
   mv *_metadata.txt metadata_tmp/
   awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*_metadata.txt > sample_metadata.txt 
-  rm -rf metadata_tmp
   """
 }
 
@@ -2446,8 +2443,8 @@ process GermlineAggregate {
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
-    file("germline_variants.maf") into GermlineMafFileOutput
-    file("germline_sv.vcf.gz") into GermlineVcfBedPeChannel
+    file("mut_germline.maf") into GermlineMafFileOutput
+    file("sv_germline.vcf.gz") into GermlineVcfBedPeChannel
   
   when: runGermline
 
@@ -2457,22 +2454,28 @@ process GermlineAggregate {
   mkdir tmp
   TMPDIR=./tmp
 
-  # Collect MAF files from neoantigen to maf_files/ and merge into one maf
-  mkdir maf_files
-  mv *.maf maf_files
-  cat maf_files/*.maf | grep ^Hugo | head -n1 > germline_variants.maf 
-  cat maf_files/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >>  germline_variants.maf 
+  # Collect and merge MAF files
+  mkdir mut
+  mv *.maf mut/
+  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf 
+  cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf 
 
-  # Collect delly and manta vcf outputs into vcf_delly_manta/
-  mkdir vcf_delly_manta
-  mv  *.delly.manta.vcf.gz* vcf_delly_manta
+  # Collect and merge Delly and Manta VCFs
+  mkdir sv
+  mv  *.delly.manta.vcf.gz* sv/
 
-  bcftools merge \
+  vcfs=(\$(ls sv/*delly.manta.vcf.gz))
+  if [ \${#vcfs[@]} > 1 ]
+  then
+    bcftools merge \
     --force-samples \
     --merge none \
     --output-type z \
-    --output germline_sv.vcf.gz \
-    vcf_delly_manta/*.delly.manta.vcf.gz
+    --output sv_germline.vcf.gz \
+    sv/*delly.manta.vcf.gz
+  else
+    mv \${vcfs[0]} sv_germline.vcf.gz
+  fi
   """
 }
 
