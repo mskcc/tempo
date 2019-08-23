@@ -15,7 +15,7 @@ footer: MIT Licensed | Copyright © 2019-present
 
 # Vaporware: Computational Pipeline for Whole-Genome and Whole-Exome Sequencing
 
-Vaporware is a computational pipeline for processing data of paired-end whole exome (WES) and whole genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the Center for Molecular Oncology.
+Vaporware is a computational pipeline for processing data of paired-end whole-exome (WES) and whole-genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the Center for Molecular Oncology.
 
 These pages contain instructions on how to run the Vaporware pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus sources and processing of reference resources used. 
 
@@ -25,6 +25,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ---
 
+[[toc]]
 ## Table of Contents
 
 ### 1. Getting Started
@@ -33,10 +34,19 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Set up on Juno](juno-setup.md)
 * [Set up on AWS](aws-setup.md)
 
-#### 1.2. [Usage](usage.md)
+#### 1.2. Usage
+* [Running the Pipeline](running-the-pipeline.md)
+    * [Modifying or Resuming Pipeline Run](running-the-pipeline.md#modifying-or-resuming-pipeline-run)
+    * [After Successful Run](running-the-pipeline.md#after-successful-run)
 * [Nextflow Basics](nextflow-basics.md)
 * [Working With Containers](working-with-containers.md)
-* [Running the Pipeline](running-the-pipeline.md)
+
+#### 1.3 [Outputs](outputs.md)
+* [BAM Files](outputs.md#bam-files)
+* [QC Outputs](outputs.md#qc-outputs)
+* [Somatic Data](outputs.md#somatic-data)
+* [Germline Data](outputs.md#germline-data)
+* [Extended Outputs](outputs.md#extended-outputs)
 
 ### 2. Pipeline contents
 
@@ -44,10 +54,12 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Read Alignment](bioinformatic-components.md#read-alignment)
 * [Somatic Analyses](bioinformatic-components.md#somatic-analyses)
 * [Germline Analyses](bioinformatic-components.md#germline-analyses)
+* [Quality Control](bioinformatic-components.md#quality-control)
 
 #### 2.2. [Reference Resources](reference-resources.md)
-* [Intervals](intervals.md)
-* [RepeatMasker and Mapability Blacklist](reference-resources.md#repeatmasker-and-mapability-blacklist)
+* [Genome Assembly](reference-resources.md#genome-assembly)
+* [Genomic Intervals](reference-resources.md#genomic-intervals)
+* [RepeatMasker and Mappability Blacklist](reference-resources.md#repeatmasker-and-mappability-blacklist)
 * [Preferred Transcript Isoforms](reference-resources.md#preferred-transcript-isoforms)
 * [Hotspot Annotation](reference-resources.md#hotspot-annotation.md)
 * [OncoKB Annotation](reference-resources.md#oncokb.md)
@@ -57,6 +69,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 #### 2.3. [Variant Annotation and Filtering](variant-annotation-and-filtering.md)
 * [Somatic SNVs and Indels](variant-annotation-and-filtering.md#somatic-snvs-and-indels)
 * [Germline SNVs and Indels](variant-annotation-and-filtering.md#germline-snvs-and-indels)
+* [Somatic and Germline SVs](variant-annotation-and-filtering.md#somatic-and-germline-svs)
 
 ### 3. Help and Other Resources
 * [Troubleshooting](troubleshooting.md)

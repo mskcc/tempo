@@ -1,10 +1,9 @@
 title: Vaporware
-description: Processing WES & WGS Tumor Samples
+description: Computational Pipeline for Whole-Genome and Whole-Exome Sequencing
 themeConfig:
   logo: /vaporware_stairs.jpg
   sidebar:
     - "/"
-    - "/overview"
     - title: Setup
       collapsable: false
       children:
@@ -17,22 +16,50 @@ themeConfig:
         - "/run-pipeline"
         - "/nextflow-basics"
         - "/working-with-containers"
+    - title: Outputs
+      collapsable: false
+      children:
+        - "/bam-files"
+        - "/qc-outputs"
+        - "/somatic-data"
+        - "/germline-data"
+        - "/extended-outputs"
     - title: Bioinformatics Components
       collapsable: false
       children:
-        - "/bioinformatic-components"
-        - "/variant-annotation-and-filtering"
-        - "/wes-panel-of-normals"
-    - title: Reference Files
+        - "/read-alignment"
+        - "/somatic-analyses"
+        - "/germline-analyses"
+        - "/quality-control"
+    - title: Reference Resources
       collapsable: false
       children:
-        - "/reference-files"
-        - "/intervals"
-    - "/aws-glossary"
-    - "/troubleshooting"
-    - "/contributing-to-vaporware"
+        - "/genome-assembly"
+        - "/genomic-intervals"
+        - "/repeatmasker-and-mappability-blacklist"
+        - "/preferred-transcript-isoforms"
+        - "/hotspot-annotation"
+        - "/oncokb-annotation"
+        - "/gnomad"
+        - "/panel-of-normals-for-exomes"
+    - title: Variant Annotation and Filtering 
+      collapsable: false
+      children:
+        - "/somatic-snvs-and-indels"
+        - "/germline-snvs-and-indels"
+        - "/somatic-and-germline-svs"
+    - title: Help and Other Resources 
+      collapsable: false
+      children:
+        - "/troubleshooting"
+        - "/aws-glossary"
+        - "/somatic-and-germline-svs"
+    - title: Contributing
+      collapsable: false
+      children:
+        - "/contributing-to-vaporware"
   repo: mskcc/vaporware
-  docsBranch: 'feature/documentation_vuepress'
+  docsBranch: 'develop'
 plugins:
 - - vuepress-plugin-medium-zoom
   - selector: "#diagram"
