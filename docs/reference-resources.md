@@ -76,8 +76,11 @@ t2 %>%
 ## Hotspot Annotation
 Three types of mutation hotspots are annotated in the somatic MAF. These include SNV, indel in linear space as well as SNV hotspots in 3D space. These are annotated with the [annotateMaf package](https://github.com/taylor-lab/annotateMaf). 
 
-## OncoKB
+## OncoKB Annotation
 Functional mutation effects and predicted oncogenicity of variants, as well as level of clinical actionability are from [OncoKB](https://oncokb.org) and annotated using the [OncoKB annotator](https://github.com/oncokb/oncokb-annotator).
+
+## BRCA Exchange Annotation
+Annotation of germline variants in _BRCA1_ and _BRCA2_ is carried out with the [annotateMaf package](https://github.com/taylor-lab/annotateMaf). This includes variant-level annotation from the ENIGMA consortium and ClinVar.
 
 ## Structural Variant Calling
 Delly provides and takes as an argument a [file of regions](https://github.com/dellytools/delly/tree/master/excludeTemplates) to _exclude_ from variant calling. This excludes telomeres and centromeres from auto- and allosomes as well as any other contig.
