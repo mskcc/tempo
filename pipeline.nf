@@ -1834,7 +1834,9 @@ process SomaticAggregate {
 
   mv *{genelevel,armlevel}.txt facets_tmp/
   mv *genelevel_TSG_ManualReview.txt facets_tmp/
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*armlevel.txt > cna_armlevel.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*armlevel.txt | \
+    awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' \
+    > cna_armlevel.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel.txt | grep -v "DIPLOID" > cna_genelevel.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
   
