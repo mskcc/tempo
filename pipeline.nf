@@ -1795,7 +1795,7 @@ process SomaticAggregate {
   output:
     file("mut_somatic.maf") into MafFileOutput
     file("mut_somatic_neoantigens.txt") into NetMhcChannel
-    file("cna/*") into FacetsChannel
+    file("facets/*") into FacetsChannel
     set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
     set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
     file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
@@ -1834,8 +1834,8 @@ process SomaticAggregate {
   cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
   # Collect all FACETS output subdirectories
-  mkdir cna
-  mv ${facetsOutputSubdirectories} cna/
+  mkdir facets
+  mv ${facetsOutputSubdirectories} facets/
 
   # Collect and merge Delly and Manta VCFs
   mkdir sv/
