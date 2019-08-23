@@ -1,6 +1,11 @@
 # Variant Annotation and Filtering
 
 ## Somatic SNVs and Indels
+::: warning Be aware
+* These components of the pipeline are subject to constant change.
+* Users should be aware of the pitfalls and challenges of filtering somatic variant calls, which are not further discussed here.
+:::
+
 Variant-level annotation, filtering, and flagging of variants with further filter flags occur in the `SomaticCombineChannel` and `SomaticAnnotateMaf` processes. The union of variants that pass the somatic scoring models intrinsic to the callers (`FILTER="PASS"` in the VCF files) are combined, giving precedence to MuTect2 for any site where both callers detected a variant. 
 
 The functional effect of variants is predicted using [VEP](https://www.ensembl.org/vep) using [vcf2maf](https://github.com/mskcc/vcf2maf), which also converts from VCF into a tab-delimited MAF file. See notes on use of [preferred transcript isoforms](reference-resources.md#preferred-transcript-isoforms) and [VEP annotation outputs](https://useast.ensembl.org/info/docs/tools/vep/vep_formats.html#output).
@@ -63,23 +68,24 @@ The `FILTER` column in the unfiltered MAF file, can contain any semi colon-separ
     - `PoN`: Variant exceeds upper threshold for count in panel of normals.
     - `low_mapping_quality`: For indels called by Strelka2, variant falls below lower mapping quality threshold. 
 
-<small><sup>1</sup>See the MuTect2 documentation for more information: https://software.broadinstitute.org/gatk/documentation/article?id=11005</small>\
-<small><sup>2</sup>See the Strelka2 documentation for more information: https://github.com/Illumina/strelka/blob/v2.9.x/docs/userGuide/README.md</small>
+<small><sup>1</sup>See the MuTect2 documentation for more information: [https://software.broadinstitute.org/gatk/documentation/article?id=11005](https://software.broadinstitute.org/gatk/documentation/article?id=11005)</small>\
+<small><sup>2</sup>See the Strelka2 documentation for more information: [https://github.com/Illumina/strelka/blob/v2.9.x/docs/userGuide/README.md](https://github.com/Illumina/strelka/blob/v2.9.x/docs/userGuide/README.md)</small>
 
 ### Whitelisting
 Mutational hotspots, where the value in `Hotspot` is `TRUE`, are retained in the filtered MAF file, if they:
 - Are flagged with `low_vaf` but the tumor VAF is at least 0.02.
 - Are flagged with `low_mapping_quality`, `low_t_depth`, or `strand_bias`.
-_Note that combinations of above filter flags results in filtering of the variant._
+
+_Note: Combinations of above filter flags results in filtering of the variant._
 
 ### Clonality and Zygosity Analyses
 
 ## Germline SNVs and Indels
 
-TBD
+_Under development._
 
 ### Zygosity Analysis
 
 ## Somatic and Germline SVs
 
-TBD
+_Under development._

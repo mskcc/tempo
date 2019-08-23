@@ -39,43 +39,40 @@ The result of the somatic analyses is output in summarized forms in the `somatic
 
 ```shell
 somatic
-├── facets
-├── mutsig
-├── merged_all_neoantigen_predictions.txt
-├── merged_armlevel.tsv
-├── merged_genelevel_TSG_ManualReview.txt
-├── merged_hisens.cncf.txt
-├── merged_hisensPurity_out.txt
-├── merged_hisens.seg
-├── merged.maf
-├── merged_metadata.tsv
-├── merged_purity.cncf.txt
-├── merged_purity.seg
-└── merged.vcf.gz
+├── cna
+├── mut_somatic.maf
+├── mut_somatic_neoantigens.txt
+├── cna_armlevel.txt
+├── cna_genelevel.txt
+├── cna_hisens.seg
+├── cna_purity.seg
+├── cna_facets_run_info.txt
+├── sv_somatic.vcf.gz
+└── merged_metadata.txt
 ```
 
 These outputs are:
 - `facets` (folder): Individual copy-number profiles from FACETS, per tumor-normal pair.
-- `mutsig` (folder): Individual mutational signature decomposition per tumor-normal pair.
-- `merged_all_neoantigen_predictions.txt`: Neoantigen predictions from NetMHCpan for all samples.
-- `merged_armlevel.tsv`, `merged_genelevel_TSG_ManualReview.txt`, `merged_hisens.cncf.txt`, `merged_hisensPurity_out.txt`, `merged_purity.cncf.txt`, and `merged_purity.seg`, summarized arm- and gene-level output from Facets, as well as FACETS- and IGV-style segmentation files.
-- `merged.maf`: Filtered mutations from MuTect2 and Strelka2, annotated with mutational effects, neoantigen predictions, and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
-- `merged.vcf.gz`: All structural variants detected by Delly and Manta.
+- `mut_somatic.maf`: Filtered mutations from MuTect2 and Strelka2, annotated with mutational effects, neoantigen predictions, and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
+- `mut_somatic_neoantigens.txt`: Neoantigen predictions from NetMHCpan for all samples.
+- `cna_armlevel.txt`, `cna_genelevel.txt`, and `cna_hisens.seg`, `cna_purity.seg`, and `cna_facets_run_info.txt`, summarized arm- and gene-level output from Facets, as well as IGV-style segmentation files and Facets run information.
+- `sv_somatic.vcf.gz`: All structural variants detected by Delly and Manta.
+- `merged_metadata.txt`: Merged metadata across samples and analyses.
 
 ## Germline data
 
-The result of the somatic analyses is output in summarized forms in the `germline` folder: 
+The result of the germline analyses is output in summarized forms in the `germline` folder: 
 
 ```shell
 germline/
-├── merged.maf
-└── merged.vcf.gz
+├── mut_germline.maf
+└── sv_germline.vcf.gz
 ```
 
 These outputs are:
-- `merged.maf`: Filtered mutations from HaplotypeCaller and Strelka2, annotated with mutational effects and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#germline-snvs-and-indels).
-- `merged.vcf.gz`: All structural variants Delly and Manta.
+- `mut_germline.maf`: Filtered mutations from HaplotypeCaller and Strelka2, annotated with mutational effects and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#germline-snvs-and-indels).
+- `sv_germline.vcf.gz`: All structural variants Delly and Manta.
 
 ## Extended Outputs
 
-TBD
+_Under development._
