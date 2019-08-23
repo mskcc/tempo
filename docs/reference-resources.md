@@ -1,6 +1,6 @@
 # Reference resources
 
-This and associated pages under the **2.2. Reference Resources** section provides details on provenance and generation of all reference files used in `pipeline.nf`. Usage of these files is defined in the [references configuration file](../conf/references.config).
+This and associated pages in this section provide details on provenance and generation of all reference files used in `pipeline.nf`. Usage of these files is defined in the [references configuration file](../conf/references.config).
 
 ## Genome Assembly
 
@@ -12,6 +12,10 @@ Part of the [GATK bundle](https://software.broadinstitute.org/gatk/download/bund
 For exomes, use BED file corresponding to the platform used for target capture. Currently, Vaporware supports:
 - __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent.
 - __IDT_Exome__: xGen Exome Research Panel v1.0 from IDT.
+
+::: tip Note
+Contact us if you are interested in support for other sequencing assays or capture kits.
+:::
 
 The bait and target files are provided by the kit manufacturer. These are used to estimate bait- and target-level coverage metrics as well as for variant calling.
 
@@ -28,7 +32,9 @@ bedtools slop \
 ### Callable Regions for Genomes
 For genomes, a list of "callable" regions from GATK's bundle is used. This is converted from an interval list to a BED file:
 ```shell
-gatk IntervalListToBed --INPUT b37_wgs_calling_regions.v1.interval_list --OUTPUT b37_wgs_calling_regions.v1.bed
+gatk IntervalListToBed \
+    --INPUT b37_wgs_calling_regions.v1.interval_list \
+    --OUTPUT b37_wgs_calling_regions.v1.bed
 ```
 
 ## RepeatMasker and Mappability Blacklist
