@@ -1640,7 +1640,7 @@ process SomaticFacetsAnnotation {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt"), file("${outputPrefix}.genelevel_TSG_ManualReview.txt") into FacetsArmGeneOutputs
+    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1658,6 +1658,7 @@ process SomaticFacetsAnnotation {
   
   Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
+    --targetFile exome \
     --outfile ${outputPrefix}.genelevel.txt
 
   Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
@@ -1801,7 +1802,7 @@ process SomaticAggregate {
     file("mut_somatic_neoantigens.txt") into NetMhcChannel
     file("cna/*") into FacetsChannel
     set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_genelevel_TSG_ManualReview.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
     file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
     file("sample_metadata.txt") into MetaDataOutputChannel
 
@@ -1833,12 +1834,10 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
 
   mv *{genelevel,armlevel}.txt facets_tmp/
-  mv *genelevel_TSG_ManualReview.txt facets_tmp/
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*armlevel.txt | \
     awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' \
     > cna_armlevel.txt
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel.txt | grep -v "DIPLOID" > cna_genelevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*genelevel_TSG_ManualReview.txt > cna_genelevel_TSG_ManualReview.txt
   
   # Collect all FACETS output subdirectories
   mkdir cna
@@ -1848,12 +1847,19 @@ process SomaticAggregate {
   mkdir sv/
   mv *delly.manta.vcf.gz* sv
 
-  bcftools merge \
+  vcfs=(\$(ls sv/*delly.manta.vcf.gz))
+
+  if [ \${#vcfs[@]} > 1 ]
+  then
+    bcftools merge \
     --force-samples \
     --merge none \
     --output-type z \
     --output sv_somatic.vcf.gz \
     sv/*delly.manta.vcf.gz
+  else
+    mv \${vcfs[0]} sv_somatic.vcf.gz
+  fi
   
   tabix --preset vcf sv_somatic.vcf.gz
 
