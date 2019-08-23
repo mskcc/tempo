@@ -1559,7 +1559,6 @@ process RunLOHHLA {
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
 
-
   Rscript --no-init-file /lohhla/LOHHLAscript.R \
     --patientId ${idTumor}__${idNormal} \
     --normalBAMfile ${bamNormal} \
@@ -1843,7 +1842,7 @@ process SomaticAggregate {
   mv *delly.manta.vcf.gz* sv/
 
   vcfs=(\$(ls sv/*delly.manta.vcf.gz))
-  if [ \${#vcfs[@]} > 1 ]
+  if [[ \${#vcfs[@]} > 1 ]]
   then
     bcftools merge \
     --force-samples \
@@ -2461,7 +2460,7 @@ process GermlineAggregate {
   mv  *.delly.manta.vcf.gz* sv/
 
   vcfs=(\$(ls sv/*delly.manta.vcf.gz))
-  if [ \${#vcfs[@]} > 1 ]
+  if [[ \${#vcfs[@]} > 1 ]]
   then
     bcftools merge \
     --force-samples \
