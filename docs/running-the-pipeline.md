@@ -50,6 +50,10 @@ For processing paired-end FASTQ inputs, users must provide both a mapping file a
 The header lines are mandatory in the following files, but not the order of their columns.
 :::
 
+::: warning Be aware
+Vaporware checks for duplicated combinations of sample and lane names, empty entries, and some other things. However, it is up to the user to make sure that the inputs are in good shape.
+:::
+
 ### The Mapping File
 
 This file is necessary to map the input FASTQ pairs from one or more sequencing lanes to sample names. Additionally, this file tells the pipeline whether the samples are exome or genome samples. In the case of the former, the capture kit used is also input.
@@ -66,11 +70,10 @@ Example:
 
 Accepted values for the **ASSAY** column are `exome` and `genome`.\
 Accepted values for the **TARGET** column are `agilent` and `idt`.\
-Read further details on these parameters [here](bioinformatics-components.md#genome-versus-exome).
-
-_Note: It is important that **LANE** values be descriptive, as the combination of *SAMPLE* and *LANE* values must be unique. Duplicate non-unique values cause errors._
+Read further details on these parameters [here](reference-resources.md#genomic-intervals).
 
 ### The Pairing File
+
 The pipeline needs to know which tumor and normal samples are to be analyzed as matched pairs. This files provides that pairing by referring to the sample names as provided in the **SAMPLE** column in the mapping file.
 
 Example:
