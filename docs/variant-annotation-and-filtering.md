@@ -80,6 +80,18 @@ _Note: Combinations of above filter flags results in filtering of the variant._
 
 ### Clonality and Zygosity Analyses
 
+#### Clonality
+
+Clonality of SNVs and indels is estimated based on [prior literature](https://www.ncbi.nlm.nih.gov/pubmed/22544022) using [facets-suite](https://github.com/mskcc/facets-suite). The cancer-cell fraction (CCF) annotation (columns `ccf_*`) contains these estimates for three presumed copy-number configurations of the mutation:
+1. Inferred CCF if mutation exists in number of copies expected from observed VAF and local ploidy.
+2. Inferred CCF if mutation is on the major allele.
+3. Inferred CCF if mutation exists in one copy.
+For each of these, error intervals and probabilities are provided.
+
+#### Zygosity
+
+Tumor zygosity of SNVs and indels is estimated using the observed VAF and the expected VAF at the observed tumor purity and local copy number.
+
 ## Germline SNVs and Indels
 
 _Under development._
@@ -88,4 +100,4 @@ _Under development._
 
 ## Somatic and Germline SVs
 
-_Under development._
+Similar to somatic mutations, tumor zygosity of germline SNVs and indels is estimated using the observed VAF and the expected VAF at the observed tumor purity and local copy number. The difference between the two cases is the calculation of the expected tumor VAF of the variant.
