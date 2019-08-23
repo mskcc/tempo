@@ -1,6 +1,37 @@
 # Reference resources
 
-## RepeatMasker and mappability blacklist
+This and associated pages under the **2.2. Reference Resources** section provides details on provenance and generation of all reference files used in `pipeline.nf`. Usage of these files is defined in the [references configuration file](../conf/references.config).
+
+## Genome Assembly
+
+Part of the [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/gatk-legacy-bundles/b37). Vaporware uses the **human_g1k_v37_decoy** assembly of the genome.
+
+## Genomic Intervals
+
+### Exome Capture Platforms
+For exomes, use BED file corresponding to the platform used for target capture. Currently, Vaporware supports:
+- __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent.
+- __IDT_Exome__: xGen Exome Research Panel v1.0 from IDT.
+
+The bait and target files are provided by the kit manufacturer. These are used to estimate bait- and target-level coverage metrics as well as for variant calling.
+
+We add 5 bp to each end of exons in the target file to make sure splice site mutations can be called:
+``` shell
+bedtools slop \
+    -g b37.chrom.sizes \
+    -i targets.bed \
+    -r 5 \
+    -l 5 \
+    > targets.plus5bp.bed
+```
+
+### Callable Regions for Genomes
+For genomes, a list of "callable" regions from GATK's bundle is used. This is converted from an interval list to a BED file:
+```shell
+gatk IntervalListToBed --INPUT b37_wgs_calling_regions.v1.interval_list --OUTPUT b37_wgs_calling_regions.v1.bed
+```
+
+## RepeatMasker and Mappability Blacklist
 BED files with genomic repeat and mappability information are used to annotate the VCFs with somatic and germline SNV/indels. These data are from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html), and the files are retrieved from the [UCSC Genome Browser](https://genome.ucsc.edu) and parsed as such:
 
 ``` shell
@@ -19,7 +50,7 @@ bgzip wgEncodeDacMapabilityConsensusExcludable.bed
 tabix --preset bed wgEncodeDacMapabilityConsensusExcludable.bed.gz
 ``` 
 
-## Preferred transcript isoforms
+## Preferred Transcript Isoforms
 The `--custom-enst` argument to vcf2maf takes a list of preferred gene transcript isoforms which mutations are mapped onto. We supply a consensus list of [`isoform_overrides_at_mskcc` and `isoform_overrides_uniprot`](https://github.com/mskcc/vcf2maf/tree/master/data), generated as such:
 ``` r
 t1 = readr::read_tsv('isoform_overrides_at_mskcc')
@@ -30,25 +61,13 @@ t2 %>%
     readr::write_tsv('isoforms')
 ```
 
-## Hotspot annotation
+## Hotspot Annotation
 Three types of mutation hotspots are annotated in the somatic MAF. These include SNV, indel in linear space as well as SNV hotspots in 3D space. These are annotated with the [annotateMaf package](https://github.com/taylor-lab/annotateMaf). 
 
 ## OncoKB
 Functional mutation effects and predicted oncogenicity of variants, as well as level of clinical actionability are from [OncoKB](https://oncokb.org) and annotated using the [OncoKB annotator](https://github.com/oncokb/oncokb-annotator).
 
-
-## GRCh37
-
-### Genome
-[GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/gatk-legacy-bundles/b37).
-
-### SNV and indel calling
-For genomes, use [`bed` file of "callable"](https://github.mskcc/vaporware/blob/master/docs/INTERVALS.md#genome) regions from GATK's bundle.
-
-For exomes, use `bed` file corresponding to the platform used for target capture, see [documentation on intervals](https://github.mskcc/vaporware/blob/master/docs/INTERVALS.md#exome-capture-platform).
-
-
-### Structural Variant (SV) calling
+## Structural Variant Calling
 Delly provides and takes as an argument a [file of regions](https://github.com/dellytools/delly/tree/master/excludeTemplates) to _exclude_ from variant calling. This excludes telomeres and centromeres from auto- and allosomes as well as any other contig.
 
 For Manta, subtract these regions from a bed file of the whole genome to generate a list of regions to _include_. First clean up the file provided by Delly, since it is not in `bed` format:
@@ -56,9 +75,3 @@ For Manta, subtract these regions from a bed file of the whole genome to generat
 grep -Ev "chr|MT|GL00|NC|hs37d5" human.hg19.excl.tsv > human.hg19.excl.clean.bed
 bedtools subtract -a b37.bed -b human.hg19.excl.clean.bed > b37.minusDellyExclude.bed
 ```
-
-## GRCh38
-[GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/genomics-public-data/resources/broad/hg38).
-
-**Note:** Support for hg38 is currently somewhat limited. Please raise an issue at https://github.com/mskcc/vaporware/issues if you would like to process data with GRch38. However, please note that hg38 reference files are easily available from UCSC. 
-
