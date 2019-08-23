@@ -1836,7 +1836,7 @@ process SomaticAggregate {
   cat facets_tmp/*genelevel.txt | head -n 1 > cna_genelevel.txt
   awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' facets_tmp/*genelevel.txt >> cna_genelevel.txt
   cat facets_tmp/*armlevel.txt | head -n 1 > cna_armlevel.txt
-  cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" > cna_armlevel.txt
+  cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
   # Collect all FACETS output subdirectories
   mkdir cna
