@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Creating a Panel of Normals (PoN) for Exomes | Vaporware</title>
+    <meta name="description" content="Computational Pipeline for Whole-Genome and Whole-Exome Sequencing">
+    
+    
+    <link rel="preload" href="/assets/css/0.styles.d4613532.css" as="style"><link rel="preload" href="/assets/js/app.2b579abf.js" as="script"><link rel="preload" href="/assets/js/2.e10afc37.js" as="script"><link rel="preload" href="/assets/js/19.81834ef1.js" as="script"><link rel="prefetch" href="/assets/js/10.01ffc8cf.js"><link rel="prefetch" href="/assets/js/11.e78ae733.js"><link rel="prefetch" href="/assets/js/12.77745fbe.js"><link rel="prefetch" href="/assets/js/13.4943b92b.js"><link rel="prefetch" href="/assets/js/14.04cc32f4.js"><link rel="prefetch" href="/assets/js/15.dc8f5479.js"><link rel="prefetch" href="/assets/js/16.839c34d9.js"><link rel="prefetch" href="/assets/js/17.5b7bd133.js"><link rel="prefetch" href="/assets/js/18.fedd8970.js"><link rel="prefetch" href="/assets/js/20.63f9a4f8.js"><link rel="prefetch" href="/assets/js/21.05021021.js"><link rel="prefetch" href="/assets/js/3.cd2560e0.js"><link rel="prefetch" href="/assets/js/4.253b9be8.js"><link rel="prefetch" href="/assets/js/5.70f8d865.js"><link rel="prefetch" href="/assets/js/6.f8c136e9.js"><link rel="prefetch" href="/assets/js/7.22b6c02c.js"><link rel="prefetch" href="/assets/js/8.f17d8fa6.js"><link rel="prefetch" href="/assets/js/9.f50389f8.js">
+    <link rel="stylesheet" href="/assets/css/0.styles.d4613532.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/" class="home-link router-link-active"><img src="/vaporware_stairs.jpg" alt="Vaporware" class="logo"> <span class="site-name can-hide">Vaporware</span></a> <div class="links"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <nav class="nav-links can-hide"> <a href="https://github.com/mskcc/vaporware" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></nav></div></header> <div class="sidebar-mask"></div> <aside class="sidebar"><nav class="nav-links"> <a href="https://github.com/mskcc/vaporware" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></nav>  <ul class="sidebar-links"><li><a href="/" class="sidebar-link">Home</a></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading"><span>Setup</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/installation.html" class="sidebar-link">Installation</a></li><li><a href="/juno-setup.html" class="sidebar-link">Juno Setup</a></li><li><a href="/aws-setup.html" class="sidebar-link">AWS Setup</a></li></ul></section></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading"><span>Usage</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/running-the-pipeline.html" class="sidebar-link">Running the Pipeline</a></li><li><a href="/nextflow-basics.html" class="sidebar-link">Nextflow Basics</a></li><li><a href="/working-with-containers.html" class="sidebar-link">Working With Containers</a></li></ul></section></li><li><a href="/outputs.html" class="sidebar-link">Outputs</a></li><li><a href="/bioinformatics-components.html" class="sidebar-link">Bioinformatics Components</a></li><li><a href="/reference-resources.html" class="sidebar-link">Reference resources</a></li><li><a href="/variant-annotation-and-filtering.html" class="sidebar-link">Variant Annotation and Filtering</a></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading"><span>Help and Other Resources</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/troubleshooting.html" class="sidebar-link">Troubleshooting</a></li><li><a href="/aws-glossary.html" class="sidebar-link">AWS Glossary</a></li><li><a href="/contributing-to-vaporware.html" class="sidebar-link">Contributing to Vaporware</a></li></ul></section></li></ul> </aside> <main class="page"> <div class="theme-default-content content__default"><h1 id="creating-a-panel-of-normals-pon-for-exomes"><a href="#creating-a-panel-of-normals-pon-for-exomes" aria-hidden="true" class="header-anchor">#</a> Creating a Panel of Normals (PoN) for Exomes</h1> <p>&quot;Somatic&quot; variants that occur in a panel of normal samples can be considered sequencing artifacts. We can generate a VCF file to filter against by calling variants in normal samples that look &quot;clean&quot;, i.e. absent of tumor contamination. We use a similar variant calling strategy as for the somatic variant calling in tumor samples</p> <p>For each normal sample call variants with <code>Strelka2</code> and <code>MuTect2</code>.</p> <h2 id="strelka2"><a href="#strelka2" aria-hidden="true" class="header-anchor">#</a> Strelka2</h2> <p>Run <code>Manta</code> to seed indel calling, then run as if the normal sample is an unmatched tumor sample. Parse output with <code>bcftools</code>, subsetting on variants supported by more than one alternate read.</p> <div class="language-shell extra-class"><pre class="language-text"><code>$MANTA_PATH/configManta.py \
+    --referenceFasta $REF \
+    --runDir pon/manta/$NORMAL_NAME \
+    --exome \
+    --callRegions $TARGETS
+    --bam $NORMAL_BAM
+
+pon/manta/$NORMAL_NAME/runWorkflow.py --mode local
+
+$STRELKA_PATH/configureStrelkaGermlineWorkflow.py \
+    --ref $REF \
+    --runDir mutations/pon/strelka2/$NORMAL_NAME \
+    --exome \
+    --callRegions $TARGETS \
+    --indelCandidates pon/manta/$NORMAL_NAME/results/variants/candidateSmallIndels.vcf.gz \
+    --bam $NORMAL_BAM
+
+bcftools filter \
+    --include 'FORMAT/AD[0:1]&gt;1' \
+    pon/strelka2/$NORMAL_NAME/results/variants/variants.vcf.gz | \
+    bcftools norm \
+    --fasta-ref $REF \
+    -check-ref s \
+    --multiallelics -both \
+    --output-type z \
+    --output pon/$NORMAL_NAME.strelka2.vcf.gz
+
+tabix --preset vcf pon/$NORMAL_NAME.strelka2.vcf.gz
+</code></pre></div><h2 id="mutect2"><a href="#mutect2" aria-hidden="true" class="header-anchor">#</a> MuTect2</h2> <p><code>MuTect2</code> provides a variant calling mode for normal samples. Process the output similarly to above. Fix some VCF header tags so that the files can be combined downstream. As opposed to the somatic variant calling in tumor samples, here retain any calls at multiallelic loci.</p> <div class="language-shell extra-class"><pre class="language-text"><code>gatk Mutect2 \
+    --reference $REF \
+    --intervals $TARGETS \
+    --input $NORMAL_BAM \
+     --tumor $NORMAL_NAME \
+     --output pon/mutect2/$NORMAL_NAME.vcf.gz
+
+bcftools filter \
+    --include 'FORMAT/AD[0:1]&gt;1' \
+    pon/mutect2/$NORMAL_NAME.vcf.gz | \
+    sed -e 's/ID=RU,Number=1/ID=RU,Number=A/' -e 's/ID=AD,Number=R/ID=AD,Number=./' |
+    bcftools norm \
+    --fasta-ref $REF \
+    --check-ref s \
+    --multiallelics -both \
+    --output-type z \
+    --output pon/$NORMAL_NAME.mutect2.vcf.gz
+
+tabix --preset vcf pon/$NORMAL_NAME.mutect2.vcf.gz
+</code></pre></div><p>Now, combine all individual VCFs from all normal samples. This requires a <a href="https://samtools.github.io/bcftools/howtos/plugins.html" target="_blank" rel="noopener noreferrer"><code>bcftools</code> plugin<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a>.</p> <div class="language-shell extra-class"><pre class="language-text"><code>bcftools merge \
+    --merge none \
+    --output-type z \
+    --output pon.vcf.gz \
+    pon/*vcf.gz
+
+bcftools +fill-tags pon.vcf.gz \
+    --output-type z \
+    --output pon.annot.vcf.gz \
+    -- --tags AC
+
+tabix --preset vcf pon.annot.vcf.gz
+</code></pre></div><p>Now, <code>pon.annot.vcf.gz</code> is ready to use to annotate somatic variant calls from tumor samples.</p></div> <footer class="page-edit"><!----> <!----></footer> <!----> </main></div><div class="global-ui"></div></div>
+    <script src="/assets/js/app.2b579abf.js" defer></script><script src="/assets/js/2.e10afc37.js" defer></script><script src="/assets/js/19.81834ef1.js" defer></script>
+  </body>
+</html>
