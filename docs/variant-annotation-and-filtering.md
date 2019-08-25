@@ -1,15 +1,15 @@
 # Variant Annotation and Filtering
 
-## Somatic SNVs and Indels
 ::: warning Be aware
 * These components of the pipeline are subject to constant change.
 * Users should be aware of the pitfalls and challenges of filtering somatic variant calls, which are not further discussed here.
 :::
 
+## Somatic SNVs and Indels
+
 Variant-level annotation, filtering, and flagging of variants with further filter flags occur in the `SomaticCombineChannel` and `SomaticAnnotateMaf` processes. The union of variants that pass the somatic scoring models intrinsic to the callers (`FILTER="PASS"` in the VCF files) are combined, giving precedence to MuTect2 for any site where both callers detected a variant. 
 
 The functional effect of variants is predicted using [VEP](https://www.ensembl.org/vep) using [vcf2maf](https://github.com/mskcc/vcf2maf), which also converts from VCF into a tab-delimited MAF file. See notes on use of [preferred transcript isoforms](reference-resources.md#preferred-transcript-isoforms) and [VEP annotation outputs](https://useast.ensembl.org/info/docs/tools/vep/vep_formats.html#output).
-
 
 The following columns are added to the final MAF file, in addition to those added during the VEP annotation:
 - `Strelka2FILTER`: Indicates that Strelka2 detected the variant but did not classify it as a somatic variant.
@@ -94,10 +94,29 @@ Tumor zygosity of SNVs and indels is estimated using the observed VAF and the ex
 
 ## Germline SNVs and Indels
 
-_Under development._
+Variant-level annotation, filtering, and flagging of variants with further filter flags occur in the `GermlineCombineChannel` and `GermlineAnnotateMaf` processes. The union of variants that pass the filters intrinsic to the callers (`FILTER="PASS"` in the VCF files) are combined, giving precedence to HaplotypeCaller for any site where both callers detected a variant. See discussion elsewhere regarding [single-sample filtering of HaplotypeCaller variant calls](https://gatkforums.broadinstitute.org/gatk/discussion/23216/how-to-filter-variants-either-with-vqsr-or-by-hard-filtering).
+
+Functional effect predication and MAF file conversion is carried out as described above for somatic calls.
+
+In the final MAF, columns `Strelka2FILTER`, `gnomAD_FILTER`, `RepeatMasker` and `EncodeDacMapability` as well as allele frequencies and counts from gnomAD are identical as described for somatic variants. Note that the `gnomAF_FILTER` is used for filterig of germline variants, unlike for somatic variants.
+In addition, the following columns are added to the germline MAF:
+- [BRCA exchange](https://www.brcaexchange.org) annotation:
+    - `brca_exchange_id`: Variant ID.
+    - `brca_exchange_enigma`: Annotation from the ENIGMA consortium.
+    - `brca_exchange_clinvar`: Annotation from ClinVar.
+- `ch_gene`: Boolean indicating whether the gene is associated with the presence of clonal hematopoiesis (CH) (<small>_ASXL1_, _ATM_, _BCOR_, _CALR_, _CBL_, _CEBPA_, _CREBBP_, _DNMT3A_, _ETV6_, _EZH2_, _FLT3_, _GNAS_, _IDH1_, _IDH2_, _JAK2_, _KIT_, _KRAS_, _MPL_, _MYD88_, _NF1_, _NPM1_, _NRAS_, _PPM1D_, _RAD21_, _RUNX1_, _SETD2_, _SF3B1_, _SH2B3_, _SRSF2_, _STAG2_, _STAT3_, _TET2_, _TP53_, _U2AF1_, _WT1_, and _ZRSR2_)</small>
+- The following read depth-based flags are parameterized according to the sequencing platform, see the `exome.config` and `genome.config` files.
+    - `low_n_depth`: Variant falls below lower threshold for total depth in normal.
+    - `low_n_vaf`: Variant falls below lower threshold for normal VAF.
+    - `ch_mutation`: Variant occurs in CH gene and occurs below lower threshold for normal VAF and below tumor VAF 0.25.
+    - `t_in_n_contamination`: Tumor VAF is more than three-fold the normal VAF. 
+
+
 
 ### Zygosity Analysis
 
+Similar to somatic mutations, tumor zygosity of germline SNVs and indels is estimated using the observed VAF and the expected VAF at the observed tumor purity and local copy number. The difference between the two cases is the calculation of the expected tumor VAF of the variant.
+
 ## Somatic and Germline SVs
 
-Similar to somatic mutations, tumor zygosity of germline SNVs and indels is estimated using the observed VAF and the expected VAF at the observed tumor purity and local copy number. The difference between the two cases is the calculation of the expected tumor VAF of the variant.
+_Under development._
