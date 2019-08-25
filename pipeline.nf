@@ -666,7 +666,6 @@ if('strelka2' in tools) {
   tools.add('manta')
 }
 
-
 // --- Run Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
@@ -1300,8 +1299,6 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt" }
-
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
@@ -1556,7 +1553,7 @@ process RunLOHHLA {
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.txt"), file("*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.txt"), file("Figures/*.pdf") into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -1579,8 +1576,6 @@ process RunLOHHLA {
     --hlaPath massaged.winners.hla.txt \
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
-
-  mv Figures/*.pdf .
   """
 }
 
@@ -1701,8 +1696,6 @@ hlaOutput = hlaOutput.combine(mafFileForNeoantigen, by: [0,1,2])
 process RunNeoantigen {
   tag {idTumor + "__" + idNormal}
 
-  // if (publishAll) { publishDir "${params.outDir}/somatic", mode: params.publishDirMode }
-
   input:
     set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from hlaOutput
     set file(neoantigenCDNA), file(neoantigenCDS) from Channel.value([
@@ -1753,8 +1746,6 @@ mergedChannelMetaDataParser = facetsForMetaDataParser.combine(FacetsAnnotationOu
 // --- Generate sample-level metadata
 process MetaDataParser {
   tag {idTumor + "__" + idNormal}
-
-  // if (publishAll) { publishDir "${params.outDir}/", mode: params.publishDirMode }
  
   input:
     set idTumor, idNormal, target, file(purityOut), file(armLevel), file(msifile), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
@@ -1895,7 +1886,6 @@ process GermlineRunHaplotypecaller {
   tag {idNormal + "@" + intervalBed.baseName}
 
   input:
-    // Order has to be target, assay, etc. because the channel gets rearranged on ".combine"
     set id, target, assay, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(intervalBed) from mergedChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
@@ -1975,7 +1965,9 @@ process GermlineCombineHaplotypecallerVcf {
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
+  idTumor = id.toString().split("__")[0]
   idNormal = id.toString().split("@")[0].split("__")[1]
+  target = id.toString().split("@")[1]
   outfile = "${idNormal}.haplotypecaller.vcf.gz"  
   """
   bcftools concat \
@@ -2112,7 +2104,6 @@ bamsForCombineChannel = bamsForCombineChannel.map{
     
     return [idTumor, idNormal, target, assay, bamTumor, baiTumor]
   }
-
 
 mergedChannelVcfCombine = bamsForCombineChannel.combine(haplotypecallerStrelkaChannel, by: [0,1,2])
 
@@ -2312,7 +2303,6 @@ process GermlineAnnotateMaf {
     --normal-vaf ${params.germlineVariant.normalVaf} \
     --maf-file ${outputPrefix}.raw.maf \
     --output-prefix ${outputPrefix}
-
   """
   }
 
@@ -2322,8 +2312,6 @@ facetsMafFileGermline = FacetsforMafAnnoGermline.combine(mafFileGermlineFacets, 
 
 process GermlineFacetsAnnotation {
   tag {idNormal}
-
-  if (publishAll) { publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode }
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileGermline
@@ -2446,7 +2434,6 @@ process GermlineMergeDellyAndManta {
 
 germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
 
-
 // --- Aggregate per-sample germline data
 process GermlineAggregate {
  
@@ -2486,9 +2473,6 @@ process GermlineAggregate {
     vcf_delly_manta/*.delly.manta.vcf.gz
   """
 }
-
-
-
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
