@@ -2727,7 +2727,6 @@ process QcConpairAggregate {
 
 
 
->>>>>>> bae11f354d5d9bd54edd912741c2d8715f2a38c1
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
   return file(params."${item}")
