@@ -1297,8 +1297,6 @@ process SomaticAnnotateMaf {
 process RunMsiSensor {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/msisensor", mode: params.publishDirMode }
-
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForMsiSensor
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
