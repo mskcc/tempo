@@ -39,9 +39,11 @@ Somatic Analysis
  - FacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
  - MetaDataParser --- python script to parse metadata into single *tsv
- - SomaticAggregate --- collect outputs
-
-
+ - SomaticAggregateMaf
+ - SomaticAggregateNetMHC
+ - SomaticAggregateFacets
+ - SomaticAggregateSv
+ - SomaticAggregateMetaData
 
 Germline Analysis
 -----------------
@@ -906,7 +908,7 @@ process SomaticMergeDellyAndManta {
 
   output:
     file("${outputPrefix}.delly.manta.vcf.{gz,gz.tbi}") into vcfDellyMantaMergedOutput
-    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somatiDellyVcfs
+    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somaticDellyVcfs
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -1939,7 +1941,6 @@ process SomaticAggregateSv {
 
   input:
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
-    file(dellyMantaVcfIndex) from vcfDellyMantaMergedOutputIndex.collect()
 
   output:
     file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
@@ -1971,6 +1972,7 @@ process SomaticAggregateSv {
   tabix --preset vcf sv_somatic.vcf.gz
   """
 }
+
 
 
 process SomaticAggregateMetadata {
