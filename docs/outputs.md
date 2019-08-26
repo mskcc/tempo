@@ -75,8 +75,6 @@ These outputs are:
 
 ## Extended Outputs
 
-_Under development._
-=======
 When run with the flag `--publishAll`, the pipeline will output additional intermediate data from select processes. These are:
 
 ```shell
