@@ -2570,11 +2570,9 @@ process GermlineAggregateMaf {
 
   input:
     file(mafFile) from mafFileAnnotatedGermline.collect()
-    file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
     file("mut_germline.maf") into GermlineMafFileOutput
-    file("sv_germline.vcf.gz") into GermlineVcfBedPeChannel
   
   when: runGermline
 
