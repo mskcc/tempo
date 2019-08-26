@@ -1225,7 +1225,7 @@ process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode, pattern: "*.maf"
+    publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
   }
 
   input:
@@ -1829,7 +1829,6 @@ process SomaticAggregate {
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
     file(annotationFiles) from FacetsArmGeneOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
-    file(dellyMantaVcfIndex) from vcfDellyMantaMergedOutputIndex.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
     file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
@@ -2286,7 +2285,7 @@ process GermlineAnnotateMaf {
   tag {idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "*.maf"
+    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
   }
 
   input:
