@@ -1393,8 +1393,6 @@ process DoFacets {
 // Run Polysolver
 process RunPolysolver {
   tag {idTumor + "__" + idNormal}
-
-  if (publishAll) { publishDir "${params.outDir}/somatic/polysolver", mode: params.publishDirMode }
   
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)  from bamsForPolysolver
