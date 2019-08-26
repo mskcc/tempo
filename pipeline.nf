@@ -1553,7 +1553,7 @@ process RunLOHHLA {
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*HLAlossPrediction_CI.txt"), file("Figures/*.pdf") into lohhlaOutput
+    set file("*HLAlossPrediction_CI.txt"), file("*.pdf") optional true into lohhlaOutput
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -1576,6 +1576,11 @@ process RunLOHHLA {
     --hlaPath massaged.winners.hla.txt \
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
+
+  if find Figures -mindepth 1 | read
+  then
+    mv Figures/*.pdf .
+  fi
   """
 }
 
