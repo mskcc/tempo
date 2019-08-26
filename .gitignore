@@ -19,5 +19,4 @@ nf.*
 *.bam.*
 Result/
 *.Rhistory
-docs/.vuepress
 docs/node_modules
