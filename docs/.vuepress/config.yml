@@ -17,7 +17,7 @@ themeConfig:
         - "/nextflow-basics"
         - "/working-with-containers"
     - "/outputs"
-    - "/bioinformatics-components"
+    - "/bioinformatic-components"
     - "/reference-resources"
     - "/variant-annotation-and-filtering"
     - title: Help and Other Resources 
