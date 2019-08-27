@@ -78,4 +78,26 @@ These outputs are:
 
 ## Extended Outputs
 
-TBD
+When run with the flag `--publishAll`, the pipeline will output additional intermediate data from select processes. These are:
+
+```shell
+somatic
+├── mutations
+    └── mutect2
+    └── strelka2
+├── structural_variants
+    └── delly
+    └── manta    
+├── facets
+└── lohhla
+
+germline
+├── mutations
+    └── haplotypecaller
+    └── strelka2
+└── structural_variants
+    └── delly
+    └── manta
+```
+
+The `mutations` subdirectory contain VCFs with the unfiltered variant calls from the somatic and germline SNV/indel and SV callers. Additionally, these directories contain per-sample unfiltered MAF files generated in the `SomaticAnnotateMaf` and `GermlineAnnotateMaf` process, respectively. The `facets` subdirectory will contain the full arm- and gene-level outputs per sample. In the `lohhla` subdirectory the full LOHHLA LOH output metrics will be together with a PDF file with graphical output.
