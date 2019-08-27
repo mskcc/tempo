@@ -1902,7 +1902,7 @@ process SomaticAggregateFacets {
   mkdir tmp
   TMPDIR=./tmp
 
-  ## Collect and merge FACETS outputs
+  # Collect and merge FACETS outputs
   mkdir facets_tmp
   mv *_OUT.txt facets_tmp/
   mv *{purity,hisens}.seg facets_tmp/
@@ -1915,19 +1915,9 @@ process SomaticAggregateFacets {
   cat facets_tmp/*armlevel.txt | head -n 1 > cna_armlevel.txt
   cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
+  
   ## Collect all FACETS output subdirectories
   mkdir facets
-  mv ${facetsOutputSubdirectories} facets/
-
-  ## Move and merge FacetsAnnotation outputs
-  mkdir facets/armLevel
-  mkdir facets/geneLevel
-  mv *armlevel.txt facets/armLevel
-  mv *genelevel.txt facets/geneLevel
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/armLevel/*armlevel.txt > cna_armlevel.txt
-  awk 'FNR==1 && NR!=1{next;}{print}' facets/geneLevel/*genelevel.txt > cna_genelevel.txt
-
-  ## Move all FACETS output subdirectories into /facets
   mv ${facetsOutputSubdirectories} facets/
   """
 }
