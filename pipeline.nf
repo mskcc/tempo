@@ -2511,7 +2511,7 @@ process QcPileup {
                             def conpair = "conpair"
                             def idTumor = item[2]
                             def idNormal = item[3]
-                            def TumorPileup = item[9]
+                            def tumorPileup = item[9]
 
                             return [ conpair, idTumor, idNormal, tumorPileup ]
                          }.into(2)
