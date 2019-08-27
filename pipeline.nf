@@ -2609,7 +2609,7 @@ process QcConpairAll {
     file("${outPrefix}.concordance.txt") into conpairAllConcordance
     file("${outPrefix}.contamination.txt") into conpairAllContamination
 
-  when: !params.test && "conpairAll" in tools
+  when: !params.test && "conpairall" in tools
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
