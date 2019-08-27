@@ -1,6 +1,10 @@
-# Reference resources
+# Reference Resources
 
-This and associated pages under the **2.2. Reference Resources** section provides details on provenance and generation of all reference files used in `pipeline.nf`. Usage of these files is defined in the [references configuration file](../conf/references.config).
+This and associated pages in this section provide details on provenance and generation of all reference files used in `pipeline.nf`. Usage of these files is defined in the [references configuration file](../conf/references.config).
+
+::: tip Note
+All reference files described herein are in assembly GRCh37/hg19 of the human genome.
+:::
 
 ## Genome Assembly
 
@@ -8,10 +12,16 @@ Part of the [GATK bundle](https://software.broadinstitute.org/gatk/download/bund
 
 ## Genomic Intervals
 
+BED files that specify the regions of the genome to consider for variant calling are specified in the [input files](running-the-pipeline.md#input-files).
+
 ### Exome Capture Platforms
 For exomes, use BED file corresponding to the platform used for target capture. Currently, Vaporware supports:
 - __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent.
 - __IDT_Exome__: xGen Exome Research Panel v1.0 from IDT.
+
+::: tip Note
+Contact us if you are interested in support for other sequencing assays or capture kits.
+:::
 
 The bait and target files are provided by the kit manufacturer. These are used to estimate bait- and target-level coverage metrics as well as for variant calling.
 
@@ -28,7 +38,9 @@ bedtools slop \
 ### Callable Regions for Genomes
 For genomes, a list of "callable" regions from GATK's bundle is used. This is converted from an interval list to a BED file:
 ```shell
-gatk IntervalListToBed --INPUT b37_wgs_calling_regions.v1.interval_list --OUTPUT b37_wgs_calling_regions.v1.bed
+gatk IntervalListToBed \
+    --INPUT b37_wgs_calling_regions.v1.interval_list \
+    --OUTPUT b37_wgs_calling_regions.v1.bed
 ```
 
 ## RepeatMasker and Mappability Blacklist
@@ -64,8 +76,11 @@ t2 %>%
 ## Hotspot Annotation
 Three types of mutation hotspots are annotated in the somatic MAF. These include SNV, indel in linear space as well as SNV hotspots in 3D space. These are annotated with the [annotateMaf package](https://github.com/taylor-lab/annotateMaf). 
 
-## OncoKB
+## OncoKB Annotation
 Functional mutation effects and predicted oncogenicity of variants, as well as level of clinical actionability are from [OncoKB](https://oncokb.org) and annotated using the [OncoKB annotator](https://github.com/oncokb/oncokb-annotator).
+
+## BRCA Exchange Annotation
+Annotation of germline variants in _BRCA1_ and _BRCA2_ is carried out with the [annotateMaf package](https://github.com/taylor-lab/annotateMaf). This includes variant-level annotation from the ENIGMA consortium and ClinVar.
 
 ## Structural Variant Calling
 Delly provides and takes as an argument a [file of regions](https://github.com/dellytools/delly/tree/master/excludeTemplates) to _exclude_ from variant calling. This excludes telomeres and centromeres from auto- and allosomes as well as any other contig.
