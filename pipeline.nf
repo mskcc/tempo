@@ -189,7 +189,7 @@ if (!params.bam_pairing) {
 
     if ( mem < 6 * 1024 / task.cpus ) {
     // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
-        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt)).round(1) + " GB" }
+        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt)).round() + " GB" }
         mem = (5.4 * 1024 / task.cpus).round()
     }
     else if ( mem / memDivider * (1 + 0.1 * task.attempt) > task.memory.toMega() ) {
@@ -198,7 +198,7 @@ if (!params.bam_pairing) {
     }
     else {
     // normal situation, `samtools sort` -M = fastqFileSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
-        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024).round(1) + " GB" }
+        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024).round() + " GB" }
         mem = mem
     }
 
@@ -2567,7 +2567,7 @@ process QcPileup {
                             def conpair = "conpair"
                             def idTumor = item[2]
                             def idNormal = item[3]
-                            def TumorPileup = item[9]
+                            def tumorPileup = item[9]
 
                             return [ conpair, idTumor, idNormal, tumorPileup ]
                          }.into(2)
