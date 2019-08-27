@@ -1700,9 +1700,12 @@ process SomaticFacetsAnnotation {
     --targetFile exome \
     --outfile ${outputPrefix}.genelevel.txt
 
+  sed -i -e "s/\${idTumor}/\${outputPrefix}/g" ${outputPrefix}.genelevel.txt
+
   Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.txt
+
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
