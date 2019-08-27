@@ -4,7 +4,10 @@
 
 You can follow the Nextflow process by following what is printed to `stdout`. Additionally, the Nextflow Java process creates a `.nextflow.log` file in the run directory where warnings and errors are logged.
 
-_Note: The last executed call to Nextflow in a given directory will be in the first few lines of `.nextflow.log`._
+::: tip Note
+- The last executed Nextflow call in the run directory will be in the first few lines of `.nextflow.log`.
+- Repeated calls to `nextflow run` in the same directory renames older output files from the Nextflow process, for example `.nextflow.log.3` is from three runs prior to the current one.
+:::
 
 ## Individual Jobs
 
