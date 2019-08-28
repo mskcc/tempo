@@ -23,7 +23,9 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively.
 * The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the [test inputs subdirectory](../test_inputs).
 
-_Note: The `assayType` argument is for resource allocation. This should also be specified in [the mapping file](running-the-pipeline.md#the-mapping-file), but for the purpose of correct reference file usage._
+::: tip Note
+The `assayType` argument is for resource allocation. This should also be specified in [the mapping file](running-the-pipeline.md#the-mapping-file), but for the purpose of correct reference file usage.
+:::
 
 **Optional arguments:**
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
@@ -44,11 +46,17 @@ nextflow run pipeline.nf --somatic --germline \
 
 For processing paired-end FASTQ inputs, users must provide both a mapping file and pairing file, as described below.
 
+::: tip Note
+The header lines are mandatory in the following files, but not the order of their columns.
+:::
+
+::: warning Be aware
+Vaporware checks for duplicated combinations of sample and lane names, empty entries, and some other things. However, it is up to the user to make sure that the inputs are in good shape.
+:::
+
 ### The Mapping File
 
 This file is necessary to map the input FASTQ pairs from one or more sequencing lanes to sample names. Additionally, this file tells the pipeline whether the samples are exome or genome samples. In the case of the former, the capture kit used is also input.
-
-_Note: The header line is mandatory but not the order of columns._
 
 Example:
 
@@ -62,14 +70,11 @@ Example:
 
 Accepted values for the **ASSAY** column are `exome` and `genome`.\
 Accepted values for the **TARGET** column are `agilent` and `idt`.\
-Read further details on these parameters [here](bioinformatics-components.md#genome-versus-exome).
-
-_Note: It is important that **LANE** values be descriptive, as the combination of *SAMPLE* and *LANE* values must be unique. Duplicate non-unique values cause errors._
+Read further details on these parameters [here](reference-resources.md#genomic-intervals).
 
 ### The Pairing File
-The pipeline needs to know which tumor and normal samples are to be analyzed as matched pairs. This files provides that pairing by referring to the sample names as provided in the **SAMPLE** column in the mapping file.
 
-_Note: The header line is mandatory but not the order of columns._
+The pipeline needs to know which tumor and normal samples are to be analyzed as matched pairs. This files provides that pairing by referring to the sample names as provided in the **SAMPLE** column in the mapping file.
 
 Example:
 
@@ -95,9 +100,6 @@ The `bam_pairing` input file is also a tab-separated file, see a further descrip
 ### The BAM Pairing File
 Given BAMs as inputs, the user must specify which tumor and normal samples are to be analyzed as matched pairs. The following format is used:
 
-_Note 1: The header line is mandatory but not the order of columns._
-_NOTE 2: The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` do not exist, `pipeline.nf` will throw an error requiring users to do so._
-
 Example:
 
 |TUMOR_ID|NORMAL_ID|ASSAY|TARGET|TUMOR_BAM|NORMAL_BAM|
@@ -106,6 +108,10 @@ Example:
 |normal_sample_2|tumor_sample_2|wes|agilent|/path/to/file/tumor_2.bam|/path/to/file/normal_2.bam|
 |...|...|...|...|...|...|
 |normal_sample_n|tumor_sample_n|wes|agilent|/path/to/file/tumor_n.bam|/path/to/file/normal_n.bam|
+
+::: tip Note
+The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` do not exist, `pipeline.nf` will throw an error.
+:::
 
 ## Running the Pipeline on Juno
 
@@ -162,10 +168,15 @@ To resume an interrupted Nextflow pipeline run, add `-resume` (note the single d
 
 This function also allows you to make changes to values in the `pipeline.nf` script and continue from where you left off. Nextflow will use the cached information from the unchanged sections while running only the modified processes. If you want to make changes to processes that already successfully completed, you have to manually delete the subdirectories in `work` where those processes where run. 
 
-_Note 1: if you use `-resume` for the first time of a timeline run, Nextflow will recognize this as superfluous, and continue._
-
-_Note 2: To peacefully interrupt an ongoing Nextflow pipeline run, do `control+C` once and wait for Nextflow to kill submitted jobs. Otherwise orphan jobs might be left on the cluster._
+::: tip Note
+* If you use `-resume` for the first time of a timeline run, Nextflow will recognize this as superfluous, and continue.
+* To peacefully interrupt an ongoing Nextflow pipeline run, do `control+C` once and wait for Nextflow to kill submitted jobs. Otherwise orphan jobs might be left on the cluster.
+:::
 
 ## After Successful Run
 
-Nextflow creates a lot of intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will occupy a lot of space and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. Once these files are removed, modifications to or resumptions of a pipeline run **cannot** be done.
+Nextflow creates a lot of intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will occupy a lot of space and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. 
+
+::: warning Be aware
+Once these files are removed, modifications to or resumption of a pipeline run **cannot** be done.
+:::

@@ -4,7 +4,9 @@ _Note: These instructions assume the user has a moderate knowledge of AWS concep
 
 Building the compute environment for AWS Batch consist of two steps.
 
-_Prerequisite: [Install](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) AWS CLI._
+::: tip NOTE
+You need to first [install](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) AWS command-line interface (CLI).
+:::
 
 ## Creating the S3 Bucket
 
