@@ -161,7 +161,8 @@ if (!params.bam_pairing) {
   process AlignReads {
     tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/qc/fastp/${idSample}", pattern: "*.html", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
+    if (publishAll) { publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.json" }
 
     input:
       set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
@@ -195,7 +196,7 @@ if (!params.bam_pairing) {
     """
     set -e
     set -o pipefail
-    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2} 
+    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2} --json ${lane}.fastp.json
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
     samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
