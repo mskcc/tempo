@@ -1706,6 +1706,7 @@ process SomaticFacetsAnnotation {
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.txt
 
+  sed -i -e "s/\${idTumor}/\${outputPrefix}/g" ${outputPrefix}.armlevel.txt
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
