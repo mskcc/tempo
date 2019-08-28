@@ -20,3 +20,4 @@ nf.*
 Result/
 *.Rhistory
 *.tsv
+docs/node_modules
