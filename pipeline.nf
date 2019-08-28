@@ -2573,6 +2573,8 @@ process QcConpair {
   }
 
   """
+  touch .Rprofile # calls to R inside the python scripts make this necessary to avoid loading user .Rprofile
+  
   # Make pairing file
   echo "${idNormal}\t${idTumor}" > pairing.txt
 
@@ -2627,6 +2629,8 @@ process QcConpairAll {
   }
 
   """
+  touch .Rprofile # calls to R inside the python scripts make this necessary to avoid loading user .Rprofile
+  
   # Make pairing file
   echo "${idNormal}\t${idTumor}" > pairing.txt
 
