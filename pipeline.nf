@@ -36,7 +36,7 @@ Somatic Analysis
  - RunLOHHLA --- LOH in HLA
  - RunConpair --- Tumor-Normal quality/contamination
  - RunMutationSignatures --- mutational signatures
- - FacetsAnnotation --- annotate FACETS
+ - SomaticFacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
  - MetaDataParser --- python script to parse metadata into single *tsv
  - SomaticAggregate --- collect outputs
@@ -52,6 +52,7 @@ Germline Analysis
  - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
  - GermlineCombineChannel --- combined and filter germline calls, bcftools
  - GermlineAnnotateMaf--- annotate MAF, vcf2maf
+ - GermlineFacetsAnnotation --- annotate FACETS
  - GermlineAggregate --- collect outputs
 
 */
@@ -151,11 +152,7 @@ if (!params.bam_pairing) {
   pairingTN = VaporwareUtils.extractPairing(pairingFile)
   fastqFiles = VaporwareUtils.extractFastq(mappingFile)
 
-  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.set{ groupedFastqs }
-
-  groupedFastqs.into { fastPFiles; fastqFiles }
-  fastPFiles = fastPFiles.transpose()
-  fastqFiles = fastqFiles.transpose()
+ fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -173,28 +170,31 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(sizeFastqFile1/1024**3 > 10){
-      task.time = { 32.h }
-    }
-    else if (sizeFastqFile1/1024**3 < 6){
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-    }
-    else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (workflow.profile == "juno") {
+      if(sizeFastqFile1/1024**3 > 10){
+        task.time = { 32.h }
+      }
+      else if (sizeFastqFile1/1024**3 < 6){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     mem = (sizeFastqFile1/1024**2 * 2).round()
     memDivider = params.mem_per_core ? 1 : task.cpus
     memMultiplier = params.mem_per_core ? task.cpus : 1
+    originalMem = task.attempt ==1 ? task.memory : originalMem
 
     if ( mem < 6 * 1024 / task.cpus ) {
     // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
         task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt)).round() + " GB" }
         mem = (5.4 * 1024 / task.cpus).round()
     }
-    else if ( mem / memDivider * (1 + 0.1 * task.attempt) > task.memory.toMega() ) {
+    else if ( mem / memDivider * (1 + 0.1 * task.attempt) > originalMem.toMega() ) {
     // if file size is too big, use task.memory as the max mem for this task, and decrease -M for `samtools sort` by 10% everytime retry
-        mem = (task.memory.toMega() / memDivider * (1 - 0.1 * task.attempt)).round()
+        mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt)).round()
     }
     else {
     // normal situation, `samtools sort` -M = fastqFileSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
@@ -267,14 +267,16 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(bam.size()/1024**3 > 80){
-      task.time = { 32.h }
-    }
-    else if (bam.size()/1024**3 < 40){
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-    }
-    else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 80){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 40){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -323,14 +325,16 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(bam.size()/1024**3 > 200){
-      task.time = { 32.h }
-    }
-    else if (bam.size()/1024**3 < 100){
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-    }
-    else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 200){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 100){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -375,14 +379,16 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(bam.size()/1024**3 > 120){
-      task.time = { 32.h }
-    }
-    else if (bam.size()/1024**3 < 60){
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-    }
-    else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 120){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 60){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -497,14 +503,16 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(bam.size()/1024**3 > 160){
-      task.time = { 32.h }
-    }
-    else if (bam.size()/1024**3 < 80){
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-    }
-    else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 160){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 80){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -553,14 +561,16 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(bam.size()/1024**3 > 200){
-      task.time = { 32.h }
-    }
-    else if (bam.size()/1024**3 < 100){
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-    }
-    else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 200){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 100){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     options = ""

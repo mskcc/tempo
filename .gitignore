@@ -19,3 +19,4 @@ nf.*
 *.bam.*
 Result/
 *.Rhistory
+*.tsv
