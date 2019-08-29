@@ -1708,7 +1708,7 @@ process MetaDataParser {
     ]) 
 
   output:
-    file("*_metadata.txt") into MetaDataOutputs
+    file("*.sample_data.txt") into MetaDataOutputs
 
   when: runSomatic
 
@@ -1725,7 +1725,7 @@ process MetaDataParser {
   """
   create_metadata_file.py \
     --sampleID ${idTumor}__${idNormal} \
-    --tumorID  ${idTumor} \
+    --tumorID ${idTumor} \
     --normalID ${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel ${armLevel} \
@@ -1734,6 +1734,8 @@ process MetaDataParser {
     --polysolver_output ${polysolverFile} \
     --MAF_input ${mafFile} \
     --coding_baits_BED ${codingRegionsBed}
+  
+  mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
 
@@ -1818,8 +1820,8 @@ process SomaticAggregate {
 
   # Collect and merge metadata file
   mkdir metadata_tmp
-  mv *_metadata.txt metadata_tmp/
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*_metadata.txt > sample_metadata.txt 
+  mv *.sample_data.txt sample_data_tmp/
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*.sample_data.txt > sample_data.txt 
   """
 }
 
