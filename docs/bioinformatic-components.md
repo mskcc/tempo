@@ -1,7 +1,7 @@
 # Bioinformatic Components
 
 The three main functions of the pipeline are:
-1. Sequencing read alignment
+1. Read alignment
 2. Somatic variant detection
 3. Germline variant detection
 
