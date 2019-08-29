@@ -48,7 +48,7 @@ somatic
 ├── cna_purity.seg
 ├── cna_facets_run_info.txt
 ├── sv_somatic.vcf.gz
-└── merged_metadata.txt
+└── sample_metadata.txt 
 ```
 
 These outputs are:
