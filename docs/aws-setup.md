@@ -16,9 +16,9 @@ Use `S3` bucket path for `<AWS-S3-WORKDIR>` value when creating `awsbatch.config
 
 ## Building the AMI
 
-Vaporware's Amazon Machine Image (AMI) is implemented with [EBS autoscaling script](https://docs.opendata.aws/genomics-workflows/core-env/create-custom-compute-resources) which will automatically increase disk space when needed.
+Tempo's Amazon Machine Image (AMI) is implemented with [EBS autoscaling script](https://docs.opendata.aws/genomics-workflows/core-env/create-custom-compute-resources) which will automatically increase disk space when needed.
 
-To prepare the AMI for your compute environment, run the command below from the Vaporware root directory.
+To prepare the AMI for your compute environment, run the command below from the Tempo root directory.
 
 ```shell
 aws cloudformation create-stack \
