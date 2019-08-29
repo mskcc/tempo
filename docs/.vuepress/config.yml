@@ -1,7 +1,7 @@
 title: Tempo
 description: CCS Research Pipeline for Whole-Genome and Whole-Exome Sequencing
 themeConfig:
-  logo: /vaporware_stairs.jpg
+  logo: /allegro.jpg
   sidebar:
     - "/"
     - title: Setup
