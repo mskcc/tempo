@@ -2425,6 +2425,8 @@ process GermlineAggregate {
   else
     mv \${vcfs[0]} sv_germline.vcf.gz
   fi
+  
+  tabix --preset vcf sv_germline.vcf.gz
   """
 }
 
