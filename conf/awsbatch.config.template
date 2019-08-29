@@ -18,7 +18,6 @@ aws.batch.maxParallelTransfers = 1
 aws.batch.maxTransferAttempts = 4
  
 workDir = <AWS-S3-WORKDIR>
-outDir = <AWS-S3-OUTDIR>
 
 executor {
   name = 'awsbatch'
@@ -37,4 +36,5 @@ params {
   mem_per_core = false
   reference_base = "s3:/"
   genome_base = params.genome == 'GRCh37' ? "${reference_base}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh37" : params.genome == 'GRCh38' ? "${reference_base}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh38" : " ${reference_base}/mskcc-igenomes/igenomes/smallGRCh37"
+  outDir = <AWS-S3-OUTDIR>
 }
