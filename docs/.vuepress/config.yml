@@ -1,5 +1,5 @@
-title: Vaporware
-description: Computational Pipeline for Whole-Genome and Whole-Exome Sequencing
+title: Tempo
+description: CCS Research Pipeline for Whole-Genome and Whole-Exome Sequencing
 themeConfig:
   logo: /vaporware_stairs.jpg
   sidebar:
@@ -25,7 +25,7 @@ themeConfig:
       children:
         - "/troubleshooting"
         - "/aws-glossary"
-        - "/contributing-to-vaporware"
+        - "/contributing-to-tempo"
   repo: mskcc/vaporware
   docsBranch: 'develop'
 plugins:
