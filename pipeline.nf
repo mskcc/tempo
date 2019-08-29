@@ -1539,8 +1539,6 @@ process RunLOHHLA {
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode }
-
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
