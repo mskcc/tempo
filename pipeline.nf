@@ -506,7 +506,7 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set assay, file("${idSample}.alfred*tsv.gz") into bamsQcStats
+      file("${idSample}.alfred*tsv.gz") into bamsQcStats
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
@@ -527,18 +527,14 @@ if (!params.bam_pairing) {
     """
   }
   
-  assayType = Channel.create()
-  bamsQcMetrics = Channel.create()
-  bamsQcStats.separate(assayType, bamsQcMetrics)
-  qcFiles = collectHsMetrics.concat(bamsQcMetrics).collect()  
   
   process AggregateBamQc {
     
     publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
     input:
-      val(assay) from assayType.unique()
-      file(metricsFile) from qcFiles
+      file(metricsFile) from collectHsMetrics.collect()
+      file(bamsQcStatsFile) from bamsQcStats.collect()
 
     output:
       file('alignment_qc.txt') into alignmentQc
@@ -546,7 +542,7 @@ if (!params.bam_pairing) {
     when: !params.test
 
     script:
-    if (assay == "wes") {
+    if (params.assayType == "exome") {
       options = "wes"
     }
     else {
