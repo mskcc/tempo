@@ -1598,8 +1598,8 @@ process SomaticFacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt") into FacetsArmGeneOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
+    set file("${outputPrefix}.armlevel.unfiltered.txt"), file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1618,11 +1618,11 @@ process SomaticFacetsAnnotation {
   Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
     --targetFile exome \
-    --outfile ${outputPrefix}.genelevel.txt
+    --outfile ${outputPrefix}.genelevel.unfiltered.txt
 
   Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.txt
+    --outfile ${outputPrefix}.armlevel.unfiltered.txt
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
