@@ -268,10 +268,10 @@ if (!params.bam_pairing) {
     script:
 
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 80){
+      if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 40){
+      else if (bam.size()/1024**3 < 100){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -326,10 +326,10 @@ if (!params.bam_pairing) {
     script:
 
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
+      if(bam.size()/1024**3 > 480){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size()/1024**3 < 240){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -380,10 +380,10 @@ if (!params.bam_pairing) {
     script:
 
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 120){
+      if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 60){
+      else if (bam.size()/1024**3 < 100){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -504,10 +504,10 @@ if (!params.bam_pairing) {
     script:
 
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 160){
+      if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 80){
+      else if (bam.size()/1024**3 < 100){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
