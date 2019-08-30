@@ -506,7 +506,7 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set assay, file("${idSample}.alfred*tsv.gz") into bamsQcStats
+      file("${idSample}.alfred*tsv.gz") into bamsQcStats
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
@@ -527,18 +527,14 @@ if (!params.bam_pairing) {
     """
   }
   
-  assayType = Channel.create()
-  bamsQcMetrics = Channel.create()
-  bamsQcStats.separate(assayType, bamsQcMetrics)
-  qcFiles = collectHsMetrics.concat(bamsQcMetrics).collect()  
   
   process AggregateBamQc {
     
     publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
     input:
-      val(assay) from assayType.unique()
-      file(metricsFile) from qcFiles
+      file(metricsFile) from collectHsMetrics.collect()
+      file(bamsQcStatsFile) from bamsQcStats.collect()
 
     output:
       file('alignment_qc.txt') into alignmentQc
@@ -546,7 +542,7 @@ if (!params.bam_pairing) {
     when: !params.test
 
     script:
-    if (assay == "wes") {
+    if (params.assayType == "exome") {
       options = "wes"
     }
     else {
@@ -960,7 +956,7 @@ process SomaticMergeDellyAndManta {
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/strelka2", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"}
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -1539,8 +1535,6 @@ process RunLOHHLA {
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode }
-
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
@@ -1598,8 +1592,8 @@ process SomaticFacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt") into FacetsArmGeneOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
+    set file("${outputPrefix}.armlevel.unfiltered.txt"), file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1618,11 +1612,11 @@ process SomaticFacetsAnnotation {
   Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
     --targetFile exome \
-    --outfile ${outputPrefix}.genelevel.txt
+    --outfile ${outputPrefix}.genelevel.unfiltered.txt
 
   Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.txt
+    --outfile ${outputPrefix}.armlevel.unfiltered.txt
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
@@ -1708,7 +1702,7 @@ process MetaDataParser {
     ]) 
 
   output:
-    file("*_metadata.txt") into MetaDataOutputs
+    file("*.sample_data.txt") into MetaDataOutputs
 
   when: runSomatic
 
@@ -1725,7 +1719,7 @@ process MetaDataParser {
   """
   create_metadata_file.py \
     --sampleID ${idTumor}__${idNormal} \
-    --tumorID  ${idTumor} \
+    --tumorID ${idTumor} \
     --normalID ${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel ${armLevel} \
@@ -1734,6 +1728,8 @@ process MetaDataParser {
     --polysolver_output ${polysolverFile} \
     --MAF_input ${mafFile} \
     --coding_baits_BED ${codingRegionsBed}
+  
+  mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
 
@@ -1818,8 +1814,8 @@ process SomaticAggregate {
 
   # Collect and merge metadata file
   mkdir metadata_tmp
-  mv *_metadata.txt metadata_tmp/
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*_metadata.txt > sample_metadata.txt 
+  mv *.sample_data.txt sample_data_tmp/
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*.sample_data.txt > sample_data.txt 
   """
 }
 
@@ -2425,6 +2421,8 @@ process GermlineAggregate {
   else
     mv \${vcfs[0]} sv_germline.vcf.gz
   fi
+  
+  tabix --preset vcf sv_germline.vcf.gz
   """
 }
 
