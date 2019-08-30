@@ -1329,6 +1329,10 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
+  // publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*/*/*.Rdata"
+  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
+  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,.png}"
+
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
@@ -1339,7 +1343,6 @@ process DoFacets {
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
     file("${tag}_OUT.txt") into FacetsPurityHisensOutput
-    file("${outputFacetsSubdirectory}") into FacetsOutputSubdirectories
 
   when: "facets" in tools && runSomatic
 
@@ -1380,12 +1383,6 @@ process DoFacets {
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
-  
-  # For aggregation, we keep only certain outputs
-  mkdir ${outputFacetsSubdirectory}
-  mkdir ${outputFacetsSubdirectory}/${outputDir}
-  cp -rf ${outfile} ${outputFacetsSubdirectory}
-  cp -rf ${outputDir}/*.{Rdata,png} ${outputFacetsSubdirectory}/${outputDir}
   """
 }
 
@@ -1570,9 +1567,9 @@ FacetsforMafAnno = FacetsforMafAnno.map{
     def hisens_seg = item[10]
     def purityCNCF_png = item[11]
     def hisensCNCF_png = item[12]
-    def path = item[13]
+    def facetsPath = item[13]
     
-    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf, path]
+    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf, facetsPath]
   }
 
 
@@ -1584,10 +1581,10 @@ facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/facets/${path}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
+  publishDir "${params.outDir}/somatic/facets/${facetsPath}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
   
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), path, file(maf) from facetsMafFileSomatic
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileSomatic
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
@@ -1599,7 +1596,6 @@ process SomaticFacetsAnnotation {
   mapFile = "${idTumor}_${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  echo ${path}
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
@@ -1745,7 +1741,6 @@ process SomaticAggregate {
     file(annotationFiles) from FacetsArmGeneOutputs.collect()
     file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
     file(metaDataFile) from MetaDataOutputs.collect()
-    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
     file("mut_somatic.maf") into MafFileOutput
@@ -1788,10 +1783,6 @@ process SomaticAggregate {
   cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
-  # Collect all FACETS output subdirectories
-  mkdir facets
-  mv ${facetsOutputSubdirectories} facets/
-
   # Collect and merge Delly and Manta VCFs
   mkdir sv/
   mv *delly.manta.vcf.gz* sv/
