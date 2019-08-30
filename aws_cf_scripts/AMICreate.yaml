@@ -22,7 +22,7 @@ Parameters:
     Description: The initial size of the scratch volume
   AMIName:
     Type: String
-    Default: tempo-ami
+    Default: vaporware-ami
     Description: The name of the AMI that is created
   UseEncryption:
     Type: String
