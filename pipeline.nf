@@ -1745,7 +1745,6 @@ process SomaticAggregate {
   output:
     file("mut_somatic.maf") into MafFileOutput
     file("mut_somatic_neoantigens.txt") into NetMhcChannel
-    file("facets/*") into FacetsChannel
     set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
     set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
     file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
