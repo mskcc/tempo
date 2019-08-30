@@ -158,7 +158,8 @@ if (!params.bam_pairing) {
   process AlignReads {
     tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/qc/fastp/${idSample}", pattern: "*.html", mode: params.publishDirMode
+    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
+    if (publishAll) { publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.json" }
 
     input:
       set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
@@ -182,7 +183,7 @@ if (!params.bam_pairing) {
       }
     }
 
-    mem = (sizeFastqFile1/1024**2 * 2).round()
+    mem = (sizeFastqFile1/1024**2 * 2).round()    // the maximum memory that `samtools sort` can use is the total size of the fastq pairs.
     memDivider = params.mem_per_core ? 1 : task.cpus
     memMultiplier = params.mem_per_core ? task.cpus : 1
     originalMem = task.attempt ==1 ? task.memory : originalMem
@@ -208,7 +209,7 @@ if (!params.bam_pairing) {
     """
     set -e
     set -o pipefail
-    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2} 
+    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2} --json ${lane}.fastp.json
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
@@ -891,7 +892,7 @@ process SomaticCombineMutect2Vcf {
 process SomaticRunManta {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/structural_variants/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
+  if (publishAll) { publishDir "${params.outDir}/somatic/structural_variants/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}" }
 
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
@@ -1019,7 +1020,7 @@ process SomaticMergeDellyAndManta {
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/strelka2", mode: params.publishDirMode }
+  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"}
 
   input:
     set idTumor, idNormal, target, assay, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -1598,8 +1599,6 @@ process RunLOHHLA {
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode }
-
   input:
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
@@ -1657,8 +1656,8 @@ process SomaticFacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.txt") into FacetsAnnotationOutputs
-    set file("${outputPrefix}.armlevel.txt"), file("${outputPrefix}.genelevel.txt") into FacetsArmGeneOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
+    set file("${outputPrefix}.armlevel.unfiltered.txt"), file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsArmGeneOutputs
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1677,11 +1676,11 @@ process SomaticFacetsAnnotation {
   Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
     --filenames ${hisens_cncf} \
     --targetFile exome \
-    --outfile ${outputPrefix}.genelevel.txt
+    --outfile ${outputPrefix}.genelevel.unfiltered.txt
 
   Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.txt
+    --outfile ${outputPrefix}.armlevel.unfiltered.txt
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
@@ -1767,7 +1766,7 @@ process MetaDataParser {
     ]) 
 
   output:
-    file("*_metadata.txt") into MetaDataOutputs
+    file("*.sample_data.txt") into MetaDataOutputs
 
   when: runSomatic
 
@@ -1784,7 +1783,7 @@ process MetaDataParser {
   """
   create_metadata_file.py \
     --sampleID ${idTumor}__${idNormal} \
-    --tumorID  ${idTumor} \
+    --tumorID ${idTumor} \
     --normalID ${idNormal} \
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel ${armLevel} \
@@ -1793,6 +1792,8 @@ process MetaDataParser {
     --polysolver_output ${polysolverFile} \
     --MAF_input ${mafFile} \
     --coding_baits_BED ${codingRegionsBed}
+  
+  mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
 
@@ -1877,8 +1878,8 @@ process SomaticAggregate {
 
   # Collect and merge metadata file
   mkdir metadata_tmp
-  mv *_metadata.txt metadata_tmp/
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*_metadata.txt > sample_metadata.txt 
+  mv *.sample_data.txt sample_data_tmp/
+  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*.sample_data.txt > sample_data.txt 
   """
 }
 
@@ -2484,6 +2485,8 @@ process GermlineAggregate {
   else
     mv \${vcfs[0]} sv_germline.vcf.gz
   fi
+  
+  tabix --preset vcf sv_germline.vcf.gz
   """
 }
 
@@ -2632,6 +2635,8 @@ process QcConpair {
   }
 
   """
+  touch .Rprofile # calls to R inside the python scripts make this necessary to avoid loading user .Rprofile
+  
   # Make pairing file
   echo "${idNormal}\t${idTumor}" > pairing.txt
 
@@ -2686,6 +2691,8 @@ process QcConpairAll {
   }
 
   """
+  touch .Rprofile # calls to R inside the python scripts make this necessary to avoid loading user .Rprofile
+  
   # Make pairing file
   echo "${idNormal}\t${idTumor}" > pairing.txt
 
