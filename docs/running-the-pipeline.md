@@ -2,7 +2,7 @@
 
 ## Overview 
 
-This page provides instructions on how to run the pipeline through the `pipeline.nf` script. The basic command below shows how to run Vaporware, with an explanation of flags and input arguments and files. Below is also described how to best [run the pipeline on Juno](run-pipeline.md#running-the-pipeline-on-juno) as well as [on AWS](run-pipeline.md#running-the-pipeline-on-aws).
+This page provides instructions on how to run the pipeline through the `pipeline.nf` script. The basic command below shows how to run Tempo, with an explanation of flags and input arguments and files. Below is also described how to best [run the pipeline on Juno](run-pipeline.md#running-the-pipeline-on-juno) as well as [on AWS](run-pipeline.md#running-the-pipeline-on-aws).
 
 ```shell
 nextflow run pipeline.nf \
@@ -51,7 +51,7 @@ The header lines are mandatory in the following files, but not the order of thei
 :::
 
 ::: warning Be aware
-Vaporware checks for duplicated combinations of sample and lane names, empty entries, and some other things. However, it is up to the user to make sure that the inputs are in good shape.
+Tempo checks for duplicated combinations of sample and lane names, empty entries, and some other things. However, it is up to the user to make sure that the inputs are in good shape.
 :::
 
 ### The Mapping File
