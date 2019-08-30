@@ -76,4 +76,12 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ### 4. Contributing
 * [Contributing to Tempo](contributing-to-tempo.md)
+
+<p align="center">
+  <img src="./brandenburg5_allegro.jpg">
+</p>
+
+
+
+
 ---
