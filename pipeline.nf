@@ -224,7 +224,6 @@ if (!params.bam_pairing) {
     [idSample, lane, bam, assay, target]
   }
 
-
   // MergeBams
   process MergeBams {
     tag {idSample}
@@ -1340,7 +1339,7 @@ process DoFacets {
 
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png"), val("${outputFacetsSubdirectory}/${outputDir}") into FacetsOutput
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
     file("${tag}_OUT.txt") into FacetsPurityHisensOutput
@@ -1575,8 +1574,9 @@ FacetsforMafAnno = FacetsforMafAnno.map{
     def hisens_seg = item[10]
     def purityCNCF_png = item[11]
     def hisensCNCF_png = item[12]
+    def path = item[13]
     
-    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf]
+    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf, path]
   }
 
 
@@ -1588,12 +1588,10 @@ facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt"
-  }
-
+  publishDir "${params.outDir}/somatic/facets/${path}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}unfiltered.txt"
+  
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), path, file(maf) from facetsMafFileSomatic
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
@@ -1605,6 +1603,7 @@ process SomaticFacetsAnnotation {
   mapFile = "${idTumor}_${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
+  echo ${path}
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
   echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
@@ -1759,7 +1758,7 @@ process SomaticAggregate {
     set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
     set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
     file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
-    file("sample_metadata.txt") into MetaDataOutputChannel
+    file("sample_data.txt") into MetaDataOutputChannel
 
   when: runSomatic
 
@@ -1787,11 +1786,11 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg 
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
-  mv *{genelevel,armlevel}.txt facets_tmp/
-  cat facets_tmp/*genelevel.txt | head -n 1 > cna_genelevel.txt
-  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' facets_tmp/*genelevel.txt >> cna_genelevel.txt
-  cat facets_tmp/*armlevel.txt | head -n 1 > cna_armlevel.txt
-  cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
+  mv *{genelevel,armlevel}.unfiltered.txt facets_tmp/
+  cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
+  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
+  cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
+  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
   # Collect all FACETS output subdirectories
   mkdir facets
@@ -1817,9 +1816,9 @@ process SomaticAggregate {
   tabix --preset vcf sv_somatic.vcf.gz
 
   # Collect and merge metadata file
-  mkdir metadata_tmp
+  mkdir sample_data_tmp
   mv *.sample_data.txt sample_data_tmp/
-  awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*.sample_data.txt > sample_data.txt 
+  awk 'FNR==1 && NR!=1{next;}{print}' sample_data_tmp/*.sample_data.txt > sample_data.txt 
   """
 }
 
