@@ -16,21 +16,21 @@ Tempo AMI is implemented with [EBS autoscaling script](https://docs.opendata.aws
 
 To prepare the AMI for your compute environment run the command below from the Tempo root directory.
 
-`aws cloudformation create-stack --stack-name tempoAMI --template-body file://aws_cf_scripts/AMICreate.yaml --parameters ParameterKey=AMIName,ParameterValue=tempo-ami --capabilities CAPABILITY_IAM`
+`aws cloudformation create-stack --stack-name vaporwareAMI --template-body file://aws_cf_scripts/AMICreate.yaml --parameters ParameterKey=AMIName,ParameterValue=tempo-ami --capabilities CAPABILITY_IAM`
 
-***NOTE: You can specify any name instead of `tempoAMI` for stack-name.***
+***NOTE: You can specify any name instead of `vaporewareAMI` for stack-name.***
 
 This command submits CloudFormation Stack for building the [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) for execution, which we will use for building Batch Compute Environment. When you submit the command you will get StackId ARN as a responce similar to this below.
 
 ```
 {
-    "StackId": "arn:aws:cloudformation:us-east-1:474622381158:stack/tempoAMI/f8d47a90-41c8-11e9-98cc-0eb85d5eff94"
+    "StackId": "arn:aws:cloudformation:us-east-1:474622381158:stack/vaporwareAMI/f8d47a90-41c8-11e9-98cc-0eb85d5eff94"
 }
 ```
 
 Building the AMI will last for a few minutes. You can check the status of the build process by running the command.
 
-`aws cloudformation describe-stacks --stack-name tempoAMI`
+`aws cloudformation describe-stacks --stack-name vaporwareAMI`
 
 When build is complete the `StackStatus` field in response json will have the value `CREATE_COMPLETE` and the `Outputs` section will look similar to:
 
@@ -48,13 +48,13 @@ We will use `OutputValue` for the next step.
 
 Run the command below from the Tempo repo root directory and set `<AMI-ID>` parameter to `OutputValue` from previous step. If you skiped previous section do not add --parameters argument when running the command.
 
-`aws cloudformation create-stack --stack-name tempoAWSBatchCE --template-body file://aws_cf_scripts/AWSBatchCreate.yaml --capabilities CAPABILITY_IAM --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID>`
+`aws cloudformation create-stack --stack-name vaporwareAWSBatchCE --template-body file://aws_cf_scripts/AWSBatchCreate.yaml --capabilities CAPABILITY_IAM --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID>`
 
-***NOTE: You can specify any name instead of `tempoAWSBatchCE` for stack-name.***
+***NOTE: You can specify any name instead of `vaporwareAWSBatchCE` for stack-name.***
 
 Building the AWS Batch Compute Environment will last for a few minutes. You can check the status of the build process by running the command.
 
-`aws cloudformation describe-stacks --stack-name tempoAWSBatchCE`
+`aws cloudformation describe-stacks --stack-name vaporwareAWSBatchCE`
 
 When build is complete the `StackStatus` field in response json will have the value `CREATE_COMPLETE` and the `Outputs` section will look similar to:
 
