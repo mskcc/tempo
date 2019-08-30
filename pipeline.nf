@@ -1777,6 +1777,7 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigens.txt
 
   # Collect and merge FACETS outputs
+  # Arm-level and gene-level output is filtered
   mkdir facets_tmp
   mv *_OUT.txt facets_tmp/
   mv *{purity,hisens}.seg facets_tmp/
@@ -1785,7 +1786,7 @@ process SomaticAggregate {
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
   mv *{genelevel,armlevel}.txt facets_tmp/
   cat facets_tmp/*genelevel.txt | head -n 1 > cna_genelevel.txt
-  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' facets_tmp/*genelevel.txt >> cna_genelevel.txt
+  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.txt >> cna_genelevel.txt
   cat facets_tmp/*armlevel.txt | head -n 1 > cna_armlevel.txt
   cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
