@@ -1584,7 +1584,7 @@ facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/facets/${path}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}unfiltered.txt"
+  publishDir "${params.outDir}/somatic/facets/${path}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
   
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), path, file(maf) from facetsMafFileSomatic
