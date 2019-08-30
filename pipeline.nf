@@ -1889,7 +1889,7 @@ process SomaticAggregateMetadata {
     file(metaDataFile) from MetaDataOutputs.collect()
 
   output:
-    file("sample-level-metadata.txt") into MetaDataOutputChannel
+    file("sample_data.txt") into MetaDataOutputChannel
 
   when: runSomatic
     
