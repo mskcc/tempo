@@ -39,7 +39,11 @@ Somatic Analysis
  - FacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
  - MetaDataParser --- python script to parse metadata into single *tsv
- - SomaticAggregate --- collect outputs
+ - SomaticAggregateMaf
+ - SomaticAggregateNetMHC
+ - SomaticAggregateFacets
+ - SomaticAggregateSv
+ - SomaticAggregateMetaData
 
 Germline Analysis
 -----------------
@@ -52,7 +56,8 @@ Germline Analysis
  - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
  - GermlineCombineChannel --- combined and filter germline calls, bcftools
  - GermlineAnnotateMaf--- annotate MAF, vcf2maf
- - GermlineAggregate --- collect outputs
+ - GermlineAggregateMaf --- collect outputs, MAF
+ - GermlineAggregateSv --- collect outputs, SVs
 
 */
 
@@ -905,7 +910,7 @@ process SomaticMergeDellyAndManta {
 
   output:
     file("${outputPrefix}.delly.manta.vcf.{gz,gz.tbi}") into vcfDellyMantaMergedOutput
-    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somatiDellyVcfs
+    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somaticDellyVcfs
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -1737,48 +1742,85 @@ process MetaDataParser {
   """
 }
 
-process SomaticAggregate {
+
+
+process SomaticAggregateMaf {
  
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
 
   input:
-    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(purityFiles) from FacetsPurity.collect()
-    file(hisensFiles) from FacetsHisens.collect()
-    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
-    file(annotationFiles) from FacetsArmGeneOutputs.collect()
-    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
-    file(metaDataFile) from MetaDataOutputs.collect()
-    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
-
+    
   output:
     file("mut_somatic.maf") into MafFileOutput
-    file("mut_somatic_neoantigens.txt") into NetMhcChannel
-    file("facets/*") into FacetsChannel
-    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
-    file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
-    file("sample_metadata.txt") into MetaDataOutputChannel
 
   when: runSomatic
 
   script:
   """
-  # Making a temp directory that is needed for some reason...
+  ## Making a temp directory that is needed for some reason...
   mkdir tmp
   TMPDIR=./tmp
-
-  # Collect and merge MAF files
+  
+  ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
   cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
   cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
+  """
+}
 
-  # Collect and merge neoantigen prediction
+
+process SomaticAggregateNetMHC {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
+
+  output:
+    file("mut_somatic_neoantigens.txt") into NetMhcChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect and merge neoantigen prediction
   mkdir neoantigen
   mv *.all_neoantigen_predictions.txt neoantigen/
   awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigens.txt
+  """
+}
+
+
+
+process SomaticAggregateFacets {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(purityFiles) from FacetsPurity.collect()
+    file(hisensFiles) from FacetsHisens.collect()
+    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
+    file(annotationFiles) from FacetsArmGeneOutputs.collect()
+    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
+
+  output:
+    file("facets/*") into FacetsChannel
+    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
+    
+  when: runSomatic
+    
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
 
   # Collect and merge FACETS outputs
   mkdir facets_tmp
@@ -1793,14 +1835,37 @@ process SomaticAggregate {
   cat facets_tmp/*armlevel.txt | head -n 1 > cna_armlevel.txt
   cat facets_tmp/*armlevel.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
-  # Collect all FACETS output subdirectories
+  
+  ## Collect all FACETS output subdirectories
   mkdir facets
   mv ${facetsOutputSubdirectories} facets/
+  """
+}
 
-  # Collect and merge Delly and Manta VCFs
+
+
+
+process SomaticAggregateSv {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+
+  output:
+    file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
+
+  when: runSomatic
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  
+  ## Collect and merge Delly and Manta VCFs
   mkdir sv/
   mv *delly.manta.vcf.gz* sv/
-
   vcfs=(\$(ls sv/*delly.manta.vcf.gz))
   if [[ \${#vcfs[@]} > 1 ]]
   then
@@ -1815,13 +1880,40 @@ process SomaticAggregate {
   fi
   
   tabix --preset vcf sv_somatic.vcf.gz
+  """
+}
 
-  # Collect and merge metadata file
+
+
+process SomaticAggregateMetadata {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(metaDataFile) from MetaDataOutputs.collect()
+
+  output:
+    file("sample_data.txt") into MetaDataOutputChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  
+  ## Collect and merge metadata file
   mkdir metadata_tmp
   mv *.sample_data.txt sample_data_tmp/
   awk 'FNR==1 && NR!=1{next;}{print}' metadata_tmp/*.sample_data.txt > sample_data.txt 
   """
 }
+
+
+
+
+
 
 /*
 ================================================================================
@@ -2380,39 +2472,62 @@ process GermlineMergeDellyAndManta {
   """
 }
 
-germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
 
-// --- Aggregate per-sample germline data
-process GermlineAggregate {
- 
+// --- Aggregate per-sample germline data, MAF
+process GermlineAggregateMaf {
+
   publishDir "${params.outDir}/germline/", mode: params.publishDirMode
 
   input:
     file(mafFile) from mafFileAnnotatedGermline.collect()
-    file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
     file("mut_germline.maf") into GermlineMafFileOutput
+  
+  when: runGermline
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  
+  ## Collect and merge MAF files
+  mkdir mut
+  mv *.maf mut/
+  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf 
+  cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf 
+
+  """
+}
+
+
+
+
+germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
+
+// --- Aggregate per-sample germline data, SVs
+process GermlineAggregateSv {
+ 
+  publishDir "${params.outDir}/germline", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+
+  output:
     file("sv_germline.vcf.gz") into GermlineVcfBedPeChannel
   
   when: runGermline
 
   script:
   """
-  # Making a temp directory that is needed for some reason...
+  ## Making a temp directory that is needed for some reason...
   mkdir tmp
   TMPDIR=./tmp
 
-  # Collect and merge MAF files
-  mkdir mut
-  mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf 
-  cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf 
-
-  # Collect and merge Delly and Manta VCFs
+  ## Collect and merge Delly and Manta VCFs
   mkdir sv
   mv  *.delly.manta.vcf.gz* sv/
-
   vcfs=(\$(ls sv/*delly.manta.vcf.gz))
   if [[ \${#vcfs[@]} > 1 ]]
   then
