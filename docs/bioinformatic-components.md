@@ -13,7 +13,7 @@ Additionally, various QC metrics are generated. Below are described the separate
 
 ## Read Alignment
 
-Vaporware accepts as input sequencing reads from one or multiple FASTQ file pairs (corresponding to separate sequencing lanes) per sample, as [described](running-the-pipeline.md#the-mapping-file). These are aligned against the human genome using common practices, which include:
+Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (corresponding to separate sequencing lanes) per sample, as [described](running-the-pipeline.md#the-mapping-file). These are aligned against the human genome using common practices, which include:
 * __Alignment__ using [BWA mem](http://bio-bwa.sourceforge.net/), followed by conversion to BAM file format and sorting using [samtools](https://samtools.github.io).
 * __Merging__ of BAM files across sequencing lanes using [samtools](https://samtools.github.io).
 * __PCR-duplicate marking__ using [GATK MarkDuplicates](https://software.broadinstitute.org/gatk).
