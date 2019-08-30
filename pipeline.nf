@@ -94,17 +94,17 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 if (params.mapping) {
   mappingPath = params.mapping
   
-  if (mappingPath && !VaporwareUtils.check_for_duplicated_rows(mappingPath)) {
+  if (mappingPath && !TempoUtils.check_for_duplicated_rows(mappingPath)) {
     println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
 
-  if (mappingPath && !VaporwareUtils.check_for_mixed_assay(mappingPath)) {
+  if (mappingPath && !TempoUtils.check_for_mixed_assay(mappingPath)) {
     println "ERROR: Multiple assays found in mapping file. Users can either run exomes or genomes, but not both. Please fix the error and re-run the pipeline."
     exit 1
   }
 
-  if (mappingPath && !VaporwareUtils.checkForUniqueSampleLanes(mappingPath)) {
+  if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
     println "ERROR: The combination of sample ID and lane names values must be unique. Duplicate lane names for one sample cause errors. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -115,7 +115,7 @@ if (params.mapping) {
 if (params.pairing) {
   pairingPath = params.pairing
 
-  if (!VaporwareUtils.check_for_duplicated_rows(pairingPath)) {
+  if (!TempoUtils.check_for_duplicated_rows(pairingPath)) {
     println "ERROR: Duplicated row found in pairing file. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -126,7 +126,7 @@ if (params.pairing) {
 if (params.bam_pairing) {
   bamPairingPath = params.bam_pairing
 
-  if (bamPairingPath && !VaporwareUtils.check_for_duplicated_rows(bamPairingPath)) {
+  if (bamPairingPath && !TempoUtils.check_for_duplicated_rows(bamPairingPath)) {
     println "ERROR: Duplicated row found in BAM mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -153,8 +153,8 @@ if (!params.bam_pairing) {
   fastqFiles = Channel.empty() 
   mappingFile = file(mappingPath)
   pairingFile = file(pairingPath)
-  pairingTN = VaporwareUtils.extractPairing(pairingFile)
-  fastqFiles = VaporwareUtils.extractFastq(mappingFile)
+  pairingTN = TempoUtils.extractPairing(pairingFile)
+  fastqFiles = TempoUtils.extractFastq(mappingFile)
 
   fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.set{ groupedFastqs }
 
@@ -590,7 +590,7 @@ if ("conpair" in tools || "conpairAll" in tools) {
 if (params.bam_pairing) {
   bamFiles = Channel.empty()
   bamPairingfile = file(bamPairingPath)
-  bamFiles = VaporwareUtils.extractBAM(bamPairingfile)
+  bamFiles = TempoUtils.extractBAM(bamPairingfile)
 }
 
 // GATK SplitIntervals, CreateScatteredIntervals
