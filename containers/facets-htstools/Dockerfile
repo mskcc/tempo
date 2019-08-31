@@ -3,8 +3,8 @@ FROM frolvlad/alpine-glibc:alpine-3.9
 LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="2.2.1" \
-      version.facets_suite="1.6.0" \
+      version.image="2.2.2" \
+      version.facets_suite="1.6.2" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
       version.r="3.5.1" \
@@ -21,7 +21,7 @@ LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
 
 ENV HTSTOOLS_VERSION 0.1.1
 ENV HTSLIB_VERSION 1.5
-ENV FACETS_SUITE_VERSION 1.6.0
+ENV FACETS_SUITE_VERSION 1.6.2
 ENV FACETS_VERSION 0.5.14
 ENV PCTGCDATA 0.2.0
 
