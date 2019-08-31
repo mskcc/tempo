@@ -173,6 +173,7 @@ if (!params.bam_pairing) {
 
     publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
     if (publishAll) { 
+      tag {idSample + "@" + lane}
       publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.json" 
     }
 
