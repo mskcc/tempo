@@ -242,7 +242,6 @@ if (!params.bam_pairing) {
     [idSample, lane, bam, assay, target]
   }
 
-
   // MergeBams
   process MergeBams {
     tag {idSample}
@@ -1397,17 +1396,20 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
+  // publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*/*/*.Rdata"
+  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
+  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,.png}"
+
   input:
     set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamFilesForSnpPileup
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
     set assay, target, idTumor, idNormal, file("${outfile}") into SnpPileup
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png") into FacetsOutput
+    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png"), val("${outputFacetsSubdirectory}/${outputDir}") into FacetsOutput
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
     file("${tag}_OUT.txt") into FacetsPurityHisensOutput
-    file("${outputFacetsSubdirectory}") into FacetsOutputSubdirectories
 
   when: "facets" in tools && runSomatic
 
@@ -1448,12 +1450,6 @@ process DoFacets {
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg  
-  
-  # For aggregation, we keep only certain outputs
-  mkdir ${outputFacetsSubdirectory}
-  mkdir ${outputFacetsSubdirectory}/${outputDir}
-  cp -rf ${outfile} ${outputFacetsSubdirectory}
-  cp -rf ${outputDir}/*.{Rdata,png} ${outputFacetsSubdirectory}/${outputDir}
   """
 }
 
@@ -1638,8 +1634,9 @@ FacetsforMafAnno = FacetsforMafAnno.map{
     def hisens_seg = item[10]
     def purityCNCF_png = item[11]
     def hisensCNCF_png = item[12]
+    def facetsPath = item[13]
     
-    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf]
+    return [idTumor, idNormal, target, purity_rdata, purity_cncf, hisens_cncf, facetsPath]
   }
 
 
@@ -1651,12 +1648,10 @@ facetsMafFileSomatic = FacetsforMafAnno.combine(mafFileForMafAnno, by: [0,1,2])
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
-  }
-
+  publishDir "${params.outDir}/somatic/facets/${facetsPath}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
+  
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileSomatic
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileSomatic
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
@@ -1805,8 +1800,6 @@ process MetaDataParser {
   """
 }
 
-
-
 process SomaticAggregateMaf {
  
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
@@ -1833,7 +1826,6 @@ process SomaticAggregateMaf {
   """
 }
 
-
 process SomaticAggregateNetMHC {
  
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
@@ -1851,15 +1843,12 @@ process SomaticAggregateNetMHC {
   ## Making a temp directory that is needed for some reason...
   mkdir tmp
   TMPDIR=./tmp
-
   ## Collect and merge neoantigen prediction
   mkdir neoantigen
   mv *.all_neoantigen_predictions.txt neoantigen/
   awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigens.txt
   """
 }
-
-
 
 process SomaticAggregateFacets {
  
@@ -1870,10 +1859,8 @@ process SomaticAggregateFacets {
     file(hisensFiles) from FacetsHisens.collect()
     file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
     file(annotationFiles) from FacetsArmGeneOutputs.collect()
-    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
 
   output:
-    file("facets/*") into FacetsChannel
     set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
     set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
     
@@ -1881,32 +1868,22 @@ process SomaticAggregateFacets {
     
   script:
   """
-  ## Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-
   # Collect and merge FACETS outputs
+  # Arm-level and gene-level output is filtered
   mkdir facets_tmp
   mv *_OUT.txt facets_tmp/
   mv *{purity,hisens}.seg facets_tmp/
+
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg 
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
   mv *{genelevel,armlevel}.unfiltered.txt facets_tmp/
   cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
-  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "FALSE" || (\$17 == "FALSE" && \$18 == "TRUE")))  print \$0 }' facets_tmp/*genelevel.txt >> cna_genelevel.txt
+  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
-  
-  
-  ## Collect all FACETS output subdirectories
-  mkdir facets
-  mv ${facetsOutputSubdirectories} facets/
   """
 }
-
-
-
 
 process SomaticAggregateSv {
  
@@ -1946,8 +1923,6 @@ process SomaticAggregateSv {
   """
 }
 
-
-
 process SomaticAggregateMetadata {
  
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
@@ -1972,11 +1947,6 @@ process SomaticAggregateMetadata {
   awk 'FNR==1 && NR!=1{next;}{print}' sample_data_tmp/*.sample_data.txt > sample_data.txt 
   """
 }
-
-
-
-
-
 
 /*
 ================================================================================
@@ -2417,7 +2387,7 @@ process GermlineFacetsAnnotation {
   tag {idNormal}
 
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileGermline
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
 
   output:
     file("${outputPrefix}.facets.zygosity.maf") into mafFileAnnotatedGermline
@@ -2564,9 +2534,6 @@ process GermlineAggregateMaf {
   """
 }
 
-
-
-
 germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
 
 // --- Aggregate per-sample germline data, SVs
@@ -2578,7 +2545,7 @@ process GermlineAggregateSv {
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
-    file("sv_germline.vcf.gz") into GermlineVcfBedPeChannel
+    file("sv_germline.vcf.{gz,gz.tbi") into GermlineVcfBedPeChannel
   
   when: runGermline
 
