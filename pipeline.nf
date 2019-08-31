@@ -39,11 +39,11 @@ Somatic Analysis
  - SomaticFacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
  - MetaDataParser --- python script to parse metadata into single *tsv
- - SomaticAggregateMaf
- - SomaticAggregateNetMHC
- - SomaticAggregateFacets
- - SomaticAggregateSv
- - SomaticAggregateMetaData
+ - SomaticAggregateMaf --- collect outputs, MAF
+ - SomaticAggregateNetMHC --- collect outputs, neoantigen prediction
+ - SomaticAggregateFacets --- collect outputs, FACETS
+ - SomaticAggregateSv --- collect outputs, SVs
+ - SomaticAggregateMetaData --- collect outputs, sample data
 
 Germline Analysis
 -----------------
@@ -308,8 +308,7 @@ if (!params.bam_pairing) {
 
   (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
 
- // GATK BaseRecalibrator , CreateRecalibrationTable
- 
+ // GATK BaseRecalibrator , CreateRecalibrationTable 
   process CreateRecalibrationTable {
     tag {idSample}
 
@@ -414,7 +413,6 @@ if (!params.bam_pairing) {
   }
 
   // set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
-
   recalibratedBamForOutput.combine(pairingTN)
                           .filter { item -> // only keep combinations where sample is same as tumor pair sample
                             def idSample = item[0]
