@@ -2546,7 +2546,7 @@ process GermlineAggregateSv {
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
-    file("sv_germline.vcf.{gz,gz.tbi") into GermlineVcfBedPeChannel
+    file("sv_germline.vcf.{gz,gz.tbi}") into GermlineVcfBedPeChannel
   
   when: runGermline
 
