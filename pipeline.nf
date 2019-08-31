@@ -39,11 +39,11 @@ Somatic Analysis
  - SomaticFacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
  - MetaDataParser --- python script to parse metadata into single *tsv
- - SomaticAggregateMaf
- - SomaticAggregateNetMHC
- - SomaticAggregateFacets
- - SomaticAggregateSv
- - SomaticAggregateMetaData
+ - SomaticAggregateMaf --- collect outputs, MAF
+ - SomaticAggregateNetMHC --- collect outputs, neoantigen prediction
+ - SomaticAggregateFacets --- collect outputs, FACETS
+ - SomaticAggregateSv --- collect outputs, SVs
+ - SomaticAggregateMetaData --- collect outputs, sample data
 
 Germline Analysis
 -----------------
@@ -163,7 +163,9 @@ if (!params.bam_pairing) {
     tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
     publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
-    if (publishAll) { publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.json" }
+    if (publishAll) { 
+      publishDir "${params.outDir}/qc/fastp/json", mode: params.publishDirMode, pattern: "*.json" 
+    }
 
     input:
       set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
@@ -175,7 +177,6 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-
     if (workflow.profile == "juno") {
       if(sizeFastqFile1/1024**3 > 10){
         task.time = { 32.h }
@@ -307,8 +308,7 @@ if (!params.bam_pairing) {
 
   (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
 
- // GATK BaseRecalibrator , CreateRecalibrationTable
- 
+ // GATK BaseRecalibrator , CreateRecalibrationTable 
   process CreateRecalibrationTable {
     tag {idSample}
 
@@ -413,7 +413,6 @@ if (!params.bam_pairing) {
   }
 
   // set assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal) from bamsForManta
-
   recalibratedBamForOutput.combine(pairingTN)
                           .filter { item -> // only keep combinations where sample is same as tumor pair sample
                             def idSample = item[0]
@@ -966,7 +965,7 @@ process SomaticMergeDellyAndManta {
 
   if (publishAll) {
     publishDir "${params.outDir}/somatic/structural_variants/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
-    }
+  }
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
@@ -1678,9 +1677,13 @@ process SomaticFacetsAnnotation {
     --targetFile exome \
     --outfile ${outputPrefix}.genelevel.unfiltered.txt
 
+  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.genelevel.unfiltered.txt
+
   Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.unfiltered.txt
+
+  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.armlevel.unfiltered.txt
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
@@ -2542,7 +2545,7 @@ process GermlineAggregateSv {
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
-    file("sv_germline.vcf.{gz,gz.tbi") into GermlineVcfBedPeChannel
+    file("sv_germline.vcf.{gz,gz.tbi}") into GermlineVcfBedPeChannel
   
   when: runGermline
 
