@@ -3,10 +3,10 @@ import nextflow.Channel
 
 // NOTE: 
 // static methods in Groovy are meant to be accessed directly from the class
-// e.g. VaporewareUtils.debug()
+// e.g. TempoUtils.debug()
 //
 
-class VaporwareUtils {
+class TempoUtils {
 
   static def debug(channel) {
     channel.subscribe { Object obj ->
