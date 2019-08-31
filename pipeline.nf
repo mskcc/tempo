@@ -162,6 +162,11 @@ if (!params.bam_pairing) {
   process AlignReads {
     tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
+    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
+    if (publishAll) { 
+      publishDir "${params.outDir}/qc/fastp/json", mode: params.publishDirMode, pattern: "*.json" 
+    }
+
     input:
       set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
@@ -170,13 +175,6 @@ if (!params.bam_pairing) {
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
-
-    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
-    if (publishAll) { 
-      tag {idSample + "@" + lane}
-      publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.json" 
-    }
-
 
     script:
     if (workflow.profile == "juno") {
