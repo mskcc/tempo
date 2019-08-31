@@ -1603,6 +1603,7 @@ process SomaticFacetsAnnotation {
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
+  tumorName = "${idTumor}"
   mapFile = "${idTumor}_${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
@@ -1619,13 +1620,13 @@ process SomaticFacetsAnnotation {
     --targetFile exome \
     --outfile ${outputPrefix}.genelevel.unfiltered.txt
 
-  sed -i -e "s/\${idTumor}/\${outputPrefix}/g" ${outputPrefix}.genelevel.txt
+  sed -i -e "s/\${tumorName}/\${outputPrefix}/g" ${outputPrefix}.genelevel.txt
 
   Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
     --filenames ${purity_cncf} \
     --outfile ${outputPrefix}.armlevel.unfiltered.txt
 
-  sed -i -e "s/\${idTumor}/\${outputPrefix}/g" ${outputPrefix}.armlevel.txt
+  sed -i -e "s/\${tumorName}/\${outputPrefix}/g" ${outputPrefix}.armlevel.txt
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
   """
