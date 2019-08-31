@@ -2385,7 +2385,7 @@ process GermlineFacetsAnnotation {
   tag {idNormal}
 
   input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), file(maf) from facetsMafFileGermline
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
 
   output:
     file("${outputPrefix}.facets.zygosity.maf") into mafFileAnnotatedGermline
