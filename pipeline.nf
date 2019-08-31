@@ -2532,9 +2532,6 @@ process GermlineAggregateMaf {
   """
 }
 
-
-
-
 germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
 
 // --- Aggregate per-sample germline data, SVs
@@ -2546,7 +2543,7 @@ process GermlineAggregateSv {
     file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
-    file("sv_germline.vcf.gz") into GermlineVcfBedPeChannel
+    file("sv_germline.vcf.{gz,gz.tbi") into GermlineVcfBedPeChannel
   
   when: runGermline
 
