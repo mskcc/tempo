@@ -1654,7 +1654,7 @@ process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
   if (publishAll) {
-    publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.txt"
+    publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
   }
 
   input:
