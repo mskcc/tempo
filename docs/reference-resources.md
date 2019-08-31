@@ -8,14 +8,14 @@ All reference files described herein are in assembly GRCh37/hg19 of the human ge
 
 ## Genome Assembly
 
-Part of the [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/gatk-legacy-bundles/b37). Vaporware uses the **human_g1k_v37_decoy** assembly of the genome.
+Part of the [GATK bundle](https://software.broadinstitute.org/gatk/download/bundle), also available [here](https://console.cloud.google.com/storage/browser/gatk-legacy-bundles/b37). Tempo uses the **human_g1k_v37_decoy** assembly of the genome.
 
 ## Genomic Intervals
 
 BED files that specify the regions of the genome to consider for variant calling are specified in the [input files](running-the-pipeline.md#input-files).
 
 ### Exome Capture Platforms
-For exomes, use BED file corresponding to the platform used for target capture. Currently, Vaporware supports:
+For exomes, use BED file corresponding to the platform used for target capture. Currently, Tempo supports:
 - __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent.
 - __IDT_Exome__: xGen Exome Research Panel v1.0 from IDT.
 

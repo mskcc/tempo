@@ -36,10 +36,14 @@ Somatic Analysis
  - RunLOHHLA --- LOH in HLA
  - RunConpair --- Tumor-Normal quality/contamination
  - RunMutationSignatures --- mutational signatures
- - FacetsAnnotation --- annotate FACETS
+ - SomaticFacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
  - MetaDataParser --- python script to parse metadata into single *tsv
- - SomaticAggregate --- collect outputs
+ - SomaticAggregateMaf
+ - SomaticAggregateNetMHC
+ - SomaticAggregateFacets
+ - SomaticAggregateSv
+ - SomaticAggregateMetaData
 
 Germline Analysis
 -----------------
@@ -52,7 +56,8 @@ Germline Analysis
  - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
  - GermlineCombineChannel --- combined and filter germline calls, bcftools
  - GermlineAnnotateMaf--- annotate MAF, vcf2maf
- - GermlineAggregate --- collect outputs
+ - GermlineAggregateMaf --- collect outputs, MAF
+ - GermlineAggregateSv --- collect outputs, SVs
 
 */
 
@@ -89,17 +94,17 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 if (params.mapping) {
   mappingPath = params.mapping
   
-  if (mappingPath && !VaporwareUtils.check_for_duplicated_rows(mappingPath)) {
+  if (mappingPath && !TempoUtils.check_for_duplicated_rows(mappingPath)) {
     println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
 
-  if (mappingPath && !VaporwareUtils.check_for_mixed_assay(mappingPath)) {
+  if (mappingPath && !TempoUtils.check_for_mixed_assay(mappingPath)) {
     println "ERROR: Multiple assays found in mapping file. Users can either run exomes or genomes, but not both. Please fix the error and re-run the pipeline."
     exit 1
   }
 
-  if (mappingPath && !VaporwareUtils.checkForUniqueSampleLanes(mappingPath)) {
+  if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
     println "ERROR: The combination of sample ID and lane names values must be unique. Duplicate lane names for one sample cause errors. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -110,7 +115,7 @@ if (params.mapping) {
 if (params.pairing) {
   pairingPath = params.pairing
 
-  if (!VaporwareUtils.check_for_duplicated_rows(pairingPath)) {
+  if (!TempoUtils.check_for_duplicated_rows(pairingPath)) {
     println "ERROR: Duplicated row found in pairing file. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -121,7 +126,7 @@ if (params.pairing) {
 if (params.bam_pairing) {
   bamPairingPath = params.bam_pairing
 
-  if (bamPairingPath && !VaporwareUtils.check_for_duplicated_rows(bamPairingPath)) {
+  if (bamPairingPath && !TempoUtils.check_for_duplicated_rows(bamPairingPath)) {
     println "ERROR: Duplicated row found in BAM mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -148,14 +153,10 @@ if (!params.bam_pairing) {
   fastqFiles = Channel.empty() 
   mappingFile = file(mappingPath)
   pairingFile = file(pairingPath)
-  pairingTN = VaporwareUtils.extractPairing(pairingFile)
-  fastqFiles = VaporwareUtils.extractFastq(mappingFile)
+  pairingTN = TempoUtils.extractPairing(pairingFile)
+  fastqFiles = TempoUtils.extractFastq(mappingFile)
 
-  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.set{ groupedFastqs }
-
-  groupedFastqs.into { fastPFiles; fastqFiles }
-  fastPFiles = fastPFiles.transpose()
-  fastqFiles = fastqFiles.transpose()
+ fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -169,37 +170,54 @@ if (!params.bam_pairing) {
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
-      file("*.html") into fastPResults
+      file("*.html") into fastPHtml
+      file("*.json") into fastPJson
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    // Different resource requirements for AWS and LSF
-    // WES should use mem - 1 for bwa mem & samtools sort
-    // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
-    if (params.mem_per_core) { 
-      if ('wes' in assay){
-        mem = task.memory.toString().split(" ")[0].toInteger() - 1
+
+    if (workflow.profile == "juno") {
+      if(sizeFastqFile1/1024**3 > 10){
+        task.time = { 32.h }
       }
-      else if ('wgs' in assay){
-        mem = task.memory.toString().split(" ")[0].toInteger() - 3
+      else if (sizeFastqFile1/1024**3 < 6){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
       }
     }
+
+    mem = (sizeFastqFile1/1024**2 * 2).round()    // the maximum memory that `samtools sort` can use is the total size of the fastq pairs.
+    memDivider = params.mem_per_core ? 1 : task.cpus
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    originalMem = task.attempt ==1 ? task.memory : originalMem
+
+    if ( mem < 6 * 1024 / task.cpus ) {
+    // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
+        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt)).round() + " GB" }
+        mem = (5.4 * 1024 / task.cpus).round()
+    }
+    else if ( mem / memDivider * (1 + 0.1 * task.attempt) > originalMem.toMega() ) {
+    // if file size is too big, use task.memory as the max mem for this task, and decrease -M for `samtools sort` by 10% everytime retry
+        mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt)).round()
+    }
     else {
-      if ('wes' in assay){
-        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-      }
-      else if ('wgs' in assay){
-        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
-      }
-    } 
+    // normal situation, `samtools sort` -M = fastqFileSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
+        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024).round() + " GB" }
+        mem = mem
+    }
+
+    task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
+
+    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     """
     set -e
     set -o pipefail
-    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2} --json ${lane}.fastp.json
+    fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2} --json ${lane}.fastp.json
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
-    samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
+    samtools sort -m ${mem}M -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
     """
   }
 
@@ -254,8 +272,25 @@ if (!params.bam_pairing) {
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
+
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 200){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 100){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
+    }
+
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 1) + "g'"
+
     """
-    gatk MarkDuplicates --java-options ${params.markdup_java_options} \
+    gatk MarkDuplicates \
+      ${javaOptions} \
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
@@ -296,14 +331,16 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(bam.size()/1024/1024/1024 > 100){
-      task.time = { 6.h * task.attempt }
-    }
-    else if (bam.size()/1024/1024/1024 > 200){
-      task.time = { 32.h * task.attempt }
-    }
-    else{
-      task.time = { 3.h * task.attempt }
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 480){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 240){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -348,14 +385,16 @@ if (!params.bam_pairing) {
 
     script:
 
-    if(bam.size()/1024/1024/1024 > 80){
-      task.time = { 6.h * task.attempt }
-    }
-    else if (bam.size()/1024/1024/1024 > 160){
-      task.time = { 32.h * task.attempt }
-    }
-    else{
-      task.time = { 3.h * task.attempt }
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 200){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 100){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -469,6 +508,22 @@ if (!params.bam_pairing) {
     when: 'wes' in assay && !params.test
 
     script:
+
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 200){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 100){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
+    }
+
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+
     baitIntervals = ""
     targetIntervals = ""
     if (target == 'agilent'){
@@ -481,6 +536,7 @@ if (!params.bam_pairing) {
     }
     """
     gatk CollectHsMetrics \
+      ${javaOptions} \
       --INPUT ${bam} \
       --OUTPUT ${idSample}.hs_metrics.txt \
       --REFERENCE_SEQUENCE ${genomeFile} \
@@ -510,6 +566,19 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
+
+    if (workflow.profile == "juno") {
+      if(bam.size()/1024**3 > 200){
+        task.time = { 32.h }
+      }
+      else if (bam.size()/1024**3 < 100){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+      }
+    }
+
     options = ""
     if (assay == "wes") {
       if (target == "agilent") options = "--bed ${agilentTargets}"
@@ -585,7 +654,7 @@ if ("conpair" in tools || "conpairAll" in tools) {
 if (params.bam_pairing) {
   bamFiles = Channel.empty()
   bamPairingfile = file(bamPairingPath)
-  bamFiles = VaporwareUtils.extractBAM(bamPairingfile)
+  bamFiles = TempoUtils.extractBAM(bamPairingfile)
 }
 
 // GATK SplitIntervals, CreateScatteredIntervals
@@ -905,7 +974,7 @@ process SomaticMergeDellyAndManta {
 
   output:
     file("${outputPrefix}.delly.manta.vcf.{gz,gz.tbi}") into vcfDellyMantaMergedOutput
-    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somatiDellyVcfs
+    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somaticDellyVcfs
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -1733,48 +1802,85 @@ process MetaDataParser {
   """
 }
 
-process SomaticAggregate {
+
+
+process SomaticAggregateMaf {
  
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
 
   input:
-    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
     file(mafFile) from NeoantigenMafOutput.collect()
-    file(purityFiles) from FacetsPurity.collect()
-    file(hisensFiles) from FacetsHisens.collect()
-    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
-    file(annotationFiles) from FacetsArmGeneOutputs.collect()
-    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
-    file(metaDataFile) from MetaDataOutputs.collect()
-    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
-
+    
   output:
     file("mut_somatic.maf") into MafFileOutput
-    file("mut_somatic_neoantigens.txt") into NetMhcChannel
-    file("facets/*") into FacetsChannel
-    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
-    file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
-    file("sample_metadata.txt") into MetaDataOutputChannel
 
   when: runSomatic
 
   script:
   """
-  # Making a temp directory that is needed for some reason...
+  ## Making a temp directory that is needed for some reason...
   mkdir tmp
   TMPDIR=./tmp
-
-  # Collect and merge MAF files
+  
+  ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
   cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
   cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
+  """
+}
 
-  # Collect and merge neoantigen prediction
+
+process SomaticAggregateNetMHC {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
+
+  output:
+    file("mut_somatic_neoantigens.txt") into NetMhcChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect and merge neoantigen prediction
   mkdir neoantigen
   mv *.all_neoantigen_predictions.txt neoantigen/
   awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigens.txt
+  """
+}
+
+
+
+process SomaticAggregateFacets {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(purityFiles) from FacetsPurity.collect()
+    file(hisensFiles) from FacetsHisens.collect()
+    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
+    file(annotationFiles) from FacetsArmGeneOutputs.collect()
+    file(facetsOutputSubdirectories) from FacetsOutputSubdirectories.collect()
+
+  output:
+    file("facets/*") into FacetsChannel
+    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
+    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
+    
+  when: runSomatic
+    
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
 
   # Collect and merge FACETS outputs
   # Arm-level and gene-level output is filtered
@@ -1790,14 +1896,37 @@ process SomaticAggregate {
   cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
   
-  # Collect all FACETS output subdirectories
+  
+  ## Collect all FACETS output subdirectories
   mkdir facets
   mv ${facetsOutputSubdirectories} facets/
+  """
+}
 
-  # Collect and merge Delly and Manta VCFs
+
+
+
+process SomaticAggregateSv {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+
+  output:
+    file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
+
+  when: runSomatic
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  
+  ## Collect and merge Delly and Manta VCFs
   mkdir sv/
   mv *delly.manta.vcf.gz* sv/
-
   vcfs=(\$(ls sv/*delly.manta.vcf.gz))
   if [[ \${#vcfs[@]} > 1 ]]
   then
@@ -1812,13 +1941,40 @@ process SomaticAggregate {
   fi
   
   tabix --preset vcf sv_somatic.vcf.gz
+  """
+}
 
-  # Collect and merge metadata file
+
+
+process SomaticAggregateMetadata {
+ 
+  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+
+  input:
+    file(metaDataFile) from MetaDataOutputs.collect()
+
+  output:
+    file("sample_data.txt") into MetaDataOutputChannel
+
+  when: runSomatic
+    
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  
+  ## Collect and merge metadata file
   mkdir sample_data_tmp
   mv *.sample_data.txt sample_data_tmp/
   awk 'FNR==1 && NR!=1{next;}{print}' sample_data_tmp/*.sample_data.txt > sample_data.txt 
   """
 }
+
+
+
+
+
 
 /*
 ================================================================================
@@ -2377,39 +2533,62 @@ process GermlineMergeDellyAndManta {
   """
 }
 
-germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
 
-// --- Aggregate per-sample germline data
-process GermlineAggregate {
- 
+// --- Aggregate per-sample germline data, MAF
+process GermlineAggregateMaf {
+
   publishDir "${params.outDir}/germline/", mode: params.publishDirMode
 
   input:
     file(mafFile) from mafFileAnnotatedGermline.collect()
-    file(dellyMantaVcf) from germlineVcfBedPe.collect()
 
   output:
     file("mut_germline.maf") into GermlineMafFileOutput
+  
+  when: runGermline
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  
+  ## Collect and merge MAF files
+  mkdir mut
+  mv *.maf mut/
+  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf 
+  cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf 
+
+  """
+}
+
+
+
+
+germlineVcfBedPe = germlineVcfBedPe.unique { new File(it.toString()).getName() }
+
+// --- Aggregate per-sample germline data, SVs
+process GermlineAggregateSv {
+ 
+  publishDir "${params.outDir}/germline", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+
+  output:
     file("sv_germline.vcf.gz") into GermlineVcfBedPeChannel
   
   when: runGermline
 
   script:
   """
-  # Making a temp directory that is needed for some reason...
+  ## Making a temp directory that is needed for some reason...
   mkdir tmp
   TMPDIR=./tmp
 
-  # Collect and merge MAF files
-  mkdir mut
-  mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf 
-  cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf 
-
-  # Collect and merge Delly and Manta VCFs
+  ## Collect and merge Delly and Manta VCFs
   mkdir sv
   mv  *.delly.manta.vcf.gz* sv/
-
   vcfs=(\$(ls sv/*delly.manta.vcf.gz))
   if [[ \${#vcfs[@]} > 1 ]]
   then
