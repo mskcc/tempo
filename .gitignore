@@ -19,5 +19,3 @@ nf.*
 *.bam.*
 Result/
 *.Rhistory
-*.tsv
-docs/node_modules
