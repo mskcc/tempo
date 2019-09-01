@@ -169,7 +169,7 @@ if (!params.bam_pairing) {
     input:
       set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
-
+    
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
