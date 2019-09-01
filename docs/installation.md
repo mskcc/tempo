@@ -11,12 +11,12 @@ Put the `nextflow` executable in a directory in your `PATH`, if you want to acce
 
 We recommend Nextflow version 19.07.0 or later.
 
-## Installing Vaporware
-Clone the [Vaporware repository](http://github.com/mskcc/vaporware):
+## Installing Tempo
+Clone the [Tempo repository](http://github.com/mskcc/tempo):
 ```shell
-git clone http://github.com/mskcc/vaporware.git
+git clone http://github.com/mskcc/tempo.git
 ```
 
 You're now good to go!
 
-For specifics on running Vaporware in different environments, check out the documentation on [Juno](juno-setup.md) and [AWS](aws-setup.md).
+For specifics on running Tempo in different environments, check out the documentation on [Juno](juno-setup.md) and [AWS](aws-setup.md).
