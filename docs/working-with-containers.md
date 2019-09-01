@@ -1,6 +1,6 @@
-# Working With Containers
+# Working with containers
 
-Tempo relies upon containers for reproducibility and portability. In Nextflow, each process can be executed within the environment of a specified container built on the [Docker](https://www.docker.com/) or [Singularity](https://singularity.lbl.gov) platform. This page contains a basic introduction to containers and how-to's for running Tempo with containers.
+Vaporware relies upon containers for reproducibility and portability. In Nextflow, each process can be executed within the environment of a specified container built on the [Docker](https://www.docker.com/) or [Singularity](https://singularity.lbl.gov) platform. This page contains a basic introduction to containers and how-to's for running Vaporware with containers.
 
 * __Containers__: A container is a lightweight encapsulation of a environment to run a specific tool. One can think of this as "packaging" a tool with its dependencies into a standardized unit. The container includes code and all dependencies so the application runs quickly and reliably from one computing environment to another (e.g. system libraries, environment settings, etc.).
 
@@ -12,4 +12,4 @@ Tempo relies upon containers for reproducibility and portability. In Nextflow, e
 
 * __Versioning__: Docker images are versioned by their association with a *tag*. 
 
-Tempo uses images built by Docker and hosted at [Dockerhub](https://cloud.docker.com/u/cmopipeline/). The Dockerfiles are on [GitHub](containers) and the container associated with each pipeline process is defined in the [container configuration](conf/containers.config).
+Vaporware uses images built by Docker and hosted at [Dockerhub](https://cloud.docker.com/u/cmopipeline/). The Dockerfiles are on [GitHub](containers) and the container associated with each pipeline process is defined in the [container configuration](conf/containers.config).
