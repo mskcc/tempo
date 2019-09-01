@@ -2,38 +2,23 @@
 
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.2.0"
+# __version__ = "0.1.0"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
     library(data.table)
     library(annotateMaf)
-    library(argparse)
 })
 
 args = commandArgs(TRUE)
 
 if (is.null(args) | length(args)<1) {
-    message('Run filter-germline-maf.R --help for list of input arguments.')
+    message("Usage: filter-germline-maf.R input.maf")
     quit()
 }
 
-parser = ArgumentParser(description = 'Flag and filter somatic variants in input MAF file, output is a filtered and unfiltered but filter-tagged MAF file.')
-parser$add_argument('-m', '--maf-file', type = 'character', required = TRUE,
-                    help = 'VEP-annotated MAF file')
-parser$add_argument('-o', '--output-prefix', type = 'character', required = TRUE,
-                    help = 'Prefix of output files')
-parser$add_argument('-nd', '--normal-depth', type = 'integer', required = FALSE,
-                    default = 20, help = 'Normal variant loci total depth cut-off [default %(default)s]')
-parser$add_argument('-nv', '--normal-vaf', type = 'double', required = FALSE,
-                    default = 0.35, help = 'Normal variant allele frequency cut-off [default %(default)s]')   
-
-# Get inputs
-args = parser$parse_args()
-maf = args$maf_file
-output_prefix = args$output_prefix
-normal_depth_cutoff = args$normal_depth
-normal_vaf_cutoff = args$normal_vaf
+maf = args[1]
+output_prefix = args[2]
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
@@ -55,14 +40,18 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             ch_gene = Hugo_Symbol %in% ch_genes
 )]
 
-maf[n_depth < normal_depth_cutoff, FILTER := add_tag(FILTER, 'low_n_depth')]
-maf[!ch_gene & n_var_freq < normal_vaf_cutoff & !Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
-maf[!ch_gene & n_var_freq < (normal_vaf_cutoff - 0.10) & Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
-maf[ch_gene & n_var_freq < normal_vaf_cutoff & t_var_freq < .25, FILTER := add_tag(FILTER, 'ch_mutation')]
+maf[n_depth < 20, FILTER := add_tag(FILTER, 'low_n_depth')]
+
+maf[!ch_gene & n_var_freq < .35 & !Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
+maf[!ch_gene & n_var_freq < .25 & Variant_Classification %in% c('INS', 'DEL'), FILTER := add_tag(FILTER, 'low_n_vaf')]
+maf[ch_gene & n_var_freq < .35 & t_var_freq < .25, FILTER := add_tag(FILTER, 'ch_mutation')]
 maf[t_var_freq > 3 * n_var_freq, FILTER := add_tag(FILTER, 't_in_n_contamination')]
-maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mappability')]
+maf[EncodeDacMapability != '', FILTER := add_tag(FILTER, 'mapability')]
 maf[RepeatMasker != '', FILTER := add_tag(FILTER, 'repeatmasker')]
 maf[gnomAD_FILTER == 1, FILTER := add_tag(FILTER, 'gnomad_filter')]
+
+# Filters not used:
+# gnomAD_FILTER - variants considered artifacts by gnomAD's random-forest classifier
 
 # Add BRCA annotation ---------------------------------------------------------------------------------------------
 maf = brca_annotate_maf(maf)

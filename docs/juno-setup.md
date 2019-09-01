@@ -1,13 +1,12 @@
 # Juno Setup
 
-The Juno compute cluster is accessible to most researchers at MSKCC. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler and which Tempo is configured to work with.
+The Juno compute cluster is accessible to most researchers at MSKCC. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us).
 
 ## Singularity Containers
 
-As described in the page about [containers](working-with-containers.md), execution of Tempo on Juno requires Singularity. 
+As described in the page about [containers](working-with-containers.md), execution of Vaporware on Juno requires Singularity. 
 
  In order to save time and space, you can use image files stored in a common cache directory by setting the environment variable `NXF_SINGULARITY_CACHEDIR` to the directory `/juno/work/taylorlab/cmopipeline/singularity_images`. You can put this in your bash profile:
-
 ```shell
 export NXF_SINGULARITY_CACHEDIR=/juno/work/taylorlab/cmopipeline/singularity_images
 ```

@@ -12,13 +12,13 @@ Use `S3` bucket path for `<AWS-S3-WORKDIR>` value when creating `awsbatch.config
 
 ## Building the AMI
 
-Tempo AMI is implemented with [EBS autoscaling script](https://docs.opendata.aws/genomics-workflows/core-env/create-custom-compute-resources/) which will automatically increase disk space when needed.
+Vaporware AMI is implemented with [EBS autoscaling script](https://docs.opendata.aws/genomics-workflows/core-env/create-custom-compute-resources/) which will automatically increase disk space when needed.
 
-To prepare the AMI for your compute environment run the command below from the Tempo root directory.
+To prepare the AMI for your compute environment run the command below from the vaporware root directory.
 
-`aws cloudformation create-stack --stack-name vaporwareAMI --template-body file://aws_cf_scripts/AMICreate.yaml --parameters ParameterKey=AMIName,ParameterValue=tempo-ami --capabilities CAPABILITY_IAM`
+`aws cloudformation create-stack --stack-name vaporwareAMI --template-body file://aws_cf_scripts/AMICreate.yaml --parameters ParameterKey=AMIName,ParameterValue=vaporware-ami --capabilities CAPABILITY_IAM`
 
-***NOTE: You can specify any name instead of `vaporewareAMI` for stack-name.***
+***NOTE: You can specify any name instead of `vaporwareAMI` for stack-name.***
 
 This command submits CloudFormation Stack for building the [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) for execution, which we will use for building Batch Compute Environment. When you submit the command you will get StackId ARN as a responce similar to this below.
 
@@ -46,7 +46,7 @@ We will use `OutputValue` for the next step.
 
 ## Building the Compute Environment
 
-Run the command below from the Tempo repo root directory and set `<AMI-ID>` parameter to `OutputValue` from previous step. If you skiped previous section do not add --parameters argument when running the command.
+Run the command below from the vaporware repo root directory and set `<AMI-ID>` parameter to `OutputValue` from previous step. If you skiped previous section do not add --parameters argument when running the command.
 
 `aws cloudformation create-stack --stack-name vaporwareAWSBatchCE --template-body file://aws_cf_scripts/AWSBatchCreate.yaml --capabilities CAPABILITY_IAM --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID>`
 
