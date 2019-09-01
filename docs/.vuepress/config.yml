@@ -1,10 +1,9 @@
-title: Vaporware
-description: Processing WES & WGS Tumor Samples
+title: Tempo
+description: CCS Research Pipeline for Whole-Genome and Whole-Exome Sequencing
 themeConfig:
-  logo: /vaporware_stairs.jpg
+  logo: /allegro.jpg
   sidebar:
     - "/"
-    - "/overview"
     - title: Setup
       collapsable: false
       children:
@@ -14,25 +13,21 @@ themeConfig:
     - title: Usage
       collapsable: false
       children:
-        - "/run-pipeline"
+        - "/running-the-pipeline"
         - "/nextflow-basics"
         - "/working-with-containers"
-    - title: Bioinformatics Components
+    - "/outputs"
+    - "/bioinformatic-components"
+    - "/reference-resources"
+    - "/variant-annotation-and-filtering"
+    - title: Help and Other Resources 
       collapsable: false
       children:
-        - "/bioinformatic-components"
-        - "/variant-annotation-and-filtering"
-        - "/wes-panel-of-normals"
-    - title: Reference Files
-      collapsable: false
-      children:
-        - "/reference-files"
-        - "/intervals"
-    - "/aws-glossary"
-    - "/troubleshooting"
-    - "/contributing-to-vaporware"
+        - "/troubleshooting"
+        - "/aws-glossary"
+        - "/contributing-to-tempo"
   repo: mskcc/vaporware
-  docsBranch: 'feature/documentation_vuepress'
+  docsBranch: 'develop'
 plugins:
 - - vuepress-plugin-medium-zoom
   - selector: "#diagram"
