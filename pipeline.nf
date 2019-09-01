@@ -177,34 +177,34 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    // Different resource requirements for AWS and LSF
-    // WES should use mem - 1 for bwa mem & samtools sort
-    // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
-    if (params.mem_per_core) { 
-      if ('wes' in assay){
-        mem = task.memory.toString().split(" ")[0].toInteger() - 1
+      readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+      // Different resource requirements for AWS and LSF
+      // WES should use mem - 1 for bwa mem & samtools sort
+      // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
+      if (params.mem_per_core) { 
+        if ('wes' in assay){
+          mem = task.memory.toString().split(" ")[0].toInteger() - 1
+        }
+        else if ('wgs' in assay){
+          mem = task.memory.toString().split(" ")[0].toInteger() - 3
+        }
       }
-      else if ('wgs' in assay){
-        mem = task.memory.toString().split(" ")[0].toInteger() - 3
-      }
-    }
-    else {
-      if ('wes' in assay){
-        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-      }
-      else if ('wgs' in assay){
-        mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
-      }
-    } 
-    """
-    set -e
-    set -o pipefail
-    fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
+      else {
+        if ('wes' in assay){
+          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+        }
+        else if ('wgs' in assay){
+          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
+        }
+      } 
+      """
+      set -e
+      set -o pipefail
+      fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
+      bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
-    samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
-    """
+      samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
+      """
   }
 
 
