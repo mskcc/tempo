@@ -258,7 +258,6 @@ if (!params.bam_pairing) {
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -315,7 +314,6 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 480){
         task.time = { 32.h }
@@ -369,7 +367,6 @@ if (!params.bam_pairing) {
       val(targetFile) into targets
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -492,7 +489,6 @@ if (!params.bam_pairing) {
     when: 'wes' in assay && !params.test
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -550,7 +546,6 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
