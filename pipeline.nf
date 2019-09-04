@@ -294,7 +294,7 @@ if (!params.bam_pairing) {
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
-      --TMP_DIR . \
+      --TMP_DIR ${process.scratch} \
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
       --OUTPUT ${idSample}.md.bam
@@ -345,13 +345,12 @@ if (!params.bam_pairing) {
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
-
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
     gatk BaseRecalibratorSpark \
       ${javaOptions} \
       ${sparkConf} \
-      --tmp-dir /tmp \
+      --tmp-dir ${process.scratch} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
       ${knownSites} \
