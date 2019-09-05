@@ -37,4 +37,6 @@ params {
 
 env {
   SPARK_LOCAL_DIRS = '/scratch'
+  TMPDIR = "."
+  TMP = "."
 }
