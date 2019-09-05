@@ -292,7 +292,6 @@ if (!params.bam_pairing) {
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
-      --TMP_DIR ${TMPDIR} \
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
       --OUTPUT ${idSample}.md.bam
@@ -346,7 +345,6 @@ if (!params.bam_pairing) {
     gatk BaseRecalibratorSpark \
       ${javaOptions} \
       ${sparkConf} \
-      --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
       ${knownSites} \
