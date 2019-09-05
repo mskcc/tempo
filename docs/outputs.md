@@ -48,7 +48,7 @@ somatic
 ├── cna_purity.seg
 ├── cna_facets_run_info.txt
 ├── sv_somatic.vcf.gz
-└── sample_metadata.txt 
+└── sample_data.txt
 ```
 
 These outputs are:
@@ -57,7 +57,7 @@ These outputs are:
 - `mut_somatic_neoantigens.txt`: Neoantigen predictions from NetMHCpan for all samples.
 - `cna_armlevel.txt`, `cna_genelevel.txt`, and `cna_hisens.seg`, `cna_purity.seg`, and `cna_facets_run_info.txt`, summarized arm- and gene-level output from Facets, as well as IGV-style segmentation files and Facets run information.
 - `sv_somatic.vcf.gz`: All structural variants detected by Delly and Manta.
-- `sample_metadata.txt` : Merged metadata across samples and analyses.
+- `sample_data.txt` : Merged metadata across samples and analyses.
 
 ## Germline data
 
