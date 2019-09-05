@@ -26,6 +26,7 @@ themeConfig:
         - "/troubleshooting"
         - "/aws-glossary"
         - "/contributing-to-tempo"
+        - "/acknowledgements"
   repo: mskcc/vaporware
   docsBranch: 'develop'
 plugins:
