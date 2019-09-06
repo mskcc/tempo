@@ -49,7 +49,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ### 2. Pipeline contents
 
-#### 2.1. [Bioinformatics Components](bioinformatics-components.md)
+#### 2.1. [Bioinformatics Components](bioinformatic-components.md)
 * [Read Alignment](bioinformatic-components.md#read-alignment)
 * [Somatic Analyses](bioinformatic-components.md#somatic-analyses)
 * [Germline Analyses](bioinformatic-components.md#germline-analyses)
