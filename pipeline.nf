@@ -156,7 +156,8 @@ if (!params.bam_pairing) {
   pairingTN = TempoUtils.extractPairing(pairingFile)
   fastqFiles = TempoUtils.extractFastq(mappingFile)
 
- fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
+  // Let's add comments here to explain this:
+  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -177,6 +178,7 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
+    // Let's add comments here to explain this:
     if (workflow.profile == "juno") {
       if(sizeFastqFile1/1024**3 > 10){
         task.time = { 32.h }
@@ -222,6 +224,7 @@ if (!params.bam_pairing) {
     """
   }
 
+  // Let's add comments here to explain this:
   sortedBam.groupTuple().set{ groupedBam }
 
   groupedBam = groupedBam.map{ item -> 
@@ -273,6 +276,7 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
+      // Let's add comments here to explain this:
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
       }
@@ -301,10 +305,11 @@ if (!params.bam_pairing) {
   }
 
   duplicateMarkedBams = duplicateMarkedBams.map {
-      bam, bai, idSample, lane, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
-      [idSample, bam, bai, assay, targetFile]
+    bam, bai, idSample, lane, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
+    [idSample, bam, bai, assay, targetFile]
   }
 
+  // create two channels from duplicateMarkedBams
   (mdBam, mdBamToJoin) = duplicateMarkedBams.into(2)
 
  // GATK BaseRecalibrator , CreateRecalibrationTable 
@@ -328,6 +333,10 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
+    // Let's add comments here to explain this:
+    // Something like 
+    // If BAM size is under a certain value, use this time when submitting the job via LSF
+    // if there is a 140 memory error, do this
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 480){
         task.time = { 32.h }
@@ -359,6 +368,7 @@ if (!params.bam_pairing) {
     """ 
   }
 
+  // Let's add comments here to explain this:
   recalibrationTable = mdBamToJoin.join(recalibrationTable, by:[0])
 
   // GATK ApplyBQSR, RecalibrateBAM
@@ -381,6 +391,7 @@ if (!params.bam_pairing) {
       val(targetFile) into targets
 
     script:
+    // Let's add comments here to explain this:
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -503,7 +514,7 @@ if (!params.bam_pairing) {
     when: 'wes' in assay && !params.test
 
     script:
-
+    // Let's add comments here to explain this:
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -561,7 +572,7 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
-
+    // Let's add comments here to explain this:
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -606,6 +617,8 @@ if (!params.bam_pairing) {
     when: !params.test
 
     script:
+    // Let's add comments here to explain this:
+    // This reminds me --- we should add a comment as to why we're using `Rscript --no-init-file`
     if (params.assayType == "exome") {
       options = "wes"
     }
@@ -627,7 +640,7 @@ if (!params.bam_pairing) {
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
-// Allow shorter names
+// Allow users to provide shorter names
 if ("mutect" in tools) {
   tools.add("mutect2")
 }
@@ -735,6 +748,8 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
 // using groupKey() function to create a unique key for each TN pair, and the key also includes number of intervalBeds for each samples
 // this change will allow the merging processes of each sample only wait for relative children processes from the previous step, instead of waiting for all the processes to be done
 // change from .concat to .mix because .concat will wait for all the items proceeding from the first channel were emitted
+
+// Let's add comments here to explain this:
 (mergedChannelSomatic, mergedChannelGermline) = aMergedChannel.mix( iMergedChannel, wMergedChannel).map{
   item ->
     def key = item[2]+"__"+item[3]+"@"+item[0] // adding one unique key
@@ -840,6 +855,7 @@ process RunMutect2 {
   """
 }
 
+// This is a good example of a comment imho:
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 // group by groupKey(key, intervalBed.size())
 forMutect2Combine = forMutect2Combine.groupTuple()
@@ -863,6 +879,7 @@ process SomaticCombineMutect2Vcf {
   when: "mutect2" in tools && runSomatic
 
   script:
+  // Let's add comments here to explain this:
   idTumor = id.toString().split("__")[0]
   idNormal = id.toString().split("@")[0].split("__")[1]
   target = id.toString().split("@")[1]
@@ -911,6 +928,7 @@ process SomaticRunManta {
   when: "manta" in tools && runSomatic
 
   script:
+  // Let's add comments here to explain this:
   outputPrefix = "${idTumor}__${idNormal}"
   options = ""
   if (assay == "wes") options = "--exome"
@@ -1590,6 +1608,7 @@ process RunLOHHLA {
   """
 }
 
+// create three duplicate channels from mafFile for downstream use
 (mafFileForMafAnno, mafFileForMutSig, mafFile) = mafFile.into(3)
 
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
@@ -1863,10 +1882,12 @@ process SomaticAggregateFacets {
     
   when: runSomatic
     
+  // Let's add comments here to explain this below:
   script:
   """
-  # Collect and merge FACETS outputs
-  # Arm-level and gene-level output is filtered
+  ## Collect and merge FACETS outputs
+  ## Arm-level and gene-level output is filtered
+
   mkdir facets_tmp
   mv *_OUT.txt facets_tmp/
   mv *{purity,hisens}.seg facets_tmp/
@@ -1874,7 +1895,9 @@ process SomaticAggregateFacets {
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg 
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
+
   mv *{genelevel,armlevel}.unfiltered.txt facets_tmp/
+
   cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
   awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
