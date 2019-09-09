@@ -173,6 +173,34 @@ This function also allows you to make changes to values in the `pipeline.nf` scr
 * To peacefully interrupt an ongoing Nextflow pipeline run, do `control+C` once and wait for Nextflow to kill submitted jobs. Otherwise orphan jobs might be left on the cluster.
 :::
 
+To resume the pipeline from a specific run, please read the pages here on using [resume](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html)and as well troubleshooting [resumed runs](https://www.nextflow.io/blog/2019/troubleshooting-nextflow-resume.html) for more complicated use cases.
+
+In order to resume from a specific time you ran the pipeline, first check the specific pipeline runs with `nextflow log`
+
+
+```
+$ nextflow log
+
+TIMESTAMP            DURATION  RUN NAME          STATUS  REVISION ID  SESSION ID                            COMMAND                                    
+2019-05-06 12:07:32  1.2s      focused_carson    ERR     a9012339ce   7363b3f0-09ac-495b-a947-28cf430d0b85  nextflow run hello                         
+2019-05-06 12:08:33  21.1s     mighty_boyd       OK      a9012339ce   7363b3f0-09ac-495b-a947-28cf430d0b85  nextflow run rnaseq-nf -with-docker        
+2019-05-06 12:31:15  1.2s      insane_celsius    ERR     b9aefc67b4   4dc656d2-c410-44c8-bc32-7dd0ea87bebf  nextflow run rnaseq-nf                     
+2019-05-06 12:31:24  17s       stupefied_euclid  OK      b9aefc67b4   4dc656d2-c410-44c8-bc32-7dd0ea87bebf  nextflow run rnaseq-nf -resume -with-docker
+```
+
+Users can then restart the pipeline at specific run, using either the `RUN NAME` or the `SESSION ID`. For instance
+
+```
+$ nextflow run rnaseq-nf -resume mighty_boyd
+```
+
+or equivalently
+
+```
+$ nextflow run naseq-nf -resume 4dc656d2-c410-44c8-bc32-7dd0ea87bebf
+```
+
+
 ## After Successful Run
 
 Nextflow creates a lot of intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will occupy a lot of space and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. 
