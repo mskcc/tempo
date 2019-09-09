@@ -181,5 +181,4 @@ Nextflow generates many intermediate output files. All the relevant output data 
 Once these files are removed, modifications to or resumption of a pipeline run **cannot** be done.
 :::
 
-
 ## Resuming the Pipeline
