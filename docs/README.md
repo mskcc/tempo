@@ -29,10 +29,10 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ### 1. Getting Started
 
-#### 1.1. Installation
-* [Installing Tempo](installation.md)
-* [Set up on Juno](juno-setup.md)
-* [Set up on AWS](aws-setup.md)
+#### 1.1. Setup
+* [Installation](installation.md)
+* [Setup on Juno](juno-setup.md)
+* [Setup on AWS](aws-setup.md)
 
 #### 1.2. Usage
 * [Running the Pipeline](running-the-pipeline.md)

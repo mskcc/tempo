@@ -6,7 +6,7 @@ The [Juno compute cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) 
 
 As described in the page about [containers](working-with-containers.md), execution of Tempo on Juno requires Singularity. 
 
- In order to save time and space, you can use image files stored in a common cache directory by setting the environment variable `NXF_SINGULARITY_CACHEDIR` to the directory `/juno/work/taylorlab/cmopipeline/singularity_images`. You can put this in your bash profile:
+In order to save time and space, you can use image files stored in a common cache directory by setting the environment variable `NXF_SINGULARITY_CACHEDIR` to the directory `/juno/work/taylorlab/cmopipeline/singularity_images`. You can put this in your bash profile:
 
 ```shell
 export NXF_SINGULARITY_CACHEDIR=/juno/work/taylorlab/cmopipeline/singularity_images
