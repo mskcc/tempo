@@ -1,6 +1,6 @@
 # Juno Setup
 
-The Juno compute cluster is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler and which Tempo is configured to work with.
+The [Juno compute cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler and which Tempo is configured to work with.
 
 ## Singularity Containers
 
