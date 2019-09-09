@@ -202,7 +202,6 @@ if (!params.bam_pairing) {
       set -o pipefail
       fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
       bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
-
       samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
       """
   }
@@ -259,17 +258,16 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
+      if(bam.size()/1024**3 > 200) {
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size()/1024**3 < 100) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
         task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
       }
     }
-
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 1) + "g'"
 
@@ -279,7 +277,6 @@ if (!params.bam_pairing) {
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
-      --TMP_DIR . \
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
       --OUTPUT ${idSample}.md.bam
@@ -315,27 +312,24 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 480){
+      if (bam.size()/1024**3 > 480) {
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 240){
+      else if (bam.size()/1024**3 < 240) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
         task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
       }
     }
-
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
-
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
     gatk BaseRecalibratorSpark \
       ${javaOptions} \
       ${sparkConf} \
-      --tmp-dir /tmp \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
       ${knownSites} \
