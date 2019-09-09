@@ -20,3 +20,14 @@ A job running a single process inside the pipeline can fail due to inadequate re
 
 Additionally, any files used by the process are symlinked in the work directory, and any intermediate and final output files are also left here. 
 
+
+## Typical Errors
+
+When debugging pipeline runs, there are common errors one sees. An incomplete list is provided below:
+
+* error code `0` --- this means the jobs was considered successfully run
+* error code `1` --- this is a standard error code, which normally could mean something is wrong with the code itself
+* error code `130` --- this means there is not enough memory for the process to complete
+* error code `140` --- this means there was not enough time requested via LSF, which is translated from Nextflow into `bsub -W` as detailed [here](https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_command_ref/bsub.__w.1.html)
+
+

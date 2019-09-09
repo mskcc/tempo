@@ -200,6 +200,8 @@ or equivalently
 $ nextflow run naseq-nf -resume 4dc656d2-c410-44c8-bc32-7dd0ea87bebf
 ```
 
+Sometimes the resume feature may not work entirely as expected, as described in trouubleshooting tips [here on the Nextflow blog](https://www.nextflow.io/blog/2019/troubleshooting-nextflow-resume.html)
+
 
 ## After Successful Run
 
