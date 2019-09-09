@@ -19,3 +19,4 @@ A job running a single process inside the pipeline can fail due to inadequate re
 - `.command.err`: `stderr` from the process.
 
 Additionally, any files used by the process are symlinked in the work directory, and any intermediate and final output files are also left here. 
+
