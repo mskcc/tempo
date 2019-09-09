@@ -175,8 +175,11 @@ This function also allows you to make changes to values in the `pipeline.nf` scr
 
 ## After Successful Run
 
-Nextflow creates a lot of intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will occupy a lot of space and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. 
+Nextflow generates many intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will contain all intermediate output files, which takes up a great deal of disk space. and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. 
 
 ::: warning Be aware
 Once these files are removed, modifications to or resumption of a pipeline run **cannot** be done.
 :::
+
+
+## Resuming the Pipeline
