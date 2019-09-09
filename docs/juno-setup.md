@@ -2,6 +2,10 @@
 
 The Juno compute cluster is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler and which Tempo is configured to work with.
 
+::: warning Be aware
+During a pipeline run, intermediate files will be writte to the directory set by the `TMPDIR` variable in the user's environment. Use `/scratch`, for example, as [instructed by HPC](http://mskcchpc.org/display/CLUS/Proper+Location+for+Temporary+Files).
+:::
+
 ## Singularity Containers
 
 As described in the page about [containers](working-with-containers.md), execution of Tempo on Juno requires Singularity. 
