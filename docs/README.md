@@ -29,7 +29,8 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ### 1. Getting Started
 
-#### 1.1. [Installation](installation.md)
+#### 1.1. Installation
+* [Installing Tempo](installation.md)
 * [Set up on Juno](juno-setup.md)
 * [Set up on AWS](aws-setup.md)
 
@@ -40,7 +41,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Nextflow Basics](nextflow-basics.md)
 * [Working With Containers](working-with-containers.md)
 
-#### 1.3 [Outputs](outputs.md)
+#### 1.3 Outputs
 * [BAM Files](outputs.md#bam-files)
 * [QC Outputs](outputs.md#qc-outputs)
 * [Somatic Data](outputs.md#somatic-data)
@@ -49,13 +50,13 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ### 2. Pipeline contents
 
-#### 2.1. [Bioinformatic Components](bioinformatic-components.md)
+#### 2.1. Bioinformatic Components
 * [Read Alignment](bioinformatic-components.md#read-alignment)
 * [Somatic Analyses](bioinformatic-components.md#somatic-analyses)
 * [Germline Analyses](bioinformatic-components.md#germline-analyses)
 * [Quality Control](bioinformatic-components.md#quality-control)
 
-#### 2.2. [Reference Resources](reference-resources.md)
+#### 2.2. Reference Resources
 * [Genome Assembly](reference-resources.md#genome-assembly)
 * [Genomic Intervals](reference-resources.md#genomic-intervals)
 * [RepeatMasker and Mappability Blacklist](reference-resources.md#repeatmasker-and-mappability-blacklist)
@@ -65,7 +66,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [gnomAD](gnomad.md)
 * [Panel of Normals for Exomes](wes-panel-of-normals.md)
 
-#### 2.3. [Variant Annotation and Filtering](variant-annotation-and-filtering.md)
+#### 2.3. Variant Annotation and Filtering
 * [Somatic SNVs and Indels](variant-annotation-and-filtering.md#somatic-snvs-and-indels)
 * [Germline SNVs and Indels](variant-annotation-and-filtering.md#germline-snvs-and-indels)
 * [Somatic and Germline SVs](variant-annotation-and-filtering.md#somatic-and-germline-svs)
