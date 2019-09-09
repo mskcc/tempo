@@ -178,7 +178,7 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(sizeFastqFile1/1024**3 > 10){
+      if (sizeFastqFile1/1024**3 > 10){
         task.time = { 32.h }
       }
       else if (sizeFastqFile1/1024**3 < 6){
