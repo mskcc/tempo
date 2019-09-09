@@ -156,7 +156,7 @@ if (!params.bam_pairing) {
   pairingTN = TempoUtils.extractPairing(pairingFile)
   fastqFiles = TempoUtils.extractFastq(mappingFile)
 
- fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
+  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -177,50 +177,35 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-    if (workflow.profile == "juno") {
-      if (sizeFastqFile1/1024**3 > 10){
-        task.time = { 32.h }
-      }
-      else if (sizeFastqFile1/1024**3 < 6){
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+      // Different resource requirements for AWS and LSF
+      // WES should use mem - 1 for bwa mem & samtools sort
+      // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
+      if (params.mem_per_core) { 
+        if ('wes' in assay){
+          mem = task.memory.toString().split(" ")[0].toInteger() - 1
+        }
+        else if ('wgs' in assay){
+          mem = task.memory.toString().split(" ")[0].toInteger() - 3
+        }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
-    }
-
-    mem = (sizeFastqFile1/1024**2 * 2).round()    // the maximum memory that `samtools sort` can use is the total size of the fastq pairs.
-    memDivider = params.mem_per_core ? 1 : task.cpus
-    memMultiplier = params.mem_per_core ? task.cpus : 1
-    originalMem = task.attempt ==1 ? task.memory : originalMem
-
-    if ( mem < 6 * 1024 / task.cpus ) {
-    // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
-        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt)).round() + " GB" }
-        mem = (5.4 * 1024 / task.cpus).round()
-    }
-    else if ( mem / memDivider * (1 + 0.1 * task.attempt) > originalMem.toMega() ) {
-    // if file size is too big, use task.memory as the max mem for this task, and decrease -M for `samtools sort` by 10% everytime retry
-        mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt)).round()
-    }
-    else {
-    // normal situation, `samtools sort` -M = fastqFileSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
-        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024).round() + " GB" }
-        mem = mem
-    }
-
-    task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
-
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    """
-    set -e
-    set -o pipefail
-    fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2} --json ${lane}.fastp.json
-    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
-
-    samtools sort -m ${mem}M -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
-    """
+        if ('wes' in assay){
+          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
+        }
+        else if ('wgs' in assay){
+          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
+        }
+      } 
+      """
+      set -e
+      set -o pipefail
+      fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
+      bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
+      samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
+      """
   }
+
 
   sortedBam.groupTuple().set{ groupedBam }
 
@@ -376,7 +361,6 @@ if (!params.bam_pairing) {
       val(targetFile) into targets
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -499,7 +483,6 @@ if (!params.bam_pairing) {
     when: 'wes' in assay && !params.test
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -557,7 +540,6 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
-
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
