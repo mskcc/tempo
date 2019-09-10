@@ -21,7 +21,7 @@ A job running a single process inside the pipeline can fail due to inadequate re
 Additionally, any files used by the process are symlinked in the work directory, and any intermediate and final output files are also left here. 
 
 
-## Starndard LSF Errors
+## Standard LSF Errors
 
 When debugging pipeline runs, there are common errors one encounters. An incomplete list of LSF job exit codes is provided below:
 
