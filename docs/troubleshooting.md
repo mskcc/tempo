@@ -21,7 +21,7 @@ A job running a single process inside the pipeline can fail due to inadequate re
 Additionally, any files used by the process are symlinked in the work directory, and any intermediate and final output files are also left here. 
 
 
-## Typical Errors
+## Starndard LSF Errors
 
 When debugging pipeline runs, there are common errors one encounters. An incomplete list of LSF job exit codes is provided below:
 
@@ -29,5 +29,47 @@ When debugging pipeline runs, there are common errors one encounters. An incompl
 * error code `1` --- this is a standard error code, which normally could mean something is wrong with the code itself
 * error code `130` --- this means there is not enough memory for the process to complete
 * error code `140` --- this means there was not enough time requested via LSF, which is translated from Nextflow into `bsub -W` as detailed [here](https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_command_ref/bsub.__w.1.html)
+
+
+## Singularity Errors
+
+The most common error one sees with Singularity is the error `Failed to pull singularity image`, e.g.
+
+```
+ERROR ~ Error executing process > 'VariantCaller'
+
+Caused by:
+  Failed to pull singularity image
+  command: singularity pull  --name cmopipeline-variantcaller-1.0.0.img docker://cmopipeline/variantcaller:1.0.0 > /dev/null
+  status : 255
+  message:
+    [33mWARNING: Authentication token file not found : Only pulls of public images will succeed
+    INFO:    Starting build...
+    Getting image source signatures
+    Skipping fetch of repeat blob sha256:g2wi99s7f5ij1buyrr0ep5tf8xjfk05lwc9vr3adlbgxbw1zvxlmx8053n4lvmsm
+    Skipping fetch of repeat blob sha256:z1k6kz1157i0vy8r9eutu3cmfzp48wyeoxyusha8r681x725o4vwb468952vaao3
+    Skipping fetch of repeat blob sha256:twc7y14h8qub3vi5i8vxvp0qxhtw01mee7nc5j7qjyhol5nx4e22fjl5kawlzf53
+    Skipping fetch of repeat blob sha256:ex0gy93dwd19y35433v8n4kcozowo964jx8zt088ltd9edw8a5gob94qc9coyhc6
+    Skipping fetch of repeat blob sha256:n54clmgy1tep6l409gdnkf980nvm1607oa6jr34po8q2v7u2l82o3z4rq9k6ctvg
+    Copying config sha256:4s26zd3jojt2mch7t41ek56uabitwg91p7b530upbeeoyjmql6uw24wgxr5x6fel
+
+     0 B / 2.55 KiB [--------------------------------------------------------------]
+     2.55 KiB / 2.55 KiB [======================================================] 0s
+    Writing manifest to image destination
+    Storing signatures
+    FATAL:   Unable to pull docker://cmopipeline/variantcaller:1.0.0: conveyor failed to get: no descriptor found for reference "3sw08cr0yd460ygwyjn2p29y40lakjnw9y2nj5w20za960059fij5okthwc87l66"
+```
+
+The error occurs when users are downloading pre-built images on Dockerhub via `singularity pull` for the first time, i.e. "pulling" singularity images for the first time. This situation can be avoided if you set the variable `NXF_SINGULARITY_CACHEDIR` to the subdirectory containing these images, which have already been downloaded on site. (Please read [Juno Setup](juno-setup.md) and [Working with Containers](working-with-coontainers.md) for more details on this topic.)
+
+Another option would be to simply execute the command above, i.e. 
+
+```
+singularity pull  --name cmopipeline-fastp-1.0.0.img docker://cmopipeline/fastp:1.0.0 > /dev/null
+```
+
+::: warning Be aware
+The command `singularity pull` tends to take quite some time to run, and often slows down the login server for everyone. We recommend you don't do this often. Setting the variable `NXF_SINGULARITY_CACHEDIR` to a location with already-downloaded images would be far more efficient.
+:::
 
 
