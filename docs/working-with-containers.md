@@ -12,4 +12,4 @@ Tempo relies upon containers for reproducibility and portability. In Nextflow, e
 
 * __Versioning__: Docker images are versioned by their association with a *tag*. 
 
-Tempo uses images built by Docker and hosted at [Dockerhub](https://cloud.docker.com/u/cmopipeline/). The Dockerfiles are on [GitHub](containers) and the container associated with each pipeline process is defined in the [container configuration](conf/containers.config).
+Tempo uses images built by Docker and hosted at [Dockerhub](https://cloud.docker.com/u/cmopipeline/). The Dockerfiles are in the Github repo [here](https://github.com/mskcc/tempo/tree/master/containers) and the container associated with each pipeline process is defined in the [container configuration](https://github.com/mskcc/tempo/blob/master/conf/containers.config).
