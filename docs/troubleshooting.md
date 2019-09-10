@@ -23,7 +23,7 @@ Additionally, any files used by the process are symlinked in the work directory,
 
 ## Typical Errors
 
-When debugging pipeline runs, there are common errors one sees. An incomplete list is provided below:
+When debugging pipeline runs, there are common errors one encounters. An incomplete list of LSF job exit codes is provided below:
 
 * error code `0` --- this means the jobs was considered successfully run
 * error code `1` --- this is a standard error code, which normally could mean something is wrong with the code itself
