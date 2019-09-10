@@ -1,7 +1,7 @@
 # Contributing to Tempo
 
 This document provides a brief set of guidelines for contributing to Tempo.\
-<small>We borrowed heavily from the guidelines used by the [cBioPortal](https://github.com/cBioPortal/cbioportal) for third-party contributions, as outlined [here](https://raw.githubusercontent.com/cBioPortal/cbioportal/master/CONTRIBUTING.md).</small>
+<small>We borrowed heavily from the guidelines used by the [cBioPortal](https://github.com/cBioPortal/cbioportal) for third-party contributions, as outlined [here](https://github.com/cBioPortal/cbioportal/blob/master/CONTRIBUTING.md).</small>
 
 ### Background
 We use the "fork and pull" model for collaborative software development, as explained in the [GitHub Help Page of Using Pull Requests](https://help.github.com/articles/using-pull-requests/):
