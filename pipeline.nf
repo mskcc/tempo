@@ -23,8 +23,8 @@ Somatic Analysis
 ----------------
  - CreateScatteredIntervals --- GATK4 SplitIntervals
  - RunMutect2 --- somatic SNV calling, MuTect2
- - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small InDel calling by default
- - SomaticCombineMutect2Vcf --- combine Mutect2 calls,bcftools
+ - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small indel calling by default
+ - SomaticCombineMutect2Vcf --- combine Mutect2 calls, bcftools
  - SomaticRunManta --- somatic SV calling, Manta
  - SomaticDellyCall --- somatic SV calling, Delly
  - SomaticMergeDellyAndManta --- combine Manta and Delly VCFs
