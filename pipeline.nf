@@ -178,9 +178,9 @@ if (!params.bam_pairing) {
 
     script:
     // LSF resource allocation for juno
-    // if running on juno, check the BAM size in order to allocate the runtime limit for the job, via LSF `bsub -W`
-    // if the BAM is over 10 GB, use 32 hours
-    // if the BAM is under 6 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
+    // if running on juno, check the file size of sizeFastqFile1 in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if one FASTQ pair sizeFastqFile1 is over 10 GB, use 32 hours
+    // if one FASTQ pair sizeFastqFile1 is under 6 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
     if (workflow.profile == "juno") {
       if(sizeFastqFile1/1024**3 > 10){
         task.time = { 32.h }
