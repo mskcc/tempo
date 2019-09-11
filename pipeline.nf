@@ -270,10 +270,10 @@ if (!params.bam_pairing) {
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 1) + "g'"
-
     """
     gatk MarkDuplicates \
       ${javaOptions} \
+      --TMP_DIR ${TMPDIR} \
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
@@ -330,6 +330,7 @@ if (!params.bam_pairing) {
     gatk BaseRecalibratorSpark \
       ${javaOptions} \
       ${sparkConf} \
+      --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
       ${knownSites} \
@@ -362,25 +363,24 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
+      if (bam.size()/1024**3 > 200){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size()/1024**3 < 100) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
         task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
       }
     }
-
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
-
     """
     gatk ApplyBQSRSpark \
       ${javaOptions} \
       ${sparkConf} \
+      --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
@@ -511,6 +511,7 @@ if (!params.bam_pairing) {
     """
     gatk CollectHsMetrics \
       ${javaOptions} \
+      --TMP_DIR ${TMPDIR} \
       --INPUT ${bam} \
       --OUTPUT ${idSample}.hs_metrics.txt \
       --REFERENCE_SEQUENCE ${genomeFile} \
@@ -568,7 +569,6 @@ if (!params.bam_pairing) {
       Rscript --no-init-file /opt/alfred/scripts/stats.R ${outfile}
     """
   }
-  
   
   process AggregateBamQc {
     
