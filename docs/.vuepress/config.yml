@@ -21,7 +21,7 @@ themeConfig:
     - title: Reference Resources
       collapsable: false
       children:
-        - "/reference-resources"
+        - "/reference-files"
         - "/gnomad"
         - "/wes-panel-of-normals"
     - "/variant-annotation-and-filtering"
