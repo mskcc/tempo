@@ -1,4 +1,4 @@
-# Reference Resources
+# Reference Files
 
 This and associated pages in this section provide details on the provenance and generation of all reference files used in `pipeline.nf`. Usage of these files is defined in the [references configuration file](https://github.com/mskcc/tempo/blob/master/conf/references.config).
 
