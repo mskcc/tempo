@@ -18,7 +18,12 @@ themeConfig:
         - "/working-with-containers"
     - "/outputs"
     - "/bioinformatic-components"
-    - "/reference-resources"
+    - title: Reference Resources
+      collapsable: false
+      children:
+        - "/reference-files"
+        - "/gnomad"
+        - "/wes-panel-of-normals"
     - "/variant-annotation-and-filtering"
     - title: Help and Other Resources 
       collapsable: false
