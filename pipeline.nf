@@ -177,6 +177,10 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
+    // LSF resource allocation for juno
+    // if running on juno, check the BAM size in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if the BAM is over 10 GB, use 32 hours
+    // if the BAM is under 6 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
     if (workflow.profile == "juno") {
       if(sizeFastqFile1/1024**3 > 10){
         task.time = { 32.h }
@@ -189,11 +193,24 @@ if (!params.bam_pairing) {
       }
     }
 
+    // mem --- size of sizeFastqFile1 in MB
+    // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
+    // memMultiplier --- If mem_per_core is true, use 1. Else, use task.cpus
+    // originalMem -- If this is the first attempt, use 1. Else, use `originalMem`
+
     mem = (sizeFastqFile1/1024**2 * 2).round()    // the maximum memory that `samtools sort` can use is the total size of the fastq pairs.
     memDivider = params.mem_per_core ? 1 : task.cpus
     memMultiplier = params.mem_per_core ? task.cpus : 1
     originalMem = task.attempt ==1 ? task.memory : originalMem
 
+    // mem --- size of sizeFastqFile1 in MB
+    // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
+    // memMultiplier --- If mem_per_core is true, use 1. Else, use task.cpus
+    // originalMem -- If this is the first attempt, use 1. Else, use `originalMem`
+
+    // if 'mem' (the size of the one FASTQ paired-end file 'sizeFastqFile1') is less than 6 GB, use 6GB and increase by 10% every attempt
+    // if 'mem' is greater than 6GB, use the max. mem
+    // else, use fastqFileSize * 2
     if ( mem < 6 * 1024 / task.cpus ) {
     // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
         task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt)).round() + " GB" }
@@ -209,6 +226,7 @@ if (!params.bam_pairing) {
         mem = mem
     }
 
+    // If less than 1 GB, use 1 GB. Else, use the task.memory defined
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
@@ -271,6 +289,10 @@ if (!params.bam_pairing) {
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
+    // LSF resource allocation for juno
+    // if running on juno, check the BAM size in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if the BAM is over 200 GB, use 32 hours
+    // if the BAM is under 100 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200) {
         task.time = { 32.h }
@@ -325,6 +347,10 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
+    // LSF resource allocation for juno
+    // if running on juno, check the BAM size in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if the BAM is over 480 GB, use 32 hours
+    // if the BAM is under 240 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
     if (workflow.profile == "juno") {
       if (bam.size()/1024**3 > 480) {
         task.time = { 32.h }
@@ -376,6 +402,10 @@ if (!params.bam_pairing) {
       val(targetFile) into targets
 
     script:
+    // LSF resource allocation for juno
+    // if running on juno, check the BAM size in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if the BAM is over 200 GB, use 32 hours
+    // if the BAM is under 100 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
     if (workflow.profile == "juno") {
       if (bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -497,6 +527,10 @@ if (!params.bam_pairing) {
     when: 'wes' in assay && !params.test
 
     script:
+    // LSF resource allocation for juno
+    // if running on juno, check the BAM size in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if the BAM is over 200 GB, use 32 hours
+    // if the BAM is under 100 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
@@ -555,11 +589,15 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
+    // LSF resource allocation for juno
+    // if running on juno, check the BAM size in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if the BAM is over 200 GB, use 32 hours
+    // if the BAM is under 100 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 32h.
     if (workflow.profile == "juno") {
       if(bam.size()/1024**3 > 200){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size()/1024**3 < 100){  
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
