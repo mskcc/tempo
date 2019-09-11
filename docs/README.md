@@ -57,12 +57,12 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Quality Control](bioinformatic-components.md#quality-control)
 
 #### 2.2. Reference Resources
-* [Genome Assembly](reference-resources.md#genome-assembly)
-* [Genomic Intervals](reference-resources.md#genomic-intervals)
-* [RepeatMasker and Mappability Blacklist](reference-resources.md#repeatmasker-and-mappability-blacklist)
-* [Preferred Transcript Isoforms](reference-resources.md#preferred-transcript-isoforms)
-* [Hotspot Annotation](reference-resources.md#hotspot-annotation.md)
-* [OncoKB Annotation](reference-resources.md#oncokb.md)
+* [Genome Assembly](reference-files.md#genome-assembly)
+* [Genomic Intervals](reference-files.md#genomic-intervals)
+* [RepeatMasker and Mappability Blacklist](reference-files.md#repeatmasker-and-mappability-blacklist)
+* [Preferred Transcript Isoforms](reference-files.md#preferred-transcript-isoforms)
+* [Hotspot Annotation](reference-files.md#hotspot-annotation.md)
+* [OncoKB Annotation](reference-files.md#oncokb.md)
 * [gnomAD](gnomad.md)
 * [Panel of Normals for Exomes](wes-panel-of-normals.md)
 
