@@ -2,9 +2,11 @@ FROM halllab/bcftools:v1.9
 
 LABEL maintainer="C. Allan Bolipata (bolipatc@mskcc.org)" \
     contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-    version.image="1.2.0" \
+    version.image="1.0.0" \
     version.vt="0.57721" \
     version.filter-vcf="0.2.0" \
+    version.fix-manta-vcf="0.1.0" \
+    version.get-sv-info="0.1.0" \
     version.pysam="0.15.2" \
     source.getBaseCountsMultiSample="https://github.com/zengzheng123/GetBaseCountsMultiSample/releases/tag/v1.2.2" \
     version.getBaseCountsMultiSample="1.2.2"
@@ -26,12 +28,13 @@ RUN apt-get update && \
     git \
     wget \
     zip \
+    bedtools \
     python-pip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install pysam
-RUN pip install pysam==0.15.2
+# Install python packages
+RUN pip install pysam==0.15.2 Cython sklearn
 
 # Install vt
 RUN git clone https://github.com/atks/vt.git && \
@@ -57,6 +60,15 @@ RUN cd /tmp && \
     make && \
     cp GetBaseCountsMultiSample /usr/bin/ 
 
-# Add filter script
+# Install svtk
+RUN git clone https://github.com/talkowski-lab/svtk.git \
+    && cd svtk \
+    && pip install -e .
+
+# Add custom scripts
 COPY filter-vcf.py /usr/bin
+COPY fix-manta-vcf.py /usr/bin
+COPY get-sv-info.py /usr/bin
 RUN chmod +x /usr/bin/filter-vcf.py
+RUN chmod +x /usr/bin/fix-manta-vcf.py
+RUN chmod +x /usr/bin/get-sv-info.py

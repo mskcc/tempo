@@ -111,12 +111,35 @@ In addition, the following columns are added to the germline MAF:
     - `ch_mutation`: Variant occurs in CH gene and occurs below lower threshold for normal VAF and below tumor VAF 0.25.
     - `t_in_n_contamination`: Tumor VAF is more than three-fold the normal VAF. 
 
-
-
 ### Zygosity Analysis
 
 Similar to somatic mutations, tumor zygosity of germline SNVs and indels is estimated using the observed VAF and the expected VAF at the observed tumor purity and local copy number. The difference between the two cases is the calculation of the expected tumor VAF of the variant.
 
 ## Somatic and Germline SVs
 
-_Under development._
+<small>_Under development._</small>
+
+Somatic and germline SVs from Delly and Manta are merged and annotated with gene overlap and predicted effects. Variant-level information from the two callers is combined in the merge output, where relevant INFO tags include:
+- `END`: End position of event (Note: the start position is given by the `POS` field)
+- `SVTYPE`: One of DUP (duplication), BND (breakend), DEL (deletion), INS (insertion), or INV (inversion).
+- `CHR2`: Location of second breakend, if translocation.
+- `SVLEN`: Size of event.
+- `ALGORITHMS`: Indicates which variant callers detected event.
+- `MEMBERS`: Variant IDs from the original variant callers' VCFs.
+- Functional effect (one or more of the following), descriptions from [svtk](https://github.com/talkowski-lab/svtk):
+    - `LOF`: Gene(s) on which the SV is predicted to have a loss-of-function effect.
+    - `DUP_LOF`: Gene(s) on which the SV is predicted to have a loss-of-function effect via intragenic exonic duplication.
+    - `COPY_GAIN`: Gene(s) on which the SV is predicted to have a copy-gain effect.
+    - `DUP_PARTIAL`: Gene(s) which are partially overlapped by an SV's duplication, such that an unaltered copy is preserved.
+    - `MSV_EXON_OVR`: Gene(s) on which the multiallelic SV would be predicted to have a LOF, DUP_LOF, COPY_GAIN, or DUP_PARTIAL annotation if the SV were biallelic.
+    - `INTRONIC`: Gene(s) where the SV was found to lie entirely within an intron.
+    - `INV_SPAN`: Gene(s) which are entirely spanned by an SV's inversion.
+    - `UTR`: Gene(s) for which the SV is predicted to disrupt a UTR.
+    - `NEAREST_TSS`: Nearest transcription start site to intragenic variants.
+    - `promoter`: Nearest promoter.
+    - `INTERGENIC`: SV does not overlap coding sequence.
+
+Read support for variants if taken from Delly, if called by both variants. Read support from paired-end (`PR`) or split reads (`SR`) is represented in the sample columns for the tumor and normal, respectively. Reference- and variant-supporting reads are comma separated. 
+
+The VCF header contains further description of variant-level information found in the INFO tags.
+

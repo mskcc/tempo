@@ -83,10 +83,19 @@ Functional mutation effects and predicted oncogenicity of variants, as well as l
 Annotation of germline variants in _BRCA1_ and _BRCA2_ is carried out with the [annotateMaf package](https://github.com/taylor-lab/annotateMaf). This includes variant-level annotation from the ENIGMA consortium and ClinVar.
 
 ## Structural Variant Calling
+
+### Callable Regions
 Delly provides and takes as an argument a [file of regions](https://github.com/dellytools/delly/tree/master/excludeTemplates) to _exclude_ from variant calling. This excludes telomeres and centromeres from auto- and allosomes as well as any other contig.
 
 For Manta, subtract these regions from a bed file of the whole genome to generate a list of regions to _include_. First clean up the file provided by Delly, since it is not in `bed` format:
 ``` shell
 grep -Ev "chr|MT|GL00|NC|hs37d5" human.hg19.excl.tsv > human.hg19.excl.clean.bed
 bedtools subtract -a b37.bed -b human.hg19.excl.clean.bed > b37.minusDellyExclude.bed
+```
+### Gene Annotation
+Overlap of structural variants with protein-coding genes is carried out using annotation from [GENCODE](https://www.gencodegenes.org), downloaded and processed as such:
+```shell
+wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_31/GRCh37_mapping/gencode.v31lift37.basic.annotation.gtf.gz
+zgrep "protein_coding" gencode.v31lift37.basic.annotation.gtf.gz | sed 's/^chr//g' \
+    > gencode.v31lift37.basic.annotation.protein_coding.gtf
 ```
