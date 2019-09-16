@@ -258,14 +258,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200) {
+      if (bam.size() > 200.GB) {
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      else if (bam.size() < 100.GB) {
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 12.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 32.h } : { 12.h }
       }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -312,14 +312,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 480) {
+      if (bam.size() > 480.GB) {
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 240) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      else if (bam.size() < 240.GB) {
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 6.h } : { 3.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 32.h } : { 6.h }
       }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -363,14 +363,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 200){
+      if (bam.size() > 200.GB){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      else if (bam.size() < 100.GB) {
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 32.h } : { 12.h }
       }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -484,14 +484,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
+      if(bam.size() > 200.GB){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100){
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      else if (bam.size() < 100.GB){
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 6.h } : { 3.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 32.h } : { 6.h }
       }
     }
 
@@ -542,14 +542,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
+      if(bam.size()> 200.GB){
         task.time = { 32.h }
       }
-      else if (bam.size()/1024**3 < 100){
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      else if (bam.size() < 100.GB){
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 6.h } : { 3.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = [130, 137, 140, 143, 247].contains(task.exitStatus) ? { 32.h } : { 6.h }
       }
     }
 
@@ -1465,7 +1465,6 @@ process RunPolysolver {
   """
 }
 
-
 (bamsForLOHHLA, bamFiles) = bamFiles.into(2)
 
 // Channel currently in order [ assay, target, tumorID, normalID, tumorBam, normalBam, tumorBai, normalBai ]
@@ -1493,7 +1492,6 @@ bamsForLOHHLA = bamsForLOHHLA.map{
 // FACETS channel in order
 // [ idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*.*") ]
 // [idTumor, idNormal, target, *purity.out, *purity.cncf.txt, *purity.Rdata, purity.seg, hisens.out, hisens.cncf.txt, hisens.Rdata, hisens.seg into FacetsOutput
-
 
 (facetsForLOHHLA, FacetsforMafAnno, FacetsOutput) = FacetsOutput.into(3)
 
