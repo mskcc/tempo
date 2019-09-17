@@ -2575,7 +2575,7 @@ allBamFiles = bamsForPileup.map{
 process QcPileup {
   tag {idSample}
 
-  publishDir "${params.outDir}/qc/pileup/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/conpair/", mode: params.publishDirMode
 
   input:
     set idSample, file(bam), file(bai) from allBamFiles
@@ -2668,8 +2668,6 @@ pileupConpair = tumorPileupConpair.combine(normalPileupConpair, by: [0, 1, 2])
 process QcConpair {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/qc/conpair/${idTumor}__${idNormal}", mode: params.publishDirMode
-
   input:
     set conpair, idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -2736,7 +2734,7 @@ process QcConpairAll {
     file("${outPrefix}.concordance.txt") into conpairAllConcordance
     file("${outPrefix}.contamination.txt") into conpairAllContamination
 
-  when: !params.test && "conpairall" in tools
+  when: !params.test && params.conpair_all
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
@@ -2777,28 +2775,33 @@ process QcConpairAll {
   """
 }
 
+// -- Run based on QcConpairAll channels or the single QcConpair channels
+(conpairAggregateConcordance, conpairAggregateContamination) = (!params.conpair_all
+                                                                ? [conpairConcordance, conpairContamination]
+                                                                : [conpairAllConcordance, conpairAllContamination]
+                                                                )
+
 process QcConpairAggregate {
 
-  publishDir "${params.outDir}/qc/conpairAll/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
   input:
-    file(concordance) from conpairAllConcordance.collect()
-    file(contamination) from conpairAllContamination.collect()
+    file(concordance) from conpairAggregateConcordance.collect()
+    file(contamination) from conpairAggregateContamination.collect()
 
   output:
-    set file('ConpairAll-concordance.txt'), file('ConpairAll-contamination.txt') into conpairAggregated
+    set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregated
 
   when: !params.test
 
   script:
   """
-  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 > ConpairAll-concordance.txt
-  echo -e "Pairs\tSample_Type\tSample_ID\tContamination" > ConpairAll-contamination.txt
-  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> ConpairAll-contamination.txt
+  echo -e "Pair\tConcordance" > concordance_qc.txt
+  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 >> concordance_qc.txt
+  echo -e "Pair\tSample_Type\tSample_ID\tContamination" > contamination_qc.txt
+  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
   """
 }
-
-
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
