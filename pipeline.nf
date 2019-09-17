@@ -324,12 +324,10 @@ if (!params.bam_pairing) {
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
-    gatk BaseRecalibratorSpark \
+    gatk BaseRecalibrator \
       ${javaOptions} \
-      ${sparkConf} \
       --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
@@ -375,11 +373,9 @@ if (!params.bam_pairing) {
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
     """
-    gatk ApplyBQSRSpark \
+    gatk ApplyBQSR \
       ${javaOptions} \
-      ${sparkConf} \
       --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --create-output-bam-index true \
@@ -494,10 +490,8 @@ if (!params.bam_pairing) {
         task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
       }
     }
-
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-
     baitIntervals = ""
     targetIntervals = ""
     if (target == 'agilent'){
@@ -552,7 +546,6 @@ if (!params.bam_pairing) {
         task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
       }
     }
-
     options = ""
     if (assay == "wes") {
       if (target == "agilent") options = "--bed ${agilentTargets}"
