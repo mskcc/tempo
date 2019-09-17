@@ -206,7 +206,6 @@ if (!params.bam_pairing) {
       """
   }
 
-
   sortedBam.groupTuple().set{ groupedBam }
 
   groupedBam = groupedBam.map{ item -> 
@@ -619,7 +618,7 @@ if ("strelka2" in tools) {
 }
 
 // If using running either conpair or conpairAll, run pileup as well to generate pileups
-if ("conpair" in tools || "conpairAll" in tools) {
+if ("conpair" in tools) {
   tools.add("pileup")
 }
 
@@ -735,13 +734,6 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
     )
 }.transpose().into(2)
 
-
-// if using strelka2, one should have manta for small InDels
-
-if('strelka2' in tools) {
-  tools.add('manta')
-}
-
 // --- Run Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
@@ -821,7 +813,6 @@ process RunMutect2 {
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 // group by groupKey(key, intervalBed.size())
 forMutect2Combine = forMutect2Combine.groupTuple()
-
 
 // Combine Mutect2 VCFs, bcftools
 process SomaticCombineMutect2Vcf {
