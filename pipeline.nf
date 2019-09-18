@@ -256,17 +256,6 @@ if (!params.bam_pairing) {
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
-    if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200) {
-        task.time = { 32.h }
-      }
-      else if (bam.size()/1024**3 < 100) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
-    }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 1) + "g'"
     """
@@ -310,17 +299,6 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
-    if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 480) {
-        task.time = { 32.h }
-      }
-      else if (bam.size()/1024**3 < 240) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
-    }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
@@ -352,24 +330,13 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
+      set idSample, file("${idSample}.bam"), file("${idSample}.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       file("${idSample}.bam") into currentBam
-      file("${idSample}.bam.bai") into currentBai
+      file("${idSample}.bai") into currentBai
       val(assay) into assays
       val(targetFile) into targets
 
     script:
-    if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 200){
-        task.time = { 32.h }
-      }
-      else if (bam.size()/1024**3 < 100) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
-    }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     """
@@ -478,17 +445,6 @@ if (!params.bam_pairing) {
     when: 'wes' in assay && !params.test
 
     script:
-    if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
-        task.time = { 32.h }
-      }
-      else if (bam.size()/1024**3 < 100){
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
-    }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     baitIntervals = ""
@@ -534,17 +490,6 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
-    if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
-        task.time = { 32.h }
-      }
-      else if (bam.size()/1024**3 < 100){
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
-    }
     options = ""
     if (assay == "wes") {
       if (target == "agilent") options = "--bed ${agilentTargets}"
@@ -686,9 +631,7 @@ process CreateScatteredIntervals {
   """
 }
 
-
 (bamsForIntervals, bamFiles) = bamFiles.into(2)
-
 
 //Associating interval_list files with BAM files, putting them into one channel
 
