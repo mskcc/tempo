@@ -286,6 +286,8 @@ if (!params.bam_pairing) {
       }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
+    maxMem = (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 3)
+    maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 3) + "g'"
     """
     gatk MarkDuplicates \
