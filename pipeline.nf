@@ -179,18 +179,18 @@ if (!params.bam_pairing) {
     script:
 
     if (workflow.profile == "juno") {
-      if(sizeFastqFile1 > 10.GB){
-        task.time = { 32.h }
+      if((sizeFastqFile1 + sizeFastqFile2) > 20.GB){
+        task.time = { 72.h }
       }
-      else if (sizeFastqFile1 < 6.GB){
+      else if ((sizeFastqFile1 + sizeFastqFile2) < 12.GB){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
 
-    mem = (sizeFastqFile1/1024**2 * 2).round()
+    mem = ((sizeFastqFile1 + sizeFastqFile2)/1024**2).round()
     memDivider = params.mem_per_core ? 1 : task.cpus
     memMultiplier = params.mem_per_core ? task.cpus : 1
     originalMem = task.attempt ==1 ? task.memory : originalMem
@@ -275,14 +275,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno" && params.assayType == "exome") {
-      if(bam.size()/1024**3 > 200) {
-        task.time = { 32.h }
+      if(bam.size() > 200.GB) {
+        task.time = { 72.h }
       }
-      else if (bam.size()/1024**3 < 100) {
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -333,20 +333,20 @@ if (!params.bam_pairing) {
     if (task.attempt == 1){
     if (workflow.profile == "juno") {
       if (bam.size() > 480.GB) {
-        task.time = { 32.h }
+        task.time = { 72.h }
       }
       else if (bam.size() < 240.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
     }
     else {
       task.cpus = 1
       task.memory = { 4.GB }
-      task.time = { 32.h }
+      task.time = { 72.h }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -393,20 +393,20 @@ if (!params.bam_pairing) {
     if (task.attempt == 1){
     if (workflow.profile == "juno") {
       if (bam.size() > 200.GB){
-        task.time = { 32.h }
+        task.time = { 72.h }
       }
       else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
     }
     else {
       task.cpus = 1
       task.memory = { 4.GB }
-      task.time = { 32.h }
+      task.time = { 72.h }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
@@ -523,13 +523,13 @@ if (!params.bam_pairing) {
     script:
     if (workflow.profile == "juno") {
       if(bam.size() > 200.GB){
-        task.time = { 32.h }
+        task.time = { 72.h }
       }
       else if (bam.size() < 100.GB){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
 
@@ -581,13 +581,13 @@ if (!params.bam_pairing) {
     script:
     if (workflow.profile == "juno" && params.assayType == "exome") {
       if(bam.size() > 200.GB){
-        task.time = { 32.h }
+        task.time = { 72.h }
       }
       else if (bam.size() < 100.GB){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
 
@@ -1894,7 +1894,7 @@ process SomaticAggregateFacets {
   cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
   awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
-  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
+  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode"  || [[ \$? == 1 ]] >> cna_armlevel.txt
   """
 }
 
