@@ -197,16 +197,16 @@ if (!params.bam_pairing) {
 
     if ( mem < 6 * 1024 / task.cpus ) {
     // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
-        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt)).round() + " GB" }
+        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt) + 0.5).round() + " GB" }
         mem = (5.4 * 1024 / task.cpus).round()
     }
     else if ( mem / memDivider * (1 + 0.1 * task.attempt) > originalMem.toMega() ) {
     // if file size is too big, use task.memory as the max mem for this task, and decrease -M for `samtools sort` by 10% everytime retry
-        mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt)).round()
+        mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt) + 0.5).round()
     }
     else {
     // normal situation, `samtools sort` -M = fastqFileSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
-        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024).round() + " GB" }
+        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024 + 0.5).round() + " GB" }
         mem = mem
     }
 
@@ -330,20 +330,22 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
-    if (task.attempt == 1){
-    if (workflow.profile == "juno") {
-      if (bam.size() > 480.GB) {
-        task.time = { 72.h }
+    if (task.attempt < 3){
+      sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
+      if (workflow.profile == "juno") {
+        if (bam.size() > 480.GB) {
+          task.time = { 72.h }
+        }
+        else if (bam.size() < 240.GB) {
+          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        }
+        else {
+          task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+        }
       }
-      else if (bam.size() < 240.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
-      }
-    }
     }
     else {
+      sparkConf = " BaseRecalibrator"
       task.cpus = 1
       task.memory = { 4.GB }
       task.time = { 72.h }
@@ -351,7 +353,6 @@ if (!params.bam_pairing) {
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = task.attempt == 1 ? " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'" : " BaseRecalibrator"
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
     gatk \
@@ -390,27 +391,28 @@ if (!params.bam_pairing) {
 
     script:
 
-    if (task.attempt == 1){
-    if (workflow.profile == "juno") {
-      if (bam.size() > 200.GB){
-        task.time = { 72.h }
+    if (task.attempt < 3){
+      sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
+      if (workflow.profile == "juno") {
+        if (bam.size() > 200.GB){
+          task.time = { 72.h }
+        }
+        else if (bam.size() < 100.GB) {
+          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        }
+        else {
+          task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+        }
       }
-      else if (bam.size() < 100.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
-      }
-    }
     }
     else {
+      sparkConf = " ApplyBQSR"
       task.cpus = 1
       task.memory = { 4.GB }
       task.time = { 72.h }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = task.attempt == 1 ? " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'" : " ApplyBQSR"
     """
     gatk \
       ${sparkConf} \
