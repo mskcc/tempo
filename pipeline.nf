@@ -179,10 +179,10 @@ if (!params.bam_pairing) {
     script:
 
     if (workflow.profile == "juno") {
-      if((sizeFastqFile1 + sizeFastqFile2) > 20.GB){
+      if((sizeFastqFile1 + sizeFastqFile2) > 6.GB){
         task.time = { 72.h }
       }
-      else if ((sizeFastqFile1 + sizeFastqFile2) < 12.GB){
+      else if ((sizeFastqFile1 + sizeFastqFile2) < 3.GB){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -275,7 +275,7 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno" && params.assayType == "exome") {
-      if(bam.size() > 200.GB) {
+      if(bam.size() > 120.GB) {
         task.time = { 72.h }
       }
       else if (bam.size() < 100.GB) {
