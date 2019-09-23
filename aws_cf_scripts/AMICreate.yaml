@@ -22,7 +22,7 @@ Parameters:
     Description: The initial size of the scratch volume
   AMIName:
     Type: String
-    Default: vaporware-ami
+    Default: tempo-ami
     Description: The name of the AMI that is created
   UseEncryption:
     Type: String
@@ -67,7 +67,10 @@ Resources:
             04InstallAWSCLI:
               command: yum install -y bzip2 wget && wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && bash Miniconda3-latest-Linux-x86_64.sh -b -f -p /home/ec2-user/miniconda && /home/ec2-user/miniconda/bin/conda install -c conda-forge -y awscli && rm Miniconda3-latest-Linux-x86_64.sh
               cwd: /home/ec2-user
-
+            05UlimitSoft:
+              command: echo "*    soft    nofile   1000000" | tee --append /etc/security/limits.conf
+            06UlimitHard:
+              command: echo "*    hard    nofile   1000000" | tee --append /etc/security/limits.conf
     Properties:
       ImageId: !Ref ImageId
       InstanceType: !Ref InstanceType
