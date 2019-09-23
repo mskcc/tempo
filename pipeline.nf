@@ -146,6 +146,7 @@ referenceMap = defineReferenceMap()
 ================================================================================
 */
 
+
 // Skip these processes if starting from aligned BAM files
 if (!params.bam_pairing) {
 
@@ -178,11 +179,12 @@ if (!params.bam_pairing) {
 
     script:
 
+    inputSize = sizeFastqFile1 + sizeFastqFile2
     if (workflow.profile == "juno") {
-      if((sizeFastqFile1 + sizeFastqFile2) > 20.GB){
+      if(inputSize > 20.GB){
         task.time = { 72.h }
       }
-      else if ((sizeFastqFile1 + sizeFastqFile2) < 12.GB){
+      else if (inputSize < 12.GB){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -190,7 +192,7 @@ if (!params.bam_pairing) {
       }
     }
 
-    mem = ((sizeFastqFile1 + sizeFastqFile2)/1024**2).round()
+    mem = (inputSize/1024**2).round()
     memDivider = params.mem_per_core ? 1 : task.cpus
     memMultiplier = params.mem_per_core ? task.cpus : 1
     originalMem = task.attempt ==1 ? task.memory : originalMem
@@ -205,7 +207,7 @@ if (!params.bam_pairing) {
         mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt) + 0.5).round()
     }
     else {
-    // normal situation, `samtools sort` -M = fastqFileSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
+    // normal situation, `samtools sort` -M = inputSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
         task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024 + 0.5).round() + " GB" }
         mem = mem
     }
@@ -220,6 +222,7 @@ if (!params.bam_pairing) {
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
+    echo -e "${lane}\t${inputSize}" > file-size.txt
     """
   }
 
@@ -426,6 +429,7 @@ if (!params.bam_pairing) {
     if [[ -f ${idSample}.bai ]]; then
       mv ${idSample}.bai ${idSample}.bam.bai
     fi
+    echo -e "${idSample}\t${bam.size()}" > file-size.txt
     """
   }
 
@@ -2610,7 +2614,7 @@ allBamFiles = bamsForPileup.map{
     def baiNormal = item[7]
 
     return [[idTumor, idNormal], [bamTumor, bamNormal], [baiTumor, baiNormal]]
-}.transpose()
+}.transpose().unique()
 
 process QcPileup {
   tag {idSample}
