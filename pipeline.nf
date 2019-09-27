@@ -1772,7 +1772,7 @@ process RunNeoantigen {
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
-  echo -e "${idSample}\t${mafFile.countLines()}" > file-size.txt
+  echo -e "${outputPrefix}\t${mafFile.countLines()}" > file-size.txt
   export TMPDIR=${tmpDirFullPath}
   mkdir -p ${tmpDir}
   chmod 777 ${tmpDir}
