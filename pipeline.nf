@@ -1756,10 +1756,10 @@ process RunNeoantigen {
   script:
 
   if (workflow.profile == "juno") {
-    if(mafFile.countLines() > 7000){
+    if(mafFile.size() > 10.MB){
       task.time = { 72.h }
     }
-    else if (mafFile.countLines() < 3500){
+    else if (mafFile.size() < 5.MB){
       task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
     }
     else {
@@ -1772,7 +1772,7 @@ process RunNeoantigen {
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
-  echo -e "${outputPrefix}\t${mafFile.countLines()}" > file-size.txt
+  echo -e "${outputPrefix}\t`wc -l ${mafFile} | cut -d ' ' -f1`" > file-size.txt
   export TMPDIR=${tmpDirFullPath}
   mkdir -p ${tmpDir}
   chmod 777 ${tmpDir}
