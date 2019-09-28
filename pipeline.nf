@@ -618,7 +618,7 @@ if ("strelka2" in tools) {
 }
 
 // If using running either conpair or conpairAll, run pileup as well to generate pileups
-if ("conpair" in tools) {
+if ("conpair" in tools || params.conpair_all) {
   tools.add("pileup")
 }
 
