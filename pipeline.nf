@@ -184,10 +184,10 @@ if (!params.bam_pairing) {
     // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 72h.
     inputSize = sizeFastqFile1 + sizeFastqFile2
     if (workflow.profile == "juno") {
-      if (inputSize > 20.GB) {
+      if (inputSize > 18.GB) {
         task.time = { 72.h }
       }
-      else if (inputSize < 12.GB) {
+      else if (inputSize < 9.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -284,7 +284,7 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno" && params.assayType == "exome") {
-      if(bam.size() > 200.GB) {
+      if(bam.size() > 120.GB) {
         task.time = { 72.h }
       }
       else if (bam.size() < 100.GB) {
@@ -355,8 +355,8 @@ if (!params.bam_pairing) {
     }
     else {
       sparkConf = " BaseRecalibrator"
-      task.cpus = 1
-      task.memory = { 4.GB }
+      task.cpus = 4
+      task.memory = { 6.GB }
       task.time = { 72.h }
     }
 
@@ -416,8 +416,8 @@ if (!params.bam_pairing) {
     }
     else {
       sparkConf = " ApplyBQSR"
-      task.cpus = 1
-      task.memory = { 4.GB }
+      task.cpus = 4
+      task.memory = { 6.GB }
       task.time = { 72.h }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
