@@ -28,11 +28,11 @@ class TempoUtils {
     .map { row ->
       checkNumberOfItem(row, 6)
       def idSample = row.SAMPLE
-      def lane = row.LANE
       def assayValue = row.ASSAY
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def sizeFastqFile1 = fastqFile1.size()
+      def lane = fastqFile1.baseName.split("_R1")[0]
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def sizeFastqFile2 = fastqFile2.size()
 
