@@ -60,17 +60,21 @@ This file is necessary to map the input FASTQ pairs from one or more sequencing 
 
 Example:
 
-|SAMPLE|LANE|ASSAY|TARGET|FASTQ_PE1|FASTQ_PE2|
-|:---:|:---:|:---:|:---:|:---:|:---:|
-|normal_sample_1|L001|wes|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
-|normal_sample_1|L002|wes|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
-|tumor_sample_1|L001|wes|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
+|SAMPLE|ASSAY|TARGET|FASTQ_PE1|FASTQ_PE2|
+|:---:|:---:|:---:|:---:|:---:|
+|normal_sample_1|wes|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
+|normal_sample_1|wes|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
+|tumor_sample_1|wes|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
 |tumor_sample_1|...|wes|agilent|...|...|
-|tumor_sample_1|L00N|wes|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
+|tumor_sample_1|wes|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
 
 Accepted values for the **ASSAY** column are `exome` and `genome`.\
 Accepted values for the **TARGET** column are `agilent` and `idt`.\
 Read further details on these parameters [here](reference-resources.md#genomic-intervals).
+
+::: warning Be aware
+Tempo derives the sequencing lane name from the input FASTQ files. This assumes somewhat uniform naming, where the file name should look like `sampleA_L001_R1_001.fastq.gz`, where _sampleA_L001_ identifies lane 1 for sample A, _R1_ that these are forward reads, and _001_ that this is file 1 containing these reads. The number of file pairs per sequencing reads can in theory be any. 
+:::
 
 ### The Pairing File
 
