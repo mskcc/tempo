@@ -178,20 +178,27 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-
+    // LSF resource allocation for juno
+    // if running on juno, check the total size of the FASTQ pairs in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if total size of the FASTQ pairs is over 20 GB, use 72 hours
+    // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 72h.
     inputSize = sizeFastqFile1 + sizeFastqFile2
     if (workflow.profile == "juno") {
-      if(inputSize > 20.GB){
+      if (inputSize > 20.GB) {
         task.time = { 72.h }
       }
-      else if (inputSize < 12.GB){
+      else if (inputSize < 12.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
         task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
-
+    
+    // mem --- total size of the FASTQ pairs in MB (max memory `samtools sort` can take advantage of)
+    // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
+    // memMultiplier --- If mem_per_core is false, use 1. Else, use task.cpus
+    // originalMem -- If this is the first attempt, use task.memory. Else, use `originalMem`
     mem = (inputSize/1024**2).round()
     memDivider = params.mem_per_core ? 1 : task.cpus
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -218,11 +225,11 @@ if (!params.bam_pairing) {
     """
     set -e
     set -o pipefail
+    echo -e "${lane}\t${inputSize}" > file-size.txt
     fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2}
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
-    echo -e "${lane}\t${inputSize}" > file-size.txt
     """
   }
 
@@ -393,7 +400,7 @@ if (!params.bam_pairing) {
 
     script:
 
-    if (task.attempt < 3){
+    if (task.attempt < 3) {
       sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 200.GB){
@@ -416,6 +423,7 @@ if (!params.bam_pairing) {
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     """
+    echo -e "${idSample}\t${bam.size()}" > file-size.txt
     gatk \
       ${sparkConf} \
       ${javaOptions} \
@@ -428,7 +436,6 @@ if (!params.bam_pairing) {
     if [[ -f ${idSample}.bai ]]; then
       mv ${idSample}.bai ${idSample}.bam.bai
     fi
-    echo -e "${idSample}\t${bam.size()}" > file-size.txt
     """
   }
 
@@ -527,10 +534,10 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 200.GB){
+      if (bam.size() > 200.GB) {
         task.time = { 72.h }
       }
-      else if (bam.size() < 100.GB){
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -585,10 +592,10 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno" && params.assayType == "exome") {
-      if(bam.size() > 200.GB){
+      if (bam.size() > 200.GB) {
         task.time = { 72.h }
       }
-      else if (bam.size() < 100.GB){
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -1735,11 +1742,25 @@ process RunNeoantigen {
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
+
+  if (workflow.profile == "juno") {
+    if(mafFile.size() > 10.MB){
+      task.time = { 72.h }
+    }
+    else if (mafFile.size() < 5.MB){
+      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+    }
+    else {
+      task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+    }
+  }
+
   outputPrefix = "${idTumor}__${idNormal}"
   outputDir = "neoantigen"
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
+  echo -e "${outputPrefix}\t`wc -l ${mafFile} | cut -d ' ' -f1`" > file-size.txt
   export TMPDIR=${tmpDirFullPath}
   mkdir -p ${tmpDir}
   chmod 777 ${tmpDir}
