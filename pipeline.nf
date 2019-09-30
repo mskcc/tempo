@@ -146,6 +146,7 @@ referenceMap = defineReferenceMap()
 ================================================================================
 */
 
+
 // Skip these processes if starting from aligned BAM files
 if (!params.bam_pairing) {
 
@@ -177,20 +178,28 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-
+    // LSF resource allocation for juno
+    // if running on juno, check the total size of the FASTQ pairs in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if total size of the FASTQ pairs is over 20 GB, use 72 hours
+    // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 72h.
+    inputSize = sizeFastqFile1 + sizeFastqFile2
     if (workflow.profile == "juno") {
-      if((sizeFastqFile1 + sizeFastqFile2) > 6.GB){
+      if (inputSize > 20.GB) {
         task.time = { 72.h }
       }
-      else if ((sizeFastqFile1 + sizeFastqFile2) < 3.GB){
+      else if (inputSize < 12.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
         task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
-
-    mem = ((sizeFastqFile1 + sizeFastqFile2)/1024**2).round()
+    
+    // mem --- total size of the FASTQ pairs in MB (max memory `samtools sort` can take advantage of)
+    // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
+    // memMultiplier --- If mem_per_core is false, use 1. Else, use task.cpus
+    // originalMem -- If this is the first attempt, use task.memory. Else, use `originalMem`
+    mem = (inputSize/1024**2).round()
     memDivider = params.mem_per_core ? 1 : task.cpus
     memMultiplier = params.mem_per_core ? task.cpus : 1
     originalMem = task.attempt ==1 ? task.memory : originalMem
@@ -205,7 +214,7 @@ if (!params.bam_pairing) {
         mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt) + 0.5).round()
     }
     else {
-    // normal situation, `samtools sort` -M = fastqFileSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
+    // normal situation, `samtools sort` -M = inputSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
         task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024 + 0.5).round() + " GB" }
         mem = mem
     }
@@ -216,13 +225,13 @@ if (!params.bam_pairing) {
     """
     set -e
     set -o pipefail
+    echo -e "${lane}\t${inputSize}" > file-size.txt
     fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2}
     bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
 
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
     """
   }
-
 
   sortedBam.groupTuple().set{ groupedBam }
 
@@ -391,7 +400,7 @@ if (!params.bam_pairing) {
 
     script:
 
-    if (task.attempt < 3){
+    if (task.attempt < 3) {
       sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 200.GB){
@@ -414,6 +423,7 @@ if (!params.bam_pairing) {
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     """
+    echo -e "${idSample}\t${bam.size()}" > file-size.txt
     gatk \
       ${sparkConf} \
       ${javaOptions} \
@@ -524,10 +534,10 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 200.GB){
+      if (bam.size() > 200.GB) {
         task.time = { 72.h }
       }
-      else if (bam.size() < 100.GB){
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -582,10 +592,10 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno" && params.assayType == "exome") {
-      if(bam.size() > 200.GB){
+      if (bam.size() > 200.GB) {
         task.time = { 72.h }
       }
-      else if (bam.size() < 100.GB){
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
@@ -659,7 +669,7 @@ if ("strelka2" in tools) {
 }
 
 // If using running either conpair or conpairAll, run pileup as well to generate pileups
-if ("conpair" in tools || "conpairAll" in tools) {
+if ("conpair" in tools || params.conpair_all) {
   tools.add("pileup")
 }
 
@@ -775,13 +785,6 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
     )
 }.transpose().into(2)
 
-
-// if using strelka2, one should have manta for small InDels
-
-if('strelka2' in tools) {
-  tools.add('manta')
-}
-
 // --- Run Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
@@ -861,7 +864,6 @@ process RunMutect2 {
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 // group by groupKey(key, intervalBed.size())
 forMutect2Combine = forMutect2Combine.groupTuple()
-
 
 // Combine Mutect2 VCFs, bcftools
 process SomaticCombineMutect2Vcf {
@@ -1740,11 +1742,25 @@ process RunNeoantigen {
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
+
+  if (workflow.profile == "juno") {
+    if(mafFile.size() > 10.MB){
+      task.time = { 72.h }
+    }
+    else if (mafFile.size() < 5.MB){
+      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+    }
+    else {
+      task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+    }
+  }
+
   outputPrefix = "${idTumor}__${idNormal}"
   outputDir = "neoantigen"
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
+  echo -e "${outputPrefix}\t`wc -l ${mafFile} | cut -d ' ' -f1`" > file-size.txt
   export TMPDIR=${tmpDirFullPath}
   mkdir -p ${tmpDir}
   chmod 777 ${tmpDir}
@@ -2610,12 +2626,12 @@ allBamFiles = bamsForPileup.map{
     def baiNormal = item[7]
 
     return [[idTumor, idNormal], [bamTumor, bamNormal], [baiTumor, baiNormal]]
-}.transpose()
+}.transpose().unique()
 
 process QcPileup {
   tag {idSample}
 
-  publishDir "${params.outDir}/qc/pileup/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/conpair/", mode: params.publishDirMode
 
   input:
     set idSample, file(bam), file(bai) from allBamFiles
@@ -2708,8 +2724,6 @@ pileupConpair = tumorPileupConpair.combine(normalPileupConpair, by: [0, 1, 2])
 process QcConpair {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/qc/conpair/${idTumor}__${idNormal}", mode: params.publishDirMode
-
   input:
     set conpair, idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -2776,7 +2790,7 @@ process QcConpairAll {
     file("${outPrefix}.concordance.txt") into conpairAllConcordance
     file("${outPrefix}.contamination.txt") into conpairAllContamination
 
-  when: !params.test && "conpairall" in tools
+  when: !params.test && params.conpair_all
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
@@ -2817,28 +2831,33 @@ process QcConpairAll {
   """
 }
 
+// -- Run based on QcConpairAll channels or the single QcConpair channels
+(conpairAggregateConcordance, conpairAggregateContamination) = (!params.conpair_all
+                                                                ? [conpairConcordance, conpairContamination]
+                                                                : [conpairAllConcordance, conpairAllContamination]
+                                                                )
+
 process QcConpairAggregate {
 
-  publishDir "${params.outDir}/qc/conpairAll/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
   input:
-    file(concordance) from conpairAllConcordance.collect()
-    file(contamination) from conpairAllContamination.collect()
+    file(concordance) from conpairAggregateConcordance.collect()
+    file(contamination) from conpairAggregateContamination.collect()
 
   output:
-    set file('ConpairAll-concordance.txt'), file('ConpairAll-contamination.txt') into conpairAggregated
+    set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregated
 
   when: !params.test
 
   script:
   """
-  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 > ConpairAll-concordance.txt
-  echo -e "Pairs\tSample_Type\tSample_ID\tContamination" > ConpairAll-contamination.txt
-  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> ConpairAll-contamination.txt
+  echo -e "Pair\tConcordance" > concordance_qc.txt
+  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 >> concordance_qc.txt
+  echo -e "Pair\tSample_Type\tSample_ID\tContamination" > contamination_qc.txt
+  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
   """
 }
-
-
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
