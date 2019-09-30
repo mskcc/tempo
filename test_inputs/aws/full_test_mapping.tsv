@@ -1,3 +1,13 @@
 SAMPLE	LANE	ASSAY	TARGET	FASTQ_PE1	FASTQ_PE2
-DU874145-N	DU874145-N_L001	exome	agilent	s3://testbucketcmo/example_data/fastq/DU874145-N/DU874145-N_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/example_data/fastq/DU874145-N/DU874145-N_IGO_00000_TEST_L001_R2_001.fastq.gz
-DU874145-T	DU874145-N_L001	exome	agilent	s3://testbucketcmo/example_data/fastq/DU874145-T/DU874145-T_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/example_data/fastq/DU874145-T/DU874145-T_IGO_00000_TEST_L001_R2_001.fastq.gz
+DU874145-N	DU874145-N-L002	exome	agilent	s3://testbucketcmo/testdata/fastq/small_MHC1-N_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_MHC1-N_L001_R2_xxx.fastq.gz
+DU874145-N	DU874145-N-L003	exome	agilent	s3://testbucketcmo/testdata/fastq/small_Variants1-N_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_Variants1-N_L001_R2_xxx.fastq.gz
+DU874145-T	DU874145-T-L002	exome	agilent	s3://testbucketcmo/testdata/fastq/small_MHC1-T_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_MHC1-T_L001_R2_xxx.fastq.gz
+DU874145-T	DU874145-T-L003	exome	agilent	s3://testbucketcmo/testdata/fastq/small_Variants1-N_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_Variants1-N_L001_R2_xxx.fastq.gz
+DU874146-N	DU874146-N-L002	exome	agilent	s3://testbucketcmo/testdata/fastq/small_MHC2-N_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_MHC2-N_L001_R2_xxx.fastq.gz
+DU874146-N	DU874146-N-L003	exome	agilent	s3://testbucketcmo/testdata/fastq/small_Variants1-N_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_Variants1-N_L001_R2_xxx.fastq.gz
+DU874146-T	DU874146-T-L002	exome	agilent	s3://testbucketcmo/testdata/fastq/small_MHC2-T_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_MHC2-T_L001_R2_xxx.fastq.gz
+DU874146-T	DU874146-T-L003	exome	agilent	s3://testbucketcmo/testdata/fastq/small_Variants1-T_L001_R1_xxx.fastq.gz	s3://testbucketcmo/testdata/fastq/small_Variants1-T_L001_R2_xxx.fastq.gz
+DU874145-N	DU874145-N-L001	exome	agilent	s3://testbucketcmo/testdata/fastq/DU874145-N_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/testdata/fastq/DU874145-N_IGO_00000_TEST_L001_R2_001.fastq.gz
+DU874145-T	DU874145-T-L001	exome	agilent	s3://testbucketcmo/testdata/fastq/DU874145-T_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/testdata/fastq/DU874145-T_IGO_00000_TEST_L001_R2_001.fastq.gz
+DU874146-N	DU874146-N-L001	exome	agilent	s3://testbucketcmo/testdata/fastq/DU874145-N_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/testdata/fastq/DU874145-N_IGO_00000_TEST_L001_R2_001.fastq.gz
+DU874146-T	DU874146-T-L001	exome	agilent	s3://testbucketcmo/testdata/fastq/DU874145-T_IGO_00000_TEST_L001_R1_001.fastq.gz	s3://testbucketcmo/testdata/fastq/DU874145-T_IGO_00000_TEST_L001_R2_001.fastq.gz

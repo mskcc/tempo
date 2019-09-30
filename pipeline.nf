@@ -146,6 +146,7 @@ referenceMap = defineReferenceMap()
 ================================================================================
 */
 
+
 // Skip these processes if starting from aligned BAM files
 if (!params.bam_pairing) {
 
@@ -177,33 +178,52 @@ if (!params.bam_pairing) {
       set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-      readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-      // Different resource requirements for AWS and LSF
-      // WES should use mem - 1 for bwa mem & samtools sort
-      // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
-      if (params.mem_per_core) { 
-        if ('wes' in assay){
-          mem = task.memory.toString().split(" ")[0].toInteger() - 1
-        }
-        else if ('wgs' in assay){
-          mem = task.memory.toString().split(" ")[0].toInteger() - 3
-        }
+
+    inputSize = sizeFastqFile1 + sizeFastqFile2
+    if (workflow.profile == "juno") {
+      if(inputSize > 20.GB){
+        task.time = { 72.h }
+      }
+      else if (inputSize < 12.GB){
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        if ('wes' in assay){
-          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-        }
-        else if ('wgs' in assay){
-          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
-        }
-      } 
-      """
-      set -e
-      set -o pipefail
-      fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-      bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
-      samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
-      """
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+
+    mem = (inputSize/1024**2).round()
+    memDivider = params.mem_per_core ? 1 : task.cpus
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    originalMem = task.attempt ==1 ? task.memory : originalMem
+
+    if ( mem < 6 * 1024 / task.cpus ) {
+    // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
+        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt) + 0.5).round() + " GB" }
+        mem = (5.4 * 1024 / task.cpus).round()
+    }
+    else if ( mem / memDivider * (1 + 0.1 * task.attempt) > originalMem.toMega() ) {
+    // if file size is too big, use task.memory as the max mem for this task, and decrease -M for `samtools sort` by 10% everytime retry
+        mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt) + 0.5).round()
+    }
+    else {
+    // normal situation, `samtools sort` -M = inputSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
+        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024 + 0.5).round() + " GB" }
+        mem = mem
+    }
+
+    task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
+
+    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+    """
+    set -e
+    set -o pipefail
+    fastp --html ${lane}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2}
+    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
+
+    samtools sort -m ${mem}M -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
+    echo -e "${lane}\t${inputSize}" > file-size.txt
+    """
   }
 
   sortedBam.groupTuple().set{ groupedBam }
@@ -256,19 +276,21 @@ if (!params.bam_pairing) {
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
-    if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200) {
-        task.time = { 32.h }
+    if (workflow.profile == "juno" && params.assayType == "exome") {
+      if(bam.size() > 200.GB) {
+        task.time = { 72.h }
       }
-      else if (bam.size()/1024**3 < 100) {
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
-    javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 1) + "g'"
+    maxMem = (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 3)
+    maxMem = maxMem < 4 ? 5 : maxMem
+    javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
     gatk MarkDuplicates \
       ${javaOptions} \
@@ -310,25 +332,34 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
-    if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 480) {
-        task.time = { 32.h }
-      }
-      else if (bam.size()/1024**3 < 240) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (task.attempt < 3){
+      sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
+      if (workflow.profile == "juno") {
+        if (bam.size() > 480.GB) {
+          task.time = { 72.h }
+        }
+        else if (bam.size() < 240.GB) {
+          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        }
+        else {
+          task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+        }
       }
     }
+    else {
+      sparkConf = " BaseRecalibrator"
+      task.cpus = 1
+      task.memory = { 4.GB }
+      task.time = { 72.h }
+    }
+
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
-    gatk BaseRecalibratorSpark \
-      ${javaOptions} \
+    gatk \
       ${sparkConf} \
+      ${javaOptions} \
       --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
@@ -361,30 +392,43 @@ if (!params.bam_pairing) {
       val(targetFile) into targets
 
     script:
-    if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 200){
-        task.time = { 32.h }
+
+    if (task.attempt < 3){
+      sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
+      if (workflow.profile == "juno") {
+        if (bam.size() > 200.GB){
+          task.time = { 72.h }
+        }
+        else if (bam.size() < 100.GB) {
+          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        }
+        else {
+          task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+        }
       }
-      else if (bam.size()/1024**3 < 100) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
+    }
+    else {
+      sparkConf = " ApplyBQSR"
+      task.cpus = 1
+      task.memory = { 4.GB }
+      task.time = { 72.h }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
     """
-    gatk ApplyBQSRSpark \
-      ${javaOptions} \
+    gatk \
       ${sparkConf} \
+      ${javaOptions} \
       --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
       --input ${bam} \
       --output ${idSample}.bam
+    if [[ -f ${idSample}.bai ]]; then
+      mv ${idSample}.bai ${idSample}.bam.bai
+    fi
+    echo -e "${idSample}\t${bam.size()}" > file-size.txt
     """
   }
 
@@ -483,14 +527,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
-        task.time = { 32.h }
+      if(bam.size() > 200.GB){
+        task.time = { 72.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size() < 100.GB){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
 
@@ -540,15 +584,15 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
-    if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
-        task.time = { 32.h }
+    if (workflow.profile == "juno" && params.assayType == "exome") {
+      if(bam.size() > 200.GB){
+        task.time = { 72.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size() < 100.GB){
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
 
@@ -1847,7 +1891,7 @@ process SomaticAggregateFacets {
   cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
   awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
-  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
+  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode"  || [[ \$? == 1 ]] >> cna_armlevel.txt
   """
 }
 
@@ -2561,7 +2605,7 @@ allBamFiles = bamsForPileup.map{
     def baiNormal = item[7]
 
     return [[idTumor, idNormal], [bamTumor, bamNormal], [baiTumor, baiNormal]]
-}.transpose()
+}.transpose().unique()
 
 process QcPileup {
   tag {idSample}
