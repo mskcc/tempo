@@ -26,7 +26,7 @@ class TempoUtils {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-      checkNumberOfItem(row, 6)
+      checkNumberOfItem(row, 5)
       def idSample = row.SAMPLE
       def assayValue = row.ASSAY
       def targetFile = row.TARGET
@@ -139,8 +139,8 @@ class TempoUtils {
     // parse tsv
     file(inputFilename).eachLine { line ->
         if (!line.isEmpty()){
-            def (sample, lane, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
-            totalList << sample + "_" + lane
+            def (sample, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
+            totalList << sample + "_" + fastqpe1.baseName
         }
     }
     // remove header 'SAMPLE_LANE'
