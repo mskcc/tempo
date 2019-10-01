@@ -138,9 +138,9 @@ class TempoUtils {
     def totalList = []
     // parse tsv
     file(inputFilename).eachLine { line ->
-        if (!line.isEmpty()){
+        if (!line.isEmpty()) {
             def (sample, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
-            totalList << sample + "_" + fastqpe1.baseName
+            totalList << sample + "_" + file(fastqpe1).baseName
         }
     }
     // remove header 'SAMPLE_LANE'
