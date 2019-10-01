@@ -32,7 +32,7 @@ class TempoUtils {
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def sizeFastqFile1 = fastqFile1.size()
-      def lane = fastqFile1.baseName.replace("_R1","").replace("\\.fastq\\.gz","")
+      def fastqPairs = fastqFile1.baseName.replace("_R1","").replace("\\.fastq\\.gz","")
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def sizeFastqFile2 = fastqFile2.size()
 
@@ -48,7 +48,7 @@ class TempoUtils {
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
 
-      [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
+      [idSample, fastqPairs, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
     }
   }
 
@@ -133,7 +133,7 @@ class TempoUtils {
     }
   }
 
-  // check lane names are unique in input mapping *tsv 
+  // check fastqPairs names are unique in input mapping *tsv 
   static def checkForUniqueSampleLanes(inputFilename) {
     def totalList = []
     // parse tsv
