@@ -104,10 +104,10 @@ if (params.mapping) {
     exit 1
   }
 
-  if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
-    println "ERROR: The combination of sample ID and lane names values must be unique. Duplicate lane names for one sample cause errors. Please fix the error and re-run the pipeline."
-    exit 1
-  }
+  // if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
+  //   println "ERROR: The combination of sample ID and lane names values must be unique. Duplicate lane names for one sample cause errors. Please fix the error and re-run the pipeline."
+  //   exit 1
+  // }
 }
 
 // Validate pairing file
