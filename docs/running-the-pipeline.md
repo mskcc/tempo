@@ -31,6 +31,7 @@ The `assayType` argument is for resource allocation. This should also be specifi
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
 * `-publishAll` is a boolean, resulting in retention of intermediate output files.
 * `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
+* `--conpair_all` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run.
 
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
@@ -149,6 +150,10 @@ bsub -W 80:00 -n 1 -R "rusage[mem=15]" -o nf_output.out -e nf_output.err \
     --outDir results \
     -profile juno
 ```
+
+::: warning Be aware
+Whereas a few exome samples finish within a few hours, larger batches and genomes will take day.s. Allow for this by setting`-W` to a good amount of hours. The pipeline will die if the leader job does, but can be [resumed](running-the-pipelinf.md#modifying-or-resuming-pipeline-run) subsequently. 
+:::
 
 ### Running From a `screen` Session
 
