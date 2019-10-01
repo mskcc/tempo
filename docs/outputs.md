@@ -23,15 +23,19 @@ qc
 ├── collecthsmetrics
 ├── conpair
 ├── fastp
-└── alignment_qc.txt
+├── alignment_qc.txt
+├── concordance_qc.txt
+└── contamination_qc.txt
 ```
 
 These outputs are:
 - `fastp` (folder): An HTML report for each FASTQ file pair per sample.
 - `alfred` (folder): A per-sample and per-readgroup BAM file alignment metrics in text and PDF files.
 - `collectshsmetrics` (folder): For exomes, per-sample hybridisation-selection metrics in the.
-- `conpair` (folder): Per tumor-normal-pair contamination and sample concordance estimates.
+- `conpair` (folder): Per tumor-normal-pair, the Conpair-generated SNP pileup files.
 - `alignment_qc.txt`: Aggregated read-alignments statistics file, from the `alfred` and `collectshsmetrics` folders.
+- `concordance_qc.txt`: Aggregated tumor-normal sample concordance estimates from Conpair.
+- `contamination_qc.txt`: Aggregated sample contamination estimates from Conpair.
 
 ## Somatic data
 
@@ -39,7 +43,7 @@ The result of the somatic analyses is output in summarized forms in the `somatic
 
 ```shell
 somatic
-├── cna
+├── facets
 ├── mut_somatic.maf
 ├── mut_somatic_neoantigens.txt
 ├── cna_armlevel.txt
@@ -47,7 +51,7 @@ somatic
 ├── cna_hisens.seg
 ├── cna_purity.seg
 ├── cna_facets_run_info.txt
-├── sv_somatic.vcf.gz
+├── sv_somatic.vcf.{gz,.gz.tbi}
 └── sample_data.txt
 ```
 
@@ -66,7 +70,7 @@ The result of the germline analyses is output in summarized forms in the `germli
 ```shell
 germline/
 ├── mut_germline.maf
-└── sv_germline.vcf.gz
+└── sv_germline.{gz,.gz.tbi}
 ```
 
 These outputs are:
