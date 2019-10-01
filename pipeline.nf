@@ -221,7 +221,8 @@ if (!params.bam_pairing) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    readGroup = "@RG\\tID:${fastqFile1.baseName.split(\"_?R1_?(?!.*R1)\")[0]}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+    lane = fastqFile1.baseName.split("_?R1_?(?!.*R1)")[0]
+    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     """
     set -e
     set -o pipefail
