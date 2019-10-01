@@ -1,6 +1,6 @@
 # Juno Setup
 
-The [Juno compute cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler and which Tempo is configured to work with.
+The [Juno compute cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler which Tempo is configured to work with.
 
 ## Singularity Containers
 
@@ -38,3 +38,14 @@ export PATH=$JAVA_HOME/bin:$PATH
 ```
 The call `which java` should return `/opt/common/CentOS_7/java/jdk1.8.0_202/bin/java` if you have done this correctly.
 
+## Test Your Environment
+
+You can run a the pipeline on small test files to ensure that you are ready to run real data. If you experience any issues, something in your environment might be the reason. The following should take approximately 30 minutes and all tasks should succeed at first attempt:
+
+```shell
+nextflow run pipeline.nf --somatic --germline \
+    --mapping test_inputs/local/full_test_mapping.tsv \ 
+    --pairing test_inputs/local/full_test_pairing.tsv \
+    -profile test_singularity \
+    --outDir results
+```
