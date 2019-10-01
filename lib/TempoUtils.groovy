@@ -32,9 +32,11 @@ class TempoUtils {
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def sizeFastqFile1 = fastqFile1.size()
-      def fastqPairs = fastqFile1.baseName.replace("_R1","").replace("\\.fastq\\.gz","")
+      def fastqPairs = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "")
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def sizeFastqFile2 = fastqFile2.size()
+      def lane = flowcellLaneFromFastq(fastqFile1)[0] + "-" + flowcellLaneFromFastq(fastqFile1)[1]
+      // https://gatkforums.broadinstitute.org/gatk/discussion/6747
 
       def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
 
@@ -48,8 +50,38 @@ class TempoUtils {
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
 
-      [idSample, fastqPairs, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
+      [idSample, fastqPairs, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile,lane]
     }
+  }
+
+ static def flowcellLaneFromFastq(path) {
+    // https://github.com/SciLifeLab/Sarek/blob/917a4d7f4dceb5a524eb7bd1c287cd197febe9c0/main.nf#L639-L666
+    // parse first line of a FASTQ file (optionally gzip-compressed)
+    // and return the flowcell id and lane number.
+    // expected format:
+    // xx:yy:FLOWCELLID:LANE:... (seven fields)
+    // or
+    // FLOWCELLID:LANE:xx:... (five fields)
+    InputStream fileStream = new FileInputStream(path.toFile())
+    InputStream gzipStream = new java.util.zip.GZIPInputStream(fileStream)
+    Reader decoder = new InputStreamReader(gzipStream, 'ASCII')
+    BufferedReader buffered = new BufferedReader(decoder)
+    def line = buffered.readLine()
+    assert line.startsWith('@')
+    line = line.substring(1)
+    def fields = line.split(' ')[0].split(':')
+    String fcid
+    int lane
+    if (fields.size() == 7) {
+      // CASAVA 1.8+ format
+      fcid = fields[2]
+      lane = fields[3].toInteger()
+    }
+    else if (fields.size() == 5) {
+      fcid = fields[0]
+      lane = fields[1].toInteger()
+    }
+    [fcid, lane]
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'

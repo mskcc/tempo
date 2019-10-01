@@ -104,10 +104,10 @@ if (params.mapping) {
     exit 1
   }
 
-  // if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
-  //   println "ERROR: The combination of sample ID and fastqPairs names values must be unique. Duplicate fastqPairs names for one sample cause errors. Please fix the error and re-run the pipeline."
-  //   exit 1
-  // }
+  if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
+    println "ERROR: The combination of sample ID and fastqPairs names values must be unique. Duplicate fastqPairs names for one sample cause errors. Please fix the error and re-run the pipeline."
+    exit 1
+  }
 }
 
 // Validate pairing file
@@ -157,7 +157,7 @@ if (!params.bam_pairing) {
   pairingTN = TempoUtils.extractPairing(pairingFile)
   fastqFiles = TempoUtils.extractFastq(mappingFile)
 
-  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, fastqPairs.size()), fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
+  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane -> tuple( groupKey(key, fastqPairs.size()), fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -169,7 +169,7 @@ if (!params.bam_pairing) {
     }
 
     input:
-      set idSample, fastqPairs, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
+      set idSample, fastqPairs, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, lane from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
@@ -221,7 +221,6 @@ if (!params.bam_pairing) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    lane = fastqFile1.baseName.split("_?R1_?(?!.*R1)")[0]
     readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     """
     set -e
