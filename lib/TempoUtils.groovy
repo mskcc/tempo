@@ -32,12 +32,11 @@ class TempoUtils {
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def sizeFastqFile1 = fastqFile1.size()
-      def fastqPairs = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "")
+      def fastqPair = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "")
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def sizeFastqFile2 = fastqFile2.size()
-      def lane = flowcellLaneFromFastq(fastqFile1)[0] + "-" + flowcellLaneFromFastq(fastqFile1)[1]
-      // https://gatkforums.broadinstitute.org/gatk/discussion/6747
-
+      def lane = flowcellLaneFromFastq(fastqFile1)
+      
       def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
 
       if ((assay == "genome") || (assay == "wgs")) {
@@ -50,7 +49,7 @@ class TempoUtils {
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
 
-      [idSample, fastqPairs, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile,lane]
+      [idSample, fastqPair, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile, lane]
     }
   }
 
@@ -74,14 +73,14 @@ class TempoUtils {
     int lane
     if (fields.size() == 7) {
       // CASAVA 1.8+ format
-      fcid = fields[2]
+      fcid = fields[0] + "-" + fields[1] + "" + fields[2]
       lane = fields[3].toInteger()
     }
     else if (fields.size() == 5) {
       fcid = fields[0]
       lane = fields[1].toInteger()
     }
-    [fcid, lane]
+    fcid + "-" + lane
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
