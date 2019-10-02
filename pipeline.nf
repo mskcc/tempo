@@ -157,7 +157,7 @@ if (!params.bam_pairing) {
   pairingTN = TempoUtils.extractPairing(pairingFile)
   fastqFiles = TempoUtils.extractFastq(mappingFile)
 
-  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane -> tuple( groupKey(key, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane)}.transpose()
+  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID -> tuple( groupKey(key, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -169,7 +169,7 @@ if (!params.bam_pairing) {
     }
 
     input:
-      set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, lane from fastqFiles
+      set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, rgID from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
@@ -221,7 +221,7 @@ if (!params.bam_pairing) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+    readGroup = "@RG\\tID:${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     """
     set -e
     set -o pipefail
