@@ -11,7 +11,7 @@ Alignment and QC
     --- Map paired-end FASTQs with bwa mem
     --- Sort BAM with samtools sort
     --- FASTQ QC with FastP 
- - MergeBam --- Merge BAM for the same samples from different fastqPairs, samtools merge
+ - MergeBam --- Merge BAM for the same samples from different fileID, samtools merge
  - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
  - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
  - RecalibrateBam --- Recalibrate Bam with GATK4 ApplyBQSR
@@ -90,7 +90,7 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 } 
 
 // Validate mapping file
-// Check for duplicate inputs, mixed assay types and unique fastqPairs names
+// Check for duplicate inputs, mixed assay types and unique fileID
 if (params.mapping) {
   mappingPath = params.mapping
   
@@ -105,7 +105,7 @@ if (params.mapping) {
   }
 
   // if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
-  //   println "ERROR: The combination of sample ID and fastqPairs names values must be unique. Duplicate fastqPairs names for one sample cause errors. Please fix the error and re-run the pipeline."
+  //   println "ERROR: The combination of sample ID and fileID values must be unique. Duplicate fileID for one sample cause errors. Please fix the error and re-run the pipeline."
   //   exit 1
   // }
 }
@@ -158,11 +158,11 @@ if (!params.bam_pairing) {
   fastqFiles = TempoUtils.extractFastq(mappingFile)
   println fastqFiles
 
-  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane -> tuple( groupKey(key, fastqPairs.size()), fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane)}.transpose()
+  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane -> tuple( groupKey(key, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane)}.transpose()
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
-    tag {idSample + "@" + fastqPairs}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
     publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
     if (publishAll) { 
@@ -170,13 +170,13 @@ if (!params.bam_pairing) {
     }
 
     input:
-      set idSample, fastqPairs, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, lane from fastqFiles
+      set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, lane from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
-      set idSample, fastqPairs, file("${fastqPairs}.sorted.bam"), assay, targetFile into sortedBam
+      set idSample, fileID, file("${fileID}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
     // LSF resource allocation for juno
@@ -226,11 +226,11 @@ if (!params.bam_pairing) {
     """
     set -e
     set -o pipefail
-    echo -e "${idSample}@${fastqPairs}\t${inputSize}" > file-size.txt
-    fastp --html ${fastqPairs}.fastp.html --in1 ${fastqFile1} --in2 ${fastqFile2}
-    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${fastqPairs}.bam
+    echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
+    fastp --html ${fileID}.fastp.html --json ${fileID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
+    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${fileID}.bam
 
-    samtools sort -m ${mem}M -@ ${task.cpus} -o ${fastqPairs}.sorted.bam ${fastqPairs}.bam
+    samtools sort -m ${mem}M -@ ${task.cpus} -o ${fileID}.sorted.bam ${fileID}.bam
     """
   }
 
@@ -238,7 +238,7 @@ if (!params.bam_pairing) {
 
   groupedBam = groupedBam.map{ item -> 
     def idSample = item[0]
-    def fastqPairs = item[1] //is a list
+    def fileID = item[1] //is a list
     def bam = item[2]
   
     def assayList = item[3].unique()
@@ -252,7 +252,7 @@ if (!params.bam_pairing) {
     def assay = assayList[0]
     def target = targetList[0]
 
-    [idSample, fastqPairs, bam, assay, target]
+    [idSample, fileID, bam, assay, target]
   }
 
   // MergeBams
@@ -260,10 +260,10 @@ if (!params.bam_pairing) {
     tag {idSample}
 
     input:
-      set idSample, fastqPairs, file(bam), assay, targetFile from groupedBam
+      set idSample, fileID, file(bam), assay, targetFile from groupedBam
 
     output:
-      set idSample, fastqPairs, file("${idSample}.merged.bam"), assay, targetFile into mergedBam
+      set idSample, fileID, file("${idSample}.merged.bam"), assay, targetFile into mergedBam
 
     script:
     """
@@ -276,10 +276,10 @@ if (!params.bam_pairing) {
     tag {idSample}
 
     input:
-      set idSample, fastqPairs, file(bam), assay, targetFile from mergedBam
+      set idSample, fileID, file(bam), assay, targetFile from mergedBam
 
     output:
-      set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, fastqPairs, assay, targetFile into duplicateMarkedBams
+      set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, fileID, assay, targetFile into duplicateMarkedBams
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), assay, targetFile into markDuplicatesTSV
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
@@ -313,7 +313,7 @@ if (!params.bam_pairing) {
   }
 
   duplicateMarkedBams = duplicateMarkedBams.map {
-      bam, bai, idSample, fastqPairs, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
+      bam, bai, idSample, fileID, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
       [idSample, bam, bai, assay, targetFile]
   }
 
