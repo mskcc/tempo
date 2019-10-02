@@ -32,10 +32,10 @@ class TempoUtils {
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def sizeFastqFile1 = fastqFile1.size()
-      def fastqPair = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "")
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def sizeFastqFile2 = fastqFile2.size()
       def lane = flowcellLaneFromFastq(fastqFile1)
+      def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "-" + lane
       
       def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
 
@@ -49,7 +49,7 @@ class TempoUtils {
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
 
-      [idSample, fastqPair, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile, lane]
+      [idSample, fileID, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile, lane]
     }
   }
 
@@ -164,7 +164,8 @@ class TempoUtils {
     }
   }
 
-  // check fastqPairs names are unique in input mapping *tsv 
+  // check fileIDs are unique in input mapping *tsv
+  // not functional for now
   static def checkForUniqueSampleLanes(inputFilename) {
     def totalList = []
     // parse tsv
