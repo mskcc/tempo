@@ -104,10 +104,10 @@ if (params.mapping) {
     exit 1
   }
 
-  if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
-    println "ERROR: The combination of sample ID and fastqPairs names values must be unique. Duplicate fastqPairs names for one sample cause errors. Please fix the error and re-run the pipeline."
-    exit 1
-  }
+  // if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
+  //   println "ERROR: The combination of sample ID and fastqPairs names values must be unique. Duplicate fastqPairs names for one sample cause errors. Please fix the error and re-run the pipeline."
+  //   exit 1
+  // }
 }
 
 // Validate pairing file
@@ -156,6 +156,7 @@ if (!params.bam_pairing) {
   pairingFile = file(pairingPath)
   pairingTN = TempoUtils.extractPairing(pairingFile)
   fastqFiles = TempoUtils.extractFastq(mappingFile)
+  println fastqFiles
 
   fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane -> tuple( groupKey(key, fastqPairs.size()), fastqPairs, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane)}.transpose()
 
