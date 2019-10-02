@@ -156,7 +156,6 @@ if (!params.bam_pairing) {
   pairingFile = file(pairingPath)
   pairingTN = TempoUtils.extractPairing(pairingFile)
   fastqFiles = TempoUtils.extractFastq(mappingFile)
-  println fastqFiles
 
   fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane -> tuple( groupKey(key, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, lane)}.transpose()
 
