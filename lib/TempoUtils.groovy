@@ -34,8 +34,8 @@ class TempoUtils {
       def sizeFastqFile1 = fastqFile1.size()
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def sizeFastqFile2 = fastqFile2.size()
-      def lane = flowcellLaneFromFastq(fastqFile1)
-      def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "-" + lane
+      def rgID = flowcellLaneFromFastq(fastqFile1)
+      def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "-" + rgID
       
       def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
 
@@ -49,14 +49,14 @@ class TempoUtils {
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
 
-      [idSample, fileID, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile, lane]
+      [idSample, fileID, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile, rgID]
     }
   }
 
  static def flowcellLaneFromFastq(path) {
     // https://github.com/SciLifeLab/Sarek/blob/917a4d7f4dceb5a524eb7bd1c287cd197febe9c0/main.nf#L639-L666
     // parse first line of a FASTQ file (optionally gzip-compressed)
-    // and return the flowcell id and lane number.
+    // and return the flowcell id and rgID number.
     // expected format:
     // xx:yy:FLOWCELLID:LANE:... (seven fields)
     // or
@@ -70,17 +70,18 @@ class TempoUtils {
     line = line.substring(1)
     def fields = line.split(' ')[0].split(':')
     String fcid
-    int lane
+    int rgID
     if (fields.size() == 7) {
       // CASAVA 1.8+ format
+      // we include instrument name and run id in fcid to ensure the uniqueness
       fcid = fields[0] + "-" + fields[1] + "" + fields[2]
-      lane = fields[3].toInteger()
+      rgID = fields[3].toInteger()
     }
     else if (fields.size() == 5) {
       fcid = fields[0]
-      lane = fields[1].toInteger()
+      rgID = fields[1].toInteger()
     }
-    fcid + "-" + lane
+    fcid + "-" + rgID
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
