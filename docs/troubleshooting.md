@@ -71,5 +71,3 @@ singularity pull  --name cmopipeline-fastp-1.0.0.img docker://cmopipeline/fastp:
 ::: warning Be aware
 The command `singularity pull` tends to take quite some time to run, and often slows down the login server for everyone. We recommend you don't do this often. Setting the variable `NXF_SINGULARITY_CACHEDIR` to a location with already-downloaded images would be far more efficient.
 :::
-
-

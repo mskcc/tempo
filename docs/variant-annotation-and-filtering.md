@@ -9,12 +9,12 @@
 
 Variant-level annotation, filtering, and flagging of variants with further filter flags occur in the `SomaticCombineChannel` and `SomaticAnnotateMaf` processes. The union of variants that pass the somatic scoring models intrinsic to the callers (`FILTER="PASS"` in the VCF files) are combined, giving precedence to MuTect2 for any site where both callers detected a variant. 
 
-The functional effect of variants is predicted using [VEP](https://www.ensembl.org/vep) using [vcf2maf](https://github.com/mskcc/vcf2maf), which also converts from VCF into a tab-delimited MAF file. See notes on use of [preferred transcript isoforms](reference-resources.md#preferred-transcript-isoforms) and [VEP annotation outputs](https://useast.ensembl.org/info/docs/tools/vep/vep_formats.html#output).
+The functional effect of variants is predicted using [VEP](https://www.ensembl.org/vep) using [vcf2maf](https://github.com/mskcc/vcf2maf), which also converts from VCF into a tab-delimited MAF file. See notes on use of [preferred transcript isoforms](reference-files.md#preferred-transcript-isoforms) and [VEP annotation outputs](https://useast.ensembl.org/info/docs/tools/vep/vep_formats.html#output).
 
 The following columns are added to the final MAF file, in addition to those added during the VEP annotation:
 - `Strelka2FILTER`: Indicates that Strelka2 detected the variant but did not classify it as a somatic variant.
 - `gnomAD_FILTER`: Indicates that the variant was detected in the gnomAD workflow, but ultimately _not_ classified as a _germline_ variant. Note that this is not used in current filtering schema.
-- `RepeatMasker` and `EncodeDacMapability`: The variant locus is in a repeat, low-mappability, or hard-to-sequence region. More details in the [reference file description](reference-resources.md#repeatmasker-and-mappability-blacklist).
+- `RepeatMasker` and `EncodeDacMapability`: The variant locus is in a repeat, low-mappability, or hard-to-sequence region. More details in the [reference file description](reference-files.md#repeatmasker-and-mappability-blacklist).
 - `PoN`: Panel-of-normals, the number of normal samples in which the variant was detected. [More details on the implementation for exomes](wes-panel-of-normals.md). Under development for genomes, currently applies exome PoN. 
 - `Ref_Tri`: Trinucleotide context of SNVs, normalized to pyrimidine-to-purine transversions.
 - gnomAD allele frequencies, [more details here](gnomad.md):

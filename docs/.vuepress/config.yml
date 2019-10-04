@@ -32,7 +32,7 @@ themeConfig:
         - "/aws-glossary"
         - "/contributing-to-tempo"
         - "/acknowledgements"
-  repo: mskcc/vaporware
+  repo: mskcc/tempo
   docsBranch: 'develop'
 plugins:
 - - vuepress-plugin-medium-zoom
