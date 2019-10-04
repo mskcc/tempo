@@ -2,6 +2,17 @@
 
 The [Juno compute cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler which Tempo is configured to work with.
 
+## Temporary Files
+
+The pipeline processes will write temporary files to the directory defined by the `TMPDIR` variable in the user environment on the compute node where it is active. On Juno, this should point to `/scratch`, so make sure you set this in your bash profile as such:
+```shell
+export TMPDIR=/scratch/username
+```
+
+::: danger Warning
+Each compute node has a `/scratch` directory. If you inadvertently fill up this directory on a given node, processes that require a lot of space might fail on this node. If you supsect this to be the case, you can check your disk usage by doing `ssh -A nodename "du -hs /scratch/username"`. If necessary, you can clean up this directory by doing `ssh -A nodename "rm -rf /scratch/username/*"`.
+:::
+
 ## Singularity Containers
 
 As described in the page about [containers](working-with-containers.md), execution of Tempo on Juno requires Singularity. 
@@ -23,7 +34,6 @@ or:
 export PATH=/opt/local/singularity/3.1.1/bin:$PATH
 ```
 The command `which singularity` should return `/opt/local/singularity/3.1.1/bin/singularity` if you have done this correctly. 
-
 
 ## Java Version
 
