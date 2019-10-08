@@ -19,7 +19,7 @@ executor {
 
 process {
   queue = <AWS-BATCH-QUEUE-ARN>
-  scratch = '/scratch'
+  scratch = true
   errorStrategy = { task.attempt <= 3 ? 'retry' : 'ignore' }
   maxRetries = 3
 }
@@ -34,7 +34,7 @@ params {
 
 env {
   TMPDIR = '/scratch'
-  SPARK_LOCAL_DIRS = '/scratch'
+  SPARK_LOCAL_DIRS = './'
 }
 
 process {
