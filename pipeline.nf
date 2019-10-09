@@ -301,7 +301,7 @@ if (!params.bam_pairing) {
     """
     gatk MarkDuplicates \
       ${javaOptions} \
-      --TMP_DIR ${TMPDIR} \
+      --TMP_DIR ./ \
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
@@ -367,7 +367,6 @@ if (!params.bam_pairing) {
     gatk \
       ${sparkConf} \
       ${javaOptions} \
-      --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
       ${knownSites} \
@@ -427,7 +426,6 @@ if (!params.bam_pairing) {
     gatk \
       ${sparkConf} \
       ${javaOptions} \
-      --tmp-dir ${TMPDIR} \
       --reference ${genomeFile} \
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
