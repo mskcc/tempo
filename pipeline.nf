@@ -160,7 +160,6 @@ if (!params.bam_pairing) {
   if (params.splitLanes) {
   inputForSplitLanes =  inputFastqs
         .map{ item ->
-	    def key = item[0]
             def idSample = item[0]
             def fileID = item[1]
             def file_pe1 = item[2]
@@ -168,11 +167,11 @@ if (!params.bam_pairing) {
             def assay = item[4]
             def targetFile = item[5]
 
-            return [ key, idSample, fileID, file_pe1, file_pe2, assay, targetFile ]
+            return [ idSample, fileID, file_pe1, file_pe2, assay, targetFile ]
         }
 	.groupTuple(by: [0])
-	.map{ key, idSample, fileID, files_pe1, files_pe2, assays, targets
-		-> tuple( groupKey(key, fileID.size()), idSample, fileID, files_pe1, files_pe2, assays, targets)
+	.map{ idSample, fileID, files_pe1, files_pe2, assays, targets
+		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, assays, targets)
 	}
 	.transpose()
 
@@ -180,10 +179,10 @@ if (!params.bam_pairing) {
     tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set key, idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputForSplitLanes
+      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputForSplitLanes
 
     output:
-      set key, idSample, fileID, file("*R1.splitLanes.fastq.gz"), file("*R2.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqs
+      set idSample, fileID, file("*R1.splitLanes.fastq.gz"), file("*R2.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqs
 
     when: params.splitLanes
 
@@ -197,27 +196,36 @@ if (!params.bam_pairing) {
   }
 
   fastqFiles = perLaneFastqs
+        .map{ item ->
+            def idSample = item[0]
+            def fileID = item[1]
+            def file_pe1 = item[2]
+            def file_pe2 = item[3]
+            def assay = item[4]
+            def targetFile = item[5]
+	    def numOfLanes = file_pe1 instanceof Collection ? file_pe1.size() : 1
+
+            return [ idSample, fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes ]
+        }
 	.groupTuple(by: [0])
+	.map { idSample, fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes
+		-> tuple(groupKey(idSample, numOfLanes.sum()), fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes)
+	}
 	.transpose()
         .transpose()
 	.map{ item ->
-	    def idSample = item[1]
-	    def fileID = item[2] + "@" + TempoUtils.flowcellLaneFromFastq(item[3])[1]
-	    def file_pe1 = item[3]
-	    def file_pe1_size = item[3].size()
-	    def file_pe2 = item[4]
-	    def file_pe2_size = item[4].size()
-	    def assay = item[5]
-	    def targetFile = item[6]
-	    def rgID = TempoUtils.flowcellLaneFromFastq(item[3])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[3])[1]
+	    def idSample = item[0]
+	    def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def file_pe1 = item[2]
+	    def file_pe1_size = item[2].size()
+	    def file_pe2 = item[3]
+	    def file_pe2_size = item[3].size()
+	    def assay = item[4]
+	    def targetFile = item[5]
+	    def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
 
 	    return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID ]
 	}
-	.groupTuple(by: [0])
-        .map { key, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID
-                -> tuple( groupKey(key, fileID.size()), fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID)
-        }
-        .transpose()
   }
   else{
      fastqFiles =  inputFastqs
@@ -235,8 +243,8 @@ if (!params.bam_pairing) {
             return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID ]
         }
 	.groupTuple(by:[0])
-	.map{ key, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID
-		-> tuple( groupKey(key, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID)}
+	.map{ idSample, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID
+		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID)}
 	.transpose()
   }
 
