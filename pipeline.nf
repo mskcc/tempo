@@ -182,7 +182,7 @@ if (!params.bam_pairing) {
       set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR1
 
     output:
-      file("file-size.txt") into fileSize
+      file("file-size.txt") into R1Size
       set idSample, fileID, file("*R1.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR1
 
     when: params.splitLanes
@@ -213,7 +213,7 @@ if (!params.bam_pairing) {
       set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR2
 
     output:
-      file("file-size.txt") into fileSize
+      file("file-size.txt") into R2Size
       set idSample, fileID, file("*R2.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR2
 
     when: params.splitLanes
@@ -309,7 +309,7 @@ if (!params.bam_pairing) {
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
-      file("file-size.txt") into fileSize
+      file("file-size.txt") into laneSize
       set idSample, fileID, file("${fileID}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
@@ -529,7 +529,7 @@ if (!params.bam_pairing) {
       set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       file("${idSample}.bam") into currentBam
       file("${idSample}.bam.bai") into currentBai
-      file("file-size.txt") into fileSize
+      file("file-size.txt") into bamSize
       val(assay) into assays
       val(targetFile) into targets
 
@@ -1870,7 +1870,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
-    file("file-size.txt") into fileSize
+    file("file-size.txt") into mafSize
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
