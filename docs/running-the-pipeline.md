@@ -2,7 +2,7 @@
 
 ## Overview 
 
-This page provides instructions on how to run the pipeline through the `pipeline.nf` script. The basic command below shows how to run Tempo, with an explanation of flags and input arguments and files. Below is also described how to best [run the pipeline on Juno](run-pipeline.md#running-the-pipeline-on-juno) as well as [on AWS](run-pipeline.md#running-the-pipeline-on-aws).
+This page provides instructions on how to run the pipeline through the `pipeline.nf` script. The basic command below shows how to run Tempo, with an explanation of flags and input arguments and files. Below is also described how to best [run the pipeline on Juno](running-the-pipeline.md#running-the-pipeline-on-juno) as well as [on AWS](running-the-pipeline.md#running-the-pipeline-on-aws).
 
 ```shell
 nextflow run pipeline.nf \
@@ -21,7 +21,7 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `--assayType` ensures appropriate resources are allocated for indicated assay type.
 * `--outDir` is the directory where the output will end up. This directory does not need to exist. If not set, by default it will be set to run directory (i.e. the directory from which the command `nextflow run` is executed.)
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively.
-* The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the [test inputs subdirectory](../test_inputs).
+* The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the [test inputs subdirectory](https://github.com/mskcc/tempo/tree/master/test_inputs).
 
 ::: tip Note
 The `assayType` argument is for resource allocation. This should also be specified in [the mapping file](running-the-pipeline.md#the-mapping-file), but for the purpose of correct reference file usage.
@@ -120,6 +120,10 @@ The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` 
 
 ## Running the Pipeline on Juno
 
+::: tip Note
+First follow the instructions to [set up your enviroment on Juno](juno-setup.md).
+:::
+
 ### Submitting the Pipeline to LSF
 
 We recommend submitting your `nextflow run pipeline.nf <...>` command to the cluster via `bsub`, which will launch a leader job from which individual processes are submitted as jobs to the cluster.
@@ -129,8 +133,6 @@ bsub -W <hh:mm> -n 1 -R "rusage[mem=<requested memory>]" \
     -o <LSF output file name>.out -e <LSF error file name>.err \
     nextflow run pipeline.nf -profile juno <...> 
 ```
-
-It is **important** that users use a recent version of singularity, as detailed in [Juno setup](juno-setup.md).
 
 We recommend that users check the [documentation for LSF](https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.2/lsf_command_ref/bsub.1.html) to clarify each of the arguments above. However,
 
@@ -152,7 +154,7 @@ bsub -W 80:00 -n 1 -R "rusage[mem=15]" -o nf_output.out -e nf_output.err \
 ```
 
 ::: warning Be aware
-Whereas a few exome samples finish within a few hours, larger batches and genomes will take day.s. Allow for this by setting`-W` to a good amount of hours. The pipeline will die if the leader job does, but can be [resumed](running-the-pipelinf.md#modifying-or-resuming-pipeline-run) subsequently. 
+Whereas a few exome samples finish within a few hours, larger batches and genomes will take .s. Allow for this by setting`-W` to a good amount of hours. The pipeline will die if the leader job does, but can be [resumed](running-the-pipelinf.md#modifying-or-resuming-pipeline-run) subsequently. 
 :::
 
 ### Running From a `screen` Session
@@ -167,7 +169,9 @@ Users are welcome to use `nohup` or `tmux` as well.
 
 ## Running the Pipeline on AWS
 
+::: tip Note
 These instructions will assume the user is moderately knowledgeable of AWS. Please refer to [AWS Setup](aws-setup.md) and the [AWS Glossary](aws-glossary.md) we have curated.
+:::
 
 ## Modifying or Resuming Pipeline Run
 
@@ -184,11 +188,10 @@ This function also allows you to make changes to values in the `pipeline.nf` scr
 
 To resume the pipeline from a specific run, please read the pages here on using [resume](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html)and as well troubleshooting [resumed runs](https://www.nextflow.io/blog/2019/troubleshooting-nextflow-resume.html) for more complicated use cases.
 
-In order to resume from a specific time you ran the pipeline, first check the specific pipeline runs with `nextflow log`
+In order to resume from a specific time you ran the pipeline, first check the specific pipeline runs with `nextflow log`:
 
-
-```
-$ nextflow log
+```shell
+> nextflow log
 
 TIMESTAMP            DURATION  RUN NAME          STATUS  REVISION ID  SESSION ID                            COMMAND                                    
 2019-05-06 12:07:32  1.2s      focused_carson    ERR     a9012339ce   7363b3f0-09ac-495b-a947-28cf430d0b85  nextflow run hello                         
@@ -199,17 +202,17 @@ TIMESTAMP            DURATION  RUN NAME          STATUS  REVISION ID  SESSION ID
 
 Users can then restart the pipeline at specific run, using either the `RUN NAME` or the `SESSION ID`. For instance
 
-```
-$ nextflow run rnaseq-nf -resume mighty_boyd
+```shell
+> nextflow run rnaseq-nf -resume mighty_boyd
 ```
 
 or equivalently
 
-```
-$ nextflow run naseq-nf -resume 4dc656d2-c410-44c8-bc32-7dd0ea87bebf
+```shell
+> nextflow run naseq-nf -resume 4dc656d2-c410-44c8-bc32-7dd0ea87bebf
 ```
 
-Sometimes the resume feature may not work entirely as expected, as described in trouubleshooting tips [here on the Nextflow blog](https://www.nextflow.io/blog/2019/troubleshooting-nextflow-resume.html)
+Sometimes the resume feature may not work entirely as expected, as described in troubleshooting tips [here on the Nextflow blog](https://www.nextflow.io/blog/2019/troubleshooting-nextflow-resume.html)
 
 
 ## After Successful Run
