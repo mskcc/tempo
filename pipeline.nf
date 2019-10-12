@@ -158,7 +158,7 @@ if (!params.bam_pairing) {
   inputFastqs = TempoUtils.extractFastq(mappingFile)
 
   if (params.splitLanes) {
-  inputForSplitLanes =  inputFastqs
+  (inputFastqR1, inputFastqR2) =  inputFastqs
         .map{ item ->
             def idSample = item[0]
             def fileID = item[1]
@@ -173,36 +173,80 @@ if (!params.bam_pairing) {
 	.map{ idSample, fileID, files_pe1, files_pe2, assays, targets
 		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, assays, targets)
 	}
-	.transpose()
+	.transpose().into(2)
 
-  process SplitLanes {
-    tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
+  process SplitLanesR1 {
+    tag {idSample + "@" + fileID + "R1"}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputForSplitLanes
+      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR1
 
     output:
-      set idSample, fileID, file("*R1.splitLanes.fastq.gz"), file("*R2.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqs
+      file("file-size.txt") into fileSize
+      set idSample, fileID, file("*R1.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR1
 
     when: params.splitLanes
 
     script:
-    inputSize = fastqFile1.size() + fastqFile2.size()
+    if (workflow.profile == "juno") {
+      if (inputSize > 10.GB) {
+        task.time = { 72.h }
+      }
+      else if (inputSize < 5.GB) {
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+
+    inputSize = fastqFile1.size()
     """
-      echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
+      echo -e "${idSample}@${fileID}@R1\t${inputSize}" > file-size.txt
       zcat $fastqFile1 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz"}}'
+    """
+  }
+  process SplitLanesR2 {
+    tag {idSample + "@" + fileID + "R2"}   // The tag directive allows you to associate each process executions with a custom label
+
+    input:
+      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR2
+
+    output:
+      file("file-size.txt") into fileSize
+      set idSample, fileID, file("*R2.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR2
+
+    when: params.splitLanes
+
+    script:
+    if (workflow.profile == "juno") {
+      if (inputSize > 10.GB) {
+        task.time = { 72.h }
+      }
+      else if (inputSize < 5.GB) {
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+
+    inputSize = fastqFile2.size()
+    """
+      echo -e "${idSample}@${fileID}@R2\t${inputSize}" > file-size.txt
       zcat $fastqFile2 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz"}}'
     """
   }
 
-  fastqFiles = perLaneFastqs
+  fastqFiles = perLaneFastqsR1
+	.combine(perLaneFastqsR2, by: [0,1,3,4])
         .map{ item ->
             def idSample = item[0]
             def fileID = item[1]
-            def file_pe1 = item[2]
-            def file_pe2 = item[3]
-            def assay = item[4]
-            def targetFile = item[5]
+            def file_pe1 = item[4]
+            def file_pe2 = item[5]
+            def assay = item[2]
+            def targetFile = item[3]
 	    def numOfLanes = file_pe1 instanceof Collection ? file_pe1.size() : 1
 
             return [ idSample, fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes ]
@@ -265,6 +309,7 @@ if (!params.bam_pairing) {
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
+      file("file-size.txt") into fileSize
       set idSample, fileID, file("${fileID}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
@@ -484,6 +529,7 @@ if (!params.bam_pairing) {
       set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       file("${idSample}.bam") into currentBam
       file("${idSample}.bam.bai") into currentBai
+      file("file-size.txt") into fileSize
       val(assay) into assays
       val(targetFile) into targets
 
@@ -1824,6 +1870,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    file("file-size.txt") into fileSize
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
