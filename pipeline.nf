@@ -158,7 +158,7 @@ if (!params.bam_pairing) {
   inputFastqs = TempoUtils.extractFastq(mappingFile)
 
   if (params.splitLanes) {
-  (inputFastqR1, inputFastqR2) =  inputFastqs
+  (fastqsNeedSplit, fastqsNoNeedSplit) =  inputFastqs
         .map{ item ->
             def idSample = item[0]
             def fileID = item[1]
@@ -174,6 +174,40 @@ if (!params.bam_pairing) {
 		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, assays, targets)
 	}
 	.transpose().into(2)
+
+  (inputFastqR1, inputFastqR2) = fastqsNeedSplit
+	.filter{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		!(item[2].getName() =~ /_L(\d){3}_/)
+	}.into(2)
+
+  fastqNoNeedSplit = fastqsNoNeedSplit
+	.filter{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		item[2].getName() =~ /_L(\d){3}_/
+	}
+	.map{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		return [ idSample, fileID, assay, targetFile, file_pe1, file_pe2 ]
+	}
 
   process SplitLanesR1 {
     tag {idSample + "@" + fileID + "@R1"}   // The tag directive allows you to associate each process executions with a custom label
@@ -240,6 +274,7 @@ if (!params.bam_pairing) {
 
   fastqFiles = perLaneFastqsR1
 	.combine(perLaneFastqsR2, by: [0,1,3,4])
+	.concat(fastqNoNeedSplit)
         .map{ item ->
             def idSample = item[0]
             def fileID = item[1]
