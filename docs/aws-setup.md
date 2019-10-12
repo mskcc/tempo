@@ -1,6 +1,6 @@
 # AWS Setup
 
-_Note: These instructions assume the user has a moderate knowledge of AWS concepts, including S3 buckets, EC2 instances, AMIs, EBS volumes, AWS Batch, and autoscaling. For a succinct summary of these concepts, please check the [AWS glossary](aws-glossary.md), the [AWS documentation](https://docs.aws.amazon.com/AmazonS3), and other recent AWS tutorials circa 2018._
+_Note: These instructions assume the user has a moderate knowledge of AWS concepts, including S3 buckets, EC2 instances, AMIs, EBS volumes, AWS Batch, and autoscaling. For a succinct summary of these concepts, please check the [AWS glossary](aws-glossary.md), the [AWS documentation](https://docs.aws.amazon.com), and other recent AWS tutorials circa 2018._
 
 Building the compute environment for AWS Batch consist of two steps.
 
@@ -22,23 +22,23 @@ To prepare the AMI for your compute environment, run the command below from the 
 
 ```shell
 aws cloudformation create-stack \
-    --stack-name vaporwareAMI \
+    --stack-name tempoAMI \
     --template-body file://aws_cf_scripts/AMICreate.yaml \
-    --parameters ParameterKey=AMIName,ParameterValue=vaporware-ami \
+    --parameters ParameterKey=AMIName,ParameterValue=tempo-ami \
     --capabilities CAPABILITY_IAM
 ```
 
-_Note: You can specify any name instead of `vaporwareAMI` for stack-name._
+_Note: You can specify any name instead of `tempoAMI` for stack-name._
 
 This command submits CloudFormation Stack for building the [AMI](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) for execution, which we will use for building Batch Compute Environment. When you submit the command you will get StackId ARN as a response similar to this below.
 
 ```json
 {
-    "StackId": "arn:aws:cloudformation:us-east-1:474622381158:stack/vaporwareAMI/f8d47a90-41c8-11e9-98cc-0eb85d5eff94"
+    "StackId": "arn:aws:cloudformation:us-east-1:474622381158:stack/tempoAMI/f8d47a90-41c8-11e9-98cc-0eb85d5eff94"
 }
 ```
 
-Building the AMI will take a few minutes. You can check the status of the build process by running `aws cloudformation describe-stacks --stack-name vaporwareAMI`.
+Building the AMI will take a few minutes. You can check the status of the build process by running `aws cloudformation describe-stacks --stack-name tempoAMI`.
 
 When build is complete the `StackStatus` field in the response JSON will have the value `CREATE_COMPLETE` and the `Outputs` section will look similar to:
 
@@ -54,19 +54,19 @@ We will use `OutputValue` for the next step.
 
 ## Building the Compute Environment
 
-Run the command below from the Vaporware repo root directory and set `<AMI-ID>` parameter to `OutputValue` from previous step. If you skipped previous section do not add the `--parameters` argument when running the command.
+Run the command below from the Tempo repo root directory and set `<AMI-ID>` parameter to `OutputValue` from previous step. If you skipped previous section do not add the `--parameters` argument when running the command.
 
 ```shell
 aws cloudformation create-stack \
-    --stack-name vaporwareAWSBatchCE \
+    --stack-name tempoAWSBatchCE \
     --template-body file://aws_cf_scripts/AWSBatchCreate.yaml \
     --capabilities CAPABILITY_IAM \
     --parameters ParameterKey=AmiId,ParameterValue=<AMI-ID>
 ```
 
-_Note: You can specify any name instead of `vaporwareAWSBatchCE` for stack-name._
+_Note: You can specify any name instead of `tempoAWSBatchCE` for stack-name._
 
-Building the AWS Batch Compute Environment will take a few minutes. You can check the status of the build process by running `aws cloudformation describe-stacks --stack-name vaporwareAWSBatchCE`.
+Building the AWS Batch Compute Environment will take a few minutes. You can check the status of the build process by running `aws cloudformation describe-stacks --stack-name tempoAWSBatchCE`.
 
 When build is complete the `StackStatus` field in response JSON will have the value `CREATE_COMPLETE` and the `Outputs` section will look similar to:
 
@@ -93,5 +93,5 @@ Replace the following values:
 
 - `<AWS-REGION>` with aws region where you built your compute environment.
 - `<STORAGE-ENCRYPTION>` storage encryption for your bucket (default: 'AES256').
-- `<AWS-BATCH-QUEUE-ARN>` ARN of your AWS Batch Job Queue built in [Building the Compute Environment](#Building-the-Compute-Environment) section.
-- `<AWS-S3-WORKDIR>` S3 bucket used as working directory created in [Create the S3 Bucket](#Create-the-S3-Bucket) section.
+- `<AWS-BATCH-QUEUE-ARN>` ARN of your AWS Batch Job Queue built in [Building the Compute Environment](aws-setup.md#building-the-compute-environment) section.
+- `<AWS-S3-WORKDIR>` S3 bucket used as working directory created in [Create the S3 Bucket](aws-setup.md#creating-the-s3-bucket) section.
