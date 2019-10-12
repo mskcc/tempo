@@ -176,7 +176,7 @@ if (!params.bam_pairing) {
 	.transpose().into(2)
 
   process SplitLanesR1 {
-    tag {idSample + "@" + fileID + "R1"}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + fileID + "@R1"}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
       set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR1
@@ -207,7 +207,7 @@ if (!params.bam_pairing) {
     """
   }
   process SplitLanesR2 {
-    tag {idSample + "@" + fileID + "R2"}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + fileID + "@R2"}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
       set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR2
