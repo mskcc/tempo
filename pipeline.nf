@@ -222,6 +222,7 @@ if (!params.bam_pairing) {
     when: params.splitLanes
 
     script:
+    inputSize = fastqFile1.size()
     if (workflow.profile == "juno") {
       if (inputSize > 10.GB) {
         task.time = { 72.h }
@@ -234,7 +235,6 @@ if (!params.bam_pairing) {
       }
     }
 
-    inputSize = fastqFile1.size()
     """
       echo -e "${idSample}@${fileID}@R1\t${inputSize}" > file-size.txt
       zcat $fastqFile1 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz"}}'
@@ -253,6 +253,7 @@ if (!params.bam_pairing) {
     when: params.splitLanes
 
     script:
+    inputSize = fastqFile2.size()
     if (workflow.profile == "juno") {
       if (inputSize > 10.GB) {
         task.time = { 72.h }
@@ -265,7 +266,6 @@ if (!params.bam_pairing) {
       }
     }
 
-    inputSize = fastqFile2.size()
     """
       echo -e "${idSample}@${fileID}@R2\t${inputSize}" > file-size.txt
       zcat $fastqFile2 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz"}}'
