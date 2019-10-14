@@ -316,14 +316,14 @@ if (!params.bam_pairing) {
             def file_pe2 = item[3]
             def file_pe2_size = item[3].size()
             def assay = item[4]
-            def targetFile = item[4]
+            def targetFile = item[5]
             def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
 
             return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID ]
         }
 	.groupTuple(by:[0])
-	.map{ idSample, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID
-		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID)}
+	.map{ idSample, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assay, targets, rgID
+		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assay, targets, rgID)}
 	.transpose()
   }
 
