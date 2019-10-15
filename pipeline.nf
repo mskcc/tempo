@@ -151,13 +151,182 @@ referenceMap = defineReferenceMap()
 if (!params.bam_pairing) {
 
   // Parse input FASTQ mapping and sample pairing
-  fastqFiles = Channel.empty() 
+  inputFastqs = Channel.empty()
   mappingFile = file(mappingPath)
   pairingFile = file(pairingPath)
   pairingTN = TempoUtils.extractPairing(pairingFile)
-  fastqFiles = TempoUtils.extractFastq(mappingFile)
+  inputFastqs = TempoUtils.extractFastq(mappingFile)
 
-  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID -> tuple( groupKey(key, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets, rgID)}.transpose()
+  if (params.splitLanes) {
+  (fastqsNeedSplit, fastqsNoNeedSplit) =  inputFastqs
+        .map{ item ->
+            def idSample = item[0]
+            def fileID = item[1]
+            def file_pe1 = item[2]
+            def file_pe2 = item[3]
+            def assay = item[4]
+            def targetFile = item[5]
+
+            return [ idSample, fileID, file_pe1, file_pe2, assay, targetFile ]
+        }
+	.groupTuple(by: [0])
+	.map{ idSample, fileID, files_pe1, files_pe2, assays, targets
+		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, assays, targets)
+	}
+	.transpose().into(2)
+
+  (inputFastqR1, inputFastqR2) = fastqsNeedSplit
+	.filter{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		!(item[2].getName() =~ /_L(\d){3}_/)
+	}.into(2)
+
+  fastqNoNeedSplit = fastqsNoNeedSplit
+	.filter{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		item[2].getName() =~ /_L(\d){3}_/
+	}
+	.map{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		return [ idSample, fileID, assay, targetFile, file_pe1, file_pe2 ]
+	}
+
+  process SplitLanesR1 {
+    tag {idSample + "@" + fileID + "@R1"}   // The tag directive allows you to associate each process executions with a custom label
+
+    input:
+      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR1
+
+    output:
+      file("file-size.txt") into R1Size
+      set idSample, fileID, file("*R1.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR1
+
+    when: params.splitLanes
+
+    script:
+    inputSize = fastqFile1.size()
+    if (workflow.profile == "juno") {
+      if (inputSize > 10.GB) {
+        task.time = { 72.h }
+      }
+      else if (inputSize < 5.GB) {
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+
+    """
+      echo -e "${idSample}@${fileID}@R1\t${inputSize}" > file-size.txt
+      zcat $fastqFile1 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz"}}'
+    """
+  }
+  process SplitLanesR2 {
+    tag {idSample + "@" + fileID + "@R2"}   // The tag directive allows you to associate each process executions with a custom label
+
+    input:
+      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR2
+
+    output:
+      file("file-size.txt") into R2Size
+      set idSample, fileID, file("*R2.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR2
+
+    when: params.splitLanes
+
+    script:
+    inputSize = fastqFile2.size()
+    if (workflow.profile == "juno") {
+      if (inputSize > 10.GB) {
+        task.time = { 72.h }
+      }
+      else if (inputSize < 5.GB) {
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+
+    """
+      echo -e "${idSample}@${fileID}@R2\t${inputSize}" > file-size.txt
+      zcat $fastqFile2 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz"}}'
+    """
+  }
+
+  fastqFiles = perLaneFastqsR1
+	.combine(perLaneFastqsR2, by: [0,1,3,4])
+	.concat(fastqNoNeedSplit)
+        .map{ item ->
+            def idSample = item[0]
+            def fileID = item[1]
+            def file_pe1 = item[4]
+            def file_pe2 = item[5]
+            def assay = item[2]
+            def targetFile = item[3]
+	    def numOfLanes = file_pe1 instanceof Collection ? file_pe1.size() : 1
+
+            return [ idSample, fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes ]
+        }
+	.groupTuple(by: [0])
+	.map { idSample, fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes
+		-> tuple(groupKey(idSample, numOfLanes.sum()), fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes)
+	}
+	.transpose()
+        .transpose()
+	.map{ item ->
+	    def idSample = item[0]
+	    def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def file_pe1 = item[2]
+	    def file_pe1_size = item[2].size()
+	    def file_pe2 = item[3]
+	    def file_pe2_size = item[3].size()
+	    def assay = item[4]
+	    def targetFile = item[5]
+	    def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+
+	    return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID ]
+	}
+  }
+  else{
+     fastqFiles =  inputFastqs
+        .map{ item ->
+            def idSample = item[0]
+            def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+            def file_pe1 = item[2]
+            def file_pe1_size = item[2].size()
+            def file_pe2 = item[3]
+            def file_pe2_size = item[3].size()
+            def assay = item[4]
+            def targetFile = item[5]
+            def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+
+            return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID ]
+        }
+	.groupTuple(by:[0])
+	.map{ idSample, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assay, targets, rgID
+		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assay, targets, rgID)}
+	.transpose()
+  }
+
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -175,6 +344,7 @@ if (!params.bam_pairing) {
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
+      file("file-size.txt") into laneSize
       set idSample, fileID, file("${fileID}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
@@ -382,7 +552,7 @@ if (!params.bam_pairing) {
   process RecalibrateBam {
     tag {idSample}
 
-    publishDir "${params.outDir}/bams", mode: params.publishDirMode
+    publishDir "${params.outDir}/bams", mode: params.publishDirMode, pattern: "*.bam*"
 
     input:
       set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
@@ -394,6 +564,7 @@ if (!params.bam_pairing) {
       set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       file("${idSample}.bam") into currentBam
       file("${idSample}.bam.bai") into currentBai
+      file("file-size.txt") into bamSize
       val(assay) into assays
       val(targetFile) into targets
 
@@ -1676,7 +1847,7 @@ process SomaticFacetsAnnotation {
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
-  mapFile = "${idTumor}_${idNormal}.map"
+  mapFile = "${idTumor}__${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
@@ -1734,6 +1905,7 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    file("file-size.txt") into mafSize
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
