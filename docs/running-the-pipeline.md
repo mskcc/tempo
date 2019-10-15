@@ -29,7 +29,7 @@ The `assayType` argument is for resource allocation. This should also be specifi
 
 **Optional arguments:**
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
-* `-publishAll` is a boolean, resulting in retention of intermediate output files ((default: `false`).
+* `-publishAll` is a boolean, resulting in retention of intermediate output files ((default: `true`).
 * `--splitLanes` indicates that the provided FASTQ files will be scanned for all unique sequencing lanes and demultiplexed accordingly. This is recommended for some steps of the alignment pipeline. See more under [The Mapping File](running-the-pipeline.md#input-files) (default: `true`).
 * `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
 * `--conpair_all` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run (default: `false`).
@@ -57,7 +57,7 @@ Tempo checks for duplicated combinations of sample and lane names, empty entries
 :::
 
 ::: warning Be aware
-Tempo can deal with any number of sequencing lanes per sample, in any combination of lanes split or combined across multiple FASTQ pairs. By default, Tempo will look for all distinct sequencing lanes in provided FASTQ files. The pipeline uses this and the instrument, run, and flowcell IDs from the _sequence identifiers_ in the input FASTQs to generate all different read group IDs for each sample. This information is used by the base quality score recalibration steps of the GATK suite of tools. 
+Tempo can deal with any number of sequencing lanes per sample, in any combination of lanes split or combined across multiple FASTQ pairs. By default, Tempo will look for all distinct sequencing lanes in provided FASTQ files. The pipeline uses this and the instrument, run, and flowcell IDs from the _sequence identifiers_ in the input FASTQs to generate all different read group IDs for each sample. This information is used by the base quality score recalibration steps of the GATK suite of tools. If FASTQ files name explicitly specified the lane name in the format of `_L(\d){3}_` ("_L" + "3 integer" + "_"), the pipeline will assume this FASTQ files contain only one lane, and it will skip scanning and splitting the FASTQ files, and give one read group ID all the reads in the FASTQ files.
 :::
 
 ### The Mapping File
