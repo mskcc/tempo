@@ -29,9 +29,10 @@ The `assayType` argument is for resource allocation. This should also be specifi
 
 **Optional arguments:**
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
-* `-publishAll` is a boolean, resulting in retention of intermediate output files.
+* `-publishAll` is a boolean, resulting in retention of intermediate output files ((default: `false`).
+* `--splitLanes` indicates that the provided FASTQ files will be scanned for all unique sequencing lanes and demultiplexed accordingly. This is recommended for some steps of the alignment pipeline. See more under [The Mapping File](running-the-pipeline.md#input-files) (default: `true`).
 * `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
-* `--conpair_all` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run.
+* `--conpair_all` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run (default: `false`).
 
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
@@ -55,6 +56,10 @@ The header lines are mandatory in the following files, but not the order of thei
 Tempo checks for duplicated combinations of sample and lane names, empty entries, and some other things. However, it is up to the user to make sure that the inputs are in good shape.
 :::
 
+::: warning Be aware
+Tempo can deal with any number of sequencing lanes per sample, in any combination of lanes split or combined across multiple FASTQ pairs. By default, Tempo will look for all distinct sequencing lanes in provided FASTQ files. The pipeline uses this and the instrument, run, and flowcell IDs from the _sequence identifiers_ in the input FASTQs to generate all different read group IDs for each sample. This information is used by the base quality score recalibration steps of the GATK suite of tools. 
+:::
+
 ### The Mapping File
 
 This file is necessary to map the input FASTQ pairs from one or more sequencing lanes to sample names. Additionally, this file tells the pipeline whether the samples are exome or genome samples. In the case of the former, the capture kit used is also input.
@@ -72,10 +77,6 @@ Example:
 Accepted values for the **ASSAY** column are `exome` and `genome`.\
 Accepted values for the **TARGET** column are `agilent` and `idt`.\
 Read further details on these parameters [here](reference-resources.md#genomic-intervals).
-
-::: warning Be aware
-Tempo derives the sequencing lane name from the input FASTQ files. This assumes somewhat uniform naming, where the file name should look like `sampleA_L001_R1_001.fastq.gz`, where _sampleA_L001_ identifies lane 1 for sample A, _R1_ that these are forward reads, and _001_ that this is file 1 containing these reads. The number of file pairs per sequencing reads can in theory be any. 
-:::
 
 ### The Pairing File
 
