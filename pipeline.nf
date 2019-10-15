@@ -552,7 +552,7 @@ if (!params.bam_pairing) {
   process RecalibrateBam {
     tag {idSample}
 
-    publishDir "${params.outDir}/bams", mode: params.publishDirMode
+    publishDir "${params.outDir}/bams", mode: params.publishDirMode, pattern: "*.bam*"
 
     input:
       set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
