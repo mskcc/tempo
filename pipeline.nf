@@ -1847,7 +1847,7 @@ process SomaticFacetsAnnotation {
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
-  mapFile = "${idTumor}_${idNormal}.map"
+  mapFile = "${idTumor}__${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
