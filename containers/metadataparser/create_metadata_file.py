@@ -3,7 +3,7 @@
 
 __author__  = "Evan Biederstedt"
 __email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __status__  = "Dev"
 
 
@@ -89,8 +89,6 @@ results = pd.DataFrame()
 
 ## create Tumor Normal column
 results = results.assign(sample=[sampleID])
-results = results.assign(sample=[tumorID])
-results = results.assign(sample=[normalID])
 
 
 if facetsPurityPloidy is not None:

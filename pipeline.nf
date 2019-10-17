@@ -11,7 +11,7 @@ Alignment and QC
     --- Map paired-end FASTQs with bwa mem
     --- Sort BAM with samtools sort
     --- FASTQ QC with FastP 
- - MergeBam --- Merge BAM for the same samples from different lanes, samtools merge
+ - MergeBam --- Merge BAM for the same samples from different fileID, samtools merge
  - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
  - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
  - RecalibrateBam --- Recalibrate Bam with GATK4 ApplyBQSR
@@ -90,7 +90,7 @@ if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pair
 } 
 
 // Validate mapping file
-// Check for duplicate inputs, mixed assay types and unique lane names
+// Check for duplicate inputs, mixed assay types and unique fileID
 if (params.mapping) {
   mappingPath = params.mapping
   
@@ -104,10 +104,10 @@ if (params.mapping) {
     exit 1
   }
 
-  if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
-    println "ERROR: The combination of sample ID and lane names values must be unique. Duplicate lane names for one sample cause errors. Please fix the error and re-run the pipeline."
-    exit 1
-  }
+  // if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
+  //   println "ERROR: The combination of sample ID and fileID values must be unique. Duplicate fileID for one sample cause errors. Please fix the error and re-run the pipeline."
+  //   exit 1
+  // }
 }
 
 // Validate pairing file
@@ -146,21 +146,191 @@ referenceMap = defineReferenceMap()
 ================================================================================
 */
 
+
 // Skip these processes if starting from aligned BAM files
 if (!params.bam_pairing) {
 
   // Parse input FASTQ mapping and sample pairing
-  fastqFiles = Channel.empty() 
+  inputFastqs = Channel.empty()
   mappingFile = file(mappingPath)
   pairingFile = file(pairingPath)
   pairingTN = TempoUtils.extractPairing(pairingFile)
-  fastqFiles = TempoUtils.extractFastq(mappingFile)
+  inputFastqs = TempoUtils.extractFastq(mappingFile)
 
-  fastqFiles =  fastqFiles.groupTuple(by:[0]).map{ key, lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets -> tuple( groupKey(key, lanes.size()), lanes, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assays, targets)}.transpose()
+  if (params.splitLanes) {
+  (fastqsNeedSplit, fastqsNoNeedSplit) =  inputFastqs
+        .map{ item ->
+            def idSample = item[0]
+            def fileID = item[1]
+            def file_pe1 = item[2]
+            def file_pe2 = item[3]
+            def assay = item[4]
+            def targetFile = item[5]
+
+            return [ idSample, fileID, file_pe1, file_pe2, assay, targetFile ]
+        }
+	.groupTuple(by: [0])
+	.map{ idSample, fileID, files_pe1, files_pe2, assays, targets
+		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, assays, targets)
+	}
+	.transpose().into(2)
+
+  (inputFastqR1, inputFastqR2) = fastqsNeedSplit
+	.filter{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		!(item[2].getName() =~ /_L(\d){3}_/)
+	}.into(2)
+
+  fastqNoNeedSplit = fastqsNoNeedSplit
+	.filter{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		item[2].getName() =~ /_L(\d){3}_/
+	}
+	.map{ item ->
+		def idSample = item[0]
+		def fileID = item[1]
+		def file_pe1 = item[2]
+		def file_pe2 = item[3]
+		def assay = item[4]
+		def targetFile = item[5]
+
+		return [ idSample, fileID, assay, targetFile, file_pe1, file_pe2 ]
+	}
+
+  process SplitLanesR1 {
+    tag {idSample + "@" + fileID + "@R1"}   // The tag directive allows you to associate each process executions with a custom label
+
+    input:
+      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR1
+
+    output:
+      file("file-size.txt") into R1Size
+      set idSample, fileID, file("*R1.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR1
+
+    when: params.splitLanes
+
+    script:
+    inputSize = fastqFile1.size()
+    if (workflow.profile == "juno") {
+      if (inputSize > 10.GB) {
+        task.time = { 72.h }
+      }
+      else if (inputSize < 5.GB) {
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+
+    """
+      echo -e "${idSample}@${fileID}@R1\t${inputSize}" > file-size.txt
+      zcat $fastqFile1 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz"}}'
+    """
+  }
+  process SplitLanesR2 {
+    tag {idSample + "@" + fileID + "@R2"}   // The tag directive allows you to associate each process executions with a custom label
+
+    input:
+      set idSample, fileID, file(fastqFile1), file(fastqFile2), assay, targetFile from inputFastqR2
+
+    output:
+      file("file-size.txt") into R2Size
+      set idSample, fileID, file("*R2.splitLanes.fastq.gz"), assay, targetFile into perLaneFastqsR2
+
+    when: params.splitLanes
+
+    script:
+    inputSize = fastqFile2.size()
+    if (workflow.profile == "juno") {
+      if (inputSize > 10.GB) {
+        task.time = { 72.h }
+      }
+      else if (inputSize < 5.GB) {
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      }
+      else {
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+
+    """
+      echo -e "${idSample}@${fileID}@R2\t${inputSize}" > file-size.txt
+      zcat $fastqFile2 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz"}}'
+    """
+  }
+
+  fastqFiles = perLaneFastqsR1
+	.combine(perLaneFastqsR2, by: [0,1,3,4])
+	.concat(fastqNoNeedSplit)
+        .map{ item ->
+            def idSample = item[0]
+            def fileID = item[1]
+            def file_pe1 = item[4]
+            def file_pe2 = item[5]
+            def assay = item[2]
+            def targetFile = item[3]
+	    def numOfLanes = file_pe1 instanceof Collection ? file_pe1.size() : 1
+
+            return [ idSample, fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes ]
+        }
+	.groupTuple(by: [0])
+	.map { idSample, fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes
+		-> tuple(groupKey(idSample, numOfLanes.sum()), fileID, file_pe1, file_pe2, assay, targetFile, numOfLanes)
+	}
+	.transpose()
+        .transpose()
+	.map{ item ->
+	    def idSample = item[0]
+	    def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def file_pe1 = item[2]
+	    def file_pe1_size = item[2].size()
+	    def file_pe2 = item[3]
+	    def file_pe2_size = item[3].size()
+	    def assay = item[4]
+	    def targetFile = item[5]
+	    def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+
+	    return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID ]
+	}
+  }
+  else{
+     fastqFiles =  inputFastqs
+        .map{ item ->
+            def idSample = item[0]
+            def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+            def file_pe1 = item[2]
+            def file_pe1_size = item[2].size()
+            def file_pe2 = item[3]
+            def file_pe2_size = item[3].size()
+            def assay = item[4]
+            def targetFile = item[5]
+            def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+
+            return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, assay, targetFile, rgID ]
+        }
+	.groupTuple(by:[0])
+	.map{ idSample, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assay, targets, rgID
+		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, assay, targets, rgID)}
+	.transpose()
+  }
+
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
-    tag {idSample + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
     publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
     if (publishAll) { 
@@ -168,50 +338,76 @@ if (!params.bam_pairing) {
     }
 
     input:
-      set idSample, lane, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile from fastqFiles
+      set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, rgID from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
-      set idSample, lane, file("${lane}.sorted.bam"), assay, targetFile into sortedBam
+      file("file-size.txt") into laneSize
+      set idSample, fileID, file("${fileID}.sorted.bam"), assay, targetFile into sortedBam
 
     script:
-      readGroup = "@RG\\tID:${lane}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-      // Different resource requirements for AWS and LSF
-      // WES should use mem - 1 for bwa mem & samtools sort
-      // WGS should use mem - 3 for bwa mem & samtools sort (to avoid observed memory issues with LSF onsite)
-      if (params.mem_per_core) { 
-        if ('wes' in assay){
-          mem = task.memory.toString().split(" ")[0].toInteger() - 1
-        }
-        else if ('wgs' in assay){
-          mem = task.memory.toString().split(" ")[0].toInteger() - 3
-        }
+    // LSF resource allocation for juno
+    // if running on juno, check the total size of the FASTQ pairs in order to allocate the runtime limit for the job, via LSF `bsub -W`
+    // if total size of the FASTQ pairs is over 20 GB, use 72 hours
+    // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 72h.
+    inputSize = sizeFastqFile1 + sizeFastqFile2
+    if (workflow.profile == "juno") {
+      if (inputSize > 18.GB) {
+        task.time = { 72.h }
+      }
+      else if (inputSize < 9.GB) {
+        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        if ('wes' in assay){
-          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 1
-        }
-        else if ('wgs' in assay){
-          mem = (task.memory.toString().split(" ")[0].toInteger()/task.cpus).toInteger() - 3
-        }
-      } 
-      """
-      set -e
-      set -o pipefail
-      fastp --html ${lane}.fastp.html --json ${lane}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-      bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${lane}.bam
-      samtools sort -m ${mem}G -@ ${task.cpus} -o ${lane}.sorted.bam ${lane}.bam
-      """
-  }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+      }
+    }
+    
+    // mem --- total size of the FASTQ pairs in MB (max memory `samtools sort` can take advantage of)
+    // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
+    // memMultiplier --- If mem_per_core is false, use 1. Else, use task.cpus
+    // originalMem -- If this is the first attempt, use task.memory. Else, use `originalMem`
+    mem = (inputSize/1024**2).round()
+    memDivider = params.mem_per_core ? 1 : task.cpus
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    originalMem = task.attempt ==1 ? task.memory : originalMem
 
+    if ( mem < 6 * 1024 / task.cpus ) {
+    // minimum total task memory requirment is 6GB because `bwa mem` need this much to run, and increase by 10% everytime retry
+        task.memory = { (6 / memMultiplier * (0.9 + 0.1 * task.attempt) + 0.5).round() + " GB" }
+        mem = (5.4 * 1024 / task.cpus).round()
+    }
+    else if ( mem / memDivider * (1 + 0.1 * task.attempt) > originalMem.toMega() ) {
+    // if file size is too big, use task.memory as the max mem for this task, and decrease -M for `samtools sort` by 10% everytime retry
+        mem = (originalMem.toMega() / memDivider * (1 - 0.1 * task.attempt) + 0.5).round()
+    }
+    else {
+    // normal situation, `samtools sort` -M = inputSize * 2, task.memory is 110% of `samtools sort` and increase by 10% everytime retry
+        task.memory = { (mem * memDivider * (1 + 0.1 * task.attempt) / 1024 + 0.5).round() + " GB" }
+        mem = mem
+    }
+
+    task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
+
+    readGroup = "@RG\\tID:${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+    """
+    set -e
+    set -o pipefail
+    echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
+    fastp --html ${fileID}.fastp.html --json ${fileID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
+    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${fileID}.bam
+
+    samtools sort -m ${mem}M -@ ${task.cpus} -o ${fileID}.sorted.bam ${fileID}.bam
+    """
+  }
 
   sortedBam.groupTuple().set{ groupedBam }
 
   groupedBam = groupedBam.map{ item -> 
     def idSample = item[0]
-    def lane = item[1] //is a list
+    def fileID = item[1] //is a list
     def bam = item[2]
   
     def assayList = item[3].unique()
@@ -225,7 +421,7 @@ if (!params.bam_pairing) {
     def assay = assayList[0]
     def target = targetList[0]
 
-    [idSample, lane, bam, assay, target]
+    [idSample, fileID, bam, assay, target]
   }
 
   // MergeBams
@@ -233,10 +429,10 @@ if (!params.bam_pairing) {
     tag {idSample}
 
     input:
-      set idSample, lane, file(bam), assay, targetFile from groupedBam
+      set idSample, fileID, file(bam), assay, targetFile from groupedBam
 
     output:
-      set idSample, lane, file("${idSample}.merged.bam"), assay, targetFile into mergedBam
+      set idSample, fileID, file("${idSample}.merged.bam"), assay, targetFile into mergedBam
 
     script:
     """
@@ -249,31 +445,33 @@ if (!params.bam_pairing) {
     tag {idSample}
 
     input:
-      set idSample, lane, file(bam), assay, targetFile from mergedBam
+      set idSample, fileID, file(bam), assay, targetFile from mergedBam
 
     output:
-      set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, lane, assay, targetFile into duplicateMarkedBams
+      set file("${idSample}.md.bam"), file("${idSample}.md.bai"), idSample, fileID, assay, targetFile into duplicateMarkedBams
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), assay, targetFile into markDuplicatesTSV
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
-    if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200) {
-        task.time = { 32.h }
+    if (workflow.profile == "juno" && params.assayType == "exome") {
+      if(bam.size() > 120.GB) {
+        task.time = { 72.h }
       }
-      else if (bam.size()/1024**3 < 100) {
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
-    javaOptions = "--java-options '-Xms4000m -Xmx" + (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 1) + "g'"
+    maxMem = (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 3)
+    maxMem = maxMem < 4 ? 5 : maxMem
+    javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
     gatk MarkDuplicates \
       ${javaOptions} \
-      --TMP_DIR ${TMPDIR} \
+      --TMP_DIR ./ \
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
@@ -284,7 +482,7 @@ if (!params.bam_pairing) {
   }
 
   duplicateMarkedBams = duplicateMarkedBams.map {
-      bam, bai, idSample, lane, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
+      bam, bai, idSample, fileID, assay, targetFile -> tag = bam.baseName.tokenize('.')[0]
       [idSample, bam, bai, assay, targetFile]
   }
 
@@ -311,26 +509,34 @@ if (!params.bam_pairing) {
       set idSample, val("${idSample}.md.bam"), val("${idSample}.md.bai"), val("${idSample}.recal.table"), assay, targetFile into recalibrationTableTSV
 
     script:
-    if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 480) {
-        task.time = { 32.h }
-      }
-      else if (bam.size()/1024**3 < 240) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+    if (task.attempt < 3){
+      sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
+      if (workflow.profile == "juno") {
+        if (bam.size() > 480.GB) {
+          task.time = { 72.h }
+        }
+        else if (bam.size() < 240.GB) {
+          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        }
+        else {
+          task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+        }
       }
     }
+    else {
+      sparkConf = " BaseRecalibrator"
+      task.cpus = 4
+      task.memory = { 6.GB }
+      task.time = { 72.h }
+    }
+
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
-    gatk BaseRecalibratorSpark \
-      ${javaOptions} \
+    gatk \
       ${sparkConf} \
-      --tmp-dir ${TMPDIR} \
+      ${javaOptions} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
       ${knownSites} \
@@ -346,7 +552,7 @@ if (!params.bam_pairing) {
   process RecalibrateBam {
     tag {idSample}
 
-    publishDir "${params.outDir}/bams", mode: params.publishDirMode
+    publishDir "${params.outDir}/bams", mode: params.publishDirMode, pattern: "*.bam*"
 
     input:
       set idSample, file(bam), file(bai), assay, targetFile, file(recalibrationReport) from recalibrationTable
@@ -358,34 +564,47 @@ if (!params.bam_pairing) {
       set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2
       file("${idSample}.bam") into currentBam
       file("${idSample}.bam.bai") into currentBai
+      file("file-size.txt") into bamSize
       val(assay) into assays
       val(targetFile) into targets
 
     script:
-    if (workflow.profile == "juno") {
-      if (bam.size()/1024**3 > 200){
-        task.time = { 32.h }
+
+    if (task.attempt < 3) {
+      sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
+      if (workflow.profile == "juno") {
+        if (bam.size() > 200.GB){
+          task.time = { 72.h }
+        }
+        else if (bam.size() < 100.GB) {
+          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        }
+        else {
+          task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+        }
       }
-      else if (bam.size()/1024**3 < 100) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
-      }
-      else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
-      }
+    }
+    else {
+      sparkConf = " ApplyBQSR"
+      task.cpus = 4
+      task.memory = { 6.GB }
+      task.time = { 72.h }
     }
     memMultiplier = params.mem_per_core ? task.cpus : 1
     javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    sparkConf = "--conf 'spark.executor.cores = " + task.cpus + "'"
     """
-    gatk ApplyBQSRSpark \
-      ${javaOptions} \
+    echo -e "${idSample}\t${bam.size()}" > file-size.txt
+    gatk \
       ${sparkConf} \
-      --tmp-dir ${TMPDIR} \
+      ${javaOptions} \
       --reference ${genomeFile} \
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
       --input ${bam} \
       --output ${idSample}.bam
+    if [[ -f ${idSample}.bai ]]; then
+      mv ${idSample}.bai ${idSample}.bam.bai
+    fi
     """
   }
 
@@ -484,14 +703,14 @@ if (!params.bam_pairing) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
-        task.time = { 32.h }
+      if (bam.size() > 200.GB) {
+        task.time = { 72.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
 
@@ -541,15 +760,15 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
-    if (workflow.profile == "juno") {
-      if(bam.size()/1024**3 > 200){
-        task.time = { 32.h }
+    if (workflow.profile == "juno" && params.assayType == "exome") {
+      if (bam.size() > 200.GB) {
+        task.time = { 72.h }
       }
-      else if (bam.size()/1024**3 < 100){
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 32.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
 
@@ -619,7 +838,7 @@ if ("strelka2" in tools) {
 }
 
 // If using running either conpair or conpairAll, run pileup as well to generate pileups
-if ("conpair" in tools || "conpairAll" in tools) {
+if ("conpair" in tools || params.conpair_all) {
   tools.add("pileup")
 }
 
@@ -735,13 +954,6 @@ wMergedChannel = wBamList.combine(wgsIList, by: 1)
     )
 }.transpose().into(2)
 
-
-// if using strelka2, one should have manta for small InDels
-
-if('strelka2' in tools) {
-  tools.add('manta')
-}
-
 // --- Run Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
@@ -821,7 +1033,6 @@ process RunMutect2 {
 //Formatting the channel to be keyed by idTumor, idNormal, and target
 // group by groupKey(key, intervalBed.size())
 forMutect2Combine = forMutect2Combine.groupTuple()
-
 
 // Combine Mutect2 VCFs, bcftools
 process SomaticCombineMutect2Vcf {
@@ -1636,7 +1847,7 @@ process SomaticFacetsAnnotation {
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
-  mapFile = "${idTumor}_${idNormal}.map"
+  mapFile = "${idTumor}__${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
   echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
@@ -1694,17 +1905,32 @@ process RunNeoantigen {
 
   output:
     set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    file("file-size.txt") into mafSize
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
     file("${outputDir}/*.maf") into NeoantigenMafOutput
 
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
+
+  if (workflow.profile == "juno") {
+    if(mafFile.size() > 10.MB){
+      task.time = { 72.h }
+    }
+    else if (mafFile.size() < 5.MB){
+      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+    }
+    else {
+      task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
+    }
+  }
+
   outputPrefix = "${idTumor}__${idNormal}"
   outputDir = "neoantigen"
   tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
+  echo -e "${outputPrefix}\t`wc -l ${mafFile} | cut -d ' ' -f1`" > file-size.txt
   export TMPDIR=${tmpDirFullPath}
   mkdir -p ${tmpDir}
   chmod 777 ${tmpDir}
@@ -1856,7 +2082,7 @@ process SomaticAggregateFacets {
   cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
   awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
   cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
-  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt
+  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt || [[ \$? == 1 ]]
   """
 }
 
@@ -2570,12 +2796,12 @@ allBamFiles = bamsForPileup.map{
     def baiNormal = item[7]
 
     return [[idTumor, idNormal], [bamTumor, bamNormal], [baiTumor, baiNormal]]
-}.transpose()
+}.transpose().unique()
 
 process QcPileup {
   tag {idSample}
 
-  publishDir "${params.outDir}/qc/pileup/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/conpair/", mode: params.publishDirMode
 
   input:
     set idSample, file(bam), file(bai) from allBamFiles
@@ -2668,8 +2894,6 @@ pileupConpair = tumorPileupConpair.combine(normalPileupConpair, by: [0, 1, 2])
 process QcConpair {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/qc/conpair/${idTumor}__${idNormal}", mode: params.publishDirMode
-
   input:
     set conpair, idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -2736,7 +2960,7 @@ process QcConpairAll {
     file("${outPrefix}.concordance.txt") into conpairAllConcordance
     file("${outPrefix}.contamination.txt") into conpairAllContamination
 
-  when: !params.test && "conpairall" in tools
+  when: !params.test && params.conpair_all
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
@@ -2777,28 +3001,33 @@ process QcConpairAll {
   """
 }
 
+// -- Run based on QcConpairAll channels or the single QcConpair channels
+(conpairAggregateConcordance, conpairAggregateContamination) = (!params.conpair_all
+                                                                ? [conpairConcordance, conpairContamination]
+                                                                : [conpairAllConcordance, conpairAllContamination]
+                                                                )
+
 process QcConpairAggregate {
 
-  publishDir "${params.outDir}/qc/conpairAll/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
   input:
-    file(concordance) from conpairAllConcordance.collect()
-    file(contamination) from conpairAllContamination.collect()
+    file(concordance) from conpairAggregateConcordance.collect()
+    file(contamination) from conpairAggregateContamination.collect()
 
   output:
-    set file('ConpairAll-concordance.txt'), file('ConpairAll-contamination.txt') into conpairAggregated
+    set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregated
 
   when: !params.test
 
   script:
   """
-  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 > ConpairAll-concordance.txt
-  echo -e "Pairs\tSample_Type\tSample_ID\tContamination" > ConpairAll-contamination.txt
-  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> ConpairAll-contamination.txt
+  echo -e "Pair\tConcordance" > concordance_qc.txt
+  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 >> concordance_qc.txt
+  echo -e "Pair\tSample_Type\tSample_ID\tContamination" > contamination_qc.txt
+  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
   """
 }
-
-
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"

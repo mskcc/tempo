@@ -18,7 +18,12 @@ themeConfig:
         - "/working-with-containers"
     - "/outputs"
     - "/bioinformatic-components"
-    - "/reference-resources"
+    - title: Reference Resources
+      collapsable: false
+      children:
+        - "/reference-files"
+        - "/gnomad"
+        - "/wes-panel-of-normals"
     - "/variant-annotation-and-filtering"
     - title: Help and Other Resources 
       collapsable: false
@@ -26,7 +31,8 @@ themeConfig:
         - "/troubleshooting"
         - "/aws-glossary"
         - "/contributing-to-tempo"
-  repo: mskcc/vaporware
+        - "/acknowledgements"
+  repo: mskcc/tempo
   docsBranch: 'develop'
 plugins:
 - - vuepress-plugin-medium-zoom

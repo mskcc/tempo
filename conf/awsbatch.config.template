@@ -1,10 +1,7 @@
-/*
- * -------------------------------------------------
- * AWS Batch template config
- * -------------------------------------------------
- * Template config file for AWS Batch
- * -------------------------------------------------
- */
+// from https://www.nextflow.io/docs/latest/awscloud.html#aws-batch
+
+// NOTE: this setting is only required if the AWS CLI tool is installed in a custom AMI
+// executor.awscli = '/home/ec2-user/miniconda/bin/aws'
 
 aws.region = <AWS-REGION>
 aws.client.storageEncryption = <STORAGE-ENCRYPTION>
@@ -22,7 +19,7 @@ executor {
 
 process {
   queue = <AWS-BATCH-QUEUE-ARN>
-  scratch = '/scratch'
+  scratch = true
   errorStrategy = { task.attempt <= 3 ? 'retry' : 'ignore' }
   maxRetries = 3
 }
@@ -36,5 +33,15 @@ params {
 }
 
 env {
-  SPARK_LOCAL_DIRS = '/scratch'
+  TMPDIR = '/scratch'
+  SPARK_LOCAL_DIRS = './'
+}
+
+process {
+  withName:CreateRecalibrationTable {
+    container = 'job-definition://UlimitLargeMem' 
+  }
+  withName:RecalibrateBam {
+    container = 'job-definition://UlimitLargeMem' 
+  }
 }
