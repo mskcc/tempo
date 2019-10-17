@@ -42,7 +42,7 @@ A few tips:
 When you are ready to submit your pull request:
 
 * Push your branch to your GitHub project.
-* Open a Pull Request on GitHub to the **develop** branch at mskcc/tempo for a new feature.
+* Open a pull request on GitHub to the **develop** branch at mskcc/tempo for a new feature.
 
 We will then review your suggested changes, and possibly integrate these. 
 

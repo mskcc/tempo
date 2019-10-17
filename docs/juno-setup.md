@@ -1,6 +1,17 @@
 # Juno Setup
 
-The [Juno compute cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler and which Tempo is configured to work with.
+The [Juno compute cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) is accessible to researchers within the CMO. If you do not have an account on Juno or have other questions about their services, contact [HPC](http://hpc.mskcc.org/contact-us). Juno uses the LSF job scheduler which Tempo is configured to work with.
+
+## Temporary Files
+
+The pipeline processes will write temporary files to the directory defined by the `TMPDIR` variable in the user environment on the compute node where it is active. On Juno, this should point to `/scratch`, so make sure you set this in your bash profile as such:
+```shell
+export TMPDIR=/scratch/username
+```
+
+::: danger Warning
+Each compute node has a `/scratch` directory. If you inadvertently fill up this directory on a given node, processes that require a lot of space might fail on this node. If you supsect this to be the case, you can check your disk usage by doing `ssh -A nodename "du -hs /scratch/username"`. If necessary, you can clean up this directory by doing `ssh -A nodename "rm -rf /scratch/username/*"`.
+:::
 
 ## Singularity Containers
 
@@ -24,7 +35,6 @@ export PATH=/opt/local/singularity/3.1.1/bin:$PATH
 ```
 The command `which singularity` should return `/opt/local/singularity/3.1.1/bin/singularity` if you have done this correctly. 
 
-
 ## Java Version
 
 Nextflow requires Java version 8 or later. On Juno, you can load it using `module`:
@@ -38,3 +48,14 @@ export PATH=$JAVA_HOME/bin:$PATH
 ```
 The call `which java` should return `/opt/common/CentOS_7/java/jdk1.8.0_202/bin/java` if you have done this correctly.
 
+## Test Your Environment
+
+You can run a the pipeline on small test files to ensure that you are ready to run real data. If you experience any issues, something in your environment might be the reason. The following should take approximately 30 minutes and all tasks should succeed at first attempt:
+
+```shell
+nextflow run pipeline.nf --somatic --germline \
+    --mapping test_inputs/local/full_test_mapping.tsv \ 
+    --pairing test_inputs/local/full_test_pairing.tsv \
+    -profile test_singularity \
+    --outDir results
+```

@@ -15,7 +15,7 @@ footer: MIT Licensed | Copyright © 2019-present
 
 # Time-Efficient Mutational Profiling in Oncology (Tempo)
 
-Tempo is a computational pipeline for processing data of paired-end whole-exome (WES) and whole-genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://hpc.mskcc.org/) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the [Center for Molecular Oncology](https://www.mskcc.org/research-programs/molecular-oncology).
+Tempo is a computational pipeline for processing data of paired-end whole-exome (WES) and whole-genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the [Center for Molecular Oncology](https://www.mskcc.org/research-programs/molecular-oncology).
 
 These pages contain instructions on how to run the Tempo pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus an outline describing the reference resources used. 
 
@@ -57,12 +57,12 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Quality Control](bioinformatic-components.md#quality-control)
 
 #### 2.2. Reference Resources
-* [Genome Assembly](reference-resources.md#genome-assembly)
-* [Genomic Intervals](reference-resources.md#genomic-intervals)
-* [RepeatMasker and Mappability Blacklist](reference-resources.md#repeatmasker-and-mappability-blacklist)
-* [Preferred Transcript Isoforms](reference-resources.md#preferred-transcript-isoforms)
-* [Hotspot Annotation](reference-resources.md#hotspot-annotation.md)
-* [OncoKB Annotation](reference-resources.md#oncokb.md)
+* [Genome Assembly](reference-files.md#genome-assembly)
+* [Genomic Intervals](reference-files.md#genomic-intervals)
+* [RepeatMasker and Mappability Blacklist](reference-files.md#repeatmasker-and-mappability-blacklist)
+* [Preferred Transcript Isoforms](reference-files.md#preferred-transcript-isoforms)
+* [Hotspot Annotation](reference-files.md#hotspot-annotation.md)
+* [OncoKB Annotation](reference-files.md#oncokb.md)
 * [gnomAD](gnomad.md)
 * [Panel of Normals for Exomes](wes-panel-of-normals.md)
 
@@ -78,11 +78,11 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 ### 4. Contributing
 * [Contributing to Tempo](contributing-to-tempo.md)
 
+### 5. Acknowledgements
+* [Acknowledgements](acknowledgements.md)
+
 <p align="center">
   <img src="./brandenburg5_allegro.jpg">
 </p>
-
-
-
 
 ---

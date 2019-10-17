@@ -26,16 +26,14 @@ class TempoUtils {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-      checkNumberOfItem(row, 6)
+      checkNumberOfItem(row, 5)
       def idSample = row.SAMPLE
-      def lane = row.LANE
       def assayValue = row.ASSAY
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
-      def sizeFastqFile1 = fastqFile1.size()
       def fastqFile2 = returnFile(row.FASTQ_PE2)
-      def sizeFastqFile2 = fastqFile2.size()
-
+      def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "@" + flowcellLaneFromFastq(fastqFile1)[0].replaceAll(":","@")
+      
       def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
 
       if ((assay == "genome") || (assay == "wgs")) {
@@ -48,8 +46,39 @@ class TempoUtils {
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
 
-      [idSample, lane, fastqFile1, sizeFastqFile1, fastqFile2, sizeFastqFile2, assay, targetFile]
+      [idSample, fileID, fastqFile1, fastqFile2, assay, targetFile]
     }
+  }
+
+ static def flowcellLaneFromFastq(path) {
+    // https://github.com/SciLifeLab/Sarek/blob/917a4d7f4dceb5a524eb7bd1c287cd197febe9c0/main.nf#L639-L666
+    // parse first line of a FASTQ file (optionally gzip-compressed)
+    // and return the flowcell id and rgID number.
+    // expected format:
+    // xx:yy:FLOWCELLID:LANE:... (seven fields)
+    // or
+    // FLOWCELLID:LANE:xx:... (five fields)
+    InputStream fileStream = new FileInputStream(path.toFile())
+    InputStream gzipStream = new java.util.zip.GZIPInputStream(fileStream)
+    Reader decoder = new InputStreamReader(gzipStream, 'ASCII')
+    BufferedReader buffered = new BufferedReader(decoder)
+    def line = buffered.readLine()
+    assert line.startsWith('@')
+    line = line.substring(1)
+    def fields = line.split(' ')[0].split(':')
+    String fcid
+    int lane
+    if (fields.size() == 7) {
+      // CASAVA 1.8+ format
+      // we include instrument name and run id in fcid to ensure the uniqueness
+      fcid = fields[0] + ":" + fields[1] + ":" + fields[2]
+      lane = fields[3].toInteger()
+    }
+    else if (fields.size() == 5) {
+      fcid = fields[0]
+      lane = fields[1].toInteger()
+    }
+    [fcid, lane]
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
@@ -133,14 +162,15 @@ class TempoUtils {
     }
   }
 
-  // check lane names are unique in input mapping *tsv 
+  // check fileIDs are unique in input mapping *tsv
+  // not functional for now
   static def checkForUniqueSampleLanes(inputFilename) {
     def totalList = []
     // parse tsv
     file(inputFilename).eachLine { line ->
-        if (!line.isEmpty()){
-            def (sample, lane, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
-            totalList << sample + "_" + lane
+        if (!line.isEmpty()) {
+            def (sample, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
+            totalList << sample + "_" + file(fastqpe1).baseName
         }
     }
     // remove header 'SAMPLE_LANE'
@@ -149,7 +179,3 @@ class TempoUtils {
   }
 
 }
-
-
-
-
