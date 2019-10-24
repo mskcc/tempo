@@ -332,10 +332,7 @@ if (!params.bam_pairing) {
   process AlignReads {
     tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
-    if (publishAll) { 
-      publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.json"
-    }
+    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
       set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, rgID from fastqFiles
