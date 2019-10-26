@@ -1615,7 +1615,7 @@ process DoFacets {
 
   mkdir ${outputDir}
 
-  Rscript --no-init-file /usr/bin/facets-suite/doFacets.R \
+  Rscript --vanilla /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
     --snp_nbhd ${params.facets.snp_nbhd} \
     --ndepth ${params.facets.ndepth} \
