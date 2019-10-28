@@ -2824,8 +2824,8 @@ process GermlineAggregateSv {
 ================================================================================
 */
 
-(bamsT4Pipeup, bamsT) = bamsT.into(2)
-(bamsN4Pipeup, bamsN) = bamsN.into(2)
+(bamsT4Pileup, bamsT) = bamsT.into(2)
+(bamsN4Pileup, bamsN) = bamsN.into(2)
 
 allBamFiles = bamsT4Pileup.mix(bamsN4Pipeup)
 
