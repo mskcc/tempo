@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/mskcc/tempo.svg?token=4kBAQAEEc39zo9ACoThH&branch=master)](https://travis-ci.com/mskcc/tempo)
+[![Build Status](https://travis-ci.com/mskcc/tempo.svg?token=DokCkCiDp43sqzeuXUHD&branch=master)](https://travis-ci.com/mskcc/tempo)
 
 # Tempo 
 
