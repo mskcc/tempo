@@ -2824,20 +2824,10 @@ process GermlineAggregateSv {
 ================================================================================
 */
 
+(bamsT4Pipeup, bamsT) = bamsT.into(2)
+(bamsN4Pipeup, bamsN) = bamsN.into(2)
 
-(bamsForPileup, bamFiles) = bamFiles.into(2)
-
-allBamFiles = bamsForPileup.map{
-  item ->
-    def idTumor = item[2]
-    def idNormal = item[3]
-    def bamTumor = item[4]
-    def bamNormal = item[5]
-    def baiTumor = item[6]
-    def baiNormal = item[7]
-
-    return [[idTumor, idNormal], [bamTumor, bamNormal], [baiTumor, baiNormal]]
-}.transpose().unique()
+allBamFiles = bamsT4Pileup.mix(bamsN4Pipeup)
 
 process QcPileup {
   tag {idSample}
@@ -2845,7 +2835,7 @@ process QcPileup {
   publishDir "${params.outDir}/qc/conpair/", mode: params.publishDirMode
 
   input:
-    set idSample, file(bam), file(bai) from allBamFiles
+    set idTumor, idNormal, assay, target, file(bam), file(bai) from allBamFiles
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -2856,6 +2846,7 @@ process QcPileup {
   when: !params.test && "pileup" in tools
 
   script:
+  idSample = bam.getSimpleName()
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
   conpairPath = "/usr/bin/conpair"
   markersBed = ""
