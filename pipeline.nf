@@ -2827,7 +2827,7 @@ process GermlineAggregateSv {
 (bamsT4Pileup, bamsT) = bamsT.into(2)
 (bamsN4Pileup, bamsN) = bamsN.into(2)
 
-allBamFiles = bamsT4Pileup.mix(bamsN4Pipeup)
+allBamFiles = bamsT4Pileup.mix(bamsN4Pileup)
 
 process QcPileup {
   tag {idSample}
