@@ -332,10 +332,7 @@ if (!params.bam_pairing) {
   process AlignReads {
     tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.html"
-    if (publishAll) { 
-      publishDir "${params.outDir}/qc/fastp/json", mode: params.publishDirMode, pattern: "*.json" 
-    }
+    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
       set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, assay, targetFile, rgID from fastqFiles
@@ -364,6 +361,9 @@ if (!params.bam_pairing) {
         task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
+
+    // if it's the last time to try, use 72h as time limit no matter for what reason it failed before
+    task.time = task.attempt < 3 ? task.time : { 72.h }
     
     // mem --- total size of the FASTQ pairs in MB (max memory `samtools sort` can take advantage of)
     // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
@@ -453,7 +453,7 @@ if (!params.bam_pairing) {
       file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
-    if (workflow.profile == "juno" && params.assayType == "exome") {
+    if (workflow.profile == "juno") {
       if(bam.size() > 120.GB) {
         task.time = { 72.h }
       }
@@ -464,8 +464,14 @@ if (!params.bam_pairing) {
         task.time = task.exitStatus != 140 ? { 6.h } : { 72.h }
       }
     }
+    // if it's the last time to try, use 72h as time limit no matter for what reason it failed before
+    task.time = task.attempt < 3 ? task.time : { 72.h }
+
     memMultiplier = params.mem_per_core ? task.cpus : 1
-    maxMem = (memMultiplier * task.memory.toString().split(" ")[0].toInteger() - 3)
+
+    // when increase memory requested from system every time it retries, keep java Xmx steady, in order to give more memory for java garbadge collection
+    originalMem = task.attempt ==1 ? task.memory : originalMem
+    maxMem = (memMultiplier * originalMem.toString().split(" ")[0].toInteger() - 3)
     maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
@@ -531,7 +537,10 @@ if (!params.bam_pairing) {
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
-    javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+    // when increase memory requested from system every time it retries, keep java Xmx steady, in order to give more memory for java garbadge collection
+    originalMem = task.attempt ==1 ? task.memory : originalMem
+    javaOptions = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
     """
     gatk \
@@ -590,8 +599,11 @@ if (!params.bam_pairing) {
       task.memory = { 6.GB }
       task.time = { 72.h }
     }
+
     memMultiplier = params.mem_per_core ? task.cpus : 1
-    javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+    // when increase memory requested from system every time it retries, keep java Xmx steady, in order to give more memory for java garbadge collection
+    originalMem = task.attempt ==1 ? task.memory : originalMem
+    javaOptions = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     """
     echo -e "${idSample}\t${bam.size()}" > file-size.txt
     gatk \
@@ -760,7 +772,7 @@ if (!params.bam_pairing) {
       file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
     script:
-    if (workflow.profile == "juno" && params.assayType == "exome") {
+    if (workflow.profile == "juno") {
       if (bam.size() > 200.GB) {
         task.time = { 72.h }
       }
