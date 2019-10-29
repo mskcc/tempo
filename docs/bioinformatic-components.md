@@ -28,7 +28,7 @@ Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (c
 * __HLA genotyping__ is performed with [POLYSOLVER](https://software.broadinstitute.org/cancer/cga/polysolver).
 * __LOH at HLA loci__ is assessed with [LOHHLA](https://github.com/mskcc/lohhla).
 * __Mutational signatures__ are inferred with [https://github.com/mskcc/mutation-signatures](https://github.com/mskcc/mutation-signatures).
-* __Neoantigen prediction__ using estimates of class I MHC binding affinity is performed with [NetMHC 4.0](https://www.ncbi.nlm.nih.gov/pubmed/28978689) and integrated into the set of SNV/indel calls using [https://github.com/taylor-lab/neoantigen-dev](https://github.com/taylor-lab/neoantigen-dev).
+* __Neoantigen prediction__ using estimates of class I MHC binding affinity is performed with [NetMHC 4.0](https://www.ncbi.nlm.nih.gov/pubmed/28978689) and integrated into the set of SNV/indel calls using [https://github.com/taylor-lab/neoantigen-dev](https://github.com/taylor-lab/neoantigen-dev) (_Note: this repository is currently private_).
 
 ## Germline Analyses
 
