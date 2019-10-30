@@ -842,35 +842,35 @@ if (params.bam_pairing) {
   bamFiles = Channel.empty()
   bamPairingfile = file(bamPairingPath)
   bamFiles = TempoUtils.extractBAM(bamPairingfile)
-  (bamFiles, bamsT, bamsN) = bamFiles.into(3)
-  bamsT = bamsT.map { item ->
-                            def idTumor = item[1]
-                            def idNormal = item[2]
+  (bamFiles, bamsT, bamsN, pairingTN) = bamFiles.into(4)
+  (bamsT, bamsT4Combine) = bamsT.map { item ->
+                            def idTumor = item[0]
+                            def idNormal = item[1]
                             def tumorBam = item[3]
                             def tumorBai = item[4]
-                            def target = item[0]
+                            def target = item[2]
                             return [ idTumor, idNormal, target, tumorBam, tumorBai ]
-                          }.unique()
-  bamsN = bamsN.map { item ->
-                            def idTumor = item[1]
-                            def idNormal = item[2]
-                            def normalBam = item[4]
+                          }.unique().into(2)
+  (bamsN, bamsN4Combine) = bamsN.map { item ->
+                            def idTumor = item[0]
+                            def idNormal = item[1]
+                            def normalBam = item[5]
                             def normalBai = item[6]
-                            def target = item[0]
+                            def target = item[2]
                             return [ idTumor, idNormal, target, normalBam, normalBai ]
-                          }.unique()
+                          }.unique().into(2)
   bamsBQSR4QcPileup = bamsT4Combine.mix(bamsN4Combine).map { item ->
                             def target = item[2]
                             def sampleBam = item[3]
                             def sampleBai = item[4]
                             def idSample = sampleBam.getSimpleName()
 
-                            return [ idSample, sampleBam, sampleBai, target ]
+                            return [ idSample, target, sampleBam, sampleBai ]
   }
 
   pairingTN = pairingTN.map{ item ->
-                           def idTumor = item[2]
-                           def idNormal = item[3]
+                           def idTumor = item[0]
+                           def idNormal = item[1]
                            return [ idTumor, idNormal ]
   }
 }

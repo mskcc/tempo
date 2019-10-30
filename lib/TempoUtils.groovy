@@ -105,7 +105,7 @@ class TempoUtils {
       def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
       // def sizeNormalBamFile = normalBamFile.size()
 
-      [target, idTumor, idNormal, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal)]
+      [idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal)]
     }
   }
   
