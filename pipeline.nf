@@ -863,8 +863,8 @@ if (params.bam_pairing) {
   bamFiles = Channel.empty()
   bamPairingfile = file(bamPairingPath)
   bamFiles = TempoUtils.extractBAM(bamPairingfile)
-  (bamFiles, bamsT, bamsN) = bamFiles.into(3)
-  bamsT = bamsT.map { item ->
+  (bamFiles, bamsT, bamsN, pairingTN) = bamFiles.into(4)
+  (bamsT, bamsT4Combine) = bamsT.map { item ->
                             def idTumor = item[2]
                             def idNormal = item[3]
                             def tumorBam = item[4]
@@ -872,8 +872,8 @@ if (params.bam_pairing) {
                             def assay = item[0]
                             def target = item[1]
                             return [ idTumor, idNormal, assay, target, tumorBam, tumorBai ]
-                          }.unique()
-  bamsN = bamsN.map { item ->
+                          }.unique().into(2)
+  (bamsN, bamsN4Combine) = bamsN.map { item ->
                             def idTumor = item[2]
                             def idNormal = item[3]
                             def normalBam = item[5]
@@ -881,7 +881,22 @@ if (params.bam_pairing) {
                             def assay = item[0]
                             def target = item[1]
                             return [ idTumor, idNormal, assay, target, normalBam, normalBai ]
-                          }.unique()
+                          }.unique().into(2)
+  bamsBQSR4QcPileup = bamsT4Combine.mix(bamsN4Combine).map { item ->
+                            def assay = item[2]
+			    def target = item[3]
+			    def sampleBam = item[4]
+			    def sampleBai = item[5]
+			    def idSample = sampleBam.getSimpleName()
+
+			    return [ idSample, sampleBam, sampleBai, assay, target ]
+  }
+
+  pairingTN = pairingTN.map{ item ->
+			   def idTumor = item[2]
+			   def idNormal = item[3]
+			   return [ idTumor, idNormal ]
+  }
 }
 
 // GATK SplitIntervals, CreateScatteredIntervals
@@ -1897,7 +1912,7 @@ process SomaticFacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileSomatic
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsAnnotationOutputs
     set file("${outputPrefix}.armlevel.unfiltered.txt"), file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsArmGeneOutputs
     file("file-size.txt") into mafSize
 
@@ -1930,7 +1945,7 @@ process SomaticFacetsAnnotation {
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
 
-  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.maf | cut -d ' ' -f1`" > file-size.txt
+  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
   """
 }
 
@@ -2897,7 +2912,6 @@ process QcPileup {
                           def tumorPileup = item[1]
                           return [ idTumor, idNormal, tumorPileup ]
                         }.unique().into(2)
-
 (pileupN, pileupN4Combine) = normalPileups.combine(pairingN4Conpair)
                         .filter { item ->
                           def idSample = item[0]
@@ -2911,7 +2925,6 @@ process QcPileup {
                           def normalPileup = item[1]
                           return [ idTumor, idNormal, normalPileup ]
                         }.unique().into(2)
-
 
 pileupConpair = pileupT.combine(pileupN, by: [0, 1])
 
