@@ -26,7 +26,7 @@ class TempoUtils {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-      checkNumberOfItem(row, 4)
+//      checkNumberOfItem(row, 4)	// Disable check columns for now to support older version of input files, especially for Travis-CI
       def idSample = row.SAMPLE
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
@@ -93,7 +93,7 @@ class TempoUtils {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-      checkNumberOfItem(row, 5)
+//      checkNumberOfItem(row, 5)	// Disable check columns for now to support older version of input files, especially for Travis-CI
       def idTumor = row.TUMOR_ID
       def idNormal = row.NORMAL_ID
       def target = row.TARGET
