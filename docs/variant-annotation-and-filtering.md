@@ -1,5 +1,11 @@
 # Variant Annotation and Filtering
 
+:::tip Note
+Hard-coded filter thresholds are viewable and editable in the configuration files here:
+[* Exomes](../conf/exome.config)
+[* Genomes](../conf/genome.config)
+:::
+
 ::: warning Be aware
 * These components of the pipeline are subject to constant change.
 * Users should be aware of the pitfalls and challenges of filtering somatic variant calls, which are not further discussed here.
