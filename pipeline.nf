@@ -868,6 +868,7 @@ bamsNormal.combine(mergedIList4N, by: 2)
 .transpose()
 .set{ mergedChannelGermline }
 
+
 // --- Run Delly
 Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
 
@@ -1703,6 +1704,7 @@ process SomaticFacetsAnnotation {
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
 
   echo -e "${outputPrefix}\t`wc -l ${outputPrefix}..facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
+
   """
 }
 
@@ -2179,7 +2181,6 @@ bamsTumor4VcfCombine.map{
     def target = item[2]
     def bamTumor = item[3]
     def baiTumor = item[4]
-
     return [idTumor, idNormal, target, bamTumor, baiTumor]
 }
 .combine(haplotypecallerStrelkaChannel, by: [0,1,2])
