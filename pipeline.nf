@@ -5,7 +5,7 @@
 --------------------------------------------------------------------------------
 Processes overview:
 
-Alignment and QC
+Alignment
 ----------------
  - AlignReads
     --- Map paired-end FASTQs with bwa mem
@@ -15,9 +15,6 @@ Alignment and QC
  - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
  - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
  - RecalibrateBam --- Recalibrate Bam with GATK4 ApplyBQSR
- - Alfred - BAM QC metrics
- - CollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
- - AggregateBamQC --- aggregates information from Alfred and CollectHsMetrics across all samples
 
 Somatic Analysis
 ----------------
@@ -34,7 +31,6 @@ Somatic Analysis
  - DoFacets --- facets-suite: mafAnno.R, geneLevel.R, armLevel.R
  - RunPolysolver --- Polysolver
  - RunLOHHLA --- LOH in HLA
- - RunConpair --- Tumor-Normal quality/contamination
  - RunMutationSignatures --- mutational signatures
  - SomaticFacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
@@ -59,6 +55,15 @@ Germline Analysis
  - GermlineAggregateMaf --- collect outputs, MAF
  - GermlineAggregateSv --- collect outputs, SVs
 
+Quality Control
+-----------------
+ - QcAlfred - BAM QC metrics
+ - QcCollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
+ - QcBamAggregate --- aggregates information from QcAlfred and QcCollectHsMetrics across all samples
+ - QcConpair --- Tumor-Normal quality/contamination
+ - QcConpairAll --- Tumor-Normal All Combination quality/contamination
+ - QcConpairAggregate --- aggregates information from QcConpair or QcConpairAll across all sample
+
 */
 
 /*
@@ -73,7 +78,7 @@ if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_si
 }
 
 // Both mapping and pairing necessary for alignment of FASTQs
-// Only bam_pairing required when using already aligned BAM files
+// Only bamPairing required when using already aligned BAM files
 if (params.mapping && !params.pairing) {
   println "ERROR: Flags --mapping and --pairing must both be provided. Please provide --pairing and re-run the pipeline."
   exit 1
@@ -84,8 +89,8 @@ if (!params.mapping && params.pairing) {
   exit 1
 }
 
-if ((params.mapping && params.bam_pairing) || (params.pairing && params.bam_pairing)) {
-  println "ERROR: Cannot use both FASTQs and BAMs as inputs. Flags --bam_pairing and --mapping/-pairing cannot be invoked together. Please provide either FASTQs or BAMs, and re-run the pipeline."
+if ((params.mapping && params.bamPairing) || (params.pairing && params.bamPairing)) {
+  println "ERROR: Cannot use both FASTQs and BAMs as inputs. Flags --bamPairing and --mapping/-pairing cannot be invoked together. Please provide either FASTQs or BAMs, and re-run the pipeline."
   exit 1
 } 
 
@@ -118,8 +123,8 @@ if (params.pairing) {
 
 // Validate BAM file pairing file
 // Check for duplicate inputs
-if (params.bam_pairing) {
-  bamPairingPath = params.bam_pairing
+if (params.bamPairing) {
+  bamPairingPath = params.bamPairing
 
   if (bamPairingPath && !TempoUtils.check_for_duplicated_rows(bamPairingPath)) {
     println "ERROR: Duplicated row found in BAM mapping file. Please fix the error and re-run the pipeline."
@@ -132,6 +137,7 @@ publishAll = params.publishAll
 outname = params.outname
 runGermline = params.germline
 runSomatic = params.somatic
+runQC = params.QC
 
 referenceMap = defineReferenceMap()
 
@@ -143,7 +149,7 @@ referenceMap = defineReferenceMap()
 
 
 // Skip these processes if starting from aligned BAM files
-if (!params.bam_pairing) {
+if (!params.bamPairing) {
 
   // Parse input FASTQ mapping and sample pairing
   mappingFile = file(mappingPath)
@@ -495,7 +501,7 @@ if (!params.bam_pairing) {
       file("${idSample}.recal.table") into recalibrationTableTSV
 
     script:
-    if (task.attempt > 5 ){
+    if (task.attempt > 3 ){
       sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 480.GB) {
@@ -511,9 +517,9 @@ if (!params.bam_pairing) {
     }
     else {
       sparkConf = " BaseRecalibrator"
-      task.cpus = 2
-      task.memory = { 4.GB }
-      task.time = { 3.h }
+      task.cpus = 4
+      task.memory = { 6.GB }
+      task.time = { 72.h }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -571,9 +577,9 @@ if (!params.bam_pairing) {
     }
     else {
       sparkConf = " ApplyBQSR"
-      task.cpus = 2
-      task.memory = { 4.GB }
-      task.time = { 3.h }
+      task.cpus = 4
+      task.memory = { 6.GB }
+      task.time = { 72.h }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -696,12 +702,12 @@ if ("strelka2" in tools) {
 }
 
 // If using running either conpair or conpairAll, run pileup as well to generate pileups
-if ("conpair" in tools || params.conpair_all) {
+if ("conpair" in tools || params.conpairAll) {
   tools.add("pileup")
 }
 
 // If starting with BAM files, parse BAM pairing input
-if (params.bam_pairing) {
+if (params.bamPairing) {
   bamPairingfile = file(bamPairingPath)
   TempoUtils.extractBAM(bamPairingfile).set { inputBams }
   inputBams.into{bamFiles; bamsTumor; bamsNormal; pairingTN}
@@ -2596,7 +2602,7 @@ process QcCollectHsMetrics {
   output:
     file("${idSample}.hs_metrics.txt") into collectHsMetrics
 
-  when: params.assayType == "exome" && !params.test
+  when: params.assayType == "exome" && !params.test && runQC
 
   script:
   if (workflow.profile == "juno") {
@@ -2656,6 +2662,8 @@ process QcAlfred {
     file("${idSample}.alfred*tsv.gz") into bamsQcStats
     file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
 
+  when: runQC
+
   script:
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
@@ -2697,7 +2705,7 @@ process QcBamAggregate {
   output:
     file('alignment_qc.txt') into alignmentQc
 
-  when: !params.test
+  when: !params.test && runQC
 
   script:
   if (params.assayType == "exome") {
@@ -2726,7 +2734,7 @@ process QcPileup {
   output:
     set idSample, file("${idSample}.pileup") into (tumorPileups, normalPileups)
 
-  when: !params.test && "pileup" in tools
+  when: !params.test && "pileup" in tools && runQC
 
   script:
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
@@ -2807,7 +2815,7 @@ process QcConpair {
     file("${outPrefix}.concordance.txt") into conpairConcordance
     file("${outPrefix}.contamination.txt") into conpairContamination
 
-  when: !params.test && "conpair" in tools
+  when: !params.test && "conpair" in tools && runQC
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
@@ -2863,7 +2871,7 @@ process QcConpairAll {
     file("${outPrefix}.concordance.txt") into conpairAllConcordance
     file("${outPrefix}.contamination.txt") into conpairAllContamination
 
-  when: !params.test && params.conpair_all
+  when: !params.test && params.conpairAll in tools && runQC
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
@@ -2905,7 +2913,7 @@ process QcConpairAll {
 }
 
 // -- Run based on QcConpairAll channels or the single QcConpair channels
-(conpairAggregateConcordance, conpairAggregateContamination) = (!params.conpair_all
+(conpairAggregateConcordance, conpairAggregateContamination) = (!params.conpairAll
 								? [conpairConcordance, conpairContamination]
 								: [conpairAllConcordance, conpairAllContamination]
 								)
@@ -2921,7 +2929,7 @@ process QcConpairAggregate {
   output:
     set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregated
 
-  when: !params.test
+  when: !params.test && runQC
 
   script:
   """
