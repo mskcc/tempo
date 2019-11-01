@@ -501,7 +501,7 @@ if (!params.bamPairing) {
       file("${idSample}.recal.table") into recalibrationTableTSV
 
     script:
-    if (task.attempt > 3 ){
+    if (task.attempt < 3 ){
       sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 480.GB) {
@@ -561,7 +561,7 @@ if (!params.bamPairing) {
 
     script:
 
-    if (task.attempt > 5 ) {
+    if (task.attempt < 3 ) {
       sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 200.GB){
