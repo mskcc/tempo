@@ -988,6 +988,7 @@ mergedChannelGermline = bamsN4Intervals.combine(mergedIList4N, by: 2)
     )
 }.transpose()
 
+
 // --- Run Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
 (bamsForDelly, bamFiles) = bamFiles.into(2)
@@ -2387,7 +2388,6 @@ bamsT4VcfCombine = bamsT4VcfCombine.map{
     def target = item[2]
     def bamTumor = item[3]
     def baiTumor = item[4]
-
     return [idTumor, idNormal, target, bamTumor, baiTumor]
   }
 
