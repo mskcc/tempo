@@ -148,4 +148,3 @@ Somatic and germline SVs from Delly and Manta are merged and annotated with gene
 Read support for variants if taken from Delly, if called by both variants. Read support from paired-end (`PR`) or split reads (`SR`) is represented in the sample columns for the tumor and normal, respectively. Reference- and variant-supporting reads are comma separated. 
 
 The VCF header contains further description of variant-level information found in the INFO tags.
-

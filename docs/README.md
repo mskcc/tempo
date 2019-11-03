@@ -65,6 +65,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [OncoKB Annotation](reference-files.md#oncokb.md)
 * [gnomAD](gnomad.md)
 * [Panel of Normals for Exomes](wes-panel-of-normals.md)
+* [Gene Annotation for SVs](gene-annotation-for-svs.md)
 
 #### 2.3. Variant Annotation and Filtering
 * [Somatic SNVs and Indels](variant-annotation-and-filtering.md#somatic-snvs-and-indels)

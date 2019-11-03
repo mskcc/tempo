@@ -1,0 +1,14 @@
+name: vcf-tools
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  - pandas
+  - scikit-learn
+  - pybedtools
+  - bcftools
+  - bedtools
+  - tabix
+  - vt

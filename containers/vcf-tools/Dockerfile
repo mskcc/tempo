@@ -8,28 +8,24 @@ LABEL \
     version.filter-vcf="0.2.0" \
     version.fix-manta-vcf="0.1.0" \
     version.get-sv-info="0.1.0" \
-    version.pysam="0.15.2" \
+    version.pysam="0.15.3" \
     source.getBaseCountsMultiSample="https://github.com/zengzheng123/GetBaseCountsMultiSample/releases/tag/v1.2.2" \
     version.getBaseCountsMultiSample="1.2.2" \
     version.survivor="1.0.7"
 
 ENV GBCMS_VERSION 1.2.2
-ENV BCFTOOLS_VERSION 1.9
 ENV VT_VERSION 0.57721
 
-# Dependencies
+# Dependencies and tools
 RUN apt-get update \
-    && apt-get --assume-yes install bedtools tabix cmake
+    && apt-get install --assume-yes cmake bedtools bcftools tabix
 
-# Install python packages
-RUN pip install pysam==0.15.2 Cython sklearn
+RUN pip install Cython pysam sklearn
 
-# Install bcftools
-RUN wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSION}/bcftools-${BCFTOOLS_VERSION}.tar.bz2 \
-    && tar -vxjf bcftools-${BCFTOOLS_VERSION}.tar.bz2 \
-    && cd bcftools-${BCFTOOLS_VERSION} \
-    && make \
-    && cp bcftools /usr/bin
+# Install svtk
+RUN git clone https://github.com/talkowski-lab/svtk.git \
+    && cd svtk \
+    && pip install -e .
 
 # Install vt
 RUN wget https://github.com/atks/vt/archive/${VT_VERSION}.tar.gz \
@@ -55,11 +51,6 @@ RUN cd /tmp \
     && cd /tmp/GetBaseCountsMultiSample-${GBCMS_VERSION} \
     && make \
     && cp GetBaseCountsMultiSample /usr/bin/ 
-
-# Install svtk
-RUN git clone https://github.com/talkowski-lab/svtk.git \
-    && cd svtk \
-    && pip install -e .
 
 # Add custom scripts
 COPY filter-vcf.py /usr/bin
