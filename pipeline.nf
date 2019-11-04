@@ -725,7 +725,7 @@ if (!params.bam_pairing) {
     """
     gatk CollectHsMetrics \
       ${javaOptions} \
-      --TMP_DIR ${TMPDIR} \
+      --TMP_DIR ./ \
       --INPUT ${bam} \
       --OUTPUT ${idSample}.hs_metrics.txt \
       --REFERENCE_SEQUENCE ${genomeFile} \
@@ -1188,7 +1188,7 @@ process SomaticMergeDellyAndManta {
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
-    set file(gencodeGtf) from Channel.value([referenceMap.gencodeGtf])
+    file(gencodeGtf) from Channel.value([referenceMap.gencodeGtf])
 
   output:
     file("${outputPrefix}.delly.manta.vcf.{gz,gz.tbi}") into vcfDellyMantaMergedOutput
@@ -1228,7 +1228,7 @@ process SomaticMergeDellyAndManta {
     bcftools view \
     --samples ${idNormal},${idTumor} | \
     bcftools sort \
-    --temp-dir ${TMPDIR} \
+    --temp-dir ./ \
     --output-type z \
     --output-file ${outputPrefix}.unfiltered.delly.vcf.gz
 
@@ -1259,16 +1259,23 @@ process SomaticMergeDellyAndManta {
     vcfs.txt ${outputPrefix}.merged.vcf
   
   # Re-annotate info from original VCFs
-  get-sv-info.py ${outputPrefix}.merged.vcf ${outputPrefix}.delly.vcf ${outputPrefix}.manta.vcf ${outputPrefix}.delly.manta.raw.vcf
+  get-sv-info-somatic.py ${outputPrefix}.merged.vcf ${outputPrefix}.delly.vcf ${outputPrefix}.manta.vcf ${outputPrefix}.delly.manta.raw.vcf
 
   # Filter on read support
   bcftools filter \
     --exclude "FORMAT/PR[1:1] < ${params.somaticStructuralVariant.tumorCount} & FORMAT/SR[1:1] < ${params.somaticStructuralVariant.tumorCount}" \
     --soft-filter 'low_t_alt_count' \
     --output-type z \
-    --output ${outputPrefix}.delly.manta.unfiltered.vcf.gz \
+    --output ${outputPrefix}.delly.manta.tmp.vcf.gz \
     ${outputPrefix}.delly.manta.raw.vcf
 
+  svtk annotate --gencode ${gencodeGtf} \
+    ${outputPrefix}.delly.manta.tmp.vcf.gz \
+    ${outputPrefix}.delly.manta.unfiltered.vcf
+
+  bgzip ${outputPrefix}.delly.manta.unfiltered.vcf
+  tabix --preset vcf ${outputPrefix}.delly.manta.unfiltered.vcf.gz
+  
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type z \
@@ -2716,7 +2723,7 @@ process GermlineMergeDellyAndManta {
 
   input:
     set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
-    set file(gencodeGtf) from Channel.value([referenceMap.gencodeGtf])
+    file(gencodeGtf) from Channel.value([referenceMap.gencodeGtf])
 
   output:
     set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
@@ -2744,19 +2751,20 @@ process GermlineMergeDellyAndManta {
     --include 'FILTER=\"PASS\"' \
     --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
     ${idNormal}.manta.vcf.gz | \
+    bcftools view \
     --output-type v \
-    --output ${idNormal}.manta.vcf
+    --output-file ${idNormal}.manta.vcf
 
   # Delly
   bcftools concat \
     --allow-overlaps \
     *.delly.vcf.gz |
     bcftools sort \
-    --temp-dir ${TMPDIR} \
+    --temp-dir ./ \
     --output-type z \
     --output-file ${idNormal}.delly.unfiltered.vcf.gz
 
-  tabix -p ${idNormal}.delly.unfiltered.vcf.gz
+  tabix --preset vcf ${idNormal}.delly.unfiltered.vcf.gz
   
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
@@ -2779,16 +2787,29 @@ process GermlineMergeDellyAndManta {
     --ignore-svtypes \
     vcfs.txt ${idNormal}.merged.vcf
 
-  get-sv-info.py ${idNormal}.merged.vcf ${idNormal}.delly.vcf ${idNormal}.manta.vcf ${idNormal}.delly.manta.raw.vcf
+  get-sv-info-germline.py ${idNormal}.merged.vcf ${idNormal}.delly.vcf ${idNormal}.manta.vcf ${idNormal}.delly.manta.raw.vcf
 
   # Filter on read support
   bcftools filter \
-    --exclude 'FORMAT/PR[0:1] < ${params.germlineStructuralVariant.tumorCount} & FORMAT/SR[0:1] < ${params.germlineStructuralVariant.tumorCount}' \
+    --exclude 'FORMAT/PR[0:1] < ${params.germlineStructuralVariant.normalCount} & FORMAT/SR[0:1] < ${params.germlineStructuralVariant.normalCount}' \
     --soft-filter 'low_n_alt_count' \
     --output-type z \
-    --output ${idNormal}.delly.manta.unfiltered.vcf.gz \
+    --output ${idNormal}.delly.manta.tmp.vcf.gz \
     ${idNormal}.delly.manta.raw.vcf
-    
+
+  svtk annotate --gencode ${gencodeGtf} \
+    ${idNormal}.delly.manta.tmp.vcf.gz \
+    ${idNormal}.delly.manta.unfiltered.vcf
+
+  bgzip ${idNormal}.delly.manta.unfiltered.vcf
+  tabix --preset vcf ${idNormal}.delly.manta.unfiltered.vcf.gz
+
+  bcftools filter \
+    --include 'FILTER=\"PASS\"' \
+    --output-type z \
+    --output ${idNormal}.delly.manta.vcf.gz \
+    ${idNormal}.delly.manta.unfiltered.vcf.gz
+
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
 }
@@ -3120,7 +3141,7 @@ def defineReferenceMap() {
     'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
     'gencodeGtf' : checkParamReturnFile('gencodeGtf')
   ]
 

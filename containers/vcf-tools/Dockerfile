@@ -55,7 +55,9 @@ RUN cd /tmp \
 # Add custom scripts
 COPY filter-vcf.py /usr/bin
 COPY fix-manta-vcf.py /usr/bin
-COPY get-sv-info.py /usr/bin
+COPY get-sv-info-somatic.py /usr/bin
+COPY get-sv-info-germline.py /usr/bin
 RUN chmod +x /usr/bin/filter-vcf.py
 RUN chmod +x /usr/bin/fix-manta-vcf.py
-RUN chmod +x /usr/bin/get-sv-info.py
+RUN chmod +x /usr/bin/get-sv-info-somatic.py
+RUN chmod +x /usr/bin/get-sv-info-germline.py
