@@ -26,17 +26,27 @@ class TempoUtils {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-//      checkNumberOfItem(row, 4)	// Disable check columns for now to support older version of input files, especially for Travis-CI
+      checkNumberOfItem(row, 5)
       def idSample = row.SAMPLE
+      def assayValue = row.ASSAY
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "@" + flowcellLaneFromFastq(fastqFile1)[0].replaceAll(":","@")
       
+      def assay = assayValue.toLowerCase() //standardize genome/wgs/WGS to wgs, exome/wes/WES to wes
+
+      if ((assay == "genome") || (assay == "wgs")) {
+        assay = "wgs"
+      }
+      if ((assay == "exome") || (assay == "wes")) {
+        assay = "wes"
+      }
+
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
 
-      [idSample, fileID, fastqFile1, fastqFile2, targetFile]
+      [idSample, fileID, fastqFile1, fastqFile2, assay, targetFile]
     }
   }
 
@@ -93,9 +103,10 @@ class TempoUtils {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-//      checkNumberOfItem(row, 5)	// Disable check columns for now to support older version of input files, especially for Travis-CI
+      checkNumberOfItem(row, 6)
       def idTumor = row.TUMOR_ID
       def idNormal = row.NORMAL_ID
+      def assay = row.ASSAY
       def target = row.TARGET
       def bamTumor = returnFile(row.TUMOR_BAM)
       // check if using bamTumor.bai or bamTumor.bam.bai
@@ -105,7 +116,7 @@ class TempoUtils {
       def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
       // def sizeNormalBamFile = normalBamFile.size()
 
-      [idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal)]
+      [assay, target, idTumor, idNormal, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal)]
     }
   }
   
@@ -137,6 +148,19 @@ class TempoUtils {
     return entries.toSet().size() == entries.size()
   }
 
+  static def check_for_mixed_assay(mappingFilePath) {
+    def wgs = false
+    def wes = false
+    file( mappingFilePath ).eachLine { line -> 
+      if (line.toLowerCase().contains('\tgenome\t') || line.toLowerCase().contains('\twgs\t')) {
+        wgs = true
+      }
+      if (line.toLowerCase().contains('\texome\t') || line.toLowerCase().contains('\twes\t')) {
+        wes = true
+      }
+    return !(wgs && wes)
+    }
+  }
 
   // check fileIDs are unique in input mapping *tsv
   // not functional for now
@@ -145,7 +169,7 @@ class TempoUtils {
     // parse tsv
     file(inputFilename).eachLine { line ->
         if (!line.isEmpty()) {
-            def (sample, target, fastqpe1, fastqpe2) = line.split(/\t/)
+            def (sample, assay, target, fastqpe1, fastqpe2) = line.split(/\t/)
             totalList << sample + "_" + file(fastqpe1).baseName
         }
     }
