@@ -3059,7 +3059,6 @@ def defineReferenceMap() {
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
-    'gencodeGtf' : checkParamReturnFile('gencodeGtf')
   ]
 
   if (!params.test) {
@@ -3095,6 +3094,7 @@ def defineReferenceMap() {
     result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
     result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
+    result_array << ['gencodeGtf' : checkParamReturnFile('gencodeGtf')]
   }
   return result_array
 }
