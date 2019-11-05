@@ -556,7 +556,7 @@ if (!params.bam_pairing) {
       ])
 
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2, bamsBQSR4QcPileup
+      set idSample, file("${idSample}.bam"), file("${idSample}.bam.bai"), assay, targetFile into recalibratedBam, recalibratedBamForCollectHsMetrics, recalibratedBamForStats, recalibratedBamForOutput, recalibratedBamForOutput2, bamsBQSR4QcPileup
       file("${idSample}.bam") into currentBam
       file("${idSample}.bam.bai") into currentBai
       file("file-size.txt") into bamSize
@@ -615,62 +615,67 @@ if (!params.bam_pairing) {
                             def idNormal = item[5]
                             idSample == idTumor
                           }.map { item ->
-                            def idTumor = item[4]
-                            def idNormal = item[5]
-                            def tumorBam = item[2]
-                            def tumorBai = item[3]
-                            def target = item[1]
-                            return [ idTumor, idNormal, target, tumorBam, tumorBai ]
+
+                            def idTumor = item[5]
+                            def idNormal = item[6]
+                            def tumorBam = item[1]
+                            def tumorBai = item[2]
+                            def assay = item[3]
+                            def target = item[4]
+                            return [ idTumor, idNormal, assay, target, tumorBam, tumorBai ]
                           }.unique().into(2)
 
   (bamsN, bamsN4Combine) = recalibratedBamForOutput2.combine(pairing4N)
                           .filter { item ->
                             def idSample = item[0]
-                            def target = item[1]
-                            def sampleBam = item[2]
-                            def sampleBai = item[3]
-                            def idTumor = item[4]
-                            def idNormal = item[5]
+                            def sampleBam = item[1]
+                            def sampleBai = item[2]
+                            def assay = item[3]
+                            def target = item[4]
+                            def idTumor = item[5]
+                            def idNormal = item[6]
                             idSample == idNormal
                           }.map { item ->
-                            def idTumor = item[4]
-                            def idNormal = item[5]
-                            def normalBam = item[2]
-                            def normalBai = item[3]
-                            def target = item[1]
-                            return [ idTumor, idNormal, target, normalBam, normalBai ]
+                            def idTumor = item[5]
+                            def idNormal = item[6]
+                            def normalBam = item[1]
+                            def normalBai = item[2]
+                            def assay = item[3]
+                            def target = item[4]
+                            return [ idTumor, idNormal, assay, target, normalBam, normalBai ]
                           }.unique().into(2)
 
-  (resultTsv, bamFiles) = bamsT4Combine.combine(bamsN4Combine, by: [0,1,2])
+
+  (resultTsv, bamFiles) = bamsT4Combine.combine(bamsN4Combine, by: [0,1,2,3])
                           .map { item -> // re-order the elements
+                            def assay = item[2]
+                            def target = item[3]
                             def idTumor = item[0]
                             def idNormal = item[1]
-                            def target = item[2]
-                            def bamTumor = item[3]
-                            def baiTumor = item[4]
-                            def bamNormal = item[5]
-                            def baiNormal = item[6]
+                            def bamTumor = item[4]
+                            def baiTumor = item[5]
+                            def bamNormal = item[6]
+                            def baiNormal = item[7]
 
-                            return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
+                            return [ assay, target, idTumor, idNormal, bamTumor, bamNormal, baiTumor, baiNormal ]
                           }.into(2)
-
 
   File file = new File(outname)
   file.newWriter().withWriter { w ->
-      w << "TUMOR_ID\tNORMAL_ID\tTARGET\tTUMOR_BAM\tNORMAL_BAM\n"
+      w << "TUMOR_ID\tNORMAL_ID\tASSAY\tTARGET\tTUMOR_BAM\tNORMAL_BAM\n"
   }
 
   if (workflow.profile == 'awsbatch') {
       resultTsv.subscribe { Object obj ->
         file.withWriterAppend { out ->
-          out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\ts3:/${obj[3]}\ts3:/${obj[5]}"
+          out.println "${obj[2]}\t${obj[3]}\t${obj[0]}\t${obj[1]}\ts3:/${obj[4]}\ts3:/${obj[5]}"
         }
       }
     }
   else {
     resultTsv.subscribe { Object obj ->
       file.withWriterAppend { out ->
-        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[5]}"
+        out.println "${obj[2]}\t${obj[3]}\t${obj[0]}\t${obj[1]}\t${obj[4]}\t${obj[5]}"
       }
     }
   }
@@ -844,34 +849,37 @@ if (params.bam_pairing) {
   bamFiles = TempoUtils.extractBAM(bamPairingfile)
   (bamFiles, bamsT, bamsN, pairingTN) = bamFiles.into(4)
   (bamsT, bamsT4Combine) = bamsT.map { item ->
-                            def idTumor = item[0]
-                            def idNormal = item[1]
-                            def tumorBam = item[3]
-                            def tumorBai = item[4]
-                            def target = item[2]
-                            return [ idTumor, idNormal, target, tumorBam, tumorBai ]
+                            def idTumor = item[2]
+                            def idNormal = item[3]
+                            def tumorBam = item[4]
+                            def tumorBai = item[6]
+                            def assay = item[0]
+                            def target = item[1]
+                            return [ idTumor, idNormal, assay, target, tumorBam, tumorBai ]
                           }.unique().into(2)
   (bamsN, bamsN4Combine) = bamsN.map { item ->
-                            def idTumor = item[0]
-                            def idNormal = item[1]
+                            def idTumor = item[2]
+                            def idNormal = item[3]
                             def normalBam = item[5]
-                            def normalBai = item[6]
-                            def target = item[2]
-                            return [ idTumor, idNormal, target, normalBam, normalBai ]
+                            def normalBai = item[7]
+                            def assay = item[0]
+                            def target = item[1]
+                            return [ idTumor, idNormal, assay, target, normalBam, normalBai ]
                           }.unique().into(2)
   bamsBQSR4QcPileup = bamsT4Combine.mix(bamsN4Combine).map { item ->
-                            def target = item[2]
-                            def sampleBam = item[3]
-                            def sampleBai = item[4]
-                            def idSample = sampleBam.getSimpleName()
+                            def assay = item[2]
+			    def target = item[3]
+			    def sampleBam = item[4]
+			    def sampleBai = item[5]
+			    def idSample = sampleBam.getSimpleName()
 
-                            return [ idSample, target, sampleBam, sampleBai ]
+			    return [ idSample, sampleBam, sampleBai, assay, target ]
   }
 
   pairingTN = pairingTN.map{ item ->
-                           def idTumor = item[0]
-                           def idNormal = item[1]
-                           return [ idTumor, idNormal ]
+			   def idTumor = item[2]
+			   def idNormal = item[3]
+			   return [ idTumor, idNormal ]
   }
 }
 
@@ -945,7 +953,7 @@ process CreateScatteredIntervals {
 //Associating interval_list files with BAM files, putting them into one channel
 
 (bamTN4Intervals, bamFiles) = bamFiles.into(2)
-mergedChannelSomatic = bamTN4Intervals.combine(mergedIList4T, by: 2).map{
+mergedChannelSomatic = bamTN4Intervals.combine(mergedIList4T, by: 1).map{
   item ->
     def idTumor = item[1]
     def idNormal = item[2]
@@ -988,6 +996,38 @@ mergedChannelGermline = bamsN4Intervals.combine(mergedIList4N, by: 2)
     )
 }.transpose()
 
+(bamsN4Intervals, bamsN) = bamsN.into(2)
+mergedChannelGermline = bamsN4Intervals.map{
+  item ->
+    def assay = item[2]
+    def target = item[3]
+    def idTumor = item[0]
+    def idNormal = item[1]
+    def normalBam = item[4]
+    def normalBai = item[5]
+
+    return [ assay, target, idTumor, idNormal, normalBam, normalBai ]
+}
+.combine(mergedIList4N, by: 1)
+.map{
+  item ->
+    def key = item[3]+"@"+item[0] // adding one unique key
+    def target = item[0]
+    def assay = item[1]
+    def idTumor = item[2]
+    def idNormal = item[3]
+    def normalBam = item[4]
+    def normalBai = item[5]
+    def intervalBed = item[6]
+
+    return [ key, target, assay, idTumor, idNormal, normalBam, normalBai, intervalBed ]
+}.map{
+    key, target, assay, idTumor, idNormal, normalBam, normalBai, intervalBed ->
+    tuple (
+         groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
+         target, assay, idTumor, idNormal, normalBam, normalBai, intervalBed
+    )
+}.transpose()
 
 // --- Run Delly
 svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
@@ -1935,8 +1975,7 @@ process SomaticFacetsAnnotation {
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
 
-  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}..facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
-
+  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
   """
 }
 
@@ -2223,7 +2262,7 @@ process GermlineRunHaplotypecaller {
   tag {idNormal + "@" + intervalBed.baseName}
 
   input:
-    set id, idTumor, idNormal, target, file(bamNormal), file(baiNormal), file(intervalBed) from mergedChannelGermline
+    set id, target, assay, idTumor, idNormal, file(bamNormal), file(baiNormal), file(intervalBed) from mergedChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -2332,7 +2371,7 @@ process GermlineRunManta {
   if (publishAll) { publishDir "${params.outDir}/germline/structural_variants/manta", mode: params.publishDirMode }
   
   input:
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
+    set idTumor, idNormal, assay, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex
     ])
@@ -2384,7 +2423,7 @@ process GermlineRunStrelka2 {
   if (publishAll) { publishDir "${params.outDir}/germline/mutations/strelka2", mode: params.publishDirMode }
 
   input:
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForStrelkaGermline
+    set idTumor, idNormal, assay, target, file(bamNormal), file(baiNormal) from bamsForStrelkaGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -2432,9 +2471,9 @@ bamsT4VcfCombine = bamsT4VcfCombine.map{
   item ->
     def idTumor = item[0]
     def idNormal = item[1]
-    def target = item[2]
-    def bamTumor = item[3]
-    def baiTumor = item[4]
+    def target = item[3]
+    def bamTumor = item[4]
+    def baiTumor = item[5]
     return [idTumor, idNormal, target, bamTumor, baiTumor]
   }
 
@@ -2679,7 +2718,7 @@ process GermlineDellyCall {
 
   input:
     each svType from svTypes
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForDellyGermline
+    set idTumor, idNormal, assay, target, file(bamNormal), file(baiNormal) from bamsForDellyGermline
     set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions
     ])
@@ -2896,7 +2935,7 @@ process QcPileup {
   publishDir "${params.outDir}/qc/conpair/", mode: params.publishDirMode
 
   input:
-    set idSample, target, file(bam), file(bai) from bamsBQSR4QcPileup
+    set idSample, file(bam), file(bai), assay, target from bamsBQSR4QcPileup
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -2964,7 +3003,6 @@ process QcPileup {
                           def normalPileup = item[1]
                           return [ idTumor, idNormal, normalPileup ]
                         }.unique().into(2)
-
 
 pileupConpair = pileupT.combine(pileupN, by: [0, 1])
 
