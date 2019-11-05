@@ -2736,7 +2736,7 @@ process QcAlfred {
     each ignore_rg from ignore_read_groups
     set idSample, target, file(bam), file(bai) from bamsBQSR4Alfred
     file(genomeFile) from Channel.value([referenceMap.genomeFile])
-    tuple file(idtTargets), file(agilentTargets), file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
+    set file(idtTargets), file(agilentTargets), file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
       referenceMap.idtTargets, referenceMap.agilentTargets,
       referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex
     ])
