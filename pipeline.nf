@@ -2404,7 +2404,7 @@ process GermlineFacetsAnnotation {
 }
 
 // --- Call germline SVs with Delly
-svTypes = Channel.from("DUP", "BND", "DEL", "INS", "INV")
+Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
 
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
