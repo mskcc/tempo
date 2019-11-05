@@ -621,7 +621,7 @@ if (!params.bamPairing) {
                             return [ idTumor, idNormal, target, tumorBam, tumorBai ]
                           }
 			  .unique()
-			  .into{bamsTumor; bamsTumor4Combine; bamsTumor4VcfCombine}
+			  .into{bamsTumor4Combine; bamsTumor4VcfCombine}
 
   bamsBQSR4Normal.combine(pairing4N)
                           .filter { item ->
@@ -640,7 +640,7 @@ if (!params.bamPairing) {
                             def target = item[1]
                             return [ idTumor, idNormal, target, normalBam, normalBai ]
                           }.unique()
-			  .into{bamsNormal; bamsNormal4Combine; bamsForMantaGermline; bamsForStrelkaGermline; bamsForDellyGermline}
+			  .into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForMantaGermline; bamsForStrelkaGermline; bamsForDellyGermline}
 
   bamsTumor4Combine.combine(bamsNormal4Combine, by: [0,1,2])
                           .map { item -> // re-order the elements
@@ -721,7 +721,7 @@ if (params.bamPairing) {
 		return [ idTumor, idNormal, target, tumorBam, tumorBai ]
 	}
 	.unique()
-	.into{bamsTumor; bamsTumor4Combine; bamsTumor4VcfCombine}
+	.into{bamsTumor4Combine; bamsTumor4VcfCombine}
   bamsNormal.map { item ->
 		def idTumor = item[0]
 		def idNormal = item[1]
@@ -731,7 +731,7 @@ if (params.bamPairing) {
 		 return [ idTumor, idNormal, target, normalBam, normalBai ]
 	 }
 	.unique()
-	.into{bamsNormal; bamsNormal4Combine; bamsForMantaGermline; bamsForStrelkaGermline; bamsForDellyGermline}
+	.into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForMantaGermline; bamsForStrelkaGermline; bamsForDellyGermline}
 
   bamsTumor4Combine.mix(bamsNormal4Combine)
 		.map { item ->
@@ -820,7 +820,7 @@ agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bamsForStrelka; bamsForMsiSensor; bamFilesForSnpPileup; bamsForPolysolver; bamsForLOHHLA; }
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; }
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -1493,7 +1493,7 @@ process DoFacets {
   publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,.png}"
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFilesForSnpPileup
+    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFiles4DoFacets
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
@@ -1553,7 +1553,7 @@ process RunPolysolver {
   tag {idTumor + "__" + idNormal}
   
   input:
-  set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForPolysolver
+  set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsNormal4Polysolver
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput, hlaOutputForLOHHLA, hlaOutputForMetaDataParser
@@ -1638,8 +1638,8 @@ process RunMutationSignatures {
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSigOutput
-    file("${outputPrefix}.mutsig.txt") into mutSigForAggregate
+    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSigForAggregate
+    file("${outputPrefix}.mutsig.txt") into mutSigOutput
 
   when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
@@ -1668,8 +1668,7 @@ process SomaticFacetsAnnotation {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf") into FacetsAnnotationMafFile
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf") into facetsAnnotationMaf4MetaDataParser
-    set idTumor, idNormal, target, file("${outputPrefix}.armlevel.unfiltered.txt") into facetsAnnotationArmLevel
+    set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into mafAndArmLevel4MetaDataParser
     set file("${outputPrefix}.armlevel.unfiltered.txt"), file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsArmGeneOutputs
     file("file-size.txt") into mafSize
 
@@ -1761,11 +1760,10 @@ process RunNeoantigen {
 }
 
 
-facetsPurity4MetaDataParser.combine(facetsAnnotationArmLevel, by: [0,1,2])
+facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
 			   .combine(msiOutputForMetaData, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [0,1,2])
-			   .combine(facetsAnnotationMaf4MetaDataParser, by: [0,1,2])
-			   .combine(mutSigOutput, by: [0,1,2])
+			   .combine(mutSigForAggregate, by: [0,1,2])
 			   .unique()
 			   .set{ mergedChannelMetaDataParser }
 
@@ -1774,7 +1772,7 @@ process MetaDataParser {
   tag {idTumor + "__" + idNormal}
  
   input:
-    set idTumor, idNormal, target, file(purityOut), file(armLevel), file(msifile), file(polysolverFile), file(mafFile), file(mutSigOutput) from mergedChannelMetaDataParser
+    set idTumor, idNormal, target, file(purityOut), file(mafFile), file(armLevel), file(msifile), file(polysolverFile), file(mutSigOutput) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
     ]) 
@@ -1872,8 +1870,7 @@ process SomaticAggregateFacets {
     file(annotationFiles) from FacetsArmGeneOutputs.collect()
 
   output:
-    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg") into FacetsMergedChannel
-    set file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
+    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg"), file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
     
   when: runSomatic
     
@@ -2469,9 +2466,8 @@ process GermlineMergeDellyAndManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
     set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into germlineVcfBedPe
-    set file("${idNormal}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${idNormal}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into germlineDellyVcfs
+    set file("*.vcf.gz"), file("*.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
 
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
@@ -2633,7 +2629,7 @@ process QcCollectHsMetrics {
   """
   gatk CollectHsMetrics \
     ${javaOptions} \
-    --TMP_DIR ${TMPDIR} \
+    --TMP_DIR ./ \
     --INPUT ${bam} \
     --OUTPUT ${idSample}.hs_metrics.txt \
     --REFERENCE_SEQUENCE ${genomeFile} \
@@ -2653,7 +2649,7 @@ process QcAlfred {
     each ignore_rg from ignore_read_groups
     set idSample, target, file(bam), file(bai) from bamsBQSR4Alfred
     file(genomeFile) from Channel.value([referenceMap.genomeFile])
-    set file(idtTargets), file(agilentTargets), file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
+    tuple file(idtTargets), file(agilentTargets), file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
       referenceMap.idtTargets, referenceMap.agilentTargets,
       referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex
     ])
