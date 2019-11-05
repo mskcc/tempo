@@ -2410,7 +2410,7 @@ process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
   input:
-    each svType from svTypes
+    each svType from svTypesGermline
     set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForDellyGermline
     set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions
