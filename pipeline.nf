@@ -159,15 +159,6 @@ if (!params.bamPairing) {
 
   if (params.splitLanes) {
   inputFastqs
-        .map{ item ->
-            def idSample = item[0]
-            def fileID = item[1]
-            def file_pe1 = item[2]
-            def file_pe2 = item[3]
-            def targetFile = item[4]
-
-            return [ idSample, fileID, file_pe1, file_pe2, targetFile ]
-        }
 	.groupTuple(by: [0])
 	.map{ idSample, fileID, files_pe1, files_pe2, targets
 		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, targets)
@@ -2762,7 +2753,7 @@ process QcPileup {
   """
 }
 
-pairingTN.into{pairingT4Conpair; pairingN4Conpair; pairingTN}
+pairingTN.into{pairingT4Conpair; pairingN4Conpair}
 
 tumorPileups.combine(pairingT4Conpair)
                         .filter { item ->
