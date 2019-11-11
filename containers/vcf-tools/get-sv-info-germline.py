@@ -33,6 +33,7 @@ merge_vcf.header.info.add('SVINSLEN', 1, 'Integer', 'Size of insertion (Manta)')
 merge_vcf.header.info.add('SVINSSEQ', 1, 'String', 'Sequence of insertion')
 merge_vcf.header.info.add('HOMLEN', 1, 'Integer', 'Length of microhomology at breakpoints')
 merge_vcf.header.info.add('HOMSEQ', 1, 'String', 'Sequence of microhomology at breakpoints')
+merge_vcf.header.info.add('no_effect', 1, 'String', 'Event classified as having no functional effect')
 vcf_out = VariantFile(sys.argv[4], "w", header = merge_vcf.header)
 
 # Get variants

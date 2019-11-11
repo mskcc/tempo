@@ -1278,9 +1278,10 @@ process SomaticMergeDellyAndManta {
   
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
+    ${outputPrefix}.delly.manta.unfiltered.vcf.gz | \
+    bcftools sort \
     --output-type z \
-    --output ${outputPrefix}.delly.manta.vcf.gz \
-    ${outputPrefix}.delly.manta.unfiltered.vcf.gz
+    --output-file ${outputPrefix}.delly.manta.vcf.gz
 
   tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz
   """
@@ -2806,9 +2807,10 @@ process GermlineMergeDellyAndManta {
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
+    ${idNormal}.delly.manta.unfiltered.vcf.gz | \
+    bcftools sort \
     --output-type z \
-    --output ${idNormal}.delly.manta.vcf.gz \
-    ${idNormal}.delly.manta.unfiltered.vcf.gz
+    --output-file ${idNormal}.delly.manta.vcf.gz
 
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
