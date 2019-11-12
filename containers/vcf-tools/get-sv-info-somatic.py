@@ -54,7 +54,7 @@ def process_variant(var):
     algos = var.info['ALGORITHMS']
     ids = var.info['MEMBERS']
     if all(al in algos for al in ['delly', 'manta']):
-        delly_id = ids[0] if 'Manta' not in ids[0] else ids[1]
+        delly_id = [x for x in ids if 'Manta' not in x][0]
         manta_id = ids[0].replace('_', ':') if 'Manta' in ids[0] else ids[1].replace('_', ':') # these are converted by svtk
     elif 'delly' in algos:
         delly_id = ids[0]
