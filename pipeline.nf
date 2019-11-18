@@ -1693,7 +1693,7 @@ process SomaticFacetsAnnotation {
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
 
-  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}..facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
+  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
 
   """
 }
