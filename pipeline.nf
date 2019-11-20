@@ -1623,7 +1623,7 @@ process DoFacets {
     --gzip \
     ${facetsVcf} \
     ${outfile} \
-    ${bamTumor} ${bamNormal}
+    ${bamNormal} ${bamTumor}
 
   mkdir ${outputDir}
 
