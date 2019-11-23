@@ -319,7 +319,7 @@ if (!params.bamPairing) {
   process AlignReads {
     tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/qc/fastp/${idSample}", mode: params.publishDirMode, pattern: "*.{html,json}"
+    publishDir "${params.outDir}/qc/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
       set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, targetFile, rgID from fastqFiles
@@ -433,7 +433,6 @@ if (!params.bamPairing) {
 
     output:
       set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), targetFile into mdBams, mdBams4BQSR
-      file ("${idSample}.bam.metrics") into markDuplicatesReport
 
     script:
     if (workflow.profile == "juno") {
@@ -489,7 +488,6 @@ if (!params.bamPairing) {
 
     output:
       set idSample, file("${idSample}.recal.table") into recalibrationTable
-      file("${idSample}.recal.table") into recalibrationTableTSV
 
     script:
     if (task.attempt < 3 ){
@@ -874,7 +872,7 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.filter.bcf") into dellyFilterOutput
+    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.filter.bcf") into dellyFilter4Combine
 
   when: "delly" in tools && runSomatic
 
@@ -942,7 +940,7 @@ forMutect2Combine.groupTuple().set{ forMutect2Combine }
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/mutect2", mode: params.publishDirMode }
+  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/mutect2", mode: params.publishDirMode
 
   input:
     set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
@@ -951,7 +949,7 @@ process SomaticCombineMutect2Vcf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into mutect2CombinedVcfOutput
+    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into mutect2CombinedVcf4Combine, mutect2CombinedVcfOutput
 
   when: "mutect2" in tools && runSomatic
 
@@ -984,7 +982,7 @@ process SomaticCombineMutect2Vcf {
 process SomaticRunManta {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/structural_variants/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}" }
+  publishDir "${params.outDir}/somatic/${outputPrefix}/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForManta
@@ -996,8 +994,8 @@ process SomaticRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz") into mantaOutput
-    set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz.tbi") into mantatbi
+    set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz") into manta4Combine
+    set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz.tbi") into mantaOutput
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: "manta" in tools && runSomatic
@@ -1041,7 +1039,7 @@ process SomaticRunManta {
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
 
-dellyFilterOutput.groupTuple(by: [0,1,2], size: 5).combine(mantaOutput, by: [0,1,2]).set{ dellyMantaCombineChannel }
+dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(manta4Combine, by: [0,1,2]).set{ dellyMantaCombineChannel }
 
 // --- Process Delly and Manta VCFs 
 
@@ -1049,16 +1047,15 @@ dellyFilterOutput.groupTuple(by: [0,1,2], size: 5).combine(mantaOutput, by: [0,1
 process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/somatic/structural_variants/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
-  }
+  publishDir "${params.outDir}/somatic/${outputPrefix}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/merged_sv", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
 
   output:
-    file("${outputPrefix}.delly.manta.vcf.{gz,gz.tbi}") into vcfDellyMantaMergedOutput
-    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into somaticDellyVcfs
+    set file("${outputPrefix}.delly.manta.vcf.gz"), file("${outputPrefix}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedOutput, dellyMantaCombined4Aggregate
+    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into dellyOutput
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -1109,7 +1106,7 @@ process SomaticMergeDellyAndManta {
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/mutations/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"}
+  publishDir "${params.outDir}/somatic/${outputPrefix}/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
@@ -1123,7 +1120,8 @@ process SomaticRunStrelka2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelkaOutputMerged
+    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelkaAndBams4Combine
+    set file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelkaOutput
 
   when: tools.containsAll(["manta", "strelka2"]) && runSomatic
 
@@ -1180,7 +1178,7 @@ process SomaticRunStrelka2 {
 }
 
 
-mutect2CombinedVcfOutput.combine(strelkaOutputMerged, by: [0,1,2]).set{ mutectStrelkaChannel }
+mutect2CombinedVcf4Combine.combine(strelkaAndBams4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
 
 // Combined Somatic VCFs
 
@@ -1206,7 +1204,7 @@ process SomaticCombineChannel {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.pass.vcf") into vcfMergedOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.pass.vcf") into mutationMergedVcf
 
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
   
@@ -1379,12 +1377,10 @@ process SomaticCombineChannel {
 process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/somatic/mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
-  }
+  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/maf_unfiltered/", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
 
   input:
-    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutput 
+    set idTumor, idNormal, target, file(vcfMerged) from mutationMergedVcf
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
       referenceMap.vepCache, referenceMap.isoforms
@@ -1392,7 +1388,7 @@ process SomaticAnnotateMaf {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFile
-    file("${outputPrefix}.unfiltered.maf") into unfilteredMafFile
+    file("${outputPrefix}.unfiltered.maf") into unfilteredMafOutput
 
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
 
@@ -1460,7 +1456,7 @@ process RunMsiSensor {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msiOutputForMetaData
+    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msi4MetaData
 
   when: "msisensor" in tools && runSomatic
 
@@ -1480,22 +1476,22 @@ process RunMsiSensor {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  // publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*/*/*.Rdata"
-  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
-  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,.png}"
+  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
+  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
+  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,seg,txt,out}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFiles4DoFacets
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
-    set target, idTumor, idNormal, file("${outfile}") into SnpPileup
+    set target, idTumor, idNormal, file("${outfile}") into snpPileupOutput
     set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png"), val("${outputFacetsSubdirectory}/${outputDir}") into FacetsOutput
-    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputFacetsSubdirectory}/${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
+    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
     set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
-    file("${tag}_OUT.txt") into FacetsPurityHisensOutput
+    file("${tag}_OUT.txt") into FacetsPurityHisens4Aggregate
 
   when: "facets" in tools && runSomatic
 
@@ -1583,7 +1579,7 @@ bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsPurity4LOHH
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/somatic/lohhla", mode: params.publishDirMode }
+  publishDir "${params.outDir}/somatic/${outputPrefix}/lohhla", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file("winners.hla.txt"), file("*_purity.out") from mergedChannelLOHHLA
@@ -1630,8 +1626,7 @@ process RunMutationSignatures {
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSigForAggregate
-    file("${outputPrefix}.mutsig.txt") into mutSigOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSig4Aggregate
 
   when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
@@ -1653,7 +1648,7 @@ facetsForMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomat
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/facets/${facetsPath}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/facets/${facetsPath}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
   
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileSomatic
@@ -1661,7 +1656,7 @@ process SomaticFacetsAnnotation {
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf") into FacetsAnnotationMafFile
     set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into mafAndArmLevel4MetaDataParser
-    set file("${outputPrefix}.armlevel.unfiltered.txt"), file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsArmGeneOutputs
+    set file("${outputPrefix}.armlevel.unfiltered.txt"), file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsArmGene4Aggregate, FacetsArmGeneOutput
     file("file-size.txt") into mafSize
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
@@ -1705,6 +1700,9 @@ hlaOutput.combine(FacetsAnnotationMafFile, by: [0,1,2]).set{ input4Neoantigen }
 process RunNeoantigen {
   tag {idTumor + "__" + idNormal}
 
+  publishDir "${params.outDir}/somatic/${outputPrefix}/maf_final/", mode: params.publishDirMode, pattern: "*.maf"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*.txt"
+
   input:
     set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from input4Neoantigen
     set file(neoantigenCDNA), file(neoantigenCDS) from Channel.value([
@@ -1712,9 +1710,10 @@ process RunNeoantigen {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputDir}/*") into neoantigenOut
+    file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStats4Aggregate
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
-    file("${outputDir}/*.maf") into NeoantigenMafOutput
+    file("*.maf") into NeoantigenMaf4Aggregate
+    file("*.maf") into NeoantigenMafOutput
 
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1733,8 +1732,7 @@ process RunNeoantigen {
   }
 
   outputPrefix = "${idTumor}__${idNormal}"
-  outputDir = "neoantigen"
-  tmpDir = "${outputDir}-tmp"
+  tmpDir = "neoantigen-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
   export TMPDIR=${tmpDirFullPath}
@@ -1746,17 +1744,17 @@ process RunNeoantigen {
     --sample_id ${outputPrefix} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
-    --output_dir ${outputDir}
+    --output_dir ./
 
-  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' *.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
   """
 }
 
 
 facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
-			   .combine(msiOutputForMetaData, by: [0,1,2])
+			   .combine(msi4MetaData, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [0,1,2])
-			   .combine(mutSigForAggregate, by: [0,1,2])
+			   .combine(mutSig4Aggregate, by: [0,1,2])
 			   .unique()
 			   .set{ mergedChannelMetaDataParser }
 
@@ -1764,14 +1762,17 @@ facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
 process MetaDataParser {
   tag {idTumor + "__" + idNormal}
  
+  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
+
   input:
-    set idTumor, idNormal, target, file(purityOut), file(mafFile), file(armLevel), file(msifile), file(polysolverFile), file(mutSigOutput) from mergedChannelMetaDataParser
+    set idTumor, idNormal, target, file(purityOut), file(mafFile), file(armLevel), file(msifile), file(polysolverFile), file(mutSig) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
     ]) 
 
   output:
-    file("*.sample_data.txt") into MetaDataOutputs
+    file("*.sample_data.txt") into MetaDataOutput
+    file("*.sample_data.txt") into MetaData4Aggregate
 
   when: runSomatic
 
@@ -1793,7 +1794,7 @@ process MetaDataParser {
     --facetsPurity_out ${purityOut} \
     --facetsArmLevel ${armLevel} \
     --MSIsensor_output ${msifile} \
-    --mutational_signatures_output ${mutSigOutput} \
+    --mutational_signatures_output ${mutSig} \
     --polysolver_output ${polysolverFile} \
     --MAF_input ${mafFile} \
     --coding_baits_BED ${codingRegionsBed}
@@ -1807,10 +1808,10 @@ process SomaticAggregateMaf {
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
 
   input:
-    file(mafFile) from NeoantigenMafOutput.collect()
+    file(mafFile) from NeoantigenMaf4Aggregate.collect()
     
   output:
-    file("mut_somatic.maf") into MafFileOutput
+    file("mut_somatic.maf") into mutationAggregatedOutput
 
   when: runSomatic
 
@@ -1833,10 +1834,10 @@ process SomaticAggregateNetMHC {
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
 
   input:
-    file(netmhcCombinedFile) from NetMhcStatsOutput.collect()
+    file(netmhcCombinedFile) from NetMhcStats4Aggregate.collect()
 
   output:
-    file("mut_somatic_neoantigens.txt") into NetMhcChannel
+    file("mut_somatic_neoantigens.txt") into NetMhcAggregatedOutput
 
   when: runSomatic
     
@@ -1859,11 +1860,11 @@ process SomaticAggregateFacets {
   input:
     file(purityFiles) from FacetsPurity.collect()
     file(hisensFiles) from FacetsHisens.collect()
-    file(purityHisensOutput) from FacetsPurityHisensOutput.collect()
-    file(annotationFiles) from FacetsArmGeneOutputs.collect()
+    file(purityHisens) from FacetsPurityHisens4Aggregate.collect()
+    file(annotationFiles) from FacetsArmGene4Aggregate.collect()
 
   output:
-    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg"), file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationMergedChannel
+    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg"), file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationAggregatedOutput
     
   when: runSomatic
     
@@ -1891,10 +1892,10 @@ process SomaticAggregateSv {
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
 
   input:
-    file(dellyMantaVcf) from vcfDellyMantaMergedOutput.collect()
+    file(dellyMantaVcf) from dellyMantaCombined4Aggregate.collect()
 
   output:
-    file("sv_somatic.vcf.{gz,gz.tbi}") into VcfBedPeChannel
+    file("sv_somatic.vcf.{gz,gz.tbi}") into svAggregatedOutput
 
   when: runSomatic
 
@@ -1929,10 +1930,10 @@ process SomaticAggregateMetadata {
   publishDir "${params.outDir}/somatic", mode: params.publishDirMode
 
   input:
-    file(metaDataFile) from MetaDataOutputs.collect()
+    file(metaDataFile) from MetaData4Aggregate.collect()
 
   output:
-    file("sample_data.txt") into MetaDataOutputChannel
+    file("sample_data.txt") into MetaDataAggregatedOutput
 
   when: runSomatic
     
@@ -1966,7 +1967,7 @@ process GermlineRunHaplotypecaller {
     ])
 
   output:
-    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecallerOutput
+    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecaller4Combine
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -2016,17 +2017,17 @@ process GermlineRunHaplotypecaller {
 
 //Formatting the channel to be grouped by idTumor, idNormal, and target
 // group by groupKey(key, intervalBed.size())
-haplotypecallerOutput.groupTuple().set{ haplotypecallerOutput }
+haplotypecaller4Combine.groupTuple().set{ haplotypecaller4Combine }
 
 // merge VCFs, GATK HaplotypeCaller
 
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/mutations/haplotypecaller", mode: params.publishDirMode }
+  publishDir "${params.outDir}/germline/${idNormal}/haplotypecaller", mode: params.publishDirMode
 
   input:
-    set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecallerOutput
+    set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecaller4Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -2034,7 +2035,7 @@ process GermlineCombineHaplotypecallerVcf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcfOutput
+    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcf4Combine, haplotypecallerCombinedVcfOutput
 
   when: 'haplotypecaller' in tools && runGermline 
 
@@ -2065,7 +2066,7 @@ process GermlineCombineHaplotypecallerVcf {
 process GermlineRunManta {
   tag {idNormal}
   
-  if (publishAll) { publishDir "${params.outDir}/germline/structural_variants/manta", mode: params.publishDirMode }
+  publishDir "${params.outDir}/germline/${idNormal}/manta", mode: params.publishDirMode
   
   input:
     set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
@@ -2077,7 +2078,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.manta.vcf.gz"), file("${idNormal}.manta.vcf.gz.tbi") into mantaOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}.manta.vcf.gz"), file("${idNormal}.manta.vcf.gz.tbi") into manta4CombineGermline, mantaOutputGermline
 
   when: 'manta' in tools && runGermline
 
@@ -2116,7 +2117,7 @@ process GermlineRunManta {
 process GermlineRunStrelka2 {
   tag {idNormal}
 
-  if (publishAll) { publishDir "${params.outDir}/germline/mutations/strelka2", mode: params.publishDirMode }
+  publishDir "${params.outDir}/germline/${idNormal}/strelka2", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForStrelkaGermline
@@ -2130,7 +2131,7 @@ process GermlineRunStrelka2 {
     ])
     
   output:
-    set idTumor, idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into strelkaOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into strelka4CombineGermline, strelkaOutputGermline
 
   when: 'strelka2' in tools && runGermline
   
@@ -2160,7 +2161,7 @@ process GermlineRunStrelka2 {
 }
 
 // Join HaploTypeCaller and Strelka outputs,  bcftools
-haplotypecallerStrelkaChannel = haplotypecallerCombinedVcfOutput.combine(strelkaOutputGermline, by: [0,1,2])
+haplotypecallerStrelkaChannel = haplotypecallerCombinedVcf4Combine.combine(strelka4CombineGermline, by: [0,1,2])
 
 bamsTumor4VcfCombine.map{
   item ->
@@ -2193,7 +2194,7 @@ process GermlineCombineChannel {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}__${idNormal}.germline.vcf") into vcfMergedOutputGermline
+    set idTumor, idNormal, target, file("${idTumor}__${idNormal}.germline.vcf") into mutationMergedGermline
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
@@ -2323,12 +2324,10 @@ process GermlineCombineChannel {
 process GermlineAnnotateMaf {
   tag {idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/germline/mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
-  }
+  publishDir "${params.outDir}/germline/${idNormal}/maf_unfiltered", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
 
   input:
-    set idTumor, idNormal, target, file(vcfMerged) from vcfMergedOutputGermline
+    set idTumor, idNormal, target, file(vcfMerged) from mutationMergedGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
       referenceMap.vepCache, referenceMap.isoforms
@@ -2336,7 +2335,7 @@ process GermlineAnnotateMaf {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.maf") into mafFileGermline
-    file("${outputPrefix}.unfiltered.maf") into unfilteredMafFileGermline
+    file("${outputPrefix}.unfiltered.maf") into unfilteredMafOutputGermline
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
@@ -2379,11 +2378,14 @@ facetsForMafAnnoGermline.combine(mafFileGermline, by: [0,1,2]).set{ facetsMafFil
 process GermlineFacetsAnnotation {
   tag {idNormal}
 
+  publishDir "${params.outDir}/germline/${idNormal}/maf_final/", mode: params.publishDirMode, pattern: "*.zygosity.maf"
+
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
 
   output:
-    file("${outputPrefix}.facets.zygosity.maf") into mafFileAnnotatedGermline
+    file("${outputPrefix}.facets.zygosity.maf") into mafFileOutputGermline
+    file("${outputPrefix}.facets.zygosity.maf") into mafFile4AggregateGermline
 
   when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
 
@@ -2417,7 +2419,7 @@ process GermlineDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilterOutputGermline
+    set idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilter4CombineGermline
 
   when: 'delly' in tools && runGermline
 
@@ -2441,15 +2443,14 @@ process GermlineDellyCall {
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
 
 
-dellyFilterOutputGermline.groupTuple(by: [0,1,2], size: 5).combine(mantaOutputGermline, by: [0,1,2]).set{ dellyMantaChannelGermline }
+dellyFilter4CombineGermline.groupTuple(by: [0,1,2], size: 5).combine(manta4CombineGermline, by: [0,1,2]).set{ dellyMantaChannelGermline }
 
 // --- Merge Delly and Manta VCFs 
 process GermlineMergeDellyAndManta {
   tag {idNormal}
 
-  if (publishAll) {
-    publishDir "${params.outDir}/germline/structural_variants/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
-  }
+  publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/germline/${idNormal}/combined_sv/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
@@ -2458,8 +2459,8 @@ process GermlineMergeDellyAndManta {
     ])
 
   output:
-    set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into germlineVcfBedPe
-    set file("*.vcf.gz"), file("*.vcf.gz.tbi") into vcfFilterDellyMantaOutputGermline
+    set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedOutputGermline, dellyMantaCombined4AggregateGermline
+    set file("*delly.vcf.gz"), file("*delly.vcf.gz.tbi") into dellyOutputGermline
 
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
@@ -2501,10 +2502,10 @@ process GermlineAggregateMaf {
   publishDir "${params.outDir}/germline/", mode: params.publishDirMode
 
   input:
-    file(mafFile) from mafFileAnnotatedGermline.collect()
+    file(mafFile) from mafFile4AggregateGermline.collect()
 
   output:
-    file("mut_germline.maf") into GermlineMafFileOutput
+    file("mut_germline.maf") into mutationAggregatedGermlineOutput
   
   when: runGermline
 
@@ -2523,7 +2524,7 @@ process GermlineAggregateMaf {
   """
 }
 
-germlineVcfBedPe.unique { new File(it.toString()).getName() }.set{ germlineVcfBedPe }
+dellyMantaCombined4AggregateGermline.unique { new File(it.toString()).getName() }.set{ dellyMantaCombined4AggregateGermline }
 
 // --- Aggregate per-sample germline data, SVs
 process GermlineAggregateSv {
@@ -2531,10 +2532,10 @@ process GermlineAggregateSv {
   publishDir "${params.outDir}/germline", mode: params.publishDirMode
 
   input:
-    file(dellyMantaVcf) from germlineVcfBedPe.collect()
+    file(dellyMantaVcf) from dellyMantaCombined4AggregateGermline.collect()
 
   output:
-    file("sv_germline.vcf.{gz,gz.tbi}") into GermlineVcfBedPeChannel
+    file("sv_germline.vcf.{gz,gz.tbi}") into svAggregatedGermlineOutput
   
   when: runGermline
 
@@ -2575,7 +2576,7 @@ process GermlineAggregateSv {
 process QcCollectHsMetrics {
   tag {idSample}
 
-  publishDir "${params.outDir}/qc/collecthsmetrics/${idSample}", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/${idSample}/collecthsmetrics", mode: params.publishDirMode
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4CollectHsMetrics
@@ -2588,7 +2589,8 @@ process QcCollectHsMetrics {
     ])
 
   output:
-    file("${idSample}.hs_metrics.txt") into collectHsMetrics
+    file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
+    file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
 
   when: params.assayType == "exome" && !params.test && runQC
 
@@ -2635,7 +2637,7 @@ Channel.from(true, false).set{ ignore_read_groups }
 process QcAlfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
-  publishDir "${params.outDir}/qc/alfred/${idSample}", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/${idSample}/alfred", mode: params.publishDirMode
 
   input:
     each ignore_rg from ignore_read_groups
@@ -2647,8 +2649,8 @@ process QcAlfred {
     ])
 
   output:
-    file("${idSample}.alfred*tsv.gz") into bamsQcStats
-    file("${idSample}.alfred*tsv.gz.pdf") into bamsQcPdfs
+    file("${idSample}.alfred*tsv.gz") into bamsQcStats4Aggregate
+    set file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into alfredOutput
 
   when: runQC
 
@@ -2687,11 +2689,11 @@ process QcBamAggregate {
   publishDir "${params.outDir}/qc", mode: params.publishDirMode
 
   input:
-    file(metricsFile) from collectHsMetrics.collect()
-    file(bamsQcStatsFile) from bamsQcStats.collect()
+    file(metricsFile) from collectHsMetrics4Aggregate.collect()
+    file(bamsQcStatsFile) from bamsQcStats4Aggregate.collect()
 
   output:
-    file('alignment_qc.txt') into alignmentQc
+    file('alignment_qc.txt') into alignmentQcAggregatedOutput
 
   when: !params.test && runQC
 
@@ -2711,7 +2713,7 @@ process QcBamAggregate {
 process QcPileup {
   tag {idSample}
 
-  publishDir "${params.outDir}/qc/conpair/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/${idSample}/pileup/", mode: params.publishDirMode
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4QcPileup
@@ -2720,7 +2722,7 @@ process QcPileup {
     ])
 
   output:
-    set idSample, file("${idSample}.pileup") into (tumorPileups, normalPileups)
+    set idSample, file("${idSample}.pileup") into pileupOutput, tumorPileups, normalPileups
 
   when: !params.test && "pileup" in tools && runQC
 
@@ -2793,6 +2795,8 @@ pileupT.combine(pileupN, by: [0, 1]).set{ pileupConpair }
 process QcConpair {
   tag {idTumor + "__" + idNormal}
 
+  publishDir "${params.outDir}/somatic/${outPrefix}/conpair/", mode: params.publishDirMode
+
   input:
     set idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -2802,6 +2806,7 @@ process QcConpair {
   output:
     file("${outPrefix}.concordance.txt") into conpairConcordance
     file("${outPrefix}.contamination.txt") into conpairContamination
+    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairOutput
 
   when: !params.test && "conpair" in tools && runQC
 
@@ -2858,6 +2863,7 @@ process QcConpairAll {
   output:
     file("${outPrefix}.concordance.txt") into conpairAllConcordance
     file("${outPrefix}.contamination.txt") into conpairAllContamination
+    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairAllOutput
 
   when: !params.test && params.conpairAll && runQC
 
@@ -2915,7 +2921,7 @@ process QcConpairAggregate {
     file(contamination) from conpairAggregateContamination.collect()
 
   output:
-    set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregated
+    set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregatedOutput
 
   when: !params.test && runQC
 
