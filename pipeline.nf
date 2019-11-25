@@ -1806,7 +1806,7 @@ process MetaDataParser {
 
 process SomaticAggregateMaf {
  
-  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(mafFile) from NeoantigenMaf4Aggregate.collect()
@@ -1832,7 +1832,7 @@ process SomaticAggregateMaf {
 
 process SomaticAggregateNetMHC {
  
-  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(netmhcCombinedFile) from NetMhcStats4Aggregate.collect()
@@ -1856,7 +1856,7 @@ process SomaticAggregateNetMHC {
 
 process SomaticAggregateFacets {
  
-  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(purityFiles) from FacetsPurity.collect()
@@ -1890,7 +1890,7 @@ process SomaticAggregateFacets {
 
 process SomaticAggregateSv {
  
-  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(dellyMantaVcf) from dellyMantaCombined4Aggregate.collect()
@@ -1928,7 +1928,7 @@ process SomaticAggregateSv {
 
 process SomaticAggregateMetadata {
  
-  publishDir "${params.outDir}/somatic", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(metaDataFile) from MetaData4Aggregate.collect()
@@ -2500,7 +2500,7 @@ process GermlineMergeDellyAndManta {
 // --- Aggregate per-sample germline data, MAF
 process GermlineAggregateMaf {
 
-  publishDir "${params.outDir}/germline/", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(mafFile) from mafFile4AggregateGermline.collect()
@@ -2530,7 +2530,7 @@ dellyMantaCombined4AggregateGermline.unique { new File(it.toString()).getName() 
 // --- Aggregate per-sample germline data, SVs
 process GermlineAggregateSv {
  
-  publishDir "${params.outDir}/germline", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(dellyMantaVcf) from dellyMantaCombined4AggregateGermline.collect()
@@ -2687,7 +2687,7 @@ process QcAlfred {
 
 process QcBamAggregate {
 
-  publishDir "${params.outDir}/qc", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(metricsFile) from collectHsMetrics4Aggregate.collect()
@@ -2915,7 +2915,7 @@ process QcConpairAll {
 
 process QcConpairAggregate {
 
-  publishDir "${params.outDir}/qc", mode: params.publishDirMode
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
     file(concordance) from conpairAggregateConcordance.collect()
