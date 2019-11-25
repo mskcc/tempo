@@ -1747,6 +1747,7 @@ process RunNeoantigen {
     --output_dir ./
 
   awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' *.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
+  mv ${outputPrefix}.neoantigens.maf ${outputPrefix}.final.maf
   """
 }
 
