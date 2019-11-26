@@ -632,7 +632,7 @@ if (!params.bamPairing) {
                             def target = item[1]
                             return [ idTumor, idNormal, target, normalBam, normalBai ]
                           }.unique()
-			  .into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsNormalOnly; }
+			  .into{ bamsNormal4Combine; bamsNormalOnly; bamsNormal4Polysolver}
   bamsNormalOnly.map { item ->
 			def idNormal = item[1]
 			def target = item[2]
@@ -640,7 +640,7 @@ if (!params.bamPairing) {
 			def normalBai = item[4]
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
-	.into{ bamsForMantaGermline; bamsForDellyGermline }
+	.into{ bams4Haplotypecaller; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
 
@@ -733,7 +733,7 @@ if (params.bamPairing) {
 		 return [ idTumor, idNormal, target, normalBam, normalBai ]
 	 }
 	.unique()
-	.into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsNormalOnly; }
+	.into{ bamsNormal4Combine; bamsNormal4Polysolver; bamsNormalOnly; }
   bamsNormalOnly.map { item ->
 			def idNormal = item[1]
 			def target = item[2]
@@ -741,7 +741,7 @@ if (params.bamPairing) {
 			def normalBai = item[4]
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
-	.into{ bamsForMantaGermline; bamsForDellyGermline }
+	.into{ bams4Haplotypecaller; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
   bamsTumor4Combine.mix(bamsNormal4Combine)
@@ -857,23 +857,22 @@ bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
 .set{ mergedChannelSomatic }
 
 
-bamsNormal.combine(mergedIList4N, by: 2)
+bams4Haplotypecaller.combine(mergedIList4N, by: 1)
 .map{
   item ->
-    def idTumor = item[1]
-    def idNormal = item[2]
+    def idNormal = item[1]
     def target = item[0]
-    def normalBam = item[3]
-    def normalBai = item[4]
-    def intervalBed = item[5]
+    def normalBam = item[2]
+    def normalBai = item[3]
+    def intervalBed = item[4]
     def key = idNormal+"@"+target // adding one unique key
 
-    return [ key, idTumor, idNormal, target, normalBam, normalBai, intervalBed ]
+    return [ key, idNormal, target, normalBam, normalBai, intervalBed ]
 }.map{
-    key, idTumor, idNormal, target, normalBam, normalBai, intervalBed ->
+    key, idNormal, target, normalBam, normalBai, intervalBed ->
     tuple (
          groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
-         idTumor, idNormal, target, normalBam, normalBai, intervalBed
+         idNormal, target, normalBam, normalBai, intervalBed
     )
 }
 .transpose()
@@ -1840,13 +1839,13 @@ process GermlineRunHaplotypecaller {
   tag {idNormal + "@" + intervalBed.baseName}
 
   input:
-    set id, idTumor, idNormal, target, file(bamNormal), file(baiNormal), file(intervalBed) from mergedChannelGermline
+    set id, idNormal, target, file(bamNormal), file(baiNormal), file(intervalBed) from mergedChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
 
   output:
-    set id, idTumor, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecaller4Combine
+    set id, idNormal, target, file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), file("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi") into haplotypecaller4Combine
 
   when: 'haplotypecaller' in tools && runGermline
 
@@ -1906,7 +1905,7 @@ process GermlineCombineHaplotypecallerVcf {
   publishDir "${params.outDir}/germline/${idNormal}/haplotypecaller", mode: params.publishDirMode
 
   input:
-    set id, idTumor, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecaller4Combine
+    set id, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecaller4Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile,
       referenceMap.genomeIndex,
@@ -1914,12 +1913,11 @@ process GermlineCombineHaplotypecallerVcf {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcf4Combine, haplotypecallerCombinedVcfOutput
+    set idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcf4Combine, haplotypecallerCombinedVcfOutput
 
   when: 'haplotypecaller' in tools && runGermline 
 
   script: 
-  idTumor = idTumor[0]
   idNormal = id.toString().split("@")[0]
   target = id.toString().split("@")[1]
   outfile = "${idNormal}.haplotypecaller.vcf.gz"  
@@ -1948,7 +1946,7 @@ process GermlineRunStrelka2 {
   publishDir "${params.outDir}/germline/${idNormal}/strelka2", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForStrelkaGermline
+    set idNormal, target, file(bamNormal), file(baiNormal) from bamsForStrelkaGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -1959,7 +1957,7 @@ process GermlineRunStrelka2 {
     ])
     
   output:
-    set idTumor, idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into strelka4CombineGermline, strelkaOutputGermline
+    set idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into strelka4CombineGermline, strelkaOutputGermline
 
   when: 'strelka2' in tools && runGermline
   
@@ -1989,7 +1987,7 @@ process GermlineRunStrelka2 {
 }
 
 // Join HaploTypeCaller and Strelka outputs,  bcftools
-haplotypecallerStrelkaChannel = haplotypecallerCombinedVcf4Combine.combine(strelka4CombineGermline, by: [0,1,2])
+haplotypecallerStrelkaChannel = haplotypecallerCombinedVcf4Combine.combine(strelka4CombineGermline, by: [0,1])
 
 bamsTumor4VcfCombine.map{
   item ->
@@ -1998,9 +1996,22 @@ bamsTumor4VcfCombine.map{
     def target = item[2]
     def bamTumor = item[3]
     def baiTumor = item[4]
-    return [idTumor, idNormal, target, bamTumor, baiTumor]
+    return [idNormal, target, bamTumor, baiTumor, idTumor]
 }
-.combine(haplotypecallerStrelkaChannel, by: [0,1,2])
+.combine(haplotypecallerStrelkaChannel, by: [0,1])
+.map{
+  item ->
+    def idNormal = item[0]
+    def target = item[1]
+    def bamTumor = item[2]
+    def baiTumor = item[3]
+    def idTumor = item[4]
+    def haplotypecallercombinedVcf = item[5]
+    def haplotypecallercombinedVcfIndex = item[6]
+    def strelkaVcf = item[7]
+    def strelkaVcfIndex = item[8]
+    return [idTumor, idNormal, target, bamTumor, baiTumor, haplotypecallercombinedVcf, haplotypecallercombinedVcfIndex, strelkaVcf, strelkaVcfIndex]
+}
 .set{ mergedChannelVcfCombine }
 
 // --- Combine VCFs with germline calls from Haplotypecaller and Strelka2
@@ -2206,7 +2217,7 @@ facetsForMafAnnoGermline.combine(mafFileGermline, by: [0,1,2]).set{ facetsMafFil
 process GermlineFacetsAnnotation {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/maf_final/", mode: params.publishDirMode, pattern: "*.zygosity.maf"
+  publishDir "${params.outDir}/germline/${idNormal}/maf_final/", mode: params.publishDirMode, pattern: "*.facets.zygosity.maf"
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
