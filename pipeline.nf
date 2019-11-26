@@ -632,7 +632,17 @@ if (!params.bamPairing) {
                             def target = item[1]
                             return [ idTumor, idNormal, target, normalBam, normalBai ]
                           }.unique()
-			  .into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForMantaGermline; bamsForStrelkaGermline; bamsForDellyGermline}
+			  .into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsNormalOnly; }
+  bamsNormalOnly.map { item ->
+			def idNormal = item[1]
+			def target = item[2]
+			def normalBam = item[3]
+			def normalBai = item[4]
+			return [ idNormal, target, normalBam, normalBai ] }
+	.unique()
+	.into{ bamsForMantaGermline; bamsForDellyGermline }
+
+
 
   bamsTumor4Combine.combine(bamsNormal4Combine, by: [0,1,2])
                           .map { item -> // re-order the elements
@@ -723,7 +733,16 @@ if (params.bamPairing) {
 		 return [ idTumor, idNormal, target, normalBam, normalBai ]
 	 }
 	.unique()
-	.into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForMantaGermline; bamsForStrelkaGermline; bamsForDellyGermline}
+	.into{bamsNormal; bamsNormal4Combine; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsNormalOnly; }
+  bamsNormalOnly.map { item ->
+			def idNormal = item[1]
+			def target = item[2]
+			def normalBam = item[3]
+			def normalBai = item[4]
+			return [ idNormal, target, normalBam, normalBai ] }
+	.unique()
+	.into{ bamsForMantaGermline; bamsForDellyGermline }
+
 
   bamsTumor4Combine.mix(bamsNormal4Combine)
 		.map { item ->
@@ -2222,13 +2241,13 @@ process GermlineDellyCall {
 
   input:
     each svType from svTypesGermline
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForDellyGermline
+    set idNormal, target, file(bamNormal), file(baiNormal) from bamsForDellyGermline
     set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilter4CombineGermline
+    set idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilter4CombineGermline
 
   when: 'delly' in tools && runGermline
 
@@ -2255,7 +2274,7 @@ process GermlineRunManta {
   publishDir "${params.outDir}/germline/${idNormal}/manta", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
+    set idNormal, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex
     ])
@@ -2264,7 +2283,7 @@ process GermlineRunManta {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idNormal}.manta.vcf.gz"), file("${idNormal}.manta.vcf.gz.tbi") into manta4CombineGermline, mantaOutputGermline
+    set idNormal, target, file("${idNormal}.manta.vcf.gz"), file("${idNormal}.manta.vcf.gz.tbi") into manta4CombineGermline, mantaOutputGermline
 
   when: 'manta' in tools && runGermline
 
@@ -2300,10 +2319,10 @@ process GermlineRunManta {
 }
 
 // Put manta output and delly output into the same channel so they can be processed together in the group key
-// that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+// that they came in with i.e. (`idNormal`, and `target`)
 
 
-dellyFilter4CombineGermline.groupTuple(by: [0,1,2], size: 5).combine(manta4CombineGermline, by: [0,1,2]).set{ dellyMantaChannelGermline }
+dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5).combine(manta4CombineGermline, by: [0,1]).set{ dellyMantaChannelGermline }
 
 // --- Merge Delly and Manta VCFs 
 process GermlineMergeDellyAndManta {
@@ -2313,7 +2332,7 @@ process GermlineMergeDellyAndManta {
   publishDir "${params.outDir}/germline/${idNormal}/combined_sv/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
-    set idTumor, idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
+    set idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -2855,7 +2874,6 @@ process GermlineAggregateMaf {
   """
 }
 
-dellyMantaCombined4AggregateGermline.unique { new File(it.toString()).getName() }.set{ dellyMantaCombined4AggregateGermline }
 
 // --- Aggregate per-sample germline data, SVs
 process GermlineAggregateSv {
