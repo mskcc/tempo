@@ -1446,6 +1446,8 @@ process SomaticAnnotateMaf {
 }
 
 
+mafFile.into{mafFileForMafAnno; mafFileForMutSig}
+
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
@@ -1468,8 +1470,6 @@ process RunMutationSignatures {
   """
 }
 
-
-mafFile.into{mafFileForMafAnno; mafFileForMutSig}
 
 
 // --- Run FACETS 
