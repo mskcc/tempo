@@ -632,7 +632,7 @@ if (!params.bamPairing) {
                             def target = item[1]
                             return [ idTumor, idNormal, target, normalBam, normalBai ]
                           }.unique()
-			  .into{ bamsNormal4Combine; bamsNormalOnly; bamsNormal4Polysolver}
+			  .into{ bamsNormal4Combine; bamsNormalOnly }
   bamsNormalOnly.map { item ->
 			def idNormal = item[1]
 			def target = item[2]
@@ -640,7 +640,7 @@ if (!params.bamPairing) {
 			def normalBai = item[4]
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
-	.into{ bams4Haplotypecaller; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
 
@@ -733,7 +733,7 @@ if (params.bamPairing) {
 		 return [ idTumor, idNormal, target, normalBam, normalBai ]
 	 }
 	.unique()
-	.into{ bamsNormal4Combine; bamsNormal4Polysolver; bamsNormalOnly; }
+	.into{ bamsNormal4Combine; bamsNormalOnly }
   bamsNormalOnly.map { item ->
 			def idNormal = item[1]
 			def target = item[2]
@@ -741,7 +741,7 @@ if (params.bamPairing) {
 			def normalBai = item[4]
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
-	.into{ bams4Haplotypecaller; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
   bamsTumor4Combine.mix(bamsNormal4Combine)
@@ -1556,18 +1556,18 @@ process DoFacets {
 
 // Run Polysolver
 process RunPolysolver {
-  tag {idTumor + "__" + idNormal}
+  tag {idNormal}
   
   input:
-  set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsNormal4Polysolver
+  set idNormal, target, file(bamNormal), file(baiNormal) from bamsNormal4Polysolver
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput, hlaOutputForLOHHLA, hlaOutputForMetaDataParser
+    set val("placeHolder"), idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput, hlaOutputForLOHHLA, hlaOutputForMetaDataParser
 
   when: "polysolver" in tools && runSomatic
   
   script:
-  outputPrefix = "${idTumor}__${idNormal}"
+  outputPrefix = "${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
   """
@@ -1591,16 +1591,18 @@ process RunPolysolver {
 
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER
 
-bamsForLOHHLA.combine(hlaOutputForLOHHLA, by: [0,1,2]).combine(facetsPurity4LOHHLA, by: [0,1,2]).set{ mergedChannelLOHHLA }
+bamsForLOHHLA.combine(facetsPurity4LOHHLA, by: [0,1,2])
+	     .combine(hlaOutputForLOHHLA, by: [1,2])
+	     .set{ mergedChannelLOHHLA }
 
 // Run LOHHLA
 process RunLOHHLA {
-  tag {idTumor + "__" + idNormal}
+  tag {idNormal}
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/lohhla", mode: params.publishDirMode
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(winnersHla), file(purityOut) from mergedChannelLOHHLA
+    set idNormal, target, idTumor, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(purityOut), placeHolder, file(winnersHla) from mergedChannelLOHHLA
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
@@ -1689,7 +1691,7 @@ process SomaticFacetsAnnotation {
 }
 
 
-hlaOutput.combine(FacetsAnnotationMafFile, by: [0,1,2]).set{ input4Neoantigen }
+hlaOutput.combine(FacetsAnnotationMafFile, by: [1,2]).set{ input4Neoantigen }
 
 // --- Run neoantigen prediction pipeline
 process RunNeoantigen {
@@ -1699,7 +1701,7 @@ process RunNeoantigen {
   publishDir "${params.outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*.txt"
 
   input:
-    set idTumor, idNormal, target, file(polysolverFile), file(mafFile) from input4Neoantigen
+    set idNormal, target, placeHolder, file(polysolverFile), idTumor, file(mafFile) from input4Neoantigen
     set file(neoantigenCDNA), file(neoantigenCDS) from Channel.value([
       referenceMap.neoantigenCDNA, referenceMap.neoantigenCDS
     ])
@@ -1777,8 +1779,8 @@ process RunMsiSensor {
 
 facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
 			   .combine(msi4MetaData, by: [0,1,2])
-			   .combine(hlaOutputForMetaDataParser, by: [0,1,2])
 			   .combine(mutSig4Aggregate, by: [0,1,2])
+			   .combine(hlaOutputForMetaDataParser, by: [1,2])
 			   .unique()
 			   .set{ mergedChannelMetaDataParser }
 
@@ -1789,7 +1791,7 @@ process MetaDataParser {
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 
   input:
-    set idTumor, idNormal, target, file(purityOut), file(mafFile), file(armLevel), file(msifile), file(polysolverFile), file(mutSig) from mergedChannelMetaDataParser
+    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(armLevel), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
     ]) 
