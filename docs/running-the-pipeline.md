@@ -2,6 +2,10 @@
 
 ## Overview 
 
+::: tip Note
+Tempo does not support running samples from mixed sequencing platforms together.
+:::
+
 This page provides instructions on how to run the pipeline through the `pipeline.nf` script. The basic command below shows how to run Tempo, with an explanation of flags and input arguments and files. Below is also described how to best [run the pipeline on Juno](running-the-pipeline.md#running-the-pipeline-on-juno) as well as [on AWS](running-the-pipeline.md#running-the-pipeline-on-aws).
 
 ```shell
@@ -28,7 +32,7 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `-publishAll` is a boolean, resulting in retention of intermediate output files ((default: `true`).
 * `--splitLanes` indicates that the provided FASTQ files will be scanned for all unique sequencing lanes and demultiplexed accordingly. This is recommended for some steps of the alignment pipeline. See more under [The Mapping File](running-the-pipeline.md#input-files) (default: `true`).
 * `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
-* `--conpair_all` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run (default: `false`).
+* `--conpairAll` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run (default: `false`).
 
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
@@ -93,11 +97,11 @@ If the user is processing input BAMs, a mapping of tumor and normal sample names
 
 ```shell
 nextflow run pipeline.nf --somatic --germline \
-    --bam_pairing <input bam TN pairs tsv file> \
+    --bamPairing <input bam TN pairs tsv file> \
     -profile juno \
     --outDir results 
 ```
-The `bam_pairing` input file is also a tab-separated file, see a further description below.
+The `bamPairing` input file is also a tab-separated file, see a further description below.
 
 ### The BAM Pairing File
 Given BAMs as inputs, the user must specify which tumor and normal samples are to be analyzed as matched pairs. The following format is used:
@@ -139,7 +143,6 @@ We recommend that users check the [documentation for LSF](https://www.ibm.com/su
 * ` -e <LSF output file name>.err` is the name of the STDERR file. Please set this. 
 * ` -R "rusage[mem=<requested memory>]"` is the requested memory for  `nextflow run pipeline.nf`, which will not be memory intensive at all. 
 
-
 Here is a concrete example of a bsub command to process 25 WES TN pairs, running somatic and germline variant calling modules:
 
 ```shell
@@ -169,6 +172,8 @@ Users are welcome to use `nohup` or `tmux` as well.
 ::: tip Note
 These instructions will assume the user is moderately knowledgeable of AWS. Please refer to [AWS Setup](aws-setup.md) and the [AWS Glossary](aws-glossary.md) we have curated.
 :::
+
+*Under development.*
 
 ## Modifying or Resuming Pipeline Run
 
