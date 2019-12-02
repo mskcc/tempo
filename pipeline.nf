@@ -1709,8 +1709,8 @@ process RunNeoantigen {
   output:
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStats4Aggregate
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
-    file("*.maf") into NeoantigenMaf4Aggregate
-    file("*.maf") into NeoantigenMafOutput
+    file("*.final.maf") into NeoantigenMaf4Aggregate
+    file("*.final.maf") into NeoantigenMafOutput
 
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
