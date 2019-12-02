@@ -1,6 +1,6 @@
 # Installation
 
-:::tip Note
+::: tip Note
 Nextflow version 19.10.0 or later is **required**.
 :::
 
