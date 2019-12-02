@@ -108,12 +108,12 @@ Given BAMs as inputs, the user must specify which tumor and normal samples are t
 
 Example:
 
-|TUMOR_ID|NORMAL_ID|ASSAY|TARGET|TUMOR_BAM|NORMAL_BAM|
+|TUMOR_ID|NORMAL_ID|TARGET|TUMOR_BAM|NORMAL_BAM|
 |:---:|:---:|:---:|:---:|:---:|:---:|
-|normal_sample_1|tumor_sample_1|wes|agilent|/path/to/file/tumor_1.bam|/path/to/file/normal_1.bam|
-|normal_sample_2|tumor_sample_2|wes|agilent|/path/to/file/tumor_2.bam|/path/to/file/normal_2.bam|
-|...|...|...|...|...|...|
-|normal_sample_n|tumor_sample_n|wes|agilent|/path/to/file/tumor_n.bam|/path/to/file/normal_n.bam|
+|normal_sample_1|tumor_sample_1|agilent|/path/to/file/tumor_1.bam|/path/to/file/normal_1.bam|
+|normal_sample_2|tumor_sample_2|agilent|/path/to/file/tumor_2.bam|/path/to/file/normal_2.bam|
+|...|...|...|...|...|
+|normal_sample_n|tumor_sample_n|agilent|/path/to/file/tumor_n.bam|/path/to/file/normal_n.bam|
 
 ::: tip Note
 The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` do not exist, `pipeline.nf` will throw an error.
