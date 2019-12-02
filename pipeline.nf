@@ -1482,7 +1482,7 @@ process DoFacets {
 
   // publishDir "${params.outDir}/somatic/facets", mode: params.publishDirMode, pattern: "*/*/*.Rdata"
   publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
-  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,.png}"
+  publishDir "${params.outDir}/somatic/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/.{Rdata,png}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFiles4DoFacets
