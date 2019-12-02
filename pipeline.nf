@@ -1744,7 +1744,7 @@ process RunNeoantigen {
     --output_dir ./
 
   awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' *.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
-  mv ${outputPrefix}.neoantigens.maf ${outputPrefix}.final.maf
+  mv ${outputPrefix}.neoantigens.maf ${outputPrefix}.somatic.final.maf
   """
 }
 
@@ -2196,14 +2196,14 @@ facetsForMafAnnoGermline.combine(mafFileGermline, by: [0,1,2]).set{ facetsMafFil
 process GermlineFacetsAnnotation {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/maf_final/", mode: params.publishDirMode, pattern: "*.zygosity.maf"
+  publishDir "${params.outDir}/germline/${idNormal}/maf_final/", mode: params.publishDirMode, pattern: "*.germline.final.maf"
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
 
   output:
-    file("${outputPrefix}.facets.zygosity.maf") into mafFileOutputGermline
-    file("${outputPrefix}.facets.zygosity.maf") into mafFile4AggregateGermline
+    file("${outputPrefix}.germline.final.maf") into mafFileOutputGermline
+    file("${outputPrefix}.germline.final.maf") into mafFile4AggregateGermline
 
   when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
 
@@ -2219,7 +2219,7 @@ process GermlineFacetsAnnotation {
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
 
-  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.germline.final.maf
   """
 }
 
