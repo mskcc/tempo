@@ -2,6 +2,10 @@
 
 ## Overview 
 
+::: tip Note
+Tempo does not support running samples from mixed sequencing platforms together. By default, the pipeline assumes the inputs are from exome sequencing.
+:::
+
 This page provides instructions on how to run the pipeline through the `pipeline.nf` script. The basic command below shows how to run Tempo, with an explanation of flags and input arguments and files. Below is also described how to best [run the pipeline on Juno](running-the-pipeline.md#running-the-pipeline-on-juno) as well as [on AWS](running-the-pipeline.md#running-the-pipeline-on-aws).
 
 ```shell
@@ -23,16 +27,12 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively.
 * The files provided to the `--mapping` and `--pairing` arguments should contain the mapping of FASTQ files to sample names and of tumor-normal pairs. These are tab-separated files, see further description below and examples in the [test inputs subdirectory](https://github.com/mskcc/tempo/tree/master/test_inputs).
 
-::: tip Note
-The `assayType` argument is for resource allocation. This should also be specified in [the mapping file](running-the-pipeline.md#the-mapping-file), but for the purpose of correct reference file usage.
-:::
-
 **Optional arguments:**
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
 * `-publishAll` is a boolean, resulting in retention of intermediate output files ((default: `true`).
 * `--splitLanes` indicates that the provided FASTQ files will be scanned for all unique sequencing lanes and demultiplexed accordingly. This is recommended for some steps of the alignment pipeline. See more under [The Mapping File](running-the-pipeline.md#input-files) (default: `true`).
 * `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
-* `--conpair_all` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run (default: `false`).
+* `--conpairAll` runs the Conpair sample concordance assessment for all combinations of tumor and normal samples in the run (default: `false`).
 
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
@@ -66,15 +66,14 @@ This file is necessary to map the input FASTQ pairs from one or more sequencing 
 
 Example:
 
-|SAMPLE|ASSAY|TARGET|FASTQ_PE1|FASTQ_PE2|
+|SAMPLE|TARGET|FASTQ_PE1|FASTQ_PE2|
 |:---:|:---:|:---:|:---:|:---:|
-|normal_sample_1|wes|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
-|normal_sample_1|wes|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
-|tumor_sample_1|wes|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
-|tumor_sample_1|...|wes|agilent|...|...|
-|tumor_sample_1|wes|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
+|normal_sample_1|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
+|normal_sample_1|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
+|tumor_sample_1|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
+|tumor_sample_1|agilent|...|...|
+|tumor_sample_1|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
 
-Accepted values for the **ASSAY** column are `exome` and `genome`.\
 Accepted values for the **TARGET** column are `agilent` and `idt`.\
 Read further details on these parameters [here](reference-resources.md#genomic-intervals).
 
@@ -97,23 +96,23 @@ If the user is processing input BAMs, a mapping of tumor and normal sample names
 
 ```shell
 nextflow run pipeline.nf --somatic --germline \
-    --bam_pairing <input bam TN pairs tsv file> \
+    --bamPairing <input bam TN pairs tsv file> \
     -profile juno \
     --outDir results 
 ```
-The `bam_pairing` input file is also a tab-separated file, see a further description below.
+The `bamPairing` input file is also a tab-separated file, see a further description below.
 
 ### The BAM Pairing File
 Given BAMs as inputs, the user must specify which tumor and normal samples are to be analyzed as matched pairs. The following format is used:
 
 Example:
 
-|TUMOR_ID|NORMAL_ID|ASSAY|TARGET|TUMOR_BAM|NORMAL_BAM|
+|TUMOR_ID|NORMAL_ID|TARGET|TUMOR_BAM|NORMAL_BAM|
 |:---:|:---:|:---:|:---:|:---:|:---:|
-|normal_sample_1|tumor_sample_1|wes|agilent|/path/to/file/tumor_1.bam|/path/to/file/normal_1.bam|
-|normal_sample_2|tumor_sample_2|wes|agilent|/path/to/file/tumor_2.bam|/path/to/file/normal_2.bam|
-|...|...|...|...|...|...|
-|normal_sample_n|tumor_sample_n|wes|agilent|/path/to/file/tumor_n.bam|/path/to/file/normal_n.bam|
+|normal_sample_1|tumor_sample_1|agilent|/path/to/file/tumor_1.bam|/path/to/file/normal_1.bam|
+|normal_sample_2|tumor_sample_2|agilent|/path/to/file/tumor_2.bam|/path/to/file/normal_2.bam|
+|...|...|...|...|...|
+|normal_sample_n|tumor_sample_n|agilent|/path/to/file/tumor_n.bam|/path/to/file/normal_n.bam|
 
 ::: tip Note
 The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` do not exist, `pipeline.nf` will throw an error.
@@ -142,7 +141,6 @@ We recommend that users check the [documentation for LSF](https://www.ibm.com/su
 * ` -o <LSF output file name>.out` is the name of the STDOUT file, which is quite informative for Nextflow. We **strongly** encourage users to set this.
 * ` -e <LSF output file name>.err` is the name of the STDERR file. Please set this. 
 * ` -R "rusage[mem=<requested memory>]"` is the requested memory for  `nextflow run pipeline.nf`, which will not be memory intensive at all. 
-
 
 Here is a concrete example of a bsub command to process 25 WES TN pairs, running somatic and germline variant calling modules:
 
@@ -173,6 +171,8 @@ Users are welcome to use `nohup` or `tmux` as well.
 ::: tip Note
 These instructions will assume the user is moderately knowledgeable of AWS. Please refer to [AWS Setup](aws-setup.md) and the [AWS Glossary](aws-glossary.md) we have curated.
 :::
+
+*Under development.*
 
 ## Modifying or Resuming Pipeline Run
 
