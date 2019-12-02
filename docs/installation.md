@@ -9,7 +9,7 @@ curl -s https://get.nextflow.io | bash
 ```
 Put the `nextflow` executable in a directory in your `PATH`, if you want to access it from anywhere. For more details, check out the [documentation](https://www.nextflow.io/docs/latest/getstarted.html).
 
-We recommend Nextflow version 19.07.0 or later.
+Nextflow version 19.10.0 or later is required.
 
 ## Installing Tempo
 Clone the [Tempo repository](http://github.com/mskcc/tempo):
