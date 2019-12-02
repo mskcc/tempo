@@ -66,15 +66,14 @@ This file is necessary to map the input FASTQ pairs from one or more sequencing 
 
 Example:
 
-|SAMPLE|ASSAY|TARGET|FASTQ_PE1|FASTQ_PE2|
+|SAMPLE|TARGET|FASTQ_PE1|FASTQ_PE2|
 |:---:|:---:|:---:|:---:|:---:|
-|normal_sample_1|wes|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
-|normal_sample_1|wes|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
-|tumor_sample_1|wes|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
-|tumor_sample_1|wes|agilent|...|...|
-|tumor_sample_1|wes|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
+|normal_sample_1|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
+|normal_sample_1|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
+|tumor_sample_1|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
+|tumor_sample_1|agilent|...|...|
+|tumor_sample_1|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
 
-Accepted values for the **ASSAY** column are `exome` and `genome`.\
 Accepted values for the **TARGET** column are `agilent` and `idt`.\
 Read further details on these parameters [here](reference-resources.md#genomic-intervals).
 
