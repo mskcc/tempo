@@ -831,7 +831,7 @@ agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; }
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; }
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -1017,7 +1017,7 @@ process SomaticRunManta {
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz") into manta4Combine
     set idTumor, idNormal, target, file("${outputPrefix}.manta.vcf.gz.tbi") into mantaOutput
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
+    set idTumor, idNormal, target, file("*.candidateSmallIndels.vcf.gz"), file("*.candidateSmallIndels.vcf.gz.tbi") into mantaToStrelka
 
   when: "manta" in tools && runSomatic
 
@@ -1123,6 +1123,7 @@ process SomaticMergeDellyAndManta {
 
 
 // --- Run Strelka2
+bams4Strelka.combine(mantaToStrelka, by: [0, 1, 2]).set{input4Strelka}
 
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
@@ -1130,7 +1131,7 @@ process SomaticRunStrelka2 {
   publishDir "${params.outDir}/somatic/${outputPrefix}/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(mantaCSI), file(mantaCSIi) from mantaToStrelka
+    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(mantaCSI), file(mantaCSIi) from input4Strelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -1141,7 +1142,7 @@ process SomaticRunStrelka2 {
     ])
 
   output:
-    set idTumor, idNormal, target, file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelkaAndBams4Combine
+    set idTumor, idNormal, target, file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelka4Combine
     set file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelkaOutput
 
   when: tools.containsAll(["manta", "strelka2"]) && runSomatic
@@ -1199,7 +1200,7 @@ process SomaticRunStrelka2 {
 }
 
 
-mutect2CombinedVcf4Combine.combine(strelkaAndBams4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
+mutect2CombinedVcf4Combine.combine(bamns4CombineChannel, by: [0,1,2]).combine(strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
 
 // Combined Somatic VCFs
 
@@ -1207,7 +1208,7 @@ process SomaticCombineChannel {
   tag {idTumor + "__" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(bamTumor), file(bamNormal), file(baiTumor), file(baiNormal), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
+    set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex
     ])
