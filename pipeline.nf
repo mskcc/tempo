@@ -20,26 +20,21 @@ Somatic Analysis
 ----------------
  - CreateScatteredIntervals --- GATK4 SplitIntervals
  - RunMutect2 --- somatic SNV calling, MuTect2
- - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small indel calling by default
  - SomaticCombineMutect2Vcf --- combine Mutect2 calls, bcftools
- - SomaticRunManta --- somatic SV calling, Manta
  - SomaticDellyCall --- somatic SV calling, Delly
+ - SomaticRunManta --- somatic SV calling, Manta
  - SomaticMergeDellyAndManta --- combine Manta and Delly VCFs
+ - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small indel calling by default
  - SomaticCombineChannel --- combine and filter VCFs, bcftools
  - SomaticAnnotateMaf --- annotate MAF, vcf2maf
- - RunMsiSensor --- MSIsensor
+ - RunMutationSignatures --- mutational signatures
  - DoFacets --- facets-suite: mafAnno.R, geneLevel.R, armLevel.R
  - RunPolysolver --- Polysolver
  - RunLOHHLA --- LOH in HLA
- - RunMutationSignatures --- mutational signatures
  - SomaticFacetsAnnotation --- annotate FACETS
  - RunNeoantigen --- NetMHCpan 4.0
+ - RunMsiSensor --- MSIsensor
  - MetaDataParser --- python script to parse metadata into single *tsv
- - SomaticAggregateMaf --- collect outputs, MAF
- - SomaticAggregateNetMHC --- collect outputs, neoantigen prediction
- - SomaticAggregateFacets --- collect outputs, FACETS
- - SomaticAggregateSv --- collect outputs, SVs
- - SomaticAggregateMetaData --- collect outputs, sample data
 
 Germline Analysis
 -----------------
@@ -52,8 +47,6 @@ Germline Analysis
  - GermlineRunStrelka2 --- germline SNV calling, Strelka2 (with InDels from Manta)
  - GermlineCombineChannel --- combined and filter germline calls, bcftools
  - GermlineAnnotateMaf--- annotate MAF, vcf2maf
- - GermlineAggregateMaf --- collect outputs, MAF
- - GermlineAggregateSv --- collect outputs, SVs
 
 Quality Control
 -----------------
@@ -62,6 +55,16 @@ Quality Control
  - QcBamAggregate --- aggregates information from QcAlfred and QcCollectHsMetrics across all samples
  - QcConpair --- Tumor-Normal quality/contamination
  - QcConpairAll --- Tumor-Normal All Combination quality/contamination
+
+Cohort Aggregation
+-----------------
+ - SomaticAggregateMaf --- collect outputs, MAF
+ - SomaticAggregateNetMHC --- collect outputs, neoantigen prediction
+ - SomaticAggregateFacets --- collect outputs, FACETS
+ - SomaticAggregateSv --- collect outputs, SVs
+ - SomaticAggregateMetaData --- collect outputs, sample data
+ - GermlineAggregateMaf --- collect outputs, MAF
+ - GermlineAggregateSv --- collect outputs, SVs
  - QcConpairAggregate --- aggregates information from QcConpair or QcConpairAll across all sample
 
 */
@@ -858,43 +861,6 @@ bamsNormal.combine(mergedIList4N, by: 2)
 .set{ mergedChannelGermline }
 
 
-// --- Run Delly
-Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
-
-process SomaticDellyCall {
-  tag {idTumor + "__" + idNormal + '@' + svType}
-
-  input:
-    each svType from svTypes
-    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForDelly
-    set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions
-    ])
-
-  output:
-    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.filter.bcf") into dellyFilter4Combine
-
-  when: "delly" in tools && runSomatic
-
-  script:
-  """
-  delly call \
-    --svtype ${svType} \
-    --genome ${genomeFile} \
-    --exclude ${svCallingExcludeRegions} \
-    --outfile ${idTumor}__${idNormal}_${svType}.bcf \
-    ${bamTumor} ${bamNormal}
-
-  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
-
-  delly filter \
-    --filter somatic \
-    --samples samples.tsv \
-    --outfile ${idTumor}__${idNormal}_${svType}.filter.bcf \
-    ${idTumor}__${idNormal}_${svType}.bcf
-  """
-}
-
 // --- Run Mutect2
 process RunMutect2 {
   tag {idTumor + "__" + idNormal + "@" + intervalBed.baseName}
@@ -977,6 +943,43 @@ process SomaticCombineMutect2Vcf {
   """
 }
 
+
+// --- Run Delly
+Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
+
+process SomaticDellyCall {
+  tag {idTumor + "__" + idNormal + '@' + svType}
+
+  input:
+    each svType from svTypes
+    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForDelly
+    set file(genomeFile), file(genomeIndex), file(svCallingExcludeRegions) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions
+    ])
+
+  output:
+    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.filter.bcf") into dellyFilter4Combine
+
+  when: "delly" in tools && runSomatic
+
+  script:
+  """
+  delly call \
+    --svtype ${svType} \
+    --genome ${genomeFile} \
+    --exclude ${svCallingExcludeRegions} \
+    --outfile ${idTumor}__${idNormal}_${svType}.bcf \
+    ${bamTumor} ${bamNormal}
+
+  echo "${idTumor}\ttumor\n${idNormal}\tcontrol" > samples.tsv
+
+  delly filter \
+    --filter somatic \
+    --samples samples.tsv \
+    --outfile ${idTumor}__${idNormal}_${svType}.filter.bcf \
+    ${idTumor}__${idNormal}_${svType}.bcf
+  """
+}
 
 // --- Run Manta
 process SomaticRunManta {
@@ -1442,34 +1445,31 @@ process SomaticAnnotateMaf {
   """
 }
 
+
 mafFile.into{mafFileForMafAnno; mafFileForMutSig}
 
-// --- Run MSIsensor
-process RunMsiSensor {
+// --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
+process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal)  from bamsForMsiSensor
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
-      referenceMap.msiSensorList
-    ])
+    set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msi4MetaData
+    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSig4Aggregate
 
-  when: "msisensor" in tools && runSomatic
+  when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  msisensor msi \
-    -d ${msiSensorList} \
-    -t ${bamTumor} \
-    -n ${bamNormal} \
-    -o ${outputPrefix}.msisensor.tsv
+  python /mutation-signatures/main.py \
+    /mutation-signatures/Stratton_signatures30.txt \
+    ${outputPrefix}.somatic.maf \
+    ${outputPrefix}.mutsig.txt
   """
 }
+
 
 
 // --- Run FACETS 
@@ -1618,29 +1618,6 @@ process RunLOHHLA {
 }
 
 
-// --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
-process RunMutationSignatures {
-  tag {idTumor + "__" + idNormal}
-
-  input:
-    set idTumor, idNormal, target, file(maf) from mafFileForMutSig
-
-  output:
-    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSig4Aggregate
-
-  when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
-
-  script:
-  outputPrefix = "${idTumor}__${idNormal}"
-  """
-  python /mutation-signatures/main.py \
-    /mutation-signatures/Stratton_signatures30.txt \
-    ${outputPrefix}.somatic.maf \
-    ${outputPrefix}.mutsig.txt
-  """
-}
-
-
 facetsForMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
 
 
@@ -1752,6 +1729,34 @@ process RunNeoantigen {
 }
 
 
+// --- Run MSIsensor
+process RunMsiSensor {
+  tag {idTumor + "__" + idNormal}
+
+  input:
+    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal)  from bamsForMsiSensor
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(msiSensorList) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
+      referenceMap.msiSensorList
+    ])
+
+  output:
+    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msi4MetaData
+
+  when: "msisensor" in tools && runSomatic
+
+  script:
+  outputPrefix = "${idTumor}__${idNormal}"
+  """
+  msisensor msi \
+    -d ${msiSensorList} \
+    -t ${bamTumor} \
+    -n ${bamNormal} \
+    -o ${outputPrefix}.msisensor.tsv
+  """
+}
+
+
 facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
 			   .combine(msi4MetaData, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [0,1,2])
@@ -1804,152 +1809,6 @@ process MetaDataParser {
   """
 }
 
-process SomaticAggregateMaf {
- 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(mafFile) from NeoantigenMaf4Aggregate.collect()
-    
-  output:
-    file("mut_somatic.maf") into mutationAggregatedOutput
-
-  when: runSomatic
-
-  script:
-  """
-  ## Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-  
-  ## Collect and merge MAF files
-  mkdir mut
-  mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
-  cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
-  """
-}
-
-process SomaticAggregateNetMHC {
- 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(netmhcCombinedFile) from NetMhcStats4Aggregate.collect()
-
-  output:
-    file("mut_somatic_neoantigens.txt") into NetMhcAggregatedOutput
-
-  when: runSomatic
-    
-  script:
-  """
-  ## Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-  ## Collect and merge neoantigen prediction
-  mkdir neoantigen
-  mv *.all_neoantigen_predictions.txt neoantigen/
-  awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigens.txt
-  """
-}
-
-process SomaticAggregateFacets {
- 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(purityFiles) from FacetsPurity.collect()
-    file(hisensFiles) from FacetsHisens.collect()
-    file(purityHisens) from FacetsPurityHisens4Aggregate.collect()
-    file(annotationFiles) from FacetsArmGene4Aggregate.collect()
-
-  output:
-    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg"), file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationAggregatedOutput
-    
-  when: runSomatic
-    
-  script:
-  """
-  # Collect and merge FACETS outputs
-  # Arm-level and gene-level output is filtered
-  mkdir facets_tmp
-  mv *_OUT.txt facets_tmp/
-  mv *{purity,hisens}.seg facets_tmp/
-
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg 
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
-  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
-  mv *{genelevel,armlevel}.unfiltered.txt facets_tmp/
-  cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
-  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
-  cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
-  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt || [[ \$? == 1 ]]
-  """
-}
-
-process SomaticAggregateSv {
- 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(dellyMantaVcf) from dellyMantaCombined4Aggregate.collect()
-
-  output:
-    file("sv_somatic.vcf.{gz,gz.tbi}") into svAggregatedOutput
-
-  when: runSomatic
-
-  script:
-  """
-  ## Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-  
-  ## Collect and merge Delly and Manta VCFs
-  mkdir sv/
-  mv *delly.manta.vcf.gz* sv/
-  vcfs=(\$(ls sv/*delly.manta.vcf.gz))
-  if [[ \${#vcfs[@]} > 1 ]]
-  then
-    bcftools merge \
-    --force-samples \
-    --merge none \
-    --output-type z \
-    --output sv_somatic.vcf.gz \
-    sv/*delly.manta.vcf.gz
-  else
-    mv \${vcfs[0]} sv_somatic.vcf.gz
-  fi
-  
-  tabix --preset vcf sv_somatic.vcf.gz
-  """
-}
-
-process SomaticAggregateMetadata {
- 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(metaDataFile) from MetaData4Aggregate.collect()
-
-  output:
-    file("sample_data.txt") into MetaDataAggregatedOutput
-
-  when: runSomatic
-    
-  script:
-  """
-  ## Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-  
-  ## Collect and merge metadata file
-  mkdir sample_data_tmp
-  mv *.sample_data.txt sample_data_tmp/
-  awk 'FNR==1 && NR!=1{next;}{print}' sample_data_tmp/*.sample_data.txt > sample_data.txt 
-  """
-}
 
 /*
 ================================================================================
@@ -2062,57 +1921,6 @@ process GermlineCombineHaplotypecallerVcf {
   """
 }
 
-
-// --- Run Manta, germline
-process GermlineRunManta {
-  tag {idNormal}
-  
-  publishDir "${params.outDir}/germline/${idNormal}/manta", mode: params.publishDirMode
-  
-  input:
-    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
-    set file(genomeFile), file(genomeIndex) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex
-    ])
-    set file(svCallingIncludeRegions), file(svCallingIncludeRegionsIndex) from Channel.value([
-      referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex
-    ])
-
-  output:
-    set idTumor, idNormal, target, file("${idNormal}.manta.vcf.gz"), file("${idNormal}.manta.vcf.gz.tbi") into manta4CombineGermline, mantaOutputGermline
-
-  when: 'manta' in tools && runGermline
-
-  // flag with --exome if exome
-  script:
-  options = ""
-  if (params.assayType == "exome") options = "--exome"
-  """
-  configManta.py \
-    ${options} \
-    --callRegions ${svCallingIncludeRegions} \
-    --reference ${genomeFile} \
-    --bam ${bamNormal} \
-    --runDir Manta
-
-  python Manta/runWorkflow.py \
-    --mode local \
-    --jobs ${task.cpus}
-
-  mv Manta/results/variants/candidateSmallIndels.vcf.gz \
-    Manta_${idNormal}.candidateSmallIndels.vcf.gz
-  mv Manta/results/variants/candidateSmallIndels.vcf.gz.tbi \
-    Manta_${idNormal}.candidateSmallIndels.vcf.gz.tbi
-  mv Manta/results/variants/candidateSV.vcf.gz \
-    Manta_${idNormal}.candidateSV.vcf.gz
-  mv Manta/results/variants/candidateSV.vcf.gz.tbi \
-    Manta_${idNormal}.candidateSV.vcf.gz.tbi
-  mv Manta/results/variants/diploidSV.vcf.gz \
-    ${idNormal}.manta.vcf.gz
-  mv Manta/results/variants/diploidSV.vcf.gz.tbi \
-    ${idNormal}.manta.vcf.gz.tbi
-  """
-}
 
 // --- Run Strelka2, germline
 process GermlineRunStrelka2 {
@@ -2440,6 +2248,57 @@ process GermlineDellyCall {
   """
 }
 
+// --- Run Manta, germline
+process GermlineRunManta {
+  tag {idNormal}
+
+  publishDir "${params.outDir}/germline/${idNormal}/manta", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
+    set file(genomeFile), file(genomeIndex) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex
+    ])
+    set file(svCallingIncludeRegions), file(svCallingIncludeRegionsIndex) from Channel.value([
+      referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex
+    ])
+
+  output:
+    set idTumor, idNormal, target, file("${idNormal}.manta.vcf.gz"), file("${idNormal}.manta.vcf.gz.tbi") into manta4CombineGermline, mantaOutputGermline
+
+  when: 'manta' in tools && runGermline
+
+  // flag with --exome if exome
+  script:
+  options = ""
+  if (params.assayType == "exome") options = "--exome"
+  """
+  configManta.py \
+    ${options} \
+    --callRegions ${svCallingIncludeRegions} \
+    --reference ${genomeFile} \
+    --bam ${bamNormal} \
+    --runDir Manta
+
+  python Manta/runWorkflow.py \
+    --mode local \
+    --jobs ${task.cpus}
+
+  mv Manta/results/variants/candidateSmallIndels.vcf.gz \
+    Manta_${idNormal}.candidateSmallIndels.vcf.gz
+  mv Manta/results/variants/candidateSmallIndels.vcf.gz.tbi \
+    Manta_${idNormal}.candidateSmallIndels.vcf.gz.tbi
+  mv Manta/results/variants/candidateSV.vcf.gz \
+    Manta_${idNormal}.candidateSV.vcf.gz
+  mv Manta/results/variants/candidateSV.vcf.gz.tbi \
+    Manta_${idNormal}.candidateSV.vcf.gz.tbi
+  mv Manta/results/variants/diploidSV.vcf.gz \
+    ${idNormal}.manta.vcf.gz
+  mv Manta/results/variants/diploidSV.vcf.gz.tbi \
+    ${idNormal}.manta.vcf.gz.tbi
+  """
+}
+
 // Put manta output and delly output into the same channel so they can be processed together in the group key
 // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
 
@@ -2496,75 +2355,6 @@ process GermlineMergeDellyAndManta {
   """
 }
 
-
-// --- Aggregate per-sample germline data, MAF
-process GermlineAggregateMaf {
-
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(mafFile) from mafFile4AggregateGermline.collect()
-
-  output:
-    file("mut_germline.maf") into mutationAggregatedGermlineOutput
-  
-  when: runGermline
-
-  script:
-  """
-  ## Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-  
-  ## Collect and merge MAF files
-  mkdir mut
-  mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf 
-  cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf 
-
-  """
-}
-
-dellyMantaCombined4AggregateGermline.unique { new File(it.toString()).getName() }.set{ dellyMantaCombined4AggregateGermline }
-
-// --- Aggregate per-sample germline data, SVs
-process GermlineAggregateSv {
- 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(dellyMantaVcf) from dellyMantaCombined4AggregateGermline.collect()
-
-  output:
-    file("sv_germline.vcf.{gz,gz.tbi}") into svAggregatedGermlineOutput
-  
-  when: runGermline
-
-  script:
-  """
-  ## Making a temp directory that is needed for some reason...
-  mkdir tmp
-  TMPDIR=./tmp
-
-  ## Collect and merge Delly and Manta VCFs
-  mkdir sv
-  mv  *.delly.manta.vcf.gz* sv/
-  vcfs=(\$(ls sv/*delly.manta.vcf.gz))
-  if [[ \${#vcfs[@]} > 1 ]]
-  then
-    bcftools merge \
-    --force-samples \
-    --merge none \
-    --output-type z \
-    --output sv_germline.vcf.gz \
-    sv/*delly.manta.vcf.gz
-  else
-    mv \${vcfs[0]} sv_germline.vcf.gz
-  fi
-  
-  tabix --preset vcf sv_germline.vcf.gz
-  """
-}
 
 
 /*
@@ -2682,31 +2472,6 @@ process QcAlfred {
     --outfile ${outfile} \
     ${bam} && \
     Rscript --no-init-file /opt/alfred/scripts/stats.R ${outfile}
-  """
-}
-
-process QcBamAggregate {
-
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
-
-  input:
-    file(metricsFile) from collectHsMetrics4Aggregate.collect()
-    file(bamsQcStatsFile) from bamsQcStats4Aggregate.collect()
-
-  output:
-    file('alignment_qc.txt') into alignmentQcAggregatedOutput
-
-  when: !params.test && runQC
-
-  script:
-  if (params.assayType == "exome") {
-    options = "wes"
-  }
-  else {
-    options = 'wgs'
-  }
-  """
-  Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
   """
 }
 
@@ -2907,6 +2672,256 @@ process QcConpairAll {
   """
 }
 
+
+/*
+================================================================================
+=                              Cohort Aggregation                              =
+================================================================================
+*/
+
+process SomaticAggregateMaf {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(mafFile) from NeoantigenMaf4Aggregate.collect()
+
+  output:
+    file("mut_somatic.maf") into mutationAggregatedOutput
+
+  when: runSomatic
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect and merge MAF files
+  mkdir mut
+  mv *.maf mut/
+  cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
+  cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
+  """
+}
+
+process SomaticAggregateNetMHC {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(netmhcCombinedFile) from NetMhcStats4Aggregate.collect()
+
+  output:
+    file("mut_somatic_neoantigens.txt") into NetMhcAggregatedOutput
+
+  when: runSomatic
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  ## Collect and merge neoantigen prediction
+  mkdir neoantigen
+  mv *.all_neoantigen_predictions.txt neoantigen/
+  awk 'FNR==1 && NR!=1{next;}{print}' neoantigen/*.all_neoantigen_predictions.txt > mut_somatic_neoantigens.txt
+  """
+}
+
+process SomaticAggregateFacets {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(purityFiles) from FacetsPurity.collect()
+    file(hisensFiles) from FacetsHisens.collect()
+    file(purityHisens) from FacetsPurityHisens4Aggregate.collect()
+    file(annotationFiles) from FacetsArmGene4Aggregate.collect()
+
+  output:
+    set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg"), file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationAggregatedOutput
+
+  when: runSomatic
+
+  script:
+  """
+  # Collect and merge FACETS outputs
+  # Arm-level and gene-level output is filtered
+  mkdir facets_tmp
+  mv *_OUT.txt facets_tmp/
+  mv *{purity,hisens}.seg facets_tmp/
+
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
+  awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
+  mv *{genelevel,armlevel}.unfiltered.txt facets_tmp/
+  cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
+  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
+  cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
+  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt || [[ \$? == 1 ]]
+  """
+}
+
+process SomaticAggregateSv {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from dellyMantaCombined4Aggregate.collect()
+
+  output:
+    file("sv_somatic.vcf.{gz,gz.tbi}") into svAggregatedOutput
+
+  when: runSomatic
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect and merge Delly and Manta VCFs
+  mkdir sv/
+  mv *delly.manta.vcf.gz* sv/
+  vcfs=(\$(ls sv/*delly.manta.vcf.gz))
+  if [[ \${#vcfs[@]} > 1 ]]
+  then
+    bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type z \
+    --output sv_somatic.vcf.gz \
+    sv/*delly.manta.vcf.gz
+  else
+    mv \${vcfs[0]} sv_somatic.vcf.gz
+  fi
+
+  tabix --preset vcf sv_somatic.vcf.gz
+  """
+}
+
+process SomaticAggregateMetadata {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(metaDataFile) from MetaData4Aggregate.collect()
+
+  output:
+    file("sample_data.txt") into MetaDataAggregatedOutput
+
+  when: runSomatic
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect and merge metadata file
+  mkdir sample_data_tmp
+  mv *.sample_data.txt sample_data_tmp/
+  awk 'FNR==1 && NR!=1{next;}{print}' sample_data_tmp/*.sample_data.txt > sample_data.txt
+  """
+}
+
+
+// --- Aggregate per-sample germline data, MAF
+process GermlineAggregateMaf {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(mafFile) from mafFile4AggregateGermline.collect()
+
+  output:
+    file("mut_germline.maf") into mutationAggregatedGermlineOutput
+
+  when: runGermline
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect and merge MAF files
+  mkdir mut
+  mv *.maf mut/
+  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf
+  cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf
+
+  """
+}
+
+dellyMantaCombined4AggregateGermline.unique { new File(it.toString()).getName() }.set{ dellyMantaCombined4AggregateGermline }
+
+// --- Aggregate per-sample germline data, SVs
+process GermlineAggregateSv {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(dellyMantaVcf) from dellyMantaCombined4AggregateGermline.collect()
+
+  output:
+    file("sv_germline.vcf.{gz,gz.tbi}") into svAggregatedGermlineOutput
+
+  when: runGermline
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+
+  ## Collect and merge Delly and Manta VCFs
+  mkdir sv
+  mv  *.delly.manta.vcf.gz* sv/
+  vcfs=(\$(ls sv/*delly.manta.vcf.gz))
+  if [[ \${#vcfs[@]} > 1 ]]
+  then
+    bcftools merge \
+    --force-samples \
+    --merge none \
+    --output-type z \
+    --output sv_germline.vcf.gz \
+    sv/*delly.manta.vcf.gz
+  else
+    mv \${vcfs[0]} sv_germline.vcf.gz
+  fi
+
+  tabix --preset vcf sv_germline.vcf.gz
+  """
+}
+
+
+process QcBamAggregate {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(metricsFile) from collectHsMetrics4Aggregate.collect()
+    file(bamsQcStatsFile) from bamsQcStats4Aggregate.collect()
+
+  output:
+    file('alignment_qc.txt') into alignmentQcAggregatedOutput
+
+  when: !params.test && runQC
+
+  script:
+  if (params.assayType == "exome") {
+    options = "wes"
+  }
+  else {
+    options = 'wgs'
+  }
+  """
+  Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
+  """
+}
+
 // -- Run based on QcConpairAll channels or the single QcConpair channels
 (conpairAggregateConcordance, conpairAggregateContamination) = (!params.conpairAll
 								? [conpairConcordance, conpairContamination]
@@ -2934,6 +2949,14 @@ process QcConpairAggregate {
   grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
   """
 }
+
+
+
+/*
+================================================================================
+=                          Reference Define Functions                          =
+================================================================================
+*/
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
