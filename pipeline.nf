@@ -1598,7 +1598,7 @@ bamsForLOHHLA.combine(facetsPurity4LOHHLA, by: [0,1,2])
 
 // Run LOHHLA
 process RunLOHHLA {
-  tag {idNormal}
+  tag {idTumor + "__" + idNormal}
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/lohhla", mode: params.publishDirMode
 
