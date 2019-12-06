@@ -472,7 +472,7 @@ if (!params.bamPairing) {
       --OUTPUT ${idSample}.md.tmp.bam
 
     mv ${idSample}.md.tmp.bam ${idSample}.md.bam
-    mv ${idSample}.md.tmp.bam.bai ${idSample}.md.bam.bai
+    mv ${idSample}.md.tmp.bai ${idSample}.md.bai
     """
   }
 
