@@ -423,7 +423,8 @@ if (!params.bamPairing) {
 
     script:
     """
-    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
+    samtools merge --threads ${task.cpus} ${idSample}.merged.tmp.bam ${bam.join(" ")}
+    mv ${idSample}.merged.tmp.bam ${idSample}.merged.bam
     """
   }
 
@@ -468,7 +469,10 @@ if (!params.bamPairing) {
       --METRICS_FILE ${idSample}.bam.metrics \
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
-      --OUTPUT ${idSample}.md.bam
+      --OUTPUT ${idSample}.md.tmp.bam
+
+    mv ${idSample}.md.tmp.bam ${idSample}.md.bam
+    mv ${idSample}.md.tmp.bai ${idSample}.md.bai
     """
   }
 
@@ -587,9 +591,13 @@ if (!params.bamPairing) {
       --create-output-bam-index true \
       --bqsr-recal-file ${recalibrationReport} \
       --input ${bam} \
-      --output ${idSample}.bam
-    if [[ -f ${idSample}.bai ]]; then
-      mv ${idSample}.bai ${idSample}.bam.bai
+      --output ${idSample}.tmp.bam
+
+    mv ${idSample}.tmp.bam ${idSample}.bam
+    if [[ -f ${idSample}.tmp.bai ]]; then
+      mv ${idSample}.tmp.bai ${idSample}.bam.bai
+    else
+      mv ${idSample}.tmp.bam.bai ${idSample}.bam.bai
     fi
     """
   }
