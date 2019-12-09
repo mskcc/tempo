@@ -286,13 +286,14 @@ if (!params.bamPairing) {
         .transpose()
 	.map{ item ->
 	    def idSample = item[0]
-	    def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[2])
+	    def fileID = item[1] + "@" + fastqInfo[1]
 	    def file_pe1 = item[2]
 	    def file_pe1_size = item[2].size()
 	    def file_pe2 = item[3]
 	    def file_pe2_size = item[3].size()
 	    def targetFile = item[4]
-	    def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def rgID = fastqInfo[0] + ":" + fastqInfo[1]
 
 	    return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
 	}
@@ -301,13 +302,14 @@ if (!params.bamPairing) {
      fastqFiles =  inputFastqs
         .map{ item ->
             def idSample = item[0]
-            def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[2])
+            def fileID = item[1] + "@" + fastqInfo[1]
             def file_pe1 = item[2]
             def file_pe1_size = item[2].size()
             def file_pe2 = item[3]
             def file_pe2_size = item[3].size()
             def targetFile = item[4]
-            def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+            def rgID = fastqInfo[0] + ":" + fastqInfo[1]
 
             return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
         }
