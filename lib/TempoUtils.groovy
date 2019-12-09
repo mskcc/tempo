@@ -23,6 +23,7 @@ class TempoUtils {
   }
 
   static def extractFastq(tsvFile) {
+    def allReadNames = [:]
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
@@ -31,10 +32,22 @@ class TempoUtils {
       def targetFile = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def fastqFile2 = returnFile(row.FASTQ_PE2)
-      def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "@" + flowcellLaneFromFastq(fastqFile1)[0].replaceAll(":","@")
+      def fastqInfo = flowcellLaneFromFastq(fastqFile1)
+      def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "@" + fastqInfo[0].replaceAll(":","@")
       
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
+
+      def readName = fastqInfo[2]
+      if(allReadNames.containsKey(readName)){
+	println "ERROR: The following two files look like same file, because they contain the same read name ${readName} in the first line"
+	println allReadNames.get(readName)
+	println idSample + "\t" + row.FASTQ_PE1
+	System.exit(1)
+      }
+      else{
+        allReadNames[readName] = idSample + "\t" + row.FASTQ_PE1
+      }
 
       [idSample, fileID, fastqFile1, fastqFile2, targetFile]
     }
@@ -58,17 +71,20 @@ class TempoUtils {
     def fields = line.split(' ')[0].split(':')
     String fcid
     int lane
+    String fullName
     if (fields.size() == 7) {
       // CASAVA 1.8+ format
       // we include instrument name and run id in fcid to ensure the uniqueness
       fcid = fields[0] + ":" + fields[1] + ":" + fields[2]
       lane = fields[3].toInteger()
+      fullName = "@" + line
     }
     else if (fields.size() == 5) {
       fcid = fields[0]
       lane = fields[1].toInteger()
+      fullName = "@" + line
     }
-    [fcid, lane]
+    [fcid, lane, fullName]
   }
 
   // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
@@ -84,7 +100,7 @@ class TempoUtils {
     } 
     else {
       println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
-      exit 1
+      System.exit(1)
     }
   }
 
@@ -112,18 +128,27 @@ class TempoUtils {
   
   // Check file extension
   static def checkFileExtension(it, extension) {
-    if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) exit 1, "File: ${it} has the wrong extension: ${extension} see --help for more information"
+    if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) {
+	println "File: ${it} has the wrong extension: ${extension} see --help for more information"
+	System.exit(1)
+    }
   }
 
   // Check if a row has the expected number of item
   static def checkNumberOfItem(row, number) {
-    if (row.size() != number) exit 1, "Malformed row in TSV file: ${row}, see --help for more information"
+    if (row.size() != number){
+	println "Malformed row in TSV file: ${row}, see --help for more information"
+	System.exit(1)
+    }
     return true
   }
 
   // Return file if it exists
   static def returnFile(it) {
-    if (!file(it).exists()) exit 1, "Missing file in TSV file: ${it}, see --help for more information"
+    if (!file(it).exists()){
+	println "Missing file in TSV file: ${it}, see --help for more information"
+	System.exit(1)
+    }
     return file(it)
   }
 
