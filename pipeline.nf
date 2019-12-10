@@ -2761,6 +2761,7 @@ process QcSomalierRelate {
   when: !params.test && "somalier" in tools && runQC
 
   script:
+  outputPrefix = "${idTumor}__${idNormal}"
   """
   somalier relate ${tumorSomalierExtract} ${normalSomalierExtract}
   """
