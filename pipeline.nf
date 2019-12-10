@@ -3105,7 +3105,6 @@ def defineReferenceMap() {
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
-    'somalierSites' : checkParamReturnFile("somalierSites"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
