@@ -552,7 +552,7 @@ if (!params.bamPairing) {
       ])
 
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4QcSomalierExtract
       file("file-size.txt") into bamSize
 
     script:
@@ -760,7 +760,7 @@ if (params.bamPairing) {
 			def idSample = sampleBam.getSimpleName()
 			return [ idSample, target, sampleBam, sampleBai ]
 		}
-		.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4QcPileup}
+		.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4QcPileup; bamsBQSR4QcSomalierExtract}
 
   pairingTN.map{ item ->
 		def idTumor = item[0]
@@ -2539,7 +2539,7 @@ process QcPileup {
   """
 }
 
-pairingTN.into{pairingT4Conpair; pairingN4Conpair}
+pairingTN.into{pairingT4Conpair; pairingN4Conpair; pairingT4Somalier; pairingN4Somalier}
 
 tumorPileups.combine(pairingT4Conpair)
                         .filter { item ->
@@ -2687,6 +2687,82 @@ process QcConpairAll {
 
   mv ${outPrefix}_concordance.txt ${outPrefix}.concordance.txt
   mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
+  """
+}
+
+process QcSomalierExtract {
+  tag {idSample}
+
+  publishDir "${params.outDir}/qc/${idSample}/somalierExtract/", mode: params.publishDirMode
+
+  input:
+    set idSample, target, file(bam), file(bai) from bamsBQSR4QcSomalierExtract
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(somalierSites) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.somalierSites
+    ])
+
+  output:
+    set idSample, file("${idSample}.somalier") into somalierExtracts, tumorSomalierExtracts, normalSomalierExtracts
+
+  when: !params.test && "somalier" in tools && runQC
+
+  script:
+  """
+  somalier extract -d ./ --sites ${somalierSites} -f ${genomeFile} ${bam}
+  """
+}
+
+tumorSomalierExtracts.combine(pairingT4Somalier)
+                        .filter { item ->
+                          def idSample = item[0]
+                          def sampleSomalierExtract = item[1]
+                          def idTumor = item[2]
+                          def idNormal = item[3]
+                          idSample == idTumor
+                        }.map { item ->
+                          def idTumor = item[2]
+                          def idNormal = item[3]
+                          def tumorSomalierExtract = item[1]
+                          return [ idTumor, idNormal, tumorSomalierExtract ]
+                        }
+			.unique()
+			.set{somalierExtractT}
+
+normalSomalierExtracts.combine(pairingN4Somalier)
+                        .filter { item ->
+                          def idSample = item[0]
+                          def sampleSomalierExtract = item[1]
+                          def idTumor = item[2]
+                          def idNormal = item[3]
+                          idSample == idNormal
+                        }.map { item ->
+                          def idTumor = item[2]
+                          def idNormal = item[3]
+                          def normalSomalierExtract = item[1]
+                          return [ idTumor, idNormal, normalSomalierExtract ]
+                        }
+			.unique()
+			.set{somalierExtractN}
+
+
+somalierExtractT.combine(somalierExtractN, by: [0, 1]).set{ somalierExtractTN }
+
+process QcSomalierRelate {
+  tag {idTumor + "__" + idNormal}
+
+  publishDir "${params.outDir}/somatic/${outPrefix}/somalierRelate/", mode: params.publishDirMode
+
+  input:
+    set idTumor, idNormal, file(tumorSomalierExtract), file(normalSomalierExtract) from somalierExtractTN
+
+  output:
+    file('*.{tsv,html}') into somalierRelateTNOutput
+
+  when: !params.test && "somalier" in tools && runQC
+
+  script:
+  """
+  somalier relate ${tumorSomalierExtract} ${normalSomalierExtract}
   """
 }
 
@@ -2968,6 +3044,26 @@ process QcConpairAggregate {
 }
 
 
+process QcSomalierRelateAggregate {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(tumorSomalier) from somalierExtracts.collect()
+
+  output:
+    file('*.{tsv,html}') into somalierRelateOutput
+
+  when: !params.test && "somalier" && runQC
+
+  script:
+  """
+  somalier relate *.somalier
+  """
+}
+
+
+
 
 /*
 ================================================================================
@@ -3009,6 +3105,7 @@ def defineReferenceMap() {
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
+    'somalierSites' : checkParamReturnFile("somalierSites"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
