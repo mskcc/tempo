@@ -51,6 +51,6 @@ RUN cd /usr/local/bin/netMHCpan-4.0/ \
 COPY neoantigen-dev-0.3.1.tar.gz /tmp
 
 RUN tar -xvf /tmp/neoantigen-dev-0.3.1.tar.gz -C /usr/local/bin \
-    && mv /usr/local/bin/neoantigen-dev-0.3.1/ usr/local/bin/neoantigen/ \
+    && mv /usr/local/bin/neoantigen-dev-0.3.1/ /usr/local/bin/neoantigen/ \
     && cd /usr/local/bin/neoantigen/ \
     && pip install -r requirements.txt
