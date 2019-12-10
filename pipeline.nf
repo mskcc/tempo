@@ -2750,7 +2750,7 @@ somalierExtractT.combine(somalierExtractN, by: [0, 1]).set{ somalierExtractTN }
 process QcSomalierRelate {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outPrefix}/somalierRelate/", mode: params.publishDirMode
+  publishDir "${params.outDir}/somatic/${outputPrefix}/somalierRelate/", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, file(tumorSomalierExtract), file(normalSomalierExtract) from somalierExtractTN
