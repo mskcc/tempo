@@ -1639,9 +1639,12 @@ process RunLOHHLA {
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
 
+  sed -i "s/^${idTumor}/${outputPrefix}/g" ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt
+
   if find Figures -mindepth 1 | read
   then
     mv Figures/* .
+    mv ${idTumor}.minCoverage_30.HLA.pdf ${outputPrefix}.minCoverage_30.HLA.pdf 
   fi
   """
 }
