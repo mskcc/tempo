@@ -3143,6 +3143,7 @@ def defineReferenceMap() {
     result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
     result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
+    result_array << ['somalierSites' : checkParamReturnFile("somalierSites")]  
   }
   return result_array
 }
