@@ -2235,7 +2235,7 @@ process GermlineFacetsAnnotation {
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
 
-  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.germline.final.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.final.maf
   """
 }
 
