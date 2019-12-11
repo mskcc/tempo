@@ -1504,7 +1504,6 @@ process DoFacets {
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
-  echo "R_LIBS=/usr/lib/R" > .Renviron
   touch .Rprofile
 
   snp-pileup \
