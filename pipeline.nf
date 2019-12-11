@@ -1504,6 +1504,9 @@ process DoFacets {
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
+  echo "R_LIBS=/usr/lib/R" > .Renviron
+  touch .Rprofile
+
   snp-pileup \
     --count-orphans \
     --pseudo-snps=50 \
@@ -1514,7 +1517,7 @@ process DoFacets {
 
   mkdir ${outputDir}
 
-  Rscript --no-init-file /usr/bin/facets-suite/doFacets.R \
+  Rscript /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
     --snp_nbhd ${params.facets.snp_nbhd} \
     --ndepth ${params.facets.ndepth} \
@@ -1527,7 +1530,7 @@ process DoFacets {
     --counts_file ${outfile} \
     --TAG ${tag} \
     --directory ${outputDir} \
-    --R_lib /usr/lib/R/library \
+    --R_lib /usr/local/lib/R/site-library \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
 
