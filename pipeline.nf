@@ -1597,7 +1597,6 @@ process RunPolysolver {
   """
 }
 
-
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER
 
 bamsForLOHHLA.combine(facetsPurity4LOHHLA, by: [0,1,2])
@@ -1639,9 +1638,15 @@ process RunLOHHLA {
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
 
+  if [[ -f ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt ]]
+  then
+    sed -i "s/^${idTumor}/${outputPrefix}/g" ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt
+  fi
+
   if find Figures -mindepth 1 | read
   then
     mv Figures/* .
+    mv ${idTumor}.minCoverage_30.HLA.pdf ${outputPrefix}.minCoverage_30.HLA.pdf 
   fi
   """
 }
