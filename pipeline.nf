@@ -293,13 +293,14 @@ if (!params.bamPairing) {
         .transpose()
 	.map{ item ->
 	    def idSample = item[0]
-	    def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[2])
+	    def fileID = item[1] + "@" + fastqInfo[1]
 	    def file_pe1 = item[2]
 	    def file_pe1_size = item[2].size()
 	    def file_pe2 = item[3]
 	    def file_pe2_size = item[3].size()
 	    def targetFile = item[4]
-	    def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def rgID = fastqInfo[0] + ":" + fastqInfo[1]
 
 	    return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
 	}
@@ -308,13 +309,14 @@ if (!params.bamPairing) {
      fastqFiles =  inputFastqs
         .map{ item ->
             def idSample = item[0]
-            def fileID = item[1] + "@" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[2])
+            def fileID = item[1] + "@" + fastqInfo[1]
             def file_pe1 = item[2]
             def file_pe1_size = item[2].size()
             def file_pe2 = item[3]
             def file_pe2_size = item[3].size()
             def targetFile = item[4]
-            def rgID = TempoUtils.flowcellLaneFromFastq(item[2])[0] + ":" + TempoUtils.flowcellLaneFromFastq(item[2])[1]
+            def rgID = fastqInfo[0] + ":" + fastqInfo[1]
 
             return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
         }
@@ -1088,7 +1090,7 @@ process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
-  publishDir "${params.outDir}/somatic/${outputPrefix}/merged_sv", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
@@ -1418,7 +1420,7 @@ process SomaticCombineChannel {
 process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/maf_unfiltered/", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
+  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from mutationMergedVcf
@@ -1516,20 +1518,18 @@ process DoFacets {
 
   publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
   publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
-  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,seg,txt,out}"
+  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,seg,txt}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFiles4DoFacets
     file(facetsVcf) from Channel.value([referenceMap.facetsVcf])
 
   output:
-    set target, idTumor, idNormal, file("${outfile}") into snpPileupOutput
-    set idTumor, idNormal, target, file("${outputDir}/*purity.out"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.out"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*purity.CNCF.png"), val("${outputFacetsSubdirectory}/${outputDir}") into FacetsOutput
-    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
+    file("${outfile}") into snpPileupOutput
+    file("${outputDir}/*") into FacetsOutput
+    set file("${tag}_OUT.txt"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.seg")  into FacetsPurityHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
-    set file("${outputDir}/*purity.seg"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*purity.CNCF.png"), file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.out") into FacetsPurity
-    set file("${outputDir}/*hisens.seg"), file("${outputDir}/*hisens.cncf.txt"), file("${outputDir}/*hisens.CNCF.png"), file("${outputDir}/*hisens.Rdata"), file("${outputDir}/*hisens.out") into FacetsHisens
-    file("${tag}_OUT.txt") into FacetsPurityHisens4Aggregate
+    set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
 
   when: "facets" in tools && runSomatic
 
@@ -1538,6 +1538,8 @@ process DoFacets {
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
+  touch .Rprofile
+
   snp-pileup \
     --count-orphans \
     --pseudo-snps=50 \
@@ -1548,7 +1550,7 @@ process DoFacets {
 
   mkdir ${outputDir}
 
-  Rscript --no-init-file /usr/bin/facets-suite/doFacets.R \
+  Rscript /usr/bin/facets-suite/doFacets.R \
     --cval ${params.facets.cval} \
     --snp_nbhd ${params.facets.snp_nbhd} \
     --ndepth ${params.facets.ndepth} \
@@ -1561,7 +1563,7 @@ process DoFacets {
     --counts_file ${outfile} \
     --TAG ${tag} \
     --directory ${outputDir} \
-    --R_lib /usr/lib/R/library \
+    --R_lib /usr/local/lib/R/site-library \
     --seed ${params.facets.seed} \
     --tumor_id ${idTumor}
 
@@ -1608,7 +1610,6 @@ process RunPolysolver {
   """
 }
 
-
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER
 
 bamsForLOHHLA.combine(facetsPurity4LOHHLA, by: [0,1,2])
@@ -1650,9 +1651,15 @@ process RunLOHHLA {
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
 
+  if [[ -f ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt ]]
+  then
+    sed -i "s/^${idTumor}/${outputPrefix}/g" ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt
+  fi
+
   if find Figures -mindepth 1 | read
   then
     mv Figures/* .
+    mv ${idTumor}.minCoverage_30.HLA.pdf ${outputPrefix}.minCoverage_30.HLA.pdf 
   fi
   """
 }
@@ -1717,7 +1724,7 @@ hlaOutput.combine(FacetsAnnotationMafFile, by: [1,2]).set{ input4Neoantigen }
 process RunNeoantigen {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/maf_final/", mode: params.publishDirMode, pattern: "*.maf"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.maf"
   publishDir "${params.outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*.txt"
 
   input:
@@ -1749,7 +1756,8 @@ process RunNeoantigen {
   }
 
   outputPrefix = "${idTumor}__${idNormal}"
-  tmpDir = "neoantigen-tmp"
+  outputDir = "neoantigen"
+  tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
   export TMPDIR=${tmpDirFullPath}
@@ -1761,10 +1769,10 @@ process RunNeoantigen {
     --sample_id ${outputPrefix} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
-    --output_dir ./
+    --output_dir ${outputDir}
 
-  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' *.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
-  mv ${outputPrefix}.neoantigens.maf ${outputPrefix}.somatic.final.maf
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
+  mv ${outputDir}/${outputPrefix}.neoantigens.maf ${outputPrefix}.somatic.final.maf
   """
 }
 
@@ -2162,7 +2170,7 @@ process GermlineCombineChannel {
 process GermlineAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/maf_unfiltered", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
+  publishDir "${params.outDir}/germline/${idNormal}/combined_mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from mutationMergedGermline
@@ -2216,7 +2224,7 @@ facetsForMafAnnoGermline.combine(mafFileGermline, by: [0,1,2]).set{ facetsMafFil
 process GermlineFacetsAnnotation {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/maf_final/", mode: params.publishDirMode, pattern: "*.germline.final.maf"
+  publishDir "${params.outDir}/germline/${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.germline.final.maf"
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
@@ -2239,7 +2247,7 @@ process GermlineFacetsAnnotation {
     --maf ${maf} \
     --out_maf ${outputPrefix}.facets.maf
 
-  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.germline.final.maf
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.final.maf
   """
 }
 
@@ -2339,7 +2347,7 @@ process GermlineMergeDellyAndManta {
   tag {idNormal}
 
   publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
-  publishDir "${params.outDir}/germline/${idNormal}/combined_sv/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
@@ -2766,8 +2774,6 @@ process SomaticAggregateFacets {
   publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
-    file(purityFiles) from FacetsPurity.collect()
-    file(hisensFiles) from FacetsHisens.collect()
     file(purityHisens) from FacetsPurityHisens4Aggregate.collect()
     file(annotationFiles) from FacetsArmGene4Aggregate.collect()
 
