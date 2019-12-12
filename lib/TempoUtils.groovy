@@ -22,6 +22,14 @@ class TempoUtils {
     }
   }
 
+  static def extractCohort(tsvFile) {
+    Channel.from(tsvFile)
+    .splitCsv(sep: '\t', header: true)
+    .map { row ->
+      [row.ID, row.PATH]
+    }
+  }
+
   static def extractFastq(tsvFile) {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
