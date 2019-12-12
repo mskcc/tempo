@@ -135,12 +135,19 @@ if (params.bamPairing) {
   }
 }
 
+
 // User-set runtime parameters
 publishAll = params.publishAll
 outname = params.outname
 runGermline = params.germline
 runSomatic = params.somatic
 runQC = params.QC
+runAggregate = params.aggregate
+
+if (!runSomatic && runGermline){
+    println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
+    runSomatic = true
+}
 
 referenceMap = defineReferenceMap()
 
@@ -695,6 +702,7 @@ if (!params.bamPairing) {
 ================================================================================
 */
 
+if (runSomatic || runGermline || runQC) {
 // parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
@@ -769,7 +777,9 @@ if (params.bamPairing) {
 	  }
 	  .set { pairingTN }
 }
+}
 
+if (runSomatic || runGermline) {
 // GATK SplitIntervals, CreateScatteredIntervals
 process CreateScatteredIntervals {
 
@@ -885,8 +895,9 @@ bams4Haplotypecaller.combine(mergedIList4N, by: 1)
 }
 .transpose()
 .set{ mergedChannelGermline }
+}
 
-
+if (runSomatic){
 // --- Run Mutect2
 process RunMutect2 {
   tag {idTumor + "__" + idNormal + "@" + intervalBed.baseName}
@@ -1837,14 +1848,14 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
-
+}
 
 /*
 ================================================================================
 =                                GERMLINE PIPELINE                              =
 ================================================================================
 */
-
+if (runGermline){
 // GATK HaplotypeCaller
 process GermlineRunHaplotypecaller {
   tag {idNormal + "@" + intervalBed.baseName}
@@ -2372,7 +2383,7 @@ process GermlineMergeDellyAndManta {
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
 }
-
+}
 
 
 /*
@@ -2381,6 +2392,7 @@ process GermlineMergeDellyAndManta {
 ================================================================================
 */
 
+if (runQC) {
 // GATK CollectHsMetrics, WES only
 process QcCollectHsMetrics {
   tag {idSample}
@@ -2579,7 +2591,8 @@ pileupT.combine(pileupN, by: [0, 1]).set{ pileupConpair }
 process QcConpair {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outPrefix}/conpair/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/${idTumor}/conpair/", mode: params.publishDirMode
+  publishDir "${params.outDir}/qc/${idNormal}/conpair/", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
@@ -2689,7 +2702,7 @@ process QcConpairAll {
   mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
   """
 }
-
+}
 
 /*
 ================================================================================
@@ -2697,6 +2710,7 @@ process QcConpairAll {
 ================================================================================
 */
 
+if (runAggregate && runSomatic) {
 process SomaticAggregateMaf {
 
   publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
@@ -2843,8 +2857,10 @@ process SomaticAggregateMetadata {
   awk 'FNR==1 && NR!=1{next;}{print}' sample_data_tmp/*.sample_data.txt > sample_data.txt
   """
 }
+}
 
 
+if (runAggregate && runGermline) {
 // --- Aggregate per-sample germline data, MAF
 process GermlineAggregateMaf {
 
@@ -2912,8 +2928,10 @@ process GermlineAggregateSv {
   tabix --preset vcf sv_germline.vcf.gz
   """
 }
+}
 
 
+if (runAggregate && runQC) {
 process QcBamAggregate {
 
   publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
@@ -2966,7 +2984,7 @@ process QcConpairAggregate {
   grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
   """
 }
-
+}
 
 
 /*
