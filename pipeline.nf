@@ -1516,7 +1516,7 @@ process DoFacets {
   output:
     file("${outfile}") into snpPileupOutput
     file("${outputDir}/*") into FacetsOutput
-    file("${tag}_OUT.txt") into FacetsPurityHisens4Aggregate
+    set file("${tag}_OUT.txt"), file("${outputDir}/*purity.seg"), file("${outputDir}/*hisens.seg")  into FacetsPurityHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
 
@@ -1745,7 +1745,8 @@ process RunNeoantigen {
   }
 
   outputPrefix = "${idTumor}__${idNormal}"
-  tmpDir = "neoantigen-tmp"
+  outputDir = "neoantigen"
+  tmpDir = "${outputDir}-tmp"
   tmpDirFullPath = "\$PWD/${tmpDir}/"  // must set full path to tmp directories for netMHC and netMHCpan to work; for some reason doesn't work with /scratch, so putting them in the process workspace
   """
   export TMPDIR=${tmpDirFullPath}
@@ -1757,10 +1758,10 @@ process RunNeoantigen {
     --sample_id ${outputPrefix} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
-    --output_dir ./
+    --output_dir ${outputDir}
 
-  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' *.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
-  mv ${outputPrefix}.neoantigens.maf ${outputPrefix}.somatic.final.maf
+  awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
+  mv ${outputDir}/${outputPrefix}.neoantigens.maf ${outputPrefix}.somatic.final.maf
   """
 }
 
