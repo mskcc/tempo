@@ -2583,7 +2583,7 @@ normalPileups.combine(pairingN4Conpair)
 			.into{pileupN; pileupN4Combine}
 
 
-pileupT.combine(pileupN, by: [0, 1]).set{ pileupConpair }
+pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
 
 process QcConpair {
   tag {idTumor + "__" + idNormal}
@@ -2642,7 +2642,7 @@ process QcConpair {
   """
 }
 
-pileupT4Combine.combine(pileupN4Combine).set{ pileupConpairAll }
+pileupT4Combine.combine(pileupN4Combine).unique().set{ pileupConpairAll }
 
 process QcConpairAll {
   tag {idTumor + "@" + idNormal}
