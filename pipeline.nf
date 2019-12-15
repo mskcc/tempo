@@ -1628,6 +1628,7 @@ process RunLOHHLA {
 
   output:
     set file("*HLAlossPrediction_CI.txt"), file("*DNA.IntegerCPN_CI.txt"), file("*.pdf"), file("*.RData") optional true into lohhlaOutput
+    set file("*HLAlossPrediction_CI.txt"), file("*DNA.IntegerCPN_CI.txt") optional true into lohhla4Aggregate
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
@@ -2230,8 +2231,8 @@ process GermlineFacetsAnnotation {
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
 
   output:
-    file("${outputPrefix}.germline.final.maf") into mafFileOutputGermline
-    file("${outputPrefix}.germline.final.maf") into mafFile4AggregateGermline
+    file("${outputPrefix}.final.maf") into mafFileOutputGermline
+    file("${outputPrefix}.final.maf") into mafFile4AggregateGermline
 
   when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
 
@@ -2594,7 +2595,7 @@ normalPileups.combine(pairingN4Conpair)
 			.into{pileupN; pileupN4Combine}
 
 
-pileupT.combine(pileupN, by: [0, 1]).set{ pileupConpair }
+pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
 
 process QcConpair {
   tag {idTumor + "__" + idNormal}
@@ -2654,7 +2655,7 @@ process QcConpair {
   """
 }
 
-pileupT4Combine.combine(pileupN4Combine).set{ pileupConpairAll }
+pileupT4Combine.combine(pileupN4Combine).unique().set{ pileupConpairAll }
 
 process QcConpairAll {
   tag {idTumor + "@" + idNormal}
@@ -2838,6 +2839,33 @@ process SomaticAggregateSv {
   tabix --preset vcf sv_somatic.vcf.gz
   """
 }
+
+
+process SomaticAggregateLOHHLA {
+
+  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+
+  input:
+    file(lohhlaOut) from lohhla4Aggregate.collect()
+
+  output:
+    file("DNA.IntegerCPN_CI.txt") into lohhlaDNAIntegerCPNOutput
+    file("HLAlossPrediction_CI.txt") into lohhlaHLAlossPredictionAggregatedOutput
+
+  when: runSomatic
+
+  script:
+  """
+  ## Making a temp directory that is needed for some reason...
+  mkdir tmp
+  TMPDIR=./tmp
+  mkdir lohhla
+  mv *.txt lohhla/
+  awk 'FNR==1 && NR!=1{next;}{print}' lohhla/*HLAlossPrediction_CI.txt > HLAlossPrediction_CI.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' lohhla/*DNA.IntegerCPN_CI.txt > DNA.IntegerCPN_CI.txt
+  """
+}
+
 
 process SomaticAggregateMetadata {
 
