@@ -2745,7 +2745,7 @@ normalSomalierExtracts.combine(pairingN4Somalier)
 			.set{somalierExtractN}
 
 
-somalierExtractT.combine(somalierExtractN, by: [0, 1]).set{ somalierExtractTN }
+somalierExtractT.combine(somalierExtractN, by: [0, 1]).unique().set{ somalierExtractTN }
 
 process QcSomalierRelate {
   tag {idTumor + "__" + idNormal}
