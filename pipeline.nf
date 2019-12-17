@@ -770,6 +770,7 @@ if (params.bamPairing) {
 			def idSample = sampleBam.getSimpleName()
 			return [ idSample, target, sampleBam, sampleBai ]
 		}
+		.unique()
 		.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4QcPileup}
 
   pairingTN.map{ item ->
