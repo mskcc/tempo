@@ -62,6 +62,7 @@ Cohort Aggregation
  - SomaticAggregateNetMHC --- collect outputs, neoantigen prediction
  - SomaticAggregateFacets --- collect outputs, FACETS
  - SomaticAggregateSv --- collect outputs, SVs
+ - SomaticAggregateLOHHLA --- collect outputs, LOHHLA
  - SomaticAggregateMetaData --- collect outputs, sample data
  - GermlineAggregateMaf --- collect outputs, MAF
  - GermlineAggregateSv --- collect outputs, SVs
@@ -574,7 +575,7 @@ if (params.mapping && params.pairing) {
   process RecalibrateBam {
     tag {idSample}
 
-    publishDir "${params.outDir}/bams", mode: params.publishDirMode, pattern: "*.bam*"
+    publishDir "${params.outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
 
     input:
       set idSample, file(bam), file(bai), target, file(recalibrationReport) from inputsBQSR
