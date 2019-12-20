@@ -80,8 +80,52 @@ if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_si
   exit 1
 }
 
+// User-set runtime parameters
+publishAll = params.publishAll
+outname = params.outname
+runGermline = params.germline
+runSomatic = params.somatic
+runQC = params.QC
+runAggregate = params.aggregate
+
+if (!runSomatic && runGermline){
+    println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
+    runSomatic = true
+}
+
+if (runAggregate == false){
+  if (!(runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamPairing)){
+    println "ERROR: (--mapping [tsv] & --pairing [tsv] ) or (--bamPairing [tsv]) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
+    exit 1
+  }
+}
+else if (runAggregate == true){
+  if ((params.mapping && params.pairing) || params.bamPairing){
+    if (!(runSomatic || runGermline || runQC)){
+      println "ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate"
+    }
+  }
+  else{
+    println "ERROR: (--mapping [tsv] & --pairing [tsv] ) or (--bamPairing [tsv]) need to be provided when using --aggregate"
+    println "       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual"
+    exit 1
+  }
+}
+else {
+  if (runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamPairing){
+    println "ERROR: Conflict input! When running --aggregate [tsv], --mapping/--pairing/--QC/--somatic/--germline all need to be disabled!"
+    println "       If you want to run aggregate somatic/germline/qc, just include needed path the [tsv] and no need to use --QC/--somatic/--germline flag."
+    exit 1
+  }
+}
+
+// Only bamPairing required when using already aligned BAM files, and can't be together with (--mapping [tsv] || --pairing [tsv])
+if ((params.mapping && params.bamPairing) || (params.pairing && params.bamPairing)) {
+  println "ERROR: Cannot use both FASTQs and BAMs as inputs. Flags --bamPairing and --mapping/-pairing cannot be invoked together. Please provide either FASTQs or BAMs, and re-run the pipeline."
+  exit 1
+}
+
 // Both mapping and pairing necessary for alignment of FASTQs
-// Only bamPairing required when using already aligned BAM files
 if (params.mapping && !params.pairing) {
   println "ERROR: Flags --mapping and --pairing must both be provided. Please provide --pairing and re-run the pipeline."
   exit 1
@@ -92,10 +136,6 @@ if (!params.mapping && params.pairing) {
   exit 1
 }
 
-if ((params.mapping && params.bamPairing) || (params.pairing && params.bamPairing)) {
-  println "ERROR: Cannot use both FASTQs and BAMs as inputs. Flags --bamPairing and --mapping/-pairing cannot be invoked together. Please provide either FASTQs or BAMs, and re-run the pipeline."
-  exit 1
-} 
 
 // Validate mapping file
 // Check for duplicate inputs and unique fileID
@@ -106,11 +146,6 @@ if (params.mapping) {
     println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
-
-  // if (mappingPath && !TempoUtils.checkForUniqueSampleLanes(mappingPath)) {
-  //   println "ERROR: The combination of sample ID and fileID values must be unique. Duplicate fileID for one sample cause errors. Please fix the error and re-run the pipeline."
-  //   exit 1
-  // }
 }
 
 // Validate pairing file
@@ -136,19 +171,6 @@ if (params.bamPairing) {
 }
 
 
-// User-set runtime parameters
-publishAll = params.publishAll
-outname = params.outname
-runGermline = params.germline
-runSomatic = params.somatic
-runQC = params.QC
-runAggregate = params.aggregate
-
-if (!runSomatic && runGermline){
-    println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
-    runSomatic = true
-}
-
 referenceMap = defineReferenceMap()
 
 /*
@@ -159,7 +181,7 @@ referenceMap = defineReferenceMap()
 
 
 // Skip these processes if starting from aligned BAM files
-if (!params.bamPairing) {
+if (params.mapping && params.pairing) {
 
   // Parse input FASTQ mapping and sample pairing
   mappingFile = file(mappingPath)
@@ -2515,6 +2537,7 @@ process QcAlfred {
   """
 }
 
+bamStatsAndHsMetrics4Aggregate = collectHsMetrics4Aggregate.mix(bamsQcStats4Aggregate)
 
 process QcPileup {
   tag {idSample}
@@ -2611,9 +2634,7 @@ process QcConpair {
     ])
 
   output:
-    file("${outPrefix}.concordance.txt") into conpairConcordance
-    file("${outPrefix}.contamination.txt") into conpairContamination
-    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairOutput
+    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairOutput, conpairStats
 
   when: !params.test && "conpair" in tools && runQC
 
@@ -2668,9 +2689,7 @@ process QcConpairAll {
     ])
 
   output:
-    file("${outPrefix}.concordance.txt") into conpairAllConcordance
-    file("${outPrefix}.contamination.txt") into conpairAllContamination
-    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairAllOutput
+    set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairAllOutput, conpairAllStats
 
   when: !params.test && params.conpairAll && runQC
 
@@ -2712,6 +2731,10 @@ process QcConpairAll {
   mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
   """
 }
+
+// -- Run based on QcConpairAll channels or the single QcConpair channels
+conpairStats4Aggregate = (!params.conpairAll ? conpairStats : conpairAllStats)
+
 }
 
 /*
@@ -2719,6 +2742,102 @@ process QcConpairAll {
 =                              Cohort Aggregation                              =
 ================================================================================
 */
+
+if ( !(runAggregate == false) && !(runAggregate == true) ){
+//   ( runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamPairing ) != true has been tested at the beginning!
+  if (!TempoUtils.check_for_duplicated_rows(runAggregate)) {
+    println "ERROR: Duplicated row found in ${runAggregate}. Please fix the error and re-run the pipeline."
+    exit 1
+  }
+  TempoUtils.extractCohort(file(runAggregate))
+	    .branch{ item ->
+	      somatic: item[0] == "somatic"
+	        runSomatic = true; return item
+	      germline: item[0] == "germline"
+	        runGermline = true; return item
+	      qc: item[0] == "qc"
+	        runQC = true; return item
+	    }
+	    .set {aggregateList}
+  if(runSomatic){
+    aggregateList.somatic
+		 .flatMap{  item ->
+			    def filePathString = []
+		            item[1].eachFileRecurse{ filePathString << it.toString()}
+			    return filePathString
+		         }
+		 .branch{
+		           NeoantigenMaf: it ==~ /.+\.final\.maf/
+			     return file(it)
+			   NetMhcStats: it ==~ /.+\.all_neoantigen_predictions\.txt/
+			     return file(it)
+			   FacetsPurityHisens: it ==~ /(.+_OUT\.txt)|(.+purity\.seg)|(.+hisens\.seg)/
+			     return file(it)
+			   FacetsArmGene: it ==~ /.+level\.unfiltered\.txt/
+			     return file(it)
+			   dellyMantaCombined: it ==~ /.+\.delly\.manta\.vcf\.gz.*/
+			     return file(it)
+			   MetaData: it ==~ /.+\.sample_data\.txt/
+			     return file(it)
+			   lohhla: it ==~ /.+_CI\.txt/
+			     return file(it)
+		        }
+		 .set{somaticResult}
+    // related process will not execute when the input channel is empty
+    NeoantigenMaf4Aggregate = somaticResult.NeoantigenMaf
+    NetMhcStats4Aggregate = somaticResult.NetMhcStats
+    FacetsPurityHisens4Aggregate = somaticResult.FacetsPurityHisens
+    FacetsArmGene4Aggregate = somaticResult.FacetsArmGene
+    dellyMantaCombined4Aggregate = somaticResult.dellyMantaCombined
+    MetaData4Aggregate = somaticResult.MetaData
+    lohhla4Aggregate = somaticResult.lohhla
+  }
+  if(runGermline){
+    aggregateList.germline
+		 .flatMap{  item ->
+			    def filePathString = []
+		            item[1].eachFileRecurse{ filePathString << it.toString()}
+			    return filePathString
+		         }
+		 .branch{
+		           mafFileGermline: it ==~ /.+\.final\.maf/
+			     return file(it)
+			   dellyMantaCombined: it ==~ /.+\.delly\.manta\.vcf\.gz.*/
+			     return file(it)
+		        }
+		 .set{germlineResult}
+    mafFile4AggregateGermline = germlineResult.mafFileGermline
+    dellyMantaCombined4AggregateGermline = germlineResult.dellyMantaCombined
+  }
+  if(runQC){
+    aggregateList.qc
+		 .flatMap{  item ->
+			    def filePathString = []
+		            item[1].eachFileRecurse{ filePathString << it.toString()}
+			    return filePathString
+		         }
+		 .branch{
+		           bamStatsAndHsMetrics: it ==~ /(.+\.hs_metrics\.txt)|(.+\.alfred.*\.tsv\.gz)/
+			     return file(it)
+			   conpairStats: it ==~ /(.+\.concordance\.txt)|(.+\.contamination\.txt)/
+			     return file(it)
+		        }
+		 .set{qcResult}
+    bamStatsAndHsMetrics4Aggregate = qcResult.bamStatsAndHsMetrics
+    conpairStats4Aggregate = qcResult.conpairStats
+				     .map{  it ->
+				       def id = it.getName()
+				       def conpairFile = it
+				       return [id, conpairFile]
+				     }
+				     .groupTuple()
+				     .map{ item ->
+				       def conpairFileUnique = item[1].first()
+				       return conpairFileUnique
+				     }
+  }
+}
+
 
 if (runAggregate && runSomatic) {
 process SomaticAggregateMaf {
@@ -2972,8 +3091,7 @@ process QcBamAggregate {
   publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
-    file(metricsFile) from collectHsMetrics4Aggregate.collect()
-    file(bamsQcStatsFile) from bamsQcStats4Aggregate.collect()
+    file(bamStatsAndHsMetricsFile) from bamStatsAndHsMetrics4Aggregate.collect()
 
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
@@ -2992,31 +3110,29 @@ process QcBamAggregate {
   """
 }
 
-// -- Run based on QcConpairAll channels or the single QcConpair channels
-(conpairAggregateConcordance, conpairAggregateContamination) = (!params.conpairAll
-								? [conpairConcordance, conpairContamination]
-								: [conpairAllConcordance, conpairAllContamination]
-								)
 
 process QcConpairAggregate {
 
   publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
 
   input:
-    file(concordance) from conpairAggregateConcordance.collect()
-    file(contamination) from conpairAggregateContamination.collect()
+    file(conpairStatsFile) from conpairStats4Aggregate.collect()
 
   output:
-    set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregatedOutput
+    set file('concordance_qc.txt'), file('contamination_qc.txt') optional true into conpairAggregatedOutput
 
   when: !params.test && runQC
 
   script:
   """
-  echo -e "Pair\tConcordance" > concordance_qc.txt
-  grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 >> concordance_qc.txt
-  echo -e "Pair\tSample_Type\tSample_ID\tContamination" > contamination_qc.txt
-  grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
+  if [[ -f *.concordance.txt ]]; then
+    echo -e "Pair\tConcordance" > concordance_qc.txt
+    grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 >> concordance_qc.txt
+  fi
+  if [[ -f *.concordance.txt ]]; then
+    echo -e "Pair\tSample_Type\tSample_ID\tContamination" > contamination_qc.txt
+    grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
+  fi
   """
 }
 }

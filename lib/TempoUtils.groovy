@@ -26,9 +26,12 @@ class TempoUtils {
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-      [row.ID, row.PATH]
+      def path = file(row.PATH, checkIfExists: true)
+      def section = file(path.getParent()).getName().toString()
+      [section, path]
     }
   }
+
 
   static def extractFastq(tsvFile) {
     def allReadNames = [:]
@@ -160,31 +163,14 @@ class TempoUtils {
     return file(it)
   }
 
-  static def check_for_duplicated_rows(pairingFilePath) {
+  static def check_for_duplicated_rows(FilePath) {
     def entries = []
-    file( pairingFilePath ).eachLine { line ->
+    file( FilePath, checkIfExists: true ).eachLine { line ->
       if (!line.isEmpty()){
         entries << line
       }
     }
     return entries.toSet().size() == entries.size()
-  }
-
-
-  // check fileIDs are unique in input mapping *tsv
-  // not functional for now
-  static def checkForUniqueSampleLanes(inputFilename) {
-    def totalList = []
-    // parse tsv
-    file(inputFilename).eachLine { line ->
-        if (!line.isEmpty()) {
-            def (sample, target, fastqpe1, fastqpe2) = line.split(/\t/)
-            totalList << sample + "_" + file(fastqpe1).baseName
-        }
-    }
-    // remove header 'SAMPLE_LANE'
-    totalList.removeAll{ it == 'SAMPLE_LANE'} 
-    return totalList.size() == totalList.unique().size()
   }
 
 }
