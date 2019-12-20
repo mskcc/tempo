@@ -2761,13 +2761,13 @@ if ( !(runAggregate == false) && !(runAggregate == true) ){
 	    }
 	    .set {aggregateList}
   if(runSomatic){
-    aggregateList.somatic
-		 .flatMap{  item ->
+    somatic4Aggregate = aggregateList.somatic
+    somatic4Aggregate.flatMap{  item ->
 			    def filePathString = []
 		            item[1].eachFileRecurse{ filePathString << it.toString()}
 			    return filePathString
 		         }
-		 .branch{
+		     .branch{
 		           NeoantigenMaf: it ==~ /.+\.final\.maf/
 			     return file(it)
 			   NetMhcStats: it ==~ /.+\.all_neoantigen_predictions\.txt/
@@ -2783,7 +2783,7 @@ if ( !(runAggregate == false) && !(runAggregate == true) ){
 			   lohhla: it ==~ /.+_CI\.txt/
 			     return file(it)
 		        }
-		 .set{somaticResult}
+		     .set{somaticResult}
     // related process will not execute when the input channel is empty
     NeoantigenMaf4Aggregate = somaticResult.NeoantigenMaf
     NetMhcStats4Aggregate = somaticResult.NetMhcStats
@@ -2794,36 +2794,36 @@ if ( !(runAggregate == false) && !(runAggregate == true) ){
     lohhla4Aggregate = somaticResult.lohhla
   }
   if(runGermline){
-    aggregateList.germline
-		 .flatMap{  item ->
+    germline4Aggregate = aggregateList.germline
+    germline4Aggregate.flatMap{  item ->
 			    def filePathString = []
 		            item[1].eachFileRecurse{ filePathString << it.toString()}
 			    return filePathString
 		         }
-		 .branch{
+		      .branch{
 		           mafFileGermline: it ==~ /.+\.final\.maf/
 			     return file(it)
 			   dellyMantaCombined: it ==~ /.+\.delly\.manta\.vcf\.gz.*/
 			     return file(it)
 		        }
-		 .set{germlineResult}
+		      .set{germlineResult}
     mafFile4AggregateGermline = germlineResult.mafFileGermline
     dellyMantaCombined4AggregateGermline = germlineResult.dellyMantaCombined
   }
   if(runQC){
-    aggregateList.qc
-		 .flatMap{  item ->
+    qc4Aggregate = aggregateList.qc
+    qc4Aggregate.flatMap{  item ->
 			    def filePathString = []
 		            item[1].eachFileRecurse{ filePathString << it.toString()}
 			    return filePathString
 		         }
-		 .branch{
+		.branch{
 		           bamStatsAndHsMetrics: it ==~ /(.+\.hs_metrics\.txt)|(.+\.alfred.*\.tsv\.gz)/
 			     return file(it)
 			   conpairStats: it ==~ /(.+\.concordance\.txt)|(.+\.contamination\.txt)/
 			     return file(it)
 		        }
-		 .set{qcResult}
+		.set{qcResult}
     bamStatsAndHsMetrics4Aggregate = qcResult.bamStatsAndHsMetrics
     conpairStats4Aggregate = qcResult.conpairStats
 				     .map{  it ->
