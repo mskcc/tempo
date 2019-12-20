@@ -137,6 +137,13 @@ if (!params.mapping && params.pairing) {
   exit 1
 }
 
+if (params.bamPairing) {
+  if (!runSomatic && !runGermline && !runQC){
+    println "ERROR: Nothing to be done. One or more of the option --somatic/--germline/--QC need to be enabled when using --bamPairing [tsv]"
+    exit 1
+  }
+}
+
 
 // Validate mapping file
 // Check for duplicate inputs and unique fileID
