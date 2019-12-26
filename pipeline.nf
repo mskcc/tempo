@@ -458,12 +458,13 @@ if (params.mapping && params.pairing) {
       set idSample, fileID, file(bam), targetFile from groupedBam
 
     output:
-      set idSample, file("${idSample}.merged.bam"), targetFile into mergedBam
+      set idSample, file("${idSample}.merged.bam"), file("${idSample}.merged.bam.bai"), targetFile into mergedBam
 
     script:
     """
     samtools merge --threads ${task.cpus} ${idSample}.merged.tmp.bam ${bam.join(" ")}
     mv ${idSample}.merged.tmp.bam ${idSample}.merged.bam
+    samtools index ${idSample}.merged.bam
     """
   }
 
@@ -472,10 +473,10 @@ if (params.mapping && params.pairing) {
     tag {idSample}
 
     input:
-      set idSample, file(bam), targetFile from mergedBam
+      set idSample, file(bam), file(bai), targetFile from mergedBam
 
     output:
-      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), targetFile into mdBams, mdBams4BQSR
+      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bam.bai"), targetFile into mdBams, mdBams4BQSR
 
     script:
     if (workflow.profile == "juno") {
@@ -507,11 +508,11 @@ if (params.mapping && params.pairing) {
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
       --ASSUME_SORT_ORDER coordinate \
-      --CREATE_INDEX true \
+      --CREATE_INDEX false \
       --OUTPUT ${idSample}.md.tmp.bam
 
     mv ${idSample}.md.tmp.bam ${idSample}.md.bam
-    mv ${idSample}.md.tmp.bai ${idSample}.md.bai
+    samtools index ${idSample}.md.bam
     """
   }
 
@@ -627,17 +628,13 @@ if (params.mapping && params.pairing) {
       ${sparkConf} \
       ${javaOptions} \
       --reference ${genomeFile} \
-      --create-output-bam-index true \
+      --create-output-bam-index false \
       --bqsr-recal-file ${recalibrationReport} \
       --input ${bam} \
       --output ${idSample}.tmp.bam
 
     mv ${idSample}.tmp.bam ${idSample}.bam
-    if [[ -f ${idSample}.tmp.bai ]]; then
-      mv ${idSample}.tmp.bai ${idSample}.bam.bai
-    else
-      mv ${idSample}.tmp.bam.bai ${idSample}.bam.bai
-    fi
+    samtools index ${idSample}.bam
     """
   }
 
