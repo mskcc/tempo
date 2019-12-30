@@ -2750,6 +2750,9 @@ conpairStats4Aggregate = (!params.conpairAll ? conpairStats : conpairAllStats)
 
 if ( !(runAggregate == false) && !(runAggregate == true) ){
 //   ( runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamPairing ) != true has been tested at the beginning!
+  runSomatic = true
+  runGermline = true
+  runQC = true
   if (!TempoUtils.check_for_duplicated_rows(runAggregate)) {
     println "ERROR: Duplicated row found in ${runAggregate}. Please fix the error and re-run the pipeline."
     exit 1
@@ -2757,11 +2760,11 @@ if ( !(runAggregate == false) && !(runAggregate == true) ){
   TempoUtils.extractCohort(file(runAggregate))
 	    .branch{ item ->
 	      somatic: item[0] == "somatic"
-	        runSomatic = true; return item
+	        return item
 	      germline: item[0] == "germline"
-	        runGermline = true; return item
+	        return item
 	      qc: item[0] == "qc"
-	        runQC = true; return item
+	        return item
 	    }
 	    .set {aggregateList}
   if(runSomatic){
