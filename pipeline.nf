@@ -3130,11 +3130,11 @@ process QcConpairAggregate {
 
   script:
   """
-  if [[ -f *.concordance.txt ]]; then
+  if ls *.concordance.txt 1> /dev/null 2>&1; then
     echo -e "Pair\tConcordance" > concordance_qc.txt
     grep -v "concordance" *.concordance.txt | sed 's/.concordance.txt:/\t/' | cut -f1,3 | sort -k1,1 >> concordance_qc.txt
   fi
-  if [[ -f *.concordance.txt ]]; then
+  if ls *.contamination.txt 1> /dev/null 2>&1; then
     echo -e "Pair\tSample_Type\tSample_ID\tContamination" > contamination_qc.txt
     grep -v "Contamination" *.contamination.txt | sed 's/.contamination.txt:/\t/' | sort -k1,1 >> contamination_qc.txt
   fi
