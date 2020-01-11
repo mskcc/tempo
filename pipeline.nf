@@ -88,6 +88,7 @@ runGermline = params.germline
 runSomatic = params.somatic
 runQC = params.QC
 runAggregate = params.aggregate
+runConpairAll = false
 
 if (params.pairing && !(params.mapping || params.bamMapping)) {
   println "ERROR: When --pairing [tsv], --mapping or --bamMapping must be provided."
