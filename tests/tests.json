@@ -3,7 +3,6 @@
         "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "-profile", "test"],
         "checks": [{"type": "checkNumberOfLines", "filename": "bamMapping.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
     },
-    },
     "test_manta_strelka": {
         "command": ["./nextflow", "run", "pipeline.nf", "--bamMapping", "tests/test_somatic.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--tools", "manta,strelka2", "--somatic", "--germline"],
         "checks": [{"type": "checkExitCode", "expected": 0}]
