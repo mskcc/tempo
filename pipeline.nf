@@ -89,60 +89,76 @@ runSomatic = params.somatic
 runQC = params.QC
 runAggregate = params.aggregate
 
+if (params.pairing && !(params.mapping || params.bamMapping)) {
+  println "ERROR: When --pairing [tsv], --mapping or --bamMapping must be provided."
+  exit 1
+}
+
+if (params.bamMapping && !params.pairing) {
+  println "ERROR: Flags --bamMapping and --pairing must both be provided. Please provide --bamMairing and re-run the pipeline."
+  exit 1
+}
+
+if (params.bamMapping && params.pairing) {
+  if (!runSomatic && !runGermline && !runQC){
+    println "ERROR: Nothing to be done. One or more of the option --somatic/--germline/--QC need to be enabled when using --bamMapping [tsv]"
+    exit 1
+  }
+}
+
+if (params.mapping && !params.pairing) {
+  if (runSomatic || runGermline){
+    println "ERROR: --pairing [tsv] needed when using --mapping [tsv] with --somatic/--germline"
+    exit 1
+  }
+}
+
+if (params.mapping && params.pairing) {
+  if (!runSomatic && !runGermline && !runQC){
+    println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC, remove --pairing [tsv]."
+    exit 1
+  }
+}
+
 if (!runSomatic && runGermline){
     println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
     runSomatic = true
 }
 
 if (runAggregate == false){
-  if (!(runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamPairing)){
-    println "ERROR: (--mapping [tsv] & --pairing [tsv] ) or (--bamPairing [tsv]) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
+  if (!params.mapping && !params.bamMapping){
+    println "ERROR: (--mapping [tsv]) or (--mapping [tsv] & --pairing [tsv] ) or (--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
     exit 1
   }
 }
 else if (runAggregate == true){
-  if ((params.mapping && params.pairing) || params.bamPairing){
+  if ((params.mapping || params.bamMapping) && params.pairing){
     if (!(runSomatic || runGermline || runQC)){
       println "ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate"
     }
   }
+  else if (params.mapping && !params.pairing){
+    if (!runQC){
+      println "ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping [tsv], --pairing false and --aggregate true."
+      exit 1
+    }
+  }
   else{
-    println "ERROR: (--mapping [tsv] & --pairing [tsv] ) or (--bamPairing [tsv]) need to be provided when using --aggregate"
+    println "ERROR: (--mapping [tsv]) or (--mapping [tsv] & --pairing [tsv] ) or (--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true"
     println "       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual"
     exit 1
   }
+
 }
 else {
-  if (runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamPairing){
+  if (runSomatic || runGermline || runQC || params.mapping || params.bamMapping){
     println "ERROR: Conflict input! When running --aggregate [tsv], --mapping/--pairing/--QC/--somatic/--germline all need to be disabled!"
     println "       If you want to run aggregate somatic/germline/qc, just include needed path the [tsv] and no need to use --QC/--somatic/--germline flag."
     exit 1
   }
 }
 
-// Only bamPairing required when using already aligned BAM files, and can't be together with (--mapping [tsv] || --pairing [tsv])
-if ((params.mapping && params.bamPairing) || (params.pairing && params.bamPairing)) {
-  println "ERROR: Cannot use both FASTQs and BAMs as inputs. Flags --bamPairing and --mapping/-pairing cannot be invoked together. Please provide either FASTQs or BAMs, and re-run the pipeline."
-  exit 1
-}
 
-// Both mapping and pairing necessary for alignment of FASTQs
-if (params.mapping && !params.pairing) {
-  println "ERROR: Flags --mapping and --pairing must both be provided. Please provide --pairing and re-run the pipeline."
-  exit 1
-}
-
-if (!params.mapping && params.pairing) {
-  println "ERROR: Flags --mapping and --pairing must both be provided. Please provide --mapping and re-run the pipeline."
-  exit 1
-}
-
-if (params.bamPairing) {
-  if (!runSomatic && !runGermline && !runQC){
-    println "ERROR: Nothing to be done. One or more of the option --somatic/--germline/--QC need to be enabled when using --bamPairing [tsv]"
-    exit 1
-  }
-}
 
 
 // Validate mapping file
@@ -169,10 +185,10 @@ if (params.pairing) {
 
 // Validate BAM file pairing file
 // Check for duplicate inputs
-if (params.bamPairing) {
-  bamPairingPath = params.bamPairing
+if (params.bamMapping) {
+  bamMappingPath = params.bamMapping
 
-  if (bamPairingPath && !TempoUtils.check_for_duplicated_rows(bamPairingPath)) {
+  if (bamMappingPath && !TempoUtils.check_for_duplicated_rows(bamMappingPath)) {
     println "ERROR: Duplicated row found in BAM mapping file. Please fix the error and re-run the pipeline."
     exit 1
   }
@@ -189,12 +205,10 @@ referenceMap = defineReferenceMap()
 
 
 // Skip these processes if starting from aligned BAM files
-if (params.mapping && params.pairing) {
+if (params.mapping) {
 
-  // Parse input FASTQ mapping and sample pairing
+  // Parse input FASTQ mapping
   mappingFile = file(mappingPath)
-  pairingFile = file(pairingPath)
-  TempoUtils.extractPairing(pairingFile).set{ inputPairing }
   TempoUtils.extractFastq(mappingFile).set{ inputFastqs }
 
   if (params.splitLanes) {
@@ -588,6 +602,7 @@ if (params.mapping && params.pairing) {
 
     output:
       set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup
+      set idSample, target, val("${params.outDir}/bams/${idSample}/${idSample}.bam"), val("${params.outDir}/bams/${idSample}/${idSample}.bam.bai") into bamResults
       file("file-size.txt") into bamSize
 
     script:
@@ -632,6 +647,38 @@ if (params.mapping && params.pairing) {
     fi
     """
   }
+
+  File file = new File(outname)
+  file.newWriter().withWriter { w ->
+      w << "SAMPLE_ID\t\tTARGET\tBAM\tBAI\n"
+  }
+
+  bamResults.subscribe { Object obj ->
+      file.withWriterAppend { out ->
+          out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
+      }
+  }
+
+} // End of "if (params.mapping) {}"
+
+
+/*
+================================================================================
+=                                PAIRING TUMOR and NORMAL                      =
+================================================================================
+*/
+
+// If starting with BAM files, parse BAM pairing input
+if (params.bamMapping) {
+  bamMappingfile = file(bamMappingPath)
+  TempoUtils.extractBAM(bamMappingfile).into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
+}
+
+if (params.pairing) {
+
+  // Parse input FASTQ mapping
+  pairingFile = file(pairingPath)
+  TempoUtils.extractPairing(pairingFile).set{ inputPairing }
 
   inputPairing.into{pairing4T; pairing4N; pairingTN}
   bamsBQSR4Tumor.combine(pairing4T)
@@ -682,7 +729,6 @@ if (params.mapping && params.pairing) {
 	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
-
   bamsTumor4Combine.combine(bamsNormal4Combine, by: [0,1,2])
                           .map { item -> // re-order the elements
                             def idTumor = item[0]
@@ -695,30 +741,10 @@ if (params.mapping && params.pairing) {
 
                             return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
                           }
-			  .into{resultTsv; bamFiles}
+			  .set{bamFiles}
 
 
-  File file = new File(outname)
-  file.newWriter().withWriter { w ->
-      w << "TUMOR_ID\tNORMAL_ID\tTARGET\tTUMOR_BAM\tNORMAL_BAM\n"
-  }
-
-  if (workflow.profile == 'awsbatch') {
-      resultTsv.subscribe { Object obj ->
-        file.withWriterAppend { out ->
-          out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\ts3:/${obj[3]}\ts3:/${obj[5]}"
-        }
-      }
-    }
-  else {
-    resultTsv.subscribe { Object obj ->
-      file.withWriterAppend { out ->
-        out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}\t${obj[5]}"
-      }
-    }
-  }
-  
-}
+} // End of "if (params.pairing) {}"
 
 /*
 ================================================================================
@@ -727,81 +753,31 @@ if (params.mapping && params.pairing) {
 */
 
 if (runSomatic || runGermline || runQC) {
-// parse --tools parameter for downstream 'when' conditionals, e.g. when: `` 'delly ' in tools
-tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
+  // parse --tools parameter for downstream 'when' conditionals, e.g. when: 'delly ' in tools
+  tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
-// Allow shorter names
-if ("mutect" in tools) {
-  tools.add("mutect2")
-}
-if ("strelka" in tools) {
-  tools.add("strelka2")
-}
+  // Allow shorter names
+  if ("mutect" in tools) {
+    tools.add("mutect2")
+  }
+  if ("strelka" in tools) {
+    tools.add("strelka2")
+  }
 
-// If using Strelka2, run Manta as well to generate candidate indels
-if ("strelka2" in tools) {
-  tools.add("manta")
-}
+  // If using Strelka2, run Manta as well to generate candidate indels
+  if ("strelka2" in tools) {
+    tools.add("manta")
+  }
 
-// If using running either conpair or conpairAll, run pileup as well to generate pileups
-if ("conpair" in tools || params.conpairAll) {
-  tools.add("pileup")
-}
+  // If using running either conpair or conpairAll, run pileup as well to generate pileups
+  if ("conpair" in tools) {
+    tools.add("pileup")
+  }
+  if ("conpairall" in tools) {
+    runConpairAll = true
+    tools.add("pileup")
+  }
 
-// If starting with BAM files, parse BAM pairing input
-if (params.bamPairing) {
-  bamPairingfile = file(bamPairingPath)
-  TempoUtils.extractBAM(bamPairingfile).set { inputBams }
-  inputBams.into{bamFiles; bamsTumor; bamsNormal; pairingTN}
-
-  bamsTumor.map { item ->
-		def idTumor = item[0]
-		def idNormal = item[1]
-		def tumorBam = item[3]
-		def tumorBai = item[4]
-		def target = item[2]
-		return [ idTumor, idNormal, target, tumorBam, tumorBai ]
-	}
-	.unique()
-	.into{bamsTumor4Combine; bamsTumor4VcfCombine}
-  bamsNormal.map { item ->
-		def idTumor = item[0]
-		def idNormal = item[1]
-		def normalBam = item[5]
-		def normalBai = item[6]
-		def target = item[2]
-		 return [ idTumor, idNormal, target, normalBam, normalBai ]
-	 }
-	.unique()
-	.into{ bamsNormal4Combine; bamsNormalOnly }
-  bamsNormalOnly.map { item ->
-			def idNormal = item[1]
-			def target = item[2]
-			def normalBam = item[3]
-			def normalBai = item[4]
-			return [ idNormal, target, normalBam, normalBai ] }
-	.unique()
-	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
-
-
-  bamsTumor4Combine.mix(bamsNormal4Combine)
-		.map { item ->
-			def target = item[2]
-			def sampleBam = item[3]
-			def sampleBai = item[4]
-			def idSample = sampleBam.getSimpleName()
-			return [ idSample, target, sampleBam, sampleBai ]
-		}
-		.unique()
-		.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4QcPileup}
-
-  pairingTN.map{ item ->
-		def idTumor = item[0]
-		def idNormal = item[1]
-		return [ idTumor, idNormal ]
-	  }
-	  .set { pairingTN }
-}
 }
 
 if (runSomatic || runGermline) {
@@ -2445,7 +2421,7 @@ process QcCollectHsMetrics {
     file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
     file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
 
-  when: params.assayType == "exome" && !params.test && runQC
+  when: params.assayType == "exome" && runQC
 
   script:
   if (workflow.profile == "juno") {
@@ -2539,6 +2515,10 @@ process QcAlfred {
 
 bamStatsAndHsMetrics4Aggregate = collectHsMetrics4Aggregate.mix(bamsQcStats4Aggregate)
 
+
+//doing QcPileup and QcConpair/QcConpairAll only when --pairing [tsv] is given
+
+if (params.pairing) {
 process QcPileup {
   tag {idSample}
 
@@ -2553,7 +2533,7 @@ process QcPileup {
   output:
     set idSample, file("${idSample}.pileup") into pileupOutput, tumorPileups, normalPileups
 
-  when: !params.test && "pileup" in tools && runQC
+  when: "pileup" in tools && runQC
 
   script:
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"
@@ -2636,7 +2616,7 @@ process QcConpair {
   output:
     set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairOutput, conpairStats
 
-  when: !params.test && "conpair" in tools && runQC
+  when: "conpair" in tools && runQC
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
@@ -2677,6 +2657,7 @@ process QcConpair {
   """
 }
 
+if(runConpairAll){
 pileupT4Combine.combine(pileupN4Combine).unique().set{ pileupConpairAll }
 
 process QcConpairAll {
@@ -2691,7 +2672,7 @@ process QcConpairAll {
   output:
     set file("${outPrefix}.concordance.txt"), file("${outPrefix}.contamination.txt") into conpairAllOutput, conpairAllStats
 
-  when: !params.test && params.conpairAll && runQC
+  when: runConpairAll && runQC
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
@@ -2731,11 +2712,13 @@ process QcConpairAll {
   mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
   """
 }
+}
 
 // -- Run based on QcConpairAll channels or the single QcConpair channels
-conpairStats4Aggregate = (!params.conpairAll ? conpairStats : conpairAllStats)
+conpairStats4Aggregate = (!runConpairAll ? conpairStats : conpairAllStats)
+} // End of "if (params.pairing){}", doing QcPileup or QcConpair/QcConpairAll only when --pairing [tsv] is given
 
-}
+} // End of "if (runQc){}"
 
 /*
 ================================================================================
@@ -2744,7 +2727,7 @@ conpairStats4Aggregate = (!params.conpairAll ? conpairStats : conpairAllStats)
 */
 
 if ( !(runAggregate == false) && !(runAggregate == true) ){
-//   ( runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamPairing ) != true has been tested at the beginning!
+//   ( runSomatic || runGermline || runQC || params.mapping || params.pairing || params.bamMapping ) != true has been tested at the beginning!
   runSomatic = true
   runGermline = true
   runQC = true
@@ -3099,7 +3082,7 @@ process QcBamAggregate {
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
 
-  when: !params.test && runQC
+  when: runQC
 
   script:
   if (params.assayType == "exome") {
@@ -3113,7 +3096,7 @@ process QcBamAggregate {
   """
 }
 
-
+if (params.pairing){
 process QcConpairAggregate {
 
   publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
@@ -3124,7 +3107,7 @@ process QcConpairAggregate {
   output:
     set file('concordance_qc.txt'), file('contamination_qc.txt') optional true into conpairAggregatedOutput
 
-  when: !params.test && runQC
+  when: runQC
 
   script:
   """
@@ -3139,7 +3122,14 @@ process QcConpairAggregate {
   """
 }
 }
+}
 
+workflow.onComplete {
+  file(params.fileTracking).text = ""
+  file(params.outDir).eachFileRecurse{
+    file(params.fileTracking).append(it + "\n")
+  }
+}
 
 /*
 ================================================================================
@@ -3185,7 +3175,7 @@ def defineReferenceMap() {
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
-  if (!params.test) {
+  if (workflow.profile != "test") {
     result_array << ['vepCache' : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf' : checkParamReturnFile("facetsVcf")]
