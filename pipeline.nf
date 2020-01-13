@@ -90,33 +90,21 @@ runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
 
-if (params.pairing && !(params.mapping || params.bamMapping)) {
-  println "ERROR: When --pairing [tsv], --mapping or --bamMapping must be provided."
+if (!(params.mapping || params.bamMapping) && params.pairing) {
+  println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
   exit 1
 }
 
-if (params.bamMapping && !params.pairing) {
-  println "ERROR: Flags --bamMapping and --pairing must both be provided. Please provide --bamMairing and re-run the pipeline."
-  exit 1
-}
-
-if (params.bamMapping && params.pairing) {
-  if (!runSomatic && !runGermline && !runQC){
-    println "ERROR: Nothing to be done. One or more of the option --somatic/--germline/--QC need to be enabled when using --bamMapping [tsv]"
-    exit 1
-  }
-}
-
-if (params.mapping && !params.pairing) {
+if ((params.mapping || params.bamMapping) && !params.pairing) {
   if (runSomatic || runGermline){
-    println "ERROR: --pairing [tsv] needed when using --mapping [tsv] with --somatic/--germline"
+    println "ERROR: --pairing [tsv] needed when using --mapping/--bamMapping [tsv] with --somatic/--germline"
     exit 1
   }
 }
 
-if (params.mapping && params.pairing) {
+if ((params.mapping || params.bamMapping) && params.pairing) {
   if (!runSomatic && !runGermline && !runQC){
-    println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC, remove --pairing [tsv]."
+    println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
     exit 1
   }
 }
@@ -128,7 +116,7 @@ if (!runSomatic && runGermline){
 
 if (runAggregate == false){
   if (!params.mapping && !params.bamMapping){
-    println "ERROR: (--mapping [tsv]) or (--mapping [tsv] & --pairing [tsv] ) or (--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
+    println "ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
     exit 1
   }
 }
@@ -138,14 +126,14 @@ else if (runAggregate == true){
       println "ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate"
     }
   }
-  else if (params.mapping && !params.pairing){
+  else if ((params.mapping || params.bamMapping) && !params.pairing){
     if (!runQC){
-      println "ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping [tsv], --pairing false and --aggregate true."
+      println "ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true."
       exit 1
     }
   }
   else{
-    println "ERROR: (--mapping [tsv]) or (--mapping [tsv] & --pairing [tsv] ) or (--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true"
+    println "ERROR: (--mapping/--bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true"
     println "       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual"
     exit 1
   }
@@ -153,7 +141,7 @@ else if (runAggregate == true){
 }
 else {
   if (runSomatic || runGermline || runQC || params.mapping || params.bamMapping){
-    println "ERROR: Conflict input! When running --aggregate [tsv], --mapping/--pairing/--QC/--somatic/--germline all need to be disabled!"
+    println "ERROR: Conflict input! When running --aggregate [tsv], --mapping/--bamMapping/--pairing/--QC/--somatic/--germline all need to be disabled!"
     println "       If you want to run aggregate somatic/germline/qc, just include needed path the [tsv] and no need to use --QC/--somatic/--germline flag."
     exit 1
   }
