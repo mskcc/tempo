@@ -639,7 +639,7 @@ if (params.mapping) {
 
   File file = new File(outname)
   file.newWriter().withWriter { w ->
-      w << "SAMPLE_ID\t\tTARGET\tBAM\tBAI\n"
+      w << "SAMPLE_ID\tTARGET\tBAM\tBAI\n"
   }
 
   bamResults.subscribe { Object obj ->
