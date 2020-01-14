@@ -134,7 +134,7 @@ class TempoUtils {
     .splitCsv(sep: '\t', header: true)
     .map { row ->
 //      checkNumberOfItem(row, 5)	// Disable check columns for now to support older version of input files, especially for Travis-CI
-      def idSample = row.SAMPLE_ID
+      def idSample = row.SAMPLE
       def target = row.TARGET
       def bam = returnFile(row.BAM)
       // check if using bam.bai or bam.bam.bai
