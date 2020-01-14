@@ -35,12 +35,15 @@ class TempoUtils {
 
   static def extractFastq(tsvFile) {
     def allReadNames = [:]
+    def allTargets = [:]
+    def wes = false
+    def wgs = false
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
 //      checkNumberOfItem(row, 4)	// Disable check columns for now to support older version of input files, especially for Travis-CI
       def idSample = row.SAMPLE
-      def targetFile = row.TARGET
+      def target = row.TARGET
       def fastqFile1 = returnFile(row.FASTQ_PE1)
       def fastqFile2 = returnFile(row.FASTQ_PE2)
       def fastqInfo = flowcellLaneFromFastq(fastqFile1)
@@ -48,6 +51,14 @@ class TempoUtils {
       
       checkFileExtension(fastqFile1,".fastq.gz")
       checkFileExtension(fastqFile2,".fastq.gz")
+
+      wes = target in ["agilent", "idt"] ? true : wes
+      wgs = target in ["wgs"] ? true : wgs
+      if(wes && wgs){ println "ERROR: You can't mix wgs samples with wes samples. Please fix TARGET column in mapping file."; System.exit(1)}
+      if(!(target in ["agilent", "idt", "wgs"])){ println "ERROR: Unsupported target ${target} detected in TARGET column in mapping file."; System.exit(1)}
+
+      if(allTargets[idSample] == target || allTargets[idSample] == null){allTargets[idSample] = target}
+      else{println "ERROR: Multiple targets found for ${idSample}; check TARGET column in mapping file"; System.exit(1)}
 
       def readName = fastqInfo[2]
       if(allReadNames.containsKey(readName)){
@@ -60,7 +71,7 @@ class TempoUtils {
         allReadNames[readName] = idSample + "\t" + row.FASTQ_PE1
       }
 
-      [idSample, fileID, fastqFile1, fastqFile2, targetFile]
+      [idSample, fileID, fastqFile1, fastqFile2, target]
     }
   }
 
@@ -117,6 +128,8 @@ class TempoUtils {
 
   
   static def extractBAM(tsvFile) {
+    def wes = false
+    def wgs = false
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
@@ -126,6 +139,11 @@ class TempoUtils {
       def bam = returnFile(row.BAM)
       // check if using bam.bai or bam.bam.bai
       def bai = returnFile(validateBamIndexFormat(row.BAM))
+
+      wes = target in ["agilent", "idt"] ? true : wes
+      wgs = target in ["wgs"] ? true : wgs
+      if(wes && wgs){ println "ERROR: You can't mix wgs samples with wes samples. Please fix TARGET column in mapping file."; System.exit(1)}
+      if(!(target in ["agilent", "idt", "wgs"])){ println "ERROR: Unsupported target ${target} detected in TARGET column in mapping file."; System.exit(1)}
 
       [idSample, target, file(bam), file(bai)]
     }
