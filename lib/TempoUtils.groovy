@@ -121,18 +121,13 @@ class TempoUtils {
     .splitCsv(sep: '\t', header: true)
     .map { row ->
 //      checkNumberOfItem(row, 5)	// Disable check columns for now to support older version of input files, especially for Travis-CI
-      def idTumor = row.TUMOR_ID
-      def idNormal = row.NORMAL_ID
+      def idSample = row.SAMPLE
       def target = row.TARGET
-      def bamTumor = returnFile(row.TUMOR_BAM)
-      // check if using bamTumor.bai or bamTumor.bam.bai
-      def baiTumor = returnFile(validateBamIndexFormat(row.TUMOR_BAM))
-      // def sizeTumorBamFile = tumorBamFile.size()
-      def bamNormal = returnFile(row.NORMAL_BAM)
-      def baiNormal = returnFile(validateBamIndexFormat(row.NORMAL_BAM))
-      // def sizeNormalBamFile = normalBamFile.size()
+      def bam = returnFile(row.BAM)
+      // check if using bam.bai or bam.bam.bai
+      def bai = returnFile(validateBamIndexFormat(row.BAM))
 
-      [idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal)]
+      [idSample, target, file(bam), file(bai)]
     }
   }
   
