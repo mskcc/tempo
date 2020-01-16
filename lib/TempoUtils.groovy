@@ -3,7 +3,6 @@ import nextflow.Channel
 
 // NOTE: 
 // static methods in Groovy are meant to be accessed directly from the class
-// e.g. TempoUtils.debug()
 //
 
 class TempoUtils {
@@ -21,6 +20,8 @@ class TempoUtils {
     }
   }
 
+
+  // No header need
   static def extractCohort(tsvFile) {
     def allRows = [:]
     Channel.from(tsvFile)
@@ -92,6 +93,7 @@ class TempoUtils {
     }
   }
 
+
  static def flowcellLaneFromFastq(path) {
     // https://github.com/SciLifeLab/Sarek/blob/917a4d7f4dceb5a524eb7bd1c287cd197febe9c0/main.nf#L639-L666
     // parse first line of a FASTQ file (optionally gzip-compressed)
@@ -127,6 +129,7 @@ class TempoUtils {
   }
 
 
+  // Check header
   static def checkHeader(row, tsv) {
     if(row.contains(null)){
       println "ERROR: Wrong header in ${tsv}. See manual for more infomation."
@@ -134,6 +137,8 @@ class TempoUtils {
     }
   }
 
+
+  // Check supported assayType ("wgs" or "wes" are not supported, use "genome" or "exome" instead)
   static def checkAssayType(assayType) {
     if(assayType != "genome" && assayType != "exome"){
       println "ERROR: Unsupported \"--assayType ${assayType}\". Supported values are \"exome\" and \"genome\""
@@ -141,6 +146,7 @@ class TempoUtils {
     }
   }
 
+  // Check TARGET field in mapping file is in the supported bait set list associated with --assayType what was provided as parameter
   static def checkTarget(it, assayType) {
     def supportedTargets = []
     if(assayType == "genome"){ supportedTargets = ["wgs"] }
@@ -164,7 +170,7 @@ class TempoUtils {
     else{ return true }
   }
 
-  // Check if a row has the expected number of item
+  // Check if a row has the minimal number of item
   static def checkNumberOfItem(row, number, tsv) {
     if (row.size() < number){
 	println "Missing field (null) in the following row from ${tsv}: ${row}"
@@ -186,6 +192,8 @@ class TempoUtils {
     }
   }
 
+
+  // Check samples are present both mapping and pairing files
   static def crossValidateSamples(mapping, pairing) {
     def samplesInMapping = mapping.map{[it[0]]}.flatten().unique().toSortedList().get()
     def samplesInPairing = pairing.flatten().unique().toSortedList().get()
@@ -202,6 +210,8 @@ class TempoUtils {
     else{ return true }
   }
 
+
+  // Check Tumor and Normal samples paired together have the same bait set
   static def crossValidateTargets(mapping, pairing) {
     mapping.map{[it[0], it[1]]}
       .unique()
