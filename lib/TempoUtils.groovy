@@ -137,7 +137,7 @@ class TempoUtils {
     def unsupported = targetList - supportedTargets
 
     if(unsupported != []){
-      println "ERROR: Following targets are not supported by --assayType ${assayType}, only ${supportedTargets} supported."
+      println "ERROR: Following targets are not supported by --assayType ${assayType}, only ${supportedTargets} supported. Please check your mapping file."
       println "${unsupported}"
       System.exit(1)
     }
