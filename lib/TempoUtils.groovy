@@ -128,12 +128,11 @@ class TempoUtils {
   
   static def checkTargetAndAssayType(filePath, assayType) {
     def supportedTargets = []
-    def targetList = []
     if(assayType == "genome"){ supportedTargets = ["wgs"] }
     else if(assayType == "exome"){ supportedTargets = ["agilent", "idt"]}
     else {println "ERROR: Unsupported --assayType ${assayType}. Supported values are \"exome\" and \"genome\"";System.exit(1)}
 
-    Channel.from(filePath).splitCsv(sep: '\t', header: true).map{row -> [row.TARGET]}.flatten().unique().map{it -> targetList << it}
+    def targetList = Channel.from(filePath).splitCsv(sep: '\t', header: true).map{row -> [row.TARGET]}.flatten().unique().toSortedList().get()
     def unsupported = targetList - supportedTargets
 
     if(unsupported != []){
@@ -174,18 +173,17 @@ class TempoUtils {
     }
   }
 
-  static def crossValidateSamples(mappingFile, pairingFile) {
-    def samplesInMapping = []
-    def samplesInPairing = []
-    Channel.from(mappingFile).splitCsv(sep: '\t', header: true).map{row -> [row.SAMPLE]}.flatten().unique().map{it -> samplesInMapping << it}
-    extractPairing(pairingFile).flatten().unique().map{it -> samplesInPairing << it}
+  static def crossValidateSamples(mapping, pairing) {
+    def samplesInMapping = Channel.from(mapping).splitCsv(sep: '\t', header: true).map{[it.SAMPLE]}.flatten().unique().toSortedList().get()
+    def samplesInPairing = extractPairing(pairing).flatten().unique().toSortedList().get()
     def mappingOnly = samplesInMapping - samplesInPairing
     def pairingOnly = samplesInPairing - samplesInMapping
     def extraSamples = mappingOnly + pairingOnly
+
     if(extraSamples != []){
 	println "ERROR: The following samples are present in either mapping file or pairing file only. Please ensure all samples are present in both files."
-	Channel.from(mappingOnly).println{"${it}\t${mappingFile}"}
-	Channel.from(pairingOnly).println{"${it}\t${pairingFile}"}
+        println "Mapping: ${mappingOnly}"
+        println "Pairing: ${pairingOnly}"
 	System.exit(1)
     }
   }
