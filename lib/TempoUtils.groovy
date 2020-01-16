@@ -9,46 +9,64 @@ import nextflow.Channel
 class TempoUtils {
 
   static def extractPairing(tsvFile) {
+    def allRows = [:]
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
+      checkHeader([row.TUMOR_ID, row.NORMAL_ID], tsvFile)
+      if(!checkNumberOfItem(row, 2, tsvFile)){System.exit(1)}
+      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+
       [row.TUMOR_ID, row.NORMAL_ID]
     }
   }
 
   static def extractCohort(tsvFile) {
+    def allRows = [:]
     Channel.from(tsvFile)
-    .splitCsv(sep: '\t', header: true)
+    .splitCsv(sep: '\t')
     .map { row ->
-      def path = file(row.PATH, checkIfExists: true)
+      if(!checkNumberOfItem(row, 1, tsvFile)){System.exit(1)}
+      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+      def path = file(row[0], checkIfExists: true)
       def section = file(path.getParent()).getName().toString()
+
       [section, path]
     }
   }
 
 
-  static def extractBAM(tsvFile) {
+  static def extractBAM(tsvFile, assayType) {
+    def allRows = [:]
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-//      checkNumberOfItem(row, 5)	// Disable check columns for now to support older version of input files, especially for Travis-CI
+      checkHeader([row.SAMPLE, row.TARGET, row.BAM, row.BAI], tsvFile)
+      if(!checkNumberOfItem(row, 4, tsvFile)){System.exit(1)}
+      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkTarget(row.TARGET, assayType)){System.exit(1)}
       def idSample = row.SAMPLE
       def target = row.TARGET
       def bam = file(row.BAM, checkIfExists: true)
-      // check if using bam.bai or bam.bam.bai
-      def bai = file(validateBamIndexFormat(row.BAM), checkIfExists: true)
+      if(!checkFileExtension(bam,".bam")){System.exit(1)}
+      def bai = file(row.BAI, checkIfExists: true)
+      if(!checkFileExtension(bai,".bai")){System.exit(1)}
 
       [idSample, target, file(bam), file(bai)]
     }
   }
 
 
-  static def extractFastq(tsvFile) {
+  static def extractFastq(tsvFile, assayType) {
+    def allRows = [:]
     def allReadNames = [:]
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
-//      checkNumberOfItem(row, 4)	// Disable check columns for now to support older version of input files, especially for Travis-CI
+      checkHeader([row.SAMPLE, row.TARGET, row.FASTQ_PE1, row.FASTQ_PE2], tsvFile)
+      if(!checkNumberOfItem(row, 4, tsvFile)){System.exit(1)}
+      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkTarget(row.TARGET, assayType)){System.exit(1)}
       def idSample = row.SAMPLE
       def target = row.TARGET
       def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: true)
@@ -56,8 +74,8 @@ class TempoUtils {
       def fastqInfo = flowcellLaneFromFastq(fastqFile1)
       def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "@" + fastqInfo[0].replaceAll(":","@")
       
-      checkFileExtension(fastqFile1,".fastq.gz")
-      checkFileExtension(fastqFile2,".fastq.gz")
+      if(!checkFileExtension(fastqFile1,".fastq.gz")){System.exit(1)}
+      if(!checkFileExtension(fastqFile2,".fastq.gz")){System.exit(1)}
 
       def readName = fastqInfo[2]
       if(allReadNames.containsKey(readName)){
@@ -70,7 +88,7 @@ class TempoUtils {
         allReadNames[readName] = idSample + "\t" + row.FASTQ_PE1
       }
 
-      [idSample, fileID, fastqFile1, fastqFile2, target]
+      [idSample, target, fileID, fastqFile1, fastqFile2]
     }
   }
 
@@ -108,74 +126,69 @@ class TempoUtils {
     [fcid, lane, fullName]
   }
 
-  // Check which format of BAM index used, input 'it' as BAM file 'bamTumor.bam'
-  // not a static method, as currently written
-  static def validateBamIndexFormat(it) {
-    def bamFilename = it.take(it.lastIndexOf('.'))
-    // Check BAM index extension
-    if (file(bamFilename + ".bai").exists()){
-      return("${bamFilename}.bai")
-    } 
-    else if (file(bamFilename + ".bam.bai").exists()){
-      return("${bamFilename}.bam.bai")
-    } 
-    else {
-      println "ERROR: Cannot find BAM indices for ${it}. Please index BAMs in the same directory with 'samtools index' and re-run the pipeline."
+
+  static def checkHeader(row, tsv) {
+    if(row.contains(null)){
+      println "ERROR: Wrong header in ${tsv}. See manual for more infomation."
       System.exit(1)
     }
   }
 
-  
-  static def checkTargetAndAssayType(filePath, assayType) {
+  static def checkAssayType(assayType) {
+    if(assayType != "genome" && assayType != "exome"){
+      println "ERROR: Unsupported \"--assayType ${assayType}\". Supported values are \"exome\" and \"genome\""
+      System.exit(1)
+    }
+  }
+
+  static def checkTarget(it, assayType) {
     def supportedTargets = []
     if(assayType == "genome"){ supportedTargets = ["wgs"] }
     else if(assayType == "exome"){ supportedTargets = ["agilent", "idt"]}
-    else {println "ERROR: Unsupported --assayType ${assayType}. Supported values are \"exome\" and \"genome\"";System.exit(1)}
+    else {} // this is covered by checkAssayType(){} above
 
-    def targetList = Channel.from(filePath).splitCsv(sep: '\t', header: true).map{row -> [row.TARGET]}.flatten().unique().toSortedList().get()
-    def unsupported = targetList - supportedTargets
-
-    if(unsupported != []){
-      println "ERROR: Following targets are not supported by --assayType ${assayType}, only ${supportedTargets} supported. Please check your mapping file."
-      println "${unsupported}"
-      System.exit(1)
+    if(!supportedTargets.contains(it)){
+      println "ERROR: \"${it}\" is not a supported target (only ${supportedTargets}) for \"--assayType ${assayType}\". Please check your mapping file."
+      return false
     }
+    else{ return true }
   }
   
   
   // Check file extension
   static def checkFileExtension(it, extension) {
     if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) {
-	println "File: ${it} has the wrong extension: ${extension} see --help for more information"
-	System.exit(1)
+	println "File: ${it} has the wrong extension: ${extension}. See manual for more information"
+        return false
     }
+    else{ return true }
   }
 
   // Check if a row has the expected number of item
-  static def checkNumberOfItem(row, number) {
-    if (row.size() != number){
-	println "Malformed row in TSV file: ${row}, see --help for more information"
-	System.exit(1)
+  static def checkNumberOfItem(row, number, tsv) {
+    if (row.size() < number){
+	println "Missing field (null) in the following row from ${tsv}: ${row}"
+	return false
     }
-    return true
+    else{ return true }
   }
 
-  static def check_for_duplicated_rows(FilePath) {
-    def entries = []
-    file( FilePath, checkIfExists: true ).eachLine { line ->
-      if (!line.isEmpty()){
-        entries << line
-      }
+  // Check duplicate rows
+  static def checkDuplicatedRows(hash, key, value, tsv) {
+    if(hash.containsKey(key)){
+        println "ERROR: Duplicatd inputs found in ${tsv}:"
+        println hash.get(key)
+	return false
     }
-    if(entries.toSet().size() != entries.size()){
-      println "ERROR: Duplicated row found in ${FilePath}. Please fix the error and re-run the pipeline."
-      System.exit(1)
+    else{
+        hash[key] = value
+	return true
     }
   }
 
   static def crossValidateSamples(mapping, pairing) {
-    def samplesInMapping = Channel.from(mapping).splitCsv(sep: '\t', header: true).map{[it.SAMPLE]}.flatten().unique().toSortedList().get()
-    def samplesInPairing = extractPairing(pairing).flatten().unique().toSortedList().get()
+    def samplesInMapping = mapping.map{[it[0]]}.flatten().unique().toSortedList().get()
+    def samplesInPairing = pairing.flatten().unique().toSortedList().get()
     def mappingOnly = samplesInMapping - samplesInPairing
     def pairingOnly = samplesInPairing - samplesInMapping
     def extraSamples = mappingOnly + pairingOnly
@@ -184,20 +197,15 @@ class TempoUtils {
 	println "ERROR: The following samples are present in either mapping file or pairing file only. Please ensure all samples are present in both files."
         println "Mapping: ${mappingOnly}"
         println "Pairing: ${pairingOnly}"
-	System.exit(1)
+        return false
     }
+    else{ return true }
   }
 
-  static def crossValidateTargets(mappingFile, pairingFile) {
-    Channel.from(mappingFile)
-      .splitCsv(sep: '\t', header: true)
-      .map { row ->
-        def idSample = row.SAMPLE
-	def target = row.TARGET
-	[idSample, target]
-      }
+  static def crossValidateTargets(mapping, pairing) {
+    mapping.map{[it[0], it[1]]}
       .unique()
-      .combine(extractPairing(pairingFile).unique())
+      .combine(pairing)
       .filter{ item ->
 	def mappingID = item[0]
 	def target = item[1]
