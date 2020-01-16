@@ -3094,6 +3094,7 @@ workflow.onComplete {
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
+  if(params."${item}" == null){println "${item} is not found in reference map"; exit 1}
   return file(params."${item}", checkIfExists: true)
 }
 
