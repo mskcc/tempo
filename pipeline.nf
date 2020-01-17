@@ -171,40 +171,23 @@ referenceMap = defineReferenceMap()
 if (params.mapping) {
 
   // Parse input FASTQ mapping
-  inputMapping.set{ inputFastqs }
+  inputMapping.map{ idSample, target, file_pe1, file_pe2 ->
+                   [idSample, target, file_pe1, file_pe2, file_pe1.getSimpleName(), file_pe1.getSimpleName()]
+	      }
+	      .set{ inputFastqs }
 
   if (params.splitLanes) {
   inputFastqs
 	.into{ fastqsNeedSplit; fastqsNoNeedSplit }
 
   fastqsNeedSplit
-	.filter{ item ->
-		def idSample = item[0]
-		def target = item[1]
-		def file_pe1 = item[2]
-		def file_pe2 = item[3]
-
-		!(item[2].getName() =~ /_L(\d){3}_/)
-	}
+	.filter{ item -> !(item[2].getName() =~ /_L(\d){3}_/) }
+	.map{ idSample, target, file_pe1, file_pe2, fcid, lane -> [idSample, target, file_pe1, file_pe2] }
 	.into{ inputFastqR1; inputFastqR2 }
 
   fastqsNoNeedSplit
-	.filter{ item ->
-		def idSample = item[0]
-		def target = item[1]
-		def file_pe1 = item[2]
-		def file_pe2 = item[3]
-
-		item[2].getName() =~ /_L(\d){3}_/
-	}
-	.map{ item ->
-		def idSample = item[0]
-		def target = item[1]
-		def file_pe1 = item[2]
-		def file_pe2 = item[3]
-
-		return [ idSample, target, file_pe1, file_pe2 ]
-	}
+	.filter{ item -> item[2].getName() =~ /_L(\d){3}_/ }
+	.map{ idSample, target, file_pe1, file_pe2, fcid, lane -> [idSample, target, file_pe1, file_pe2, fcid, lane] }
 	.set{ fastqsNoNeedSplit }
 
   process SplitLanesR1 {
@@ -295,9 +278,9 @@ if (params.mapping) {
 	  [idSample, target, fastq, fcid, lane]
         }
 
-//  fastqFiles =
-perLaneFastqsR1
+  fastqFiles  = perLaneFastqsR1
 	.concat(perLaneFastqsR2)
+	.concat(fastqsNoNeedSplit)
 	.groupTuple(by: [0,1,3,4], size: 2)
 	.groupTuple(by: [0,1,3])
         .map{ item ->
@@ -317,33 +300,23 @@ perLaneFastqsR1
 	.transpose()
         .transpose()
 	.map{ idSample, target, fastqPairs, fcid, lane ->
-	     [idSample, target, fastqPairs[0], fastqPairs[1], fcid, lane]
+	     [idSample, target, fastqPairs[0], fastqPairs[0].size(), fastqPairs[1], fastqPairs[1].size(), fcid, lane]
 	}
-	.println()
-/*
-*/
   }
   else{
-     fastqFiles =  inputFastqs
-        .map{ item ->
-            def idSample = item[0]
-	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[3])
-            def fileID = item[2] + "@" + fastqInfo[1]
-            def file_pe1 = item[3]
-            def file_pe1_size = item[3].size()
-            def file_pe2 = item[4]
-            def file_pe2_size = item[4].size()
-            def targetFile = item[1]
-            def rgID = fastqInfo[0] + ":" + fastqInfo[1]
-
-            return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
-        }
-	.groupTuple(by:[0])
-	.map{ idSample, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, targets, rgID
-		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, targets, rgID)}
+     fastqFiles =  inputFastqs.groupTuple(by:[0,1])
+	.map{ idSample, target, files_pe1, files_pe2, fcids, lanes ->
+	        tuple( groupKey(idSample, fcids.size()), target, files_pe1, files_pe2, fcids, lanes)
+	}
 	.transpose()
+	.map{ idSample, target, file_pe1, file_pe2, fcid, lane ->
+	     [idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), fcid, lane]
+	}
   }
 
+	//.println()
+/*
+*/
 /*
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
@@ -352,7 +325,7 @@ perLaneFastqsR1
     publishDir "${params.outDir}/qc/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
-      set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, targetFile, rgID from fastqFiles
+      set idSample, target, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, fcid, lane from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
