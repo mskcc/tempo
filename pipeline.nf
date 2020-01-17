@@ -175,20 +175,14 @@ if (params.mapping) {
 
   if (params.splitLanes) {
   inputFastqs
-	.groupTuple(by: [0])
-	.map{ idSample, targets, fileID, files_pe1, files_pe2
-		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, targets)
-	}
-	.transpose()
 	.into{ fastqsNeedSplit; fastqsNoNeedSplit }
 
   fastqsNeedSplit
 	.filter{ item ->
 		def idSample = item[0]
-		def fileID = item[1]
+		def target = item[1]
 		def file_pe1 = item[2]
 		def file_pe2 = item[3]
-		def targetFile = item[4]
 
 		!(item[2].getName() =~ /_L(\d){3}_/)
 	}
@@ -197,33 +191,31 @@ if (params.mapping) {
   fastqsNoNeedSplit
 	.filter{ item ->
 		def idSample = item[0]
-		def fileID = item[1]
+		def target = item[1]
 		def file_pe1 = item[2]
 		def file_pe2 = item[3]
-		def targetFile = item[4]
 
 		item[2].getName() =~ /_L(\d){3}_/
 	}
 	.map{ item ->
 		def idSample = item[0]
-		def fileID = item[1]
+		def target = item[1]
 		def file_pe1 = item[2]
 		def file_pe2 = item[3]
-		def targetFile = item[4]
 
-		return [ idSample, fileID, targetFile, file_pe1, file_pe2 ]
+		return [ idSample, target, file_pe1, file_pe2 ]
 	}
 	.set{ fastqsNoNeedSplit }
 
   process SplitLanesR1 {
-    tag {idSample + "@" + fileID + "@R1"}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + file(fastqFile1)}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set idSample, fileID, file(fastqFile1), file(fastqFile2), targetFile from inputFastqR1
+      set idSample, target, file(fastqFile1), file(fastqFile2) from inputFastqR1
 
     output:
       file("file-size.txt") into R1Size
-      set idSample, fileID, file("*R1.splitLanes.fastq.gz"), targetFile into perLaneFastqsR1
+      set idSample, target, file("*R1.splitLanes.fastq.gz"), file("*.fcid") into perLaneFastqsR1
 
     when: params.splitLanes
 
@@ -242,19 +234,21 @@ if (params.mapping) {
     }
 
     """
-      echo -e "${idSample}@${fileID}@R1\t${inputSize}" > file-size.txt
-      zcat $fastqFile1 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz"}}'
+      fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
+      touch \${fcid}.fcid
+      echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
+      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz"}}'
     """
   }
   process SplitLanesR2 {
-    tag {idSample + "@" + fileID + "@R2"}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + file(fastqFile2)}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set idSample, fileID, file(fastqFile1), file(fastqFile2), targetFile from inputFastqR2
+      set idSample, target, file(fastqFile1), file(fastqFile2) from inputFastqR2
 
     output:
       file("file-size.txt") into R2Size
-      set idSample, fileID, file("*R2.splitLanes.fastq.gz"), targetFile into perLaneFastqsR2
+      set idSample, target, file("*R2.splitLanes.fastq.gz"), file("*.fcid") into perLaneFastqsR2
 
     when: params.splitLanes
 
@@ -273,43 +267,61 @@ if (params.mapping) {
     }
 
     """
-      echo -e "${idSample}@${fileID}@R2\t${inputSize}" > file-size.txt
-      zcat $fastqFile2 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz"}}'
+      fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
+      touch \${fcid}.fcid
+      echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
+      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz"}}'
     """
   }
 
-  fastqFiles = perLaneFastqsR1
-	.combine(perLaneFastqsR2, by: [0,1,3])
-	.concat(fastqsNoNeedSplit)
+  perLaneFastqsR1 = perLaneFastqsR1.transpose()
+        .map{ item ->
+          def idSample = item[0]
+	  def target = item[1]
+	  def fastq = item[2]
+	  def fcid = item[3].getSimpleName()
+	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+
+	  [idSample, target, fastq, fcid, lane]
+        }
+  perLaneFastqsR2 = perLaneFastqsR2.transpose()
+        .map{ item ->
+          def idSample = item[0]
+	  def target = item[1]
+	  def fastq = item[2]
+	  def fcid = item[3].getSimpleName()
+	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+
+	  [idSample, target, fastq, fcid, lane]
+        }
+
+//  fastqFiles =
+perLaneFastqsR1
+	.concat(perLaneFastqsR2)
+	.groupTuple(by: [0,1,3,4], size: 2)
+	.groupTuple(by: [0,1,3])
         .map{ item ->
             def idSample = item[0]
-            def fileID = item[1]
-            def file_pe1 = item[3]
-            def file_pe2 = item[4]
-            def targetFile = item[2]
-	    def numOfLanes = file_pe1 instanceof Collection ? file_pe1.size() : 1
+            def target = item[1]
+            def fastqPairs = item[2]
+            def fcid = item[3]
+            def lanes = item[4]
+	    def numOfLanes = lanes instanceof Collection ? lanes.size() : 1
 
-            return [ idSample, fileID, file_pe1, file_pe2, targetFile, numOfLanes ]
+            return [ idSample, target, fastqPairs, fcid, lanes, numOfLanes ]
         }
-	.groupTuple(by: [0])
-	.map { idSample, fileID, file_pe1, file_pe2, targetFile, numOfLanes
-		-> tuple(groupKey(idSample, numOfLanes.sum()), fileID, file_pe1, file_pe2, targetFile, numOfLanes)
+        .groupTuple(by: [0,1])
+	.map { idSample, target, fastqPairs, fcid, lanes, numOfLanes
+		-> tuple(groupKey(idSample, numOfLanes.sum()), target, fastqPairs, fcid, lanes)
 	}
 	.transpose()
         .transpose()
-	.map{ item ->
-	    def idSample = item[0]
-	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[2])
-	    def fileID = item[1] + "@" + fastqInfo[1]
-	    def file_pe1 = item[2]
-	    def file_pe1_size = item[2].size()
-	    def file_pe2 = item[3]
-	    def file_pe2_size = item[3].size()
-	    def targetFile = item[4]
-	    def rgID = fastqInfo[0] + ":" + fastqInfo[1]
-
-	    return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
+	.map{ idSample, target, fastqPairs, fcid, lane ->
+	     [idSample, target, fastqPairs[0], fastqPairs[1], fcid, lane]
 	}
+	.println()
+/*
+*/
   }
   else{
      fastqFiles =  inputFastqs
@@ -332,7 +344,7 @@ if (params.mapping) {
 	.transpose()
   }
 
-
+/*
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
     tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
@@ -620,7 +632,7 @@ if (params.mapping) {
           out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
       }
   }
-
+*/
 } // End of "if (params.mapping) {}"
 
 
