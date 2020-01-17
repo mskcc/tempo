@@ -90,21 +90,32 @@ runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
 
-if (!(params.mapping || params.bamMapping) && params.pairing) {
-  println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
-  exit 1
-}
+println ""
 
-if ((params.mapping || params.bamMapping) && !params.pairing) {
-  if (runSomatic || runGermline){
-    println "ERROR: --pairing [tsv] needed when using --mapping/--bamMapping [tsv] with --somatic/--germline"
-    exit 1
+if (params.mapping || params.bamMapping) {
+  mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
+  TempoUtils.checkAssayType(params.assayType)
+  (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType).into(3)
+  if(params.pairing){
+    pairingFile = file(params.pairing, checkIfExists: true)
+    (checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
+    TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
+    if(!TempoUtils.crossValidateSamples(checkMapping2, checkPairing2)){exit 1}
+    if (!runSomatic && !runGermline && !runQC){
+      println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
+      exit 1
+    }
+  }
+  else{
+    if (runSomatic || runGermline){
+      println "ERROR: --pairing [tsv] needed when using --mapping/--bamMapping [tsv] with --somatic/--germline"
+      exit 1
+    }
   }
 }
-
-if ((params.mapping || params.bamMapping) && params.pairing) {
-  if (!runSomatic && !runGermline && !runQC){
-    println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
+else{
+  if(params.pairing){
+    println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
     exit 1
   }
 }
@@ -147,43 +158,6 @@ else {
   }
 }
 
-
-
-
-// Validate mapping file
-// Check for duplicate inputs and unique fileID
-if (params.mapping) {
-  mappingPath = params.mapping
-  
-  if (mappingPath && !TempoUtils.check_for_duplicated_rows(mappingPath)) {
-    println "ERROR: Duplicated row found in mapping file. Please fix the error and re-run the pipeline."
-    exit 1
-  }
-}
-
-// Validate pairing file
-// Check for duplicate inputs
-if (params.pairing) {
-  pairingPath = params.pairing
-
-  if (!TempoUtils.check_for_duplicated_rows(pairingPath)) {
-    println "ERROR: Duplicated row found in pairing file. Please fix the error and re-run the pipeline."
-    exit 1
-  }
-}
-
-// Validate BAM file pairing file
-// Check for duplicate inputs
-if (params.bamMapping) {
-  bamMappingPath = params.bamMapping
-
-  if (bamMappingPath && !TempoUtils.check_for_duplicated_rows(bamMappingPath)) {
-    println "ERROR: Duplicated row found in BAM mapping file. Please fix the error and re-run the pipeline."
-    exit 1
-  }
-}
-
-
 referenceMap = defineReferenceMap()
 
 /*
@@ -197,13 +171,12 @@ referenceMap = defineReferenceMap()
 if (params.mapping) {
 
   // Parse input FASTQ mapping
-  mappingFile = file(mappingPath)
-  TempoUtils.extractFastq(mappingFile).set{ inputFastqs }
+  inputMapping.set{ inputFastqs }
 
   if (params.splitLanes) {
   inputFastqs
 	.groupTuple(by: [0])
-	.map{ idSample, fileID, files_pe1, files_pe2, targets
+	.map{ idSample, targets, fileID, files_pe1, files_pe2
 		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, targets)
 	}
 	.transpose()
@@ -342,13 +315,13 @@ if (params.mapping) {
      fastqFiles =  inputFastqs
         .map{ item ->
             def idSample = item[0]
-	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[2])
-            def fileID = item[1] + "@" + fastqInfo[1]
-            def file_pe1 = item[2]
-            def file_pe1_size = item[2].size()
-            def file_pe2 = item[3]
-            def file_pe2_size = item[3].size()
-            def targetFile = item[4]
+	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[3])
+            def fileID = item[2] + "@" + fastqInfo[1]
+            def file_pe1 = item[3]
+            def file_pe1_size = item[3].size()
+            def file_pe2 = item[4]
+            def file_pe2_size = item[4].size()
+            def targetFile = item[1]
             def rgID = fastqInfo[0] + ":" + fastqInfo[1]
 
             return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
@@ -659,15 +632,12 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  bamMappingfile = file(bamMappingPath)
-  TempoUtils.extractBAM(bamMappingfile).into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
 }
 
 if (params.pairing) {
 
   // Parse input FASTQ mapping
-  pairingFile = file(pairingPath)
-  TempoUtils.extractPairing(pairingFile).set{ inputPairing }
 
   inputPairing.into{pairing4T; pairing4N; pairingTN}
   bamsBQSR4Tumor.combine(pairing4T)
@@ -2720,11 +2690,7 @@ if ( !(runAggregate == false) && !(runAggregate == true) ){
   runSomatic = true
   runGermline = true
   runQC = true
-  if (!TempoUtils.check_for_duplicated_rows(runAggregate)) {
-    println "ERROR: Duplicated row found in ${runAggregate}. Please fix the error and re-run the pipeline."
-    exit 1
-  }
-  TempoUtils.extractCohort(file(runAggregate))
+  TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
 	    .branch{ item ->
 	      somatic: item[0] == "somatic"
 	        return item
@@ -3128,7 +3094,8 @@ workflow.onComplete {
 
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
-  return file(params."${item}")
+  if(params."${item}" == null){println "${item} is not found in reference map"; exit 1}
+  return file(params."${item}", checkIfExists: true)
 }
 
 def defineReferenceMap() {
