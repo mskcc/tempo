@@ -296,7 +296,7 @@ if (params.mapping) {
             def fastqPairs = item[2]
             def fcid = item[3]
             def lanes = item[4]
-            def numOfLanes = lanes instanceof Collection ? lanes.size() : 1
+	    def numOfLanes = lanes instanceof Collection ? lanes.size() : 1
 
             return [ idSample, target, fastqPairs, fcid, lanes, numOfLanes ]
         }
@@ -312,7 +312,7 @@ if (params.mapping) {
   else{
      fastqFiles =  inputFastqs.groupTuple(by:[0,1,4])
         .map{  idSample, target, files_pe1, files_pe2, fcids, lanes ->
-          tuple( groupKey(idSample, fcids.size()), target, files_pe1, files_pe2, groupKey(fcid, 1), lanes)
+          tuple( groupKey(idSample, fcids.size()), target, files_pe1, files_pe2, groupKey(fcids, 1), lanes)
         }
         .transpose()
         .map{ idSample, target, file_pe1, file_pe2, fcid, lane ->
