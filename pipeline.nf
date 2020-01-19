@@ -310,14 +310,9 @@ if (params.mapping) {
         .mix(fastqsNoNeedSplit)
   }
   else{
-     fastqFiles =  inputFastqs.groupTuple(by:[0,1,4])
-        .map{  idSample, target, files_pe1, files_pe2, fcids, lanes ->
-          tuple( groupKey(idSample, fcids.size()), target, files_pe1, files_pe2, groupKey(fcids, 1), lanes)
-        }
-        .transpose()
-        .map{ idSample, target, file_pe1, file_pe2, fcid, lane ->
-             [idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), fcid, lane]
-        }
+     fastqFiles =  inputFastqs.map { idSample, target, file_pe1, file_pe2, fcid, lane
+					-> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fcid, 1), lane)
+				   }
   }
 
   // AlignReads - Map reads with BWA mem output SAM
