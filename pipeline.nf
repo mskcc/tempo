@@ -410,6 +410,7 @@ if (params.mapping) {
 			  println idSample + "\t" + rgID
 			  println ""
 			  println "HINT: You might have assigned different sample names for the same fastq file, or you have two identical identical files but in differnt path."
+			  exit 1
 			}
 			else{
 			  allRGIDs[rgID] = idSample + "\t" + rgID
