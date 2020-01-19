@@ -14,7 +14,7 @@ class TempoUtils {
     .map { row ->
       checkHeader([row.TUMOR_ID, row.NORMAL_ID], tsvFile)
       if(!checkNumberOfItem(row, 2, tsvFile)){System.exit(1)}
-      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
 
       [row.TUMOR_ID, row.NORMAL_ID]
     }
@@ -28,7 +28,7 @@ class TempoUtils {
     .splitCsv(sep: '\t')
     .map { row ->
       if(!checkNumberOfItem(row, 1, tsvFile)){System.exit(1)}
-      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
       def path = file(row[0], checkIfExists: true)
       def section = file(path.getParent()).getName().toString()
 
@@ -39,12 +39,14 @@ class TempoUtils {
 
   static def extractBAM(tsvFile, assayType) {
     def allRows = [:]
+    def allFiles = [:]
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
       checkHeader([row.SAMPLE, row.TARGET, row.BAM, row.BAI], tsvFile)
       if(!checkNumberOfItem(row, 4, tsvFile)){System.exit(1)}
-      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkDuplicates(allFiles, row.BAM, row.SAMPLE + "\t" + row.BAM, tsvFile)){System.exit(1)}
       if(!checkTarget(row.TARGET, assayType)){System.exit(1)}
       def idSample = row.SAMPLE
       def target = row.TARGET
@@ -60,12 +62,14 @@ class TempoUtils {
 
   static def extractFastq(tsvFile, assayType) {
     def allRows = [:]
+    def allFiles = [:]
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
       checkHeader([row.SAMPLE, row.TARGET, row.FASTQ_PE1, row.FASTQ_PE2], tsvFile)
       if(!checkNumberOfItem(row, 4, tsvFile)){System.exit(1)}
-      if(!checkDuplicatedRows(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
+      if(!checkDuplicates(allFiles, row.FASTQ_PE1, row.SAMPLE + "\t" + row.FASTQ_PE1, tsvFile)){System.exit(1)}
       if(!checkTarget(row.TARGET, assayType)){System.exit(1)}
       def idSample = row.SAMPLE
       def target = row.TARGET
@@ -131,10 +135,11 @@ class TempoUtils {
   }
 
   // Check duplicate rows
-  static def checkDuplicatedRows(hash, key, value, tsv) {
+  static def checkDuplicates(hash, key, value, tsv) {
     if(hash.containsKey(key)){
         println "ERROR: Duplicatd inputs found in ${tsv}:"
         println hash.get(key)
+	println "${value}"
 	return false
     }
     else{

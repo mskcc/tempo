@@ -405,11 +405,10 @@ if (params.mapping) {
   sortedBam.map { idSample, target, bam, fcid, lane, rgIDfile ->
                         rgID = rgIDfile.getSimpleName()
                         if(allRGIDs.containsKey(rgID)){
-                          println "ERROR: Read group \"${rgID}\" apprears in more than 1 fastq files in the following sample/samples."
+                          println "ERROR: Read group \"${rgID}\" apprears in two identical fastq files in different paths."
                           println allRGIDs.get(rgID)
 			  println idSample + "\t" + rgID
 			  println ""
-			  println "HINT: You might have assigned different sample names for the same fastq file, or you have two identical identical files but in differnt path."
 			  exit 1
 			}
 			else{
