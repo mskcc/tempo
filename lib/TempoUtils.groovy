@@ -63,6 +63,7 @@ class TempoUtils {
   static def extractFastq(tsvFile, assayType) {
     def allRows = [:]
     def allFiles = [:]
+
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
