@@ -138,7 +138,8 @@ class TempoUtils {
   // Check duplicate rows
   static def checkDuplicates(hash, key, value, tsv) {
     if(hash.containsKey(key)){
-        println "ERROR: Duplicatd inputs found in ${tsv}:"
+        println "ERROR: Duplicatd inputs found in ${tsv}"
+	println ""
         println hash.get(key)
 	println "${value}"
 	return false

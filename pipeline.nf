@@ -265,7 +265,7 @@ if (params.mapping) {
     """
   }
 
-  def fastqR1fileID = [:]
+  def fastqR1fileIDs = [:]
   perLaneFastqsR1 = perLaneFastqsR1.transpose()
         .map{ item ->
           def idSample = item[0]
@@ -274,12 +274,13 @@ if (params.mapping) {
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 
-	  if(!TempoUtils.checkDuplicates(fastqR1fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+	  // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
+	  if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 
 	  [idSample, target, fastq, fileID, lane]
         }
 
-  def fastqR2fileID = [:]
+  def fastqR2fileIDs = [:]
   perLaneFastqsR2 = perLaneFastqsR2.transpose()
         .map{ item ->
           def idSample = item[0]
@@ -288,7 +289,7 @@ if (params.mapping) {
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 
-	  if(!TempoUtils.checkDuplicates(fastqR2fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+	  if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 
 	  [idSample, target, fastq, fileID, lane]
         }
@@ -336,7 +337,7 @@ if (params.mapping) {
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
       file("file-size.txt") into laneSize
-      set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.rgid") into sortedBam
+      set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
 
     script:
     // LSF resource allocation for juno
@@ -388,7 +389,7 @@ if (params.mapping) {
     """
     rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
     readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    touch \${rgID}".rgid"
+    touch `zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-`.readId
     set -e
     set -o pipefail
     echo -e "${idSample}@\${rgID}\t${inputSize}" > file-size.txt
@@ -400,10 +401,11 @@ if (params.mapping) {
   }
 
   // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
-  def allRGIDs = [:]
-  sortedBam.map { idSample, target, bam, fileID, lane, rgIDfile ->
+  def allReadIds = [:]
+  sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
 
-		    if(!TempoUtils.checkDuplicates(allRGIDs, idSample + "@" + rgIDfile.getSimpleName(), idSample + "\t" + rgIDfile.getSimpleName() + "\t" + bam, "the following samples, since they contain the same RGID")){exit 1}
+		// Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
+		if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
 
 		[idSample, target, bam, fileID, lane]
 	   }
