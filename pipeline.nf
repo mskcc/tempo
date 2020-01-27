@@ -261,7 +261,7 @@ if (params.mapping) {
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
-      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz"}}'
+      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz"}}'
     """
   }
 
