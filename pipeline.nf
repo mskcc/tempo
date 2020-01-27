@@ -274,7 +274,7 @@ if (params.mapping) {
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 
-	  if(!TempoUtils.checkDuplicates(fastqR1fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain same RGID")){exit 1}
+	  if(!TempoUtils.checkDuplicates(fastqR1fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 
 	  [idSample, target, fastq, fileID, lane]
         }
@@ -288,7 +288,7 @@ if (params.mapping) {
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 
-	  if(!TempoUtils.checkDuplicates(fastqR2fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain same RGID")){exit 1}
+	  if(!TempoUtils.checkDuplicates(fastqR2fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 
 	  [idSample, target, fastq, fileID, lane]
         }
