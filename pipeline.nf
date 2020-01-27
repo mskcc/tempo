@@ -192,8 +192,8 @@ if (params.mapping) {
 
   fastqsNoNeedSplit
         .filter{ item -> item[2].getName() =~ /_L(\d){3}_/ }
-        .map { idSample, target, file_pe1, file_pe2, fcid, lane
-                -> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fcid, 1), lane)
+        .map { idSample, target, file_pe1, file_pe2, fileID, lane
+                -> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
         }
         .set{ fastqsNoNeedSplit }
 
@@ -270,20 +270,20 @@ if (params.mapping) {
           def idSample = item[0]
 	  def target = item[1]
 	  def fastq = item[2]
-	  def fcid = item[3].getSimpleName()
+	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 
-	  [idSample, target, fastq, fcid, lane]
+	  [idSample, target, fastq, fileID, lane]
         }
   perLaneFastqsR2 = perLaneFastqsR2.transpose()
         .map{ item ->
           def idSample = item[0]
 	  def target = item[1]
 	  def fastq = item[2]
-	  def fcid = item[3].getSimpleName()
+	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 
-	  [idSample, target, fastq, fcid, lane]
+	  [idSample, target, fastq, fileID, lane]
         }
 
   fastqFiles  = perLaneFastqsR1
@@ -294,42 +294,42 @@ if (params.mapping) {
             def idSample = item[0]
             def target = item[1]
             def fastqPairs = item[2]
-            def fcid = item[3]
+            def fileID = item[3]
             def lanes = item[4]
 	    def numOfLanes = lanes instanceof Collection ? lanes.size() : 1
 
-            return [ idSample, target, fastqPairs, fcid, lanes, numOfLanes ]
+            return [ idSample, target, fastqPairs, fileID, lanes, numOfLanes ]
         }
-        .map {  idSample, target, fastqPairs, fcid, lanes, numOfLanes ->
-          tuple(idSample, target, fastqPairs, groupKey(fcid, numOfLanes), lanes)
+        .map {  idSample, target, fastqPairs, fileID, lanes, numOfLanes ->
+          tuple(idSample, target, fastqPairs, groupKey(fileID, numOfLanes), lanes)
         }
         .transpose()
-        .map{ idSample, target, fastqPairs, fcid, lane ->
-             [idSample, target, fastqPairs[0], fastqPairs[0].size(), fastqPairs[1], fastqPairs[1].size(), fcid, lane]
+        .map{ idSample, target, fastqPairs, fileID, lane ->
+             [idSample, target, fastqPairs[0], fastqPairs[0].size(), fastqPairs[1], fastqPairs[1].size(), fileID, lane]
         }
         .mix(fastqsNoNeedSplit)
   }
   else{
-     fastqFiles =  inputFastqs.map { idSample, target, file_pe1, file_pe2, fcid, lane
-					-> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fcid, 1), lane)
+     fastqFiles =  inputFastqs.map { idSample, target, file_pe1, file_pe2, fileID, lane
+					-> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
 				   }
   }
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
-    tag {idSample + "@" + rgID}   // The tag directive allows you to associate each process executions with a custom label
+    tag {fileID}   // The tag directive allows you to associate each process executions with a custom label
 
     publishDir "${params.outDir}/qc/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
-      set idSample, target, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, fcid, lane from fastqFiles
+      set idSample, target, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, fileID, lane from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
       file("file-size.txt") into laneSize
-      set idSample, target, file("*.sorted.bam"), fcid, lane, file("*.rgid") into sortedBam
+      set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.rgid") into sortedBam
 
     script:
     // LSF resource allocation for juno
@@ -378,43 +378,35 @@ if (params.mapping) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    rgID = fcid + "@" + lane
-
     """
-    if [[ ${rgID} =~ _L[[:digit:]][[:digit:]][[:digit:]]_ ]]
-    then
-      fileID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
-      readGroup="@RG\\tID:\${fileID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    else
-      readGroup="@RG\\tID:${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-      fileID="${rgID}"
-    fi
-    touch `zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`".rgid"
+    rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
+    readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+    touch \${rgID}".rgid"
     set -e
     set -o pipefail
-    echo -e "${idSample}@\${fileID}\t${inputSize}" > file-size.txt
-    fastp --html ${idSample}@\${fileID}.fastp.html --json ${idSample}@\${fileID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${fileID}.bam
+    echo -e "${idSample}@\${rgID}\t${inputSize}" > file-size.txt
+    fastp --html ${idSample}@\${rgID}.fastp.html --json ${idSample}@\${rgID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
+    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${rgID}.bam
 
-    samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${fileID}.sorted.bam ${idSample}@\${fileID}.bam
+    samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}.sorted.bam ${idSample}@\${rgID}.bam
     """
   }
 
   // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
   def allRGIDs = [:]
-  sortedBam.map { idSample, target, bam, fcid, lane, rgIDfile ->
+  sortedBam.map { idSample, target, bam, fileID, lane, rgIDfile ->
                         rgID = rgIDfile.getSimpleName()
-                        if(allRGIDs.containsKey(rgID)){
+                        if(allRGIDs.containsKey(idSample + "@" + rgID)){
                           println "ERROR: Read group \"${rgID}\" apprears in two identical fastq files in different paths."
-                          println allRGIDs.get(rgID)
+                          println allRGIDs.get(idSample + "@" + rgID)
 			  println idSample + "\t" + rgID
 			  println ""
 			  exit 1
 			}
 			else{
-			  allRGIDs[rgID] = idSample + "\t" + rgID
+			  allRGIDs[idSample + "@" + rgID] = idSample + "\t" + rgID
 			}
-		[idSample, target, bam, fcid, lane]
+		[idSample, target, bam, fileID, lane]
 	   }
 	   .groupTuple(by: [3])
 	   .map{ item ->
