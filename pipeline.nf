@@ -265,6 +265,7 @@ if (params.mapping) {
     """
   }
 
+  def fastqR1fileID = [:]
   perLaneFastqsR1 = perLaneFastqsR1.transpose()
         .map{ item ->
           def idSample = item[0]
@@ -273,8 +274,12 @@ if (params.mapping) {
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 
+	  if(!TempoUtils.checkDuplicates(fastqR1fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain same RGID")){exit 1}
+
 	  [idSample, target, fastq, fileID, lane]
         }
+
+  def fastqR2fileID = [:]
   perLaneFastqsR2 = perLaneFastqsR2.transpose()
         .map{ item ->
           def idSample = item[0]
@@ -282,6 +287,8 @@ if (params.mapping) {
 	  def fastq = item[2]
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+
+	  if(!TempoUtils.checkDuplicates(fastqR2fileID, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain same RGID")){exit 1}
 
 	  [idSample, target, fastq, fileID, lane]
         }
@@ -395,17 +402,9 @@ if (params.mapping) {
   // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
   def allRGIDs = [:]
   sortedBam.map { idSample, target, bam, fileID, lane, rgIDfile ->
-                        rgID = rgIDfile.getSimpleName()
-                        if(allRGIDs.containsKey(idSample + "@" + rgID)){
-                          println "ERROR: Read group \"${rgID}\" apprears in two identical fastq files in different paths."
-                          println allRGIDs.get(idSample + "@" + rgID)
-			  println idSample + "\t" + rgID
-			  println ""
-			  exit 1
-			}
-			else{
-			  allRGIDs[idSample + "@" + rgID] = idSample + "\t" + rgID
-			}
+
+		    if(!TempoUtils.checkDuplicates(allRGIDs, idSample + "@" + rgIDfile.getSimpleName(), idSample + "\t" + rgIDfile.getSimpleName() + "\t" + bam, "the following samples, since they contain the same RGID")){exit 1}
+
 		[idSample, target, bam, fileID, lane]
 	   }
 	   .groupTuple(by: [3])
