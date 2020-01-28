@@ -389,7 +389,7 @@ if (params.mapping) {
     """
     rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
     readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
-    touch `zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-`.readId
+    touch `zcat $fastqFile1 | head -1 | tr ':/\t ' '@' | cut -d '@' -f2-`.readId
     set -e
     set -o pipefail
     echo -e "${idSample}@\${rgID}\t${inputSize}" > file-size.txt
