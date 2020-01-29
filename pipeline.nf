@@ -206,7 +206,7 @@ if (params.mapping) {
 
     output:
       file("file-size.txt") into R1Size
-      set idSample, target, file("*R1.splitLanes.fastq.gz"), file("*.fcid") into perLaneFastqsR1
+      set idSample, target, file("*R1.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR1
 
     when: params.splitLanes
 
@@ -229,6 +229,7 @@ if (params.mapping) {
       touch \${fcid}.fcid
       echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
       zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz"}}'
+      touch `ls *R1.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
   process SplitLanesR2 {
@@ -239,7 +240,7 @@ if (params.mapping) {
 
     output:
       file("file-size.txt") into R2Size
-      set idSample, target, file("*R2.splitLanes.fastq.gz"), file("*.fcid") into perLaneFastqsR2
+      set idSample, target, file("*R2.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR2
 
     when: params.splitLanes
 
@@ -262,6 +263,7 @@ if (params.mapping) {
       touch \${fcid}.fcid
       echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
       zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz"}}'
+      touch `ls *R2.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
 
@@ -273,11 +275,12 @@ if (params.mapping) {
 	  def fastq = item[2]
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+	  def laneCount = item[4].getSimpleName().toInteger()
 
 	  // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
 	  if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 
-	  [idSample, target, fastq, fileID, lane]
+	  [idSample, target, fastq, fileID, lane, laneCount]
         }
 
   def fastqR2fileIDs = [:]
@@ -288,30 +291,19 @@ if (params.mapping) {
 	  def fastq = item[2]
 	  def fileID = idSample + "@" + item[3].getSimpleName()
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+	  def laneCount = item[4].getSimpleName().toInteger()
 
 	  if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 
-	  [idSample, target, fastq, fileID, lane]
+	  [idSample, target, fastq, fileID, lane, laneCount]
         }
 
   fastqFiles  = perLaneFastqsR1
-        .concat(perLaneFastqsR2)
-        .groupTuple(by: [0,1,3,4], size: 2)
-        .groupTuple(by: [0,1,3])
-        .map{ item ->
-            def idSample = item[0]
-            def target = item[1]
-            def fastqPairs = item[2]
-            def fileID = item[3]
-            def lanes = item[4]
-	    def numOfLanes = lanes instanceof Collection ? lanes.size() : 1
-
-            return [ idSample, target, fastqPairs, fileID, lanes, numOfLanes ]
+        .mix(perLaneFastqsR2)
+        .groupTuple(by: [0,1,3,4,5], size: 2)
+        .map {  idSample, target, fastqPairs, fileID, lanes, laneCount ->
+          tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
         }
-        .map {  idSample, target, fastqPairs, fileID, lanes, numOfLanes ->
-          tuple(idSample, target, fastqPairs, groupKey(fileID, numOfLanes), lanes)
-        }
-        .transpose()
         .map{ idSample, target, fastqPairs, fileID, lane ->
              [idSample, target, fastqPairs[0], fastqPairs[0].size(), fastqPairs[1], fastqPairs[1].size(), fileID, lane]
         }
@@ -325,7 +317,7 @@ if (params.mapping) {
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
-    tag {fileID}   // The tag directive allows you to associate each process executions with a custom label
+    tag {fileID + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
     publishDir "${params.outDir}/qc/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
