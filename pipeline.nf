@@ -171,59 +171,42 @@ referenceMap = defineReferenceMap()
 if (params.mapping) {
 
   // Parse input FASTQ mapping
-  inputMapping.set{ inputFastqs }
+  inputMapping.groupTuple(by: [0])
+              .map { idSample, targets, files_pe1, files_pe2
+                -> tuple(groupKey(idSample, targets.size()), targets, files_pe1, files_pe2)
+              }
+              .transpose()
+              .map{ idSample, target, file_pe1, file_pe2 ->
+                   [idSample, target, file_pe1, file_pe2, file_pe1.getSimpleName(), file_pe1.getSimpleName()]
+              }
+              .set{ inputFastqs }
 
   if (params.splitLanes) {
   inputFastqs
-	.groupTuple(by: [0])
-	.map{ idSample, targets, fileID, files_pe1, files_pe2
-		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe2, targets)
-	}
-	.transpose()
-	.into{ fastqsNeedSplit; fastqsNoNeedSplit }
+        .into{ fastqsNeedSplit; fastqsNoNeedSplit }
 
   fastqsNeedSplit
-	.filter{ item ->
-		def idSample = item[0]
-		def fileID = item[1]
-		def file_pe1 = item[2]
-		def file_pe2 = item[3]
-		def targetFile = item[4]
-
-		!(item[2].getName() =~ /_L(\d){3}_/)
-	}
-	.into{ inputFastqR1; inputFastqR2 }
+        .filter{ item -> !(item[2].getName() =~ /_L(\d){3}_/) }
+        .map{ idSample, target, file_pe1, file_pe2, fileID, lane -> [idSample, target, file_pe1, file_pe2] }
+        .into{ inputFastqR1; inputFastqR2 }
 
   fastqsNoNeedSplit
-	.filter{ item ->
-		def idSample = item[0]
-		def fileID = item[1]
-		def file_pe1 = item[2]
-		def file_pe2 = item[3]
-		def targetFile = item[4]
+        .filter{ item -> item[2].getName() =~ /_L(\d){3}_/ }
+        .map { idSample, target, file_pe1, file_pe2, fileID, lane
+                -> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
+        }
+        .set{ fastqsNoNeedSplit }
 
-		item[2].getName() =~ /_L(\d){3}_/
-	}
-	.map{ item ->
-		def idSample = item[0]
-		def fileID = item[1]
-		def file_pe1 = item[2]
-		def file_pe2 = item[3]
-		def targetFile = item[4]
-
-		return [ idSample, fileID, targetFile, file_pe1, file_pe2 ]
-	}
-	.set{ fastqsNoNeedSplit }
 
   process SplitLanesR1 {
-    tag {idSample + "@" + fileID + "@R1"}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + file(fastqFile1)}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set idSample, fileID, file(fastqFile1), file(fastqFile2), targetFile from inputFastqR1
+      set idSample, target, file(fastqFile1), file(fastqFile2) from inputFastqR1
 
     output:
       file("file-size.txt") into R1Size
-      set idSample, fileID, file("*R1.splitLanes.fastq.gz"), targetFile into perLaneFastqsR1
+      set idSample, target, file("*R1.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR1
 
     when: params.splitLanes
 
@@ -242,19 +225,22 @@ if (params.mapping) {
     }
 
     """
-      echo -e "${idSample}@${fileID}@R1\t${inputSize}" > file-size.txt
-      zcat $fastqFile1 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R1.splitLanes.fastq.gz"}}'
+      fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
+      touch \${fcid}.fcid
+      echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
+      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz"}}'
+      touch `ls *R1.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
   process SplitLanesR2 {
-    tag {idSample + "@" + fileID + "@R2"}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + file(fastqFile2)}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set idSample, fileID, file(fastqFile1), file(fastqFile2), targetFile from inputFastqR2
+      set idSample, target, file(fastqFile1), file(fastqFile2) from inputFastqR2
 
     output:
       file("file-size.txt") into R2Size
-      set idSample, fileID, file("*R2.splitLanes.fastq.gz"), targetFile into perLaneFastqsR2
+      set idSample, target, file("*R2.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR2
 
     when: params.splitLanes
 
@@ -273,81 +259,77 @@ if (params.mapping) {
     }
 
     """
-      echo -e "${idSample}@${fileID}@R2\t${inputSize}" > file-size.txt
-      zcat $fastqFile2 | awk 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fileID}_L00"lane"_R2.splitLanes.fastq.gz"}}'
+      fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
+      touch \${fcid}.fcid
+      echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
+      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz"}}'
+      touch `ls *R2.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
 
-  fastqFiles = perLaneFastqsR1
-	.combine(perLaneFastqsR2, by: [0,1,3])
-	.concat(fastqsNoNeedSplit)
+  def fastqR1fileIDs = [:]
+  perLaneFastqsR1 = perLaneFastqsR1.transpose()
         .map{ item ->
-            def idSample = item[0]
-            def fileID = item[1]
-            def file_pe1 = item[3]
-            def file_pe2 = item[4]
-            def targetFile = item[2]
-	    def numOfLanes = file_pe1 instanceof Collection ? file_pe1.size() : 1
+          def idSample = item[0]
+	  def target = item[1]
+	  def fastq = item[2]
+	  def fileID = idSample + "@" + item[3].getSimpleName()
+	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+	  def laneCount = item[4].getSimpleName().toInteger()
 
-            return [ idSample, fileID, file_pe1, file_pe2, targetFile, numOfLanes ]
+	  // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
+	  if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+
+	  [idSample, target, fastq, fileID, lane, laneCount]
         }
-	.groupTuple(by: [0])
-	.map { idSample, fileID, file_pe1, file_pe2, targetFile, numOfLanes
-		-> tuple(groupKey(idSample, numOfLanes.sum()), fileID, file_pe1, file_pe2, targetFile, numOfLanes)
-	}
-	.transpose()
-        .transpose()
-	.map{ item ->
-	    def idSample = item[0]
-	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[2])
-	    def fileID = item[1] + "@" + fastqInfo[1]
-	    def file_pe1 = item[2]
-	    def file_pe1_size = item[2].size()
-	    def file_pe2 = item[3]
-	    def file_pe2_size = item[3].size()
-	    def targetFile = item[4]
-	    def rgID = fastqInfo[0] + ":" + fastqInfo[1]
 
-	    return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
-	}
+  def fastqR2fileIDs = [:]
+  perLaneFastqsR2 = perLaneFastqsR2.transpose()
+        .map{ item ->
+          def idSample = item[0]
+	  def target = item[1]
+	  def fastq = item[2]
+	  def fileID = idSample + "@" + item[3].getSimpleName()
+	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+	  def laneCount = item[4].getSimpleName().toInteger()
+
+	  if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+
+	  [idSample, target, fastq, fileID, lane, laneCount]
+        }
+
+  fastqFiles  = perLaneFastqsR1
+        .mix(perLaneFastqsR2)
+        .groupTuple(by: [0,1,3,4,5], size: 2)
+        .map {  idSample, target, fastqPairs, fileID, lanes, laneCount ->
+          tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
+        }
+        .map{ idSample, target, fastqPairs, fileID, lane ->
+             [idSample, target, fastqPairs[0], fastqPairs[0].size(), fastqPairs[1], fastqPairs[1].size(), fileID, lane]
+        }
+        .mix(fastqsNoNeedSplit)
   }
   else{
-     fastqFiles =  inputFastqs
-        .map{ item ->
-            def idSample = item[0]
-	    def fastqInfo = TempoUtils.flowcellLaneFromFastq(item[3])
-            def fileID = item[2] + "@" + fastqInfo[1]
-            def file_pe1 = item[3]
-            def file_pe1_size = item[3].size()
-            def file_pe2 = item[4]
-            def file_pe2_size = item[4].size()
-            def targetFile = item[1]
-            def rgID = fastqInfo[0] + ":" + fastqInfo[1]
-
-            return [ idSample, fileID, file_pe1, file_pe1_size, file_pe2, file_pe2_size, targetFile, rgID ]
-        }
-	.groupTuple(by:[0])
-	.map{ idSample, fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, targets, rgID
-		-> tuple( groupKey(idSample, fileID.size()), fileID, files_pe1, files_pe1_size, files_pe2, files_pe2_size, targets, rgID)}
-	.transpose()
+     fastqFiles =  inputFastqs.map { idSample, target, file_pe1, file_pe2, fileID, lane
+					-> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
+				   }
   }
-
 
   // AlignReads - Map reads with BWA mem output SAM
   process AlignReads {
-    tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
+    tag {fileID + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
     publishDir "${params.outDir}/qc/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
-      set idSample, fileID, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, targetFile, rgID from fastqFiles
+      set idSample, target, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, fileID, lane from fastqFiles
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
       file("*.html") into fastPHtml
       file("*.json") into fastPJson
       file("file-size.txt") into laneSize
-      set idSample, fileID, file("${fileID}.sorted.bam"), targetFile into sortedBam
+      set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
 
     script:
     // LSF resource allocation for juno
@@ -396,45 +378,54 @@ if (params.mapping) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    readGroup = "@RG\\tID:${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     """
+    rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
+    readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
+    touch `zcat $fastqFile1 | head -1 | tr ':/\t ' '@' | cut -d '@' -f2-`.readId
     set -e
     set -o pipefail
-    echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
-    fastp --html ${fileID}.fastp.html --json ${fileID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-    bwa mem -R \"${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${fileID}.bam
+    echo -e "${idSample}@\${rgID}\t${inputSize}" > file-size.txt
+    fastp --html ${idSample}@\${rgID}.fastp.html --json ${idSample}@\${rgID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
+    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${rgID}.bam
 
-    samtools sort -m ${mem}M -@ ${task.cpus} -o ${fileID}.sorted.bam ${fileID}.bam
+    samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}.sorted.bam ${idSample}@\${rgID}.bam
     """
   }
 
-  sortedBam.groupTuple()
-    .map{ item ->
-      def idSample = item[0]
-      def fileID = item[1] //is a list
-      def bam = item[2]
-  
-      def targetList = item[3].unique()
+  // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
+  def allReadIds = [:]
+  sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
 
-      if (targetList.size() > 1) {
-        println "ERROR: Multiple targets found for ${idSample}; check inputs"
-        exit 1
-      }
-    
-      def target = targetList[0]
+		// Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
+		if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
 
-      [idSample, fileID, bam, target]
-    }.set{ groupedBam }
+		[idSample, target, bam, fileID, lane]
+	   }
+	   .groupTuple(by: [3])
+	   .map{ item ->
+		      def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
+		      def target   = item[1] instanceof Collection ? item[1].first() : item[1]
+		      def bams = item[2]
+		      [idSample, target, bams]
+	   }
+	   .groupTuple(by: [0])
+	   .map{ item ->
+		      def idSample = item[0]
+		      def target =  item[1] instanceof Collection ? item[1].first() : item[1]
+		      def bams = item[2].flatten()
+		      [idSample, bams, target]
+	   }
+	   .set{ groupedBam }
 
   // MergeBams
   process MergeBams {
     tag {idSample}
 
     input:
-      set idSample, fileID, file(bam), targetFile from groupedBam
+      set idSample, file(bam), target from groupedBam
 
     output:
-      set idSample, file("${idSample}.merged.bam"), targetFile into mergedBam
+      set idSample, file("${idSample}.merged.bam"), target into mergedBam
 
     script:
     """
@@ -442,15 +433,16 @@ if (params.mapping) {
     """
   }
 
-  // GATK MarkDuplicates
+
+// GATK MarkDuplicates
   process MarkDuplicates {
     tag {idSample}
 
     input:
-      set idSample, file(bam), targetFile from mergedBam
+      set idSample, file(bam), target from mergedBam
 
     output:
-      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), targetFile into mdBams, mdBams4BQSR
+      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
 
     script:
     if (workflow.profile == "juno") {
@@ -493,7 +485,7 @@ if (params.mapping) {
     tag {idSample}
 
     input:
-      set idSample, file(bam), file(bai), targetFile from mdBams
+      set idSample, file(bam), file(bai), target from mdBams
       set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex) from Channel.value([
         referenceMap.genomeFile,
         referenceMap.genomeIndex,
@@ -620,7 +612,6 @@ if (params.mapping) {
           out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
       }
   }
-
 } // End of "if (params.mapping) {}"
 
 

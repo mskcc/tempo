@@ -63,7 +63,7 @@ class TempoUtils {
   static def extractFastq(tsvFile, assayType) {
     def allRows = [:]
     def allFiles = [:]
-    def allReadNames = [:]
+
     Channel.from(tsvFile)
     .splitCsv(sep: '\t', header: true)
     .map { row ->
@@ -76,60 +76,12 @@ class TempoUtils {
       def target = row.TARGET
       def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: true)
       def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: true)
-      def fastqInfo = flowcellLaneFromFastq(fastqFile1)
-      def fileID = fastqFile1.baseName.replaceAll("_+R1(?!.*R1)", "").replace(".fastq", "") + "@" + fastqInfo[0].replaceAll(":","@")
       
       if(!checkFileExtension(fastqFile1,".fastq.gz")){System.exit(1)}
       if(!checkFileExtension(fastqFile2,".fastq.gz")){System.exit(1)}
 
-      def readName = fastqInfo[2]
-      if(allReadNames.containsKey(readName)){
-	println "ERROR: The following two files look like same file, because they contain the same read name ${readName} in the first line"
-	println allReadNames.get(readName)
-	println idSample + "\t" + row.FASTQ_PE1
-	System.exit(1)
-      }
-      else{
-        allReadNames[readName] = idSample + "\t" + row.FASTQ_PE1
-      }
-
-      [idSample, target, fileID, fastqFile1, fastqFile2]
+      [idSample, target, fastqFile1, fastqFile2]
     }
-  }
-
-
- static def flowcellLaneFromFastq(path) {
-    // https://github.com/SciLifeLab/Sarek/blob/917a4d7f4dceb5a524eb7bd1c287cd197febe9c0/main.nf#L639-L666
-    // parse first line of a FASTQ file (optionally gzip-compressed)
-    // and return the flowcell id and rgID number.
-    // expected format:
-    // xx:yy:FLOWCELLID:LANE:... (seven fields)
-    // or
-    // FLOWCELLID:LANE:xx:... (five fields)
-    InputStream fileStream = new FileInputStream(path.toFile())
-    InputStream gzipStream = new java.util.zip.GZIPInputStream(fileStream)
-    Reader decoder = new InputStreamReader(gzipStream, 'ASCII')
-    BufferedReader buffered = new BufferedReader(decoder)
-    def line = buffered.readLine()
-    assert line.startsWith('@')
-    line = line.substring(1)
-    def fields = line.split(' ')[0].split(':')
-    String fcid
-    int lane
-    String fullName
-    if (fields.size() == 7) {
-      // CASAVA 1.8+ format
-      // we include instrument name and run id in fcid to ensure the uniqueness
-      fcid = fields[0] + ":" + fields[1] + ":" + fields[2]
-      lane = fields[3].toInteger()
-      fullName = "@" + line
-    }
-    else if (fields.size() == 5) {
-      fcid = fields[0]
-      lane = fields[1].toInteger()
-      fullName = "@" + line
-    }
-    [fcid, lane, fullName]
   }
 
 
@@ -186,7 +138,8 @@ class TempoUtils {
   // Check duplicate rows
   static def checkDuplicates(hash, key, value, tsv) {
     if(hash.containsKey(key)){
-        println "ERROR: Duplicatd inputs found in ${tsv}:"
+        println "ERROR: Duplicatd inputs found in ${tsv}"
+	println ""
         println hash.get(key)
 	println "${value}"
 	return false
