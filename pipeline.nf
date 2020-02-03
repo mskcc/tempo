@@ -300,7 +300,7 @@ if (params.mapping) {
 
   fastqFiles  = perLaneFastqsR1
         .mix(perLaneFastqsR2)
-        .groupTuple(by: [0,1,3,4,5], size: 2)
+        .groupTuple(by: [0,1,3,4,5], size: 2, sort: true)
         .map {  idSample, target, fastqPairs, fileID, lanes, laneCount ->
           tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
         }
