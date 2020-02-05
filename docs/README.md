@@ -36,6 +36,9 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 #### 1.2. Usage
 * [Running the Pipeline](running-the-pipeline.md)
+    * [Overview](running-the-pipeline.md#overview)
+    * [Input Files](running-the-pipeline.md#input-files)
+    * [Execution Mode](running-the-pipeline.md#execution-mode)
     * [Modifying or Resuming Pipeline Run](running-the-pipeline.md#modifying-or-resuming-pipeline-run)
     * [After Successful Run](running-the-pipeline.md#after-successful-run)
 * [Nextflow Basics](nextflow-basics.md)
