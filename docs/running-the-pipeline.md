@@ -28,7 +28,7 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `--outDir` is the directory where the output will end up. This directory does not need to exist. If not set, by default it will be set to run directory (i.e. the directory from which the command `nextflow run` is executed.)
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively. `-profile test_singularity` is for testing on `juno`.
 
-**Recommended arguments:**
+**Section arguments:**
 * `--somatic`, `--germline` and `--QC` flags are boolean that indicate to run the somatic, germline variant calling and QC modules, respectively. Default value are `false` for all. Note: Currently the pipeline will enable `--somatic` automatically if only `--germline` is enabled, since germline analysis needs results from somatic analysis for now. (default: `false` for all)
 * `--aggregate <true, false, or [a tsv file]>` can be boolean or be given a path to a tsv file. When boolean value is given, it has to work together with `--somatic`, `--germline` and/or `--QC` to aggregate the results of these operations together as a cohort. There will be a `cohort_level/` directory generated under `--outDir [path]`. (default: `false`). When `--aggregate [tsv]` mode is given, the pipeline will only aggregate the result in the directories appear in the TSV file. And it can not work with any of the following arguments: `--somatic`, `--germline`, `--QC`, `--mapping/--bamMapping [tsv]`, `--pairing [tsv]`.
 
@@ -78,6 +78,10 @@ But we suggest you do your own validation of your input to ensure smooth executi
 
 For processing paired-end FASTQ inputs, users must provide both a mapping file using `--mapping <tsv>`, as described below.
 
+You do not need `--pairing <tsv>` when you are running BAM generation alone (even together with `--QC`).
+
+You must to give `--pariring <tsv>` when `--somatic` or `--germline` is enabled.
+
 ::: warning Be aware
 Tempo can deal with any number of sequencing lanes per sample, in any combination of lanes split or combined across multiple FASTQ pairs. Different FASTQ pairs for the same sample can be provided as different lines in the mapping file and give the same SAMPLE ID in the `SAMPLE` field, and repeating the `TARGET` field. By default, Tempo will look for all distinct sequencing lanes in provided FASTQ files by scanning each FASTQ read name. The pipeline uses this and the instrument, run, and flowcell IDs from the _sequence identifiers_ in the input FASTQs to generate all different read group IDs for each sample. This information is used by the base quality score recalibration steps of the GATK suite of tools. If FASTQ files name explicitly specified the lane name in the format of `_L(\d){3}_` ("\_L" + "3 integer" + "\_"), the pipeline will assume this FASTQ files contain only one lane, and it will skip scanning and splitting the FASTQ files, and give one read group ID all the reads in the FASTQ files based on the name of the first read in the FASTQ file. Please refer to [this GATK Forum Page](https://gatkforums.broadinstitute.org/gatk/discussion/6472/read-groups)for more details.
 :::
@@ -101,6 +105,8 @@ Read further details on these parameters [here](reference-files.md#genomic-inter
 
 If the user is using pre-processed BAMs, the input TSV file is a similar format as FASTQ mapping TSV file, with slight difference showing below.
 
+You must to give `--pariring <tsv>` and at least one of `--somatic` `--germline` `--QC` simultaneously when you use `--bamMapping <tsv>`.
+
 Example:
 
 |SAMPLE|TARGET|BAM|BAI|
@@ -116,9 +122,11 @@ The `--pairing <tsv>` file will be exactly the same as using FASTQ mapping TSV f
 The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `pipeline.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
 :::
 
-### The Pairing File
+### The Pairing File (`--pairing <tsv>`)
 
 The pipeline needs to know which tumor and normal samples are to be analyzed as matched pairs. This file provides that pairing by referring to the sample names as provided in the `SAMPLE` column in the mapping file.
+
+You do not need `--pairing <tsv>` when you are running BAM generation alone (even together with `--QC`).
 
 Example:
 
@@ -128,6 +136,70 @@ Example:
 |normal_sample_2|tumor_sample_2|
 |...|...|
 |normal_sample_n|tumor_sample_n|
+
+## Execution Mode
+
+There are overall 4 execution modes that TEMPO accept, depending on the way of input arguments are given. The pipeline will throw an error when it detects incompatible _Section arguments_ (`--somatic`, `--germline`, `--QC`, `--aggregate`) combinations. Compatibility of analysis argument combinations are described below:
+
+### `--mapping <tsv>` only
+When no additional _Section arguments_ are given, only alignment steps will be performed.
+
+***Combatible _Section Arguments_ Combinations:***
+* `--QC`: `QcAlfred` and `QcAlfred` will be performed.
+* `--QC --aggregate`: `QcAlfred` and `QcAlfred` will be performed and aggregated in `cohort_level/` folder.
+
+***Incombatible _Section Arguments_:***
+* `--somatic`: No pairing infomation.
+* `--germline`: No pairing information.
+* `--bamMapping <tsv>`: Conflicts.
+
+### `--mapping/--bamMapping <tsv>` and `--pairing <tsv>` (We are describing two modes in this section)
+When `--mapping <tsv>` is given, the pipeline will use FASTQ input and start from alignment steps.
+When `--bamMapping <tsv>` is given, the pipeline will use BAM input and skip alignment steps.
+When no additional _Sectionarguments_ are given, pipeline will throw an error indicating that `--pairing <tsv>` is not used.
+
+***Combatible _Section Arguments_ Combinations:***
+* `--somatic` with or without `--aggregate`
+* `--somatic --germline` with or without `--aggregate`
+* `--somatic --QC` with or without `--aggregate`
+* `--QC` with or without `--aggregate`: `QcConpair` will be performed together with `QcAlfred` and `QcAlfred`. 
+
+***Incombatible _Section Arguments_:***
+* `--germline` with or without `--aggregate` and `--QC`: The pipeline will auto-enable `--somatic` because germline analysis need the results from somatic analysis at this stage.
+* `--mapping <tsv>`: Conflicts.
+
+### `--aggregate <tsv>` only
+This mode can only be run on the TEMPO produced output structure. It explicitly relies on the output structure and T/N pair names that are auto-generated by TEMPO to identify how and what files need to be aggregated together as a cohort level result under folder `cohort_level/`. Please refer to [Outputs](outputs.md#outputs) for more detail.
+
+Example of the input TSV file:
+
+|PATH|
+|:---:|
+|~/Result/qc/tumor1__normal1/|
+|~/Result/somatic/tumor1__normal1/|
+|~/Result/germline/tumor1__normal1/|
+|~/Result/qc/tumor2__normal2/|
+|...|...|
+|~/Result/qc/tumor3__normal3/|
+
+::: tip Note
+We highly recommend you to use command line to list all the Tumor/Normal result folders you want to aggregate to ensure the exists of the result folders. Example code: 
+```shell
+echo "PATH" > aggregate.tsv
+ls -d ~/Result/*/* >> aggregate.tsv
+```
+:::
+
+***Combatible _Section Arguments_ Combinations:***
+* None
+
+***Incombatible _Section Arguments_:***
+* `--somatic`: Not needed. Auto-detected.
+* `--germline`: Not needed. Auto-detected.
+* `--QC`: Not needed. Auto-detected.
+* `--mapping <tsv>`: Conflicts.
+* `--bamMapping <tsv>`: Conflicts.
+* `--pairing <tsv>`: Conflicts.
 
 ## Running the Pipeline on Juno
 
