@@ -144,11 +144,11 @@ There are overall 4 execution modes that TEMPO accept, depending on the way of i
 ### `--mapping <tsv>` only
 When no additional _Section arguments_ are given, only alignment steps will be performed.
 
-***Combatible _Section Arguments_ Combinations:***
+***Compatible _Section Arguments_ Combinations:***
 * `--QC`: `QcAlfred` and `QcAlfred` will be performed.
 * `--QC --aggregate`: `QcAlfred` and `QcAlfred` will be performed and aggregated in `cohort_level/` folder.
 
-***Incombatible _Section Arguments_:***
+***Incompatible _Section Arguments_:***
 * `--somatic`: No pairing infomation.
 * `--germline`: No pairing information.
 * `--bamMapping <tsv>`: Conflicts.
@@ -158,13 +158,13 @@ When `--mapping <tsv>` is given, the pipeline will use FASTQ input and start fro
 When `--bamMapping <tsv>` is given, the pipeline will use BAM input and skip alignment steps.
 When no additional _Sectionarguments_ are given, pipeline will throw an error indicating that `--pairing <tsv>` is not used.
 
-***Combatible _Section Arguments_ Combinations:***
+***Compatible _Section Arguments_ Combinations:***
 * `--somatic` with or without `--aggregate`
 * `--somatic --germline` with or without `--aggregate`
 * `--somatic --QC` with or without `--aggregate`
 * `--QC` with or without `--aggregate`: `QcConpair` will be performed together with `QcAlfred` and `QcAlfred`. 
 
-***Incombatible _Section Arguments_:***
+***Incompatible _Section Arguments_:***
 * `--germline` with or without `--aggregate` and `--QC`: The pipeline will auto-enable `--somatic` because germline analysis need the results from somatic analysis at this stage.
 * `--mapping <tsv>`: Conflicts.
 
@@ -190,10 +190,10 @@ ls -d ~/Result/*/* >> aggregate.tsv
 ```
 :::
 
-***Combatible _Section Arguments_ Combinations:***
-* None
+***Compatible _Section Arguments_ Combinations:***
+* The pipeline will auto-detect which sections need to be aggregated, so no _Section_Arguments_ need to be given.
 
-***Incombatible _Section Arguments_:***
+***Incompatible _Section Arguments_:***
 * `--somatic`: Not needed. Auto-detected.
 * `--germline`: Not needed. Auto-detected.
 * `--QC`: Not needed. Auto-detected.
