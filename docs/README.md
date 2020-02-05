@@ -84,10 +84,19 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 ### 5. Acknowledgements
 * [Acknowledgements](acknowledgements.md)
 
+
+## Pipeline Flowchart
 <p align="center">
   <img id="diagram" src="./pipeline-flowchart.png"/>
-  <img id="dag" src="./dag.png"/>
-  <img src="./brandenburg5_allegro.jpg">
 </p>
 
+## Directed Acyclic Graph
+<p align="center">
+  <img id="dag" src="./dag.png"/>
+</p>
+
+##
+<p align="center">
+  <img src="./brandenburg5_allegro.jpg">
+</p>
 ---
