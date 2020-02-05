@@ -95,7 +95,7 @@ Example:
 |normal_sample_1|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
 |normal_sample_1|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
 |tumor_sample_1|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
-|tumor_sample_1|...|...|...|
+|tumor_sample_1|agilent|...|...|
 |tumor_sample_1|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
 
 Accepted values for the **TARGET** column are `agilent`, `idt` or `wgs`. Please note `idt` and `agilent` can be mixed and are valid when `--assayType exome`. But `wgs` can not be mixed with any other value, and is only valid when `--assayType genome`\
@@ -113,13 +113,14 @@ Example:
 |:---:|:---:|:---:|:---:|:---:|
 |normal_sample_1|agilent|normal1.bam|normal1.bai|
 |normal_sample_2|agilent|normal2.bam|normal2.bai|
-|tumor_sample_1|...|...|...|
-|tumor_sample_2|agilent|tumor1.bam|tumor1.bai|
+|tumor_sample_1|agilent|...|...|
+|tumor_sample_2|agilent|tumor2.bam|tumor2.bai|
 
 The `--pairing <tsv>` file will be exactly the same as using FASTQ mapping TSV file, describing below.
 
 ::: tip Note
 The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `pipeline.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
+Different from FASTQ mapping tsv, in this TSV file each SAMPLE id can only appear once, meaning the pipeline will not combine different BAMs for you for the same sample.
 :::
 
 ### The Pairing File (`--pairing <tsv>`)
