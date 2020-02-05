@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/mskcc/tempo.svg?token=DokCkCiDp43sqzeuXUHD&branch=master)](https://travis-ci.com/mskcc/tempo)
 
-# Tempo <img id="logo" src="./docs/tempoLogo.png"/>
+# <img id="logo" src="./docs/tempoLogo.png" height="42" align="left"/> TEMPO
 
 Tempo is a CMO Computational Sciences (CCS) research pipeline processing WES & WGS tumor-normal pairs using the [Nextflow framework](https://www.nextflow.io/). Currently the pipeline is composed of alignment and QC, and detection of both somatic alterations and germline variants. Users can begin with inputs of either paired-end FASTQs or BAMs, and process these via the command line. 
 
