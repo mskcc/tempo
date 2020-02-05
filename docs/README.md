@@ -49,7 +49,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [QC Outputs](outputs.md#qc-outputs)
 * [Somatic Data](outputs.md#somatic-data)
 * [Germline Data](outputs.md#germline-data)
-* [Extended Outputs](outputs.md#extended-outputs)
+* [Cohort Level Outputs](outputs.md#cohort-level-outputs)
 
 ### 2. Pipeline contents
 
@@ -85,6 +85,8 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [Acknowledgements](acknowledgements.md)
 
 <p align="center">
+  <img id="diagram" src="./pipeline-flowchart.png"/>
+  <img id="dag" src="./dag.png"/>
   <img src="./brandenburg5_allegro.jpg">
 </p>
 
