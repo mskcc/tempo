@@ -99,6 +99,7 @@ Example:
 |tumor_sample_1|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
 
 Accepted values for the **TARGET** column are `agilent`, `idt` or `wgs`. Please note `idt` and `agilent` can be mixed and are valid when `--assayType exome`. But `wgs` can not be mixed with any other value, and is only valid when `--assayType genome`\
+
 Read further details on these parameters [here](reference-files.md#genomic-intervals).
 
 #### BAM Mapping File (`--bamMapping <tsv>`)
@@ -120,6 +121,7 @@ The `--pairing <tsv>` file will be exactly the same as using FASTQ mapping TSV f
 
 ::: tip Note
 The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `pipeline.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
+
 Different from FASTQ mapping tsv, in this TSV file each SAMPLE id can only appear once, meaning the pipeline will not combine different BAMs for you for the same sample.
 :::
 
@@ -156,7 +158,9 @@ When no additional _Section arguments_ are given, only alignment steps will be p
 
 ### `--mapping/--bamMapping <tsv>` and `--pairing <tsv>` (We are describing two modes in this section)
 When `--mapping <tsv>` is given, the pipeline will use FASTQ input and start from alignment steps.
+
 When `--bamMapping <tsv>` is given, the pipeline will use BAM input and skip alignment steps.
+
 When no additional _Sectionarguments_ are given, pipeline will throw an error indicating that `--pairing <tsv>` is not used.
 
 ***Compatible _Section Arguments_ Combinations:***

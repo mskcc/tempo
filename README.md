@@ -9,3 +9,8 @@ For further details of how to begin processing data with Tempo, please view our 
 The inspiration for this project derives from [Sarek](https://github.com/SciLifeLab/Sarek), developed at [SciLifeLab](https://github.com/SciLifeLab).
 
 
+<p align="center">
+  <img id="diagram" src="./docs/pipeline-flowchart.png"/>
+  <img id="dag" src="./docs/dag.png"/>
+  <img src="./docs/brandenburg5_allegro.jpg">
+</p>
