@@ -41,7 +41,7 @@ A complete Directed Acyclic Graph can be found [here](./somatic.pdf) and [here](
 * __SNVs and indels__ are called using [HaplotypeCaller](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.0.8.0/org_broadinstitute_hellbender_tools_walkers_haplotypecaller_HaplotypeCaller.php) and [Strelka2](https://github.com/Illumina/strelka). Subsequently, they are combined, annotated and filtered as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#germline-snvs-and-indels).
 * __Structural variants__ are detected by [Delly](https://github.com/dellytools/delly) and [Manta](https://github.com/Illumina/manta) then combined, filtered and annotated as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-and-germline-svs).
 
-A complete Directed Acyclic Graph can be found [here](./somaticiGermline.pdf) and [here](./somaticGermlineBAM.pdf)
+A complete Directed Acyclic Graph can be found [here](./somaticGermline.pdf) and [here](./somaticGermlineBAM.pdf)
 
 ## Quality Control
 
