@@ -95,7 +95,7 @@ Example:
 |normal_sample_1|agilent|normal1_L001_R01.fastq.gz|normal1_L001_R02.fastq.gz|
 |normal_sample_1|agilent|normal1_L002_R01.fastq.gz|normal1_L002_R02.fastq.gz|
 |tumor_sample_1|agilent|tumor1_L001_R01.fastq.gz|tumor1_L001_R02.fastq.gz|
-|...|...|...|...|
+|tumor_sample_1|...|...|...|
 |tumor_sample_1|agilent|tumor1_L00N_R01.fastq.gz|tumor1_L00N_R02.fastq.gz|
 
 Accepted values for the **TARGET** column are `agilent`, `idt` or `wgs`. Please note `idt` and `agilent` can be mixed and are valid when `--assayType exome`. But `wgs` can not be mixed with any other value, and is only valid when `--assayType genome`\
@@ -113,7 +113,7 @@ Example:
 |:---:|:---:|:---:|:---:|:---:|
 |normal_sample_1|agilent|normal1.bam|normal1.bai|
 |normal_sample_2|agilent|normal2.bam|normal2.bai|
-|...|...|...|...|
+|tumor_sample_1|...|...|...|
 |tumor_sample_2|agilent|tumor1.bam|tumor1.bai|
 
 The `--pairing <tsv>` file will be exactly the same as using FASTQ mapping TSV file, describing below.
@@ -145,8 +145,8 @@ There are overall 4 execution modes that TEMPO accept, depending on the way of i
 When no additional _Section arguments_ are given, only alignment steps will be performed.
 
 ***Compatible _Section Arguments_ Combinations:***
-* `--QC`: `QcAlfred` and `QcAlfred` will be performed.
-* `--QC --aggregate`: `QcAlfred` and `QcAlfred` will be performed and aggregated in `cohort_level/` folder.
+* `--QC`: `QcAlfred` and `QcCollectHsMetrics` will be performed.
+* `--QC --aggregate`: `QcAlfred` and `QcCollectHsMetrics` will be performed and aggregated in `cohort_level/` folder.
 
 ***Incompatible _Section Arguments_:***
 * `--somatic`: No pairing infomation.
@@ -162,7 +162,7 @@ When no additional _Sectionarguments_ are given, pipeline will throw an error in
 * `--somatic` with or without `--aggregate`
 * `--somatic --germline` with or without `--aggregate`
 * `--somatic --QC` with or without `--aggregate`
-* `--QC` with or without `--aggregate`: `QcConpair` will be performed together with `QcAlfred` and `QcAlfred`. 
+* `--QC` with or without `--aggregate`: `QcConpair` will be performed together with `QcAlfred` and `QcCollectHsMetrics`.
 
 ***Incompatible _Section Arguments_:***
 * `--germline` with or without `--aggregate` and `--QC`: The pipeline will auto-enable `--somatic` because germline analysis need the results from somatic analysis at this stage.
@@ -183,7 +183,7 @@ Example of the input TSV file:
 |~/Result/qc/tumor3__normal3/|
 
 ::: tip Note
-We highly recommend you to use command line to list all the Tumor/Normal result folders you want to aggregate to ensure the exists of the result folders. Example code: 
+We highly recommend you to use command line to list all the Tumor/Normal result folders you want to aggregate to ensure the exists of the result folders. Example code:
 ```shell
 echo "PATH" > aggregate.tsv
 ls -d ~/Result/*/* >> aggregate.tsv
