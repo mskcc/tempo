@@ -53,9 +53,10 @@ The call `which java` should return `/opt/common/CentOS_7/java/jdk1.8.0_202/bin/
 You can run a the pipeline on small test files to ensure that you are ready to run real data. If you experience any issues, something in your environment might be the reason. The following should take approximately 30 minutes and all tasks should succeed at first attempt:
 
 ```shell
-nextflow run pipeline.nf --somatic --germline \
+nextflow run pipeline.nf \
     --mapping test_inputs/local/full_test_mapping.tsv \ 
     --pairing test_inputs/local/full_test_pairing.tsv \
     -profile test_singularity \
     --outDir results
+    --somatic --germline --QC --aggregate
 ```
