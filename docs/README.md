@@ -36,6 +36,9 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 #### 1.2. Usage
 * [Running the Pipeline](running-the-pipeline.md)
+    * [Overview](running-the-pipeline.md#overview)
+    * [Input Files](running-the-pipeline.md#input-files)
+    * [Execution Mode](running-the-pipeline.md#execution-mode)
     * [Modifying or Resuming Pipeline Run](running-the-pipeline.md#modifying-or-resuming-pipeline-run)
     * [After Successful Run](running-the-pipeline.md#after-successful-run)
 * [Nextflow Basics](nextflow-basics.md)
@@ -46,7 +49,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 * [QC Outputs](outputs.md#qc-outputs)
 * [Somatic Data](outputs.md#somatic-data)
 * [Germline Data](outputs.md#germline-data)
-* [Extended Outputs](outputs.md#extended-outputs)
+* [Cohort Level Outputs](outputs.md#cohort-level-outputs)
 
 ### 2. Pipeline contents
 
@@ -81,8 +84,19 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 ### 5. Acknowledgements
 * [Acknowledgements](acknowledgements.md)
 
+
+## Pipeline Flowchart
+<p align="center">
+  <img id="diagram" src="./pipeline-flowchart.png"/>
+</p>
+
+## Directed Acyclic Graph
+<p align="center">
+  <img id="dag" src="./dag.png"/>
+</p>
+
+##
 <p align="center">
   <img src="./brandenburg5_allegro.jpg">
 </p>
-
 ---
