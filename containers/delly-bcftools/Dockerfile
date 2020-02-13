@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM halllab/bcftools:v1.9
 
 LABEL maintainer="Sinisa Ivkovic (ivkovics@mskcc.org)" \
       version.ubuntu="18.04" \
