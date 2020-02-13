@@ -17,6 +17,7 @@ RUN apt-get update -y && apt-get install -y \
     vim  \
     wget \
     unzip \
+    procps \
     build-essential \
     libboost-all-dev \
     zlib1g-dev \
@@ -45,4 +46,4 @@ RUN unzip v${delly_version}.zip
 WORKDIR /usr/local/bin/delly-${delly_version}
 RUN make all
 WORKDIR /usr/local/bin
-RUN ln -s /usr/local/bin/delly-0.8.1/src/delly /usr/local/bin/delly
+RUN ln -s /usr/local/bin/delly-0.8.1/src/delly /usr/bin/delly
