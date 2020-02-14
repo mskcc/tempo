@@ -946,7 +946,8 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz") into dellyFilter4Combine
+    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyFilter4Combine
+    set file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyOutput
 
   when: "delly" in tools && runSomatic
 
@@ -1046,11 +1047,10 @@ process SomaticMergeDellyAndManta {
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
-    set idTumor, idNormal, target, file(dellyVcfs), file(mantaFile) from dellyMantaCombineChannel
+    set idTumor, idNormal, target, file(dellyVcfs), file(dellyVcfsIndex), file(mantaFile) from dellyMantaCombineChannel
 
   output:
     set file("${outputPrefix}.delly.manta.vcf.gz"), file("${outputPrefix}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedOutput, dellyMantaCombined4Aggregate
-    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into dellyOutput
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
@@ -2209,7 +2209,8 @@ process GermlineDellyCall {
     ])
 
   output:
-    set idNormal, target, file("${idNormal}_${svType}.delly.vcf.gz") into dellyFilter4CombineGermline
+    set idNormal, target, file("${idNormal}_${svType}.delly.vcf.gz"), file("${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyFilter4CombineGermline
+    set file("*delly.vcf.gz"), file("*delly.vcf.gz.tbi") into dellyOutputGermline
 
   when: 'delly' in tools && runGermline
 
@@ -2297,14 +2298,13 @@ process GermlineMergeDellyAndManta {
   publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
-    set idNormal, target, file(dellyVcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
+    set idNormal, target, file(dellyVcf), file(dellyVcfIndex), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
 
   output:
     set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedOutputGermline, dellyMantaCombined4AggregateGermline
-    set file("*delly.vcf.gz"), file("*delly.vcf.gz.tbi") into dellyOutputGermline
 
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
