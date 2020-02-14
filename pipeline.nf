@@ -1057,16 +1057,6 @@ process SomaticMergeDellyAndManta {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """ 
-//  for f in *.bcf
-//  do 
-//    bcftools view --output-type z \$f > \${f%%.*}.delly.vcf.gz
-//  done
-
-//  for f in *.vcf.gz
-//  do
-//    tabix --preset vcf \$f
-//  done
-  
   bcftools view \
     --samples ${idTumor},${idNormal} \
     --output-type z \
@@ -2320,16 +2310,6 @@ process GermlineMergeDellyAndManta {
 
   script:
   """ 
-//  for f in *.bcf
-//  do 
-//    bcftools view --output-type z \$f > \${f%%.*}.delly.vcf.gz
-//  done
-
-//  for f in *.delly.vcf.gz
-//  do
-//    tabix --preset vcf \$f
-//  done
-
   bcftools concat \
     --allow-overlaps \
     --output-type z \

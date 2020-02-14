@@ -46,4 +46,4 @@ RUN unzip v${delly_version}.zip
 WORKDIR /usr/local/bin/delly-${delly_version}
 RUN make all
 WORKDIR /usr/local/bin
-RUN ln -s /usr/local/bin/delly-0.8.1/src/delly /usr/bin/delly
+RUN ln -s /usr/local/bin/delly-${delly_version}/src/delly /usr/local/bin/delly
