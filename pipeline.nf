@@ -938,6 +938,8 @@ Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
 process SomaticDellyCall {
   tag {idTumor + "__" + idNormal + '@' + svType}
 
+  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
+  
   input:
     each svType from svTypes
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForDelly
@@ -1043,7 +1045,6 @@ dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(manta4Combine, by: 
 process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
@@ -2201,6 +2202,8 @@ Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
+  publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+
   input:
     each svType from svTypesGermline
     set idNormal, target, file(bamNormal), file(baiNormal) from bamsForDellyGermline
@@ -2294,7 +2297,6 @@ dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5).combine(manta4Combine
 process GermlineMergeDellyAndManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
   publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
