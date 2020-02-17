@@ -1,6 +1,6 @@
 FROM halllab/bcftools:v1.9
 
-LABEL maintainer="Sinisa Ivkovic (ivkovics@mskcc.org)" \
+LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
       version.ubuntu="18.04" \
       version.delly="0.8.2" \
       version.htslib="1.9"
