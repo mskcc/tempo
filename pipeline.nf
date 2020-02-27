@@ -136,6 +136,7 @@ else if (params.watchMapping) {
     println "ERROR: Conflict input! When running --watchMapping [tsv], --mapping/--bamMapping/--watchBamMapping/--pairing/--watchPairing/--somatic/--germline all need to be disabled!"
     exit 1
   }
+println "Ready!!!!!!"
 }
 else if (params.watchBamMapping) {
   TempoUtils.checkAssayType(params.assayType)
@@ -715,7 +716,7 @@ if (params.bamMapping || params.watchBamMapping) {
   inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
 }
 
-if (params.pairing) {
+if (params.pairing || params.watchPairing) {
 
   // Parse input FASTQ mapping
 
