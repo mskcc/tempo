@@ -118,6 +118,7 @@ else if (params.watchMapping) {
   Channel.watchPath( params.watchMapping, 'create, modify' )
         .flatMap{ it.readLines() }
         .unique()
+	.filter{ it -> !(it =~ /SAMPLE\t/) }
         .map{ row ->
                 def idSample = row.split("\t")[0]
                 def target = row.split("\t")[2]
@@ -142,6 +143,7 @@ else if (params.watchBamMapping) {
   TempoUtils.checkAssayType(params.assayType)
   Channel.watchPath( params.watchBamMapping, 'create, modify' )
         .flatMap{ it.readLines() }
+	.filter{ it -> !(it =~ /SAMPLE\t/) }
         .unique()
         .map{ row ->
                 def idSample = row.split("\t")[0]
@@ -160,6 +162,8 @@ else if (params.watchBamMapping) {
   if(params.watchPairing){
     Channel.watchPath( params.watchPairing, 'create, modify' )
            .flatMap { it.readLines() }
+	   .filter{ it -> !(it =~ /NORMAL_ID\t/) }
+	   .filter{ it -> !(it =~ /TUMOR_ID\t/) }
            .unique()
            .map { row ->
                 def TUMOR_ID = row.split("\t")[0]
