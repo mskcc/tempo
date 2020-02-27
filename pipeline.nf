@@ -113,9 +113,90 @@ if (params.mapping || params.bamMapping) {
     }
   }
 }
+else if (params.watchMapping) {
+  TempoUtils.checkAssayType(params.assayType)
+  Channel.watchPath( params.watchMapping, 'create, modify' )
+        .flatMap{ it.readLines() }
+        .unique()
+        .map{ row ->
+                def idSample = row.split("\t")[0]
+                def target = row.split("\t")[2]
+                def fastqFile1 = file(row.split("\t")[3], checkIfExists: false)
+                def fastqFile2 = file(row.split("\t")[4], checkIfExists: false)
+                def numOfPairs = row.split("\t")[5].toInteger()
+
+                [idSample, numOfPairs, target, fastqFile1, fastqFile2]
+        }
+        .map{ idSample, numOfPairs, target, files_pe1, files_pe2
+                -> tuple( groupKey(idSample, numOfPairs), target, files_pe1, files_pe2)
+        }
+        .transpose()
+        .set{inputMapping}
+  if (runSomatic || runGermline || params.mapping || params.bamMapping || params.watchBamMapping || params.watchPairing){
+    println "ERROR: Conflict input! When running --watchMapping [tsv], --mapping/--bamMapping/--watchBamMapping/--pairing/--watchPairing/--somatic/--germline all need to be disabled!"
+    exit 1
+  }
+}
+else if (params.watchBamMapping) {
+  TempoUtils.checkAssayType(params.assayType)
+  Channel.watchPath( params.watchBamMapping, 'create, modify' )
+        .flatMap{ it.readLines() }
+        .unique()
+        .map{ row ->
+                def idSample = row.split("\t")[0]
+                def target = row.split("\t")[1]
+                def bam = file(row.split("\t")[2], checkIfExists: false)
+                def bai = file(row.split("\t")[3], checkIfExists: false)
+
+                [idSample, target, bam, bai]
+        }
+        .map{ idSample, target, files_pe1, files_pe2
+                -> tuple( groupKey(idSample, 1), target, files_pe1, files_pe2)
+        }
+        .transpose()
+        .set{inputMapping}
+
+  if(params.watchPairing){
+    Channel.watchPath( params.watchPairing, 'create, modify' )
+           .flatMap { it.readLines() }
+           .unique()
+           .map { row ->
+                def TUMOR_ID = row.split("\t")[0]
+                def NORMAL_ID = row.split("\t")[1]
+
+                [TUMOR_ID, NORMAL_ID]
+           }
+           .set{inputPairing}
+    if (!runSomatic && !runGermline && !runQC){
+      println "ERROR: --watchPairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --watchPairing [tsv]."
+      exit 1
+    }
+  }
+  else{
+    if (runSomatic || runGermline){
+      println "ERROR: --watchPairing [tsv] needed when using --watchMapping [tsv] with --somatic/--germline"
+      exit 1
+    }
+  }
+  if (params.aggregate == true){
+      println "ERROR: --aggregate can't be used in watch mode."
+      exit 1
+  }
+  else if (params.aggregate != false){
+      println "ERROR: --aggregate [tsv] can't be used in watch mode."
+      exit 1
+  }else{}
+
+println "Ready!!!!!!"
+
+}
 else{
   if(params.pairing){
     println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
+    exit 1
+  }
+  if(params.watchPairing){
+    println "ERROR: When --watchPairing [tsv], --watchMapping [tsv] must be provided."
     exit 1
   }
 }
@@ -126,7 +207,7 @@ if (!runSomatic && runGermline){
 }
 
 if (runAggregate == false){
-  if (!params.mapping && !params.bamMapping){
+  if (!params.mapping && !params.bamMapping && !params.watchMapping && !params.watchBamMapping){
     println "ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
     exit 1
   }
@@ -151,10 +232,12 @@ else if (runAggregate == true){
 
 }
 else {
+  if(!params.watchMapping && !params.watchBamMapping){
   if (runSomatic || runGermline || runQC || params.mapping || params.bamMapping){
     println "ERROR: Conflict input! When running --aggregate [tsv], --mapping/--bamMapping/--pairing/--QC/--somatic/--germline all need to be disabled!"
     println "       If you want to run aggregate somatic/germline/qc, just include needed path the [tsv] and no need to use --QC/--somatic/--germline flag."
     exit 1
+  }
   }
 }
 
@@ -168,7 +251,7 @@ referenceMap = defineReferenceMap()
 
 
 // Skip these processes if starting from aligned BAM files
-if (params.mapping) {
+if (params.mapping || params.watchMapping) {
 
   // Parse input FASTQ mapping
   inputMapping.groupTuple(by: [0])
@@ -278,7 +361,9 @@ if (params.mapping) {
 	  def laneCount = item[4].getSimpleName().toInteger()
 
 	  // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
+	  if ( !params.watchMapping){
 	  if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+	  }
 
 	  [idSample, target, fastq, fileID, lane, laneCount]
         }
@@ -293,7 +378,9 @@ if (params.mapping) {
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 	  def laneCount = item[4].getSimpleName().toInteger()
 
+	  if ( !params.watchMapping){
 	  if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+	  }
 
 	  [idSample, target, fastq, fileID, lane, laneCount]
         }
@@ -397,7 +484,9 @@ if (params.mapping) {
   sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
 
 		// Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
+		if ( !params.watchMapping){
 		if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
+		}
 
 		[idSample, target, bam, fileID, lane]
 	   }
@@ -622,7 +711,7 @@ if (params.mapping) {
 */
 
 // If starting with BAM files, parse BAM pairing input
-if (params.bamMapping) {
+if (params.bamMapping || params.watchBamMapping) {
   inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
 }
 
