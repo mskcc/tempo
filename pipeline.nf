@@ -1445,7 +1445,7 @@ process RunMutationSignatures {
     set idTumor, idNormal, target, file(maf) from mafFileForMutSig
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSig4Aggregate
+    set idTumor, idNormal, target, file("${outputPrefix}.mutsig.txt") into mutSig4MetaDataParser
 
   when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
@@ -1739,7 +1739,7 @@ process RunMsiSensor {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msi4MetaData
+    set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msi4MetaDataParser
 
   when: "msisensor" in tools && runSomatic
 
@@ -1756,8 +1756,8 @@ process RunMsiSensor {
 
 
 facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
-			   .combine(msi4MetaData, by: [0,1,2])
-			   .combine(mutSig4Aggregate, by: [0,1,2])
+			   .combine(msi4MetaDataParser, by: [0,1,2])
+			   .combine(mutSig4MetaDataParser, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [1,2])
 			   .unique()
 			   .set{ mergedChannelMetaDataParser }
