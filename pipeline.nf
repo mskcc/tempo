@@ -3047,10 +3047,10 @@ process GermlineAggregateSv {
 
 
 if (runAggregate && runQC) {
-cohortQcBamAggregate.into{cohortQcBamAggregateTumor, cohortQcBamAggregateNormal}
-cohortQcBamAggregate1.into{cohortQcBamAggregate1Tumor, cohortQcBamAggregate1Normal}
-bamsQcStats4Aggregate.into{bamsQcStats4AggregateTumor, bamsQcStats4AggregateNormal}
-collectHsMetrics4Aggregate.into{collectHsMetrics4AggregateTumor, collectHsMetrics4AggregateNormal}
+cohortQcBamAggregate.into{cohortQcBamAggregateTumor; cohortQcBamAggregateNormal}
+cohortQcBamAggregate1.into{cohortQcBamAggregate1Tumor; cohortQcBamAggregate1Normal}
+bamsQcStats4Aggregate.into{bamsQcStats4AggregateTumor; bamsQcStats4AggregateNormal}
+collectHsMetrics4Aggregate.into{collectHsMetrics4AggregateTumor; collectHsMetrics4AggregateNormal}
 process QcBamAggregate {
 
   tag {cohort}
