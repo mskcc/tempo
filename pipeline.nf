@@ -3047,6 +3047,10 @@ process GermlineAggregateSv {
 
 
 if (runAggregate && runQC) {
+cohortQcBamAggregate.into{cohortQcBamAggregateTumor, cohortQcBamAggregateNormal}
+cohortQcBamAggregate1.into{cohortQcBamAggregate1Tumor, cohortQcBamAggregate1Normal}
+bamsQcStats4Aggregate.into{bamsQcStats4AggregateTumor, bamsQcStats4AggregateNormal}
+collectHsMetrics4Aggregate.into{collectHsMetrics4AggregateTumor, collectHsMetrics4AggregateNormal}
 process QcBamAggregate {
 
   tag {cohort}
@@ -3054,8 +3058,10 @@ process QcBamAggregate {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set idNormals, idTumors, placeHolder, cohort, placeHolder1, file(bamStatsFile) from cohortQcBamAggregate.combine(bamsQcStats4Aggregate, by:[2]).groupTuple(by:[3])
-    set idNormals, idTumors, placeHolder, cohort, placeHolder1, file(collectHsMetricsFile) from cohortQcBamAggregate1.combine(collectHsMetrics4Aggregate, by:[2]).groupTuple(by:[3])
+    set idTumors, cohort, idNormals, placeHolder, idSamples, file(bamStatsFile) from cohortQcBamAggregateTumor.combine(bamsQcStats4AggregateTumor, by:[1]).groupTuple(by:[1])
+    set idTumors, cohort, idNormals, placeHolder, idSamples, file(collectHsMetricsFile) from cohortQcBamAggregate1Tumor.combine(collectHsMetrics4AggregateTumor, by:[1]).groupTuple(by:[1])
+    set idNormals, cohort, idTumors, placeHolder, idSamples, file(bamStatsFile) from cohortQcBamAggregateNormal.combine(bamsQcStats4AggregateNormal, by:[2]).groupTuple(by:[1])
+    set idNormals, cohort, idTumors, placeHolder, idSamples, file(collectHsMetricsFile) from cohortQcBamAggregate1Normal.combine(collectHsMetrics4AggregateNormal, by:[2]).groupTuple(by:[1])
 
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
