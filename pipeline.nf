@@ -2789,7 +2789,9 @@ else{}
 if (runAggregate && runSomatic) {
 process SomaticAggregateMaf {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(mafFile) from cohortSomaticAggregateMaf.combine(NeoantigenMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2815,7 +2817,9 @@ process SomaticAggregateMaf {
 
 process SomaticAggregateNetMHC {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(netmhcCombinedFile) from cohortSomaticAggregateNetMHC.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2839,7 +2843,9 @@ process SomaticAggregateNetMHC {
 
 process SomaticAggregateFacets {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(purityHisens) from cohortSomaticAggregateFacets.combine(FacetsPurityHisens4Aggregate.transpose(), by:[1,2]).groupTuple(by:[2])
@@ -2871,7 +2877,9 @@ process SomaticAggregateFacets {
 
 process SomaticAggregateSv {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(dellyMantaVcf) from cohortSomaticAggregateSv.combine(dellyMantaCombined4Aggregate.transpose(), by:[1,2]).groupTuple(by:[2])
@@ -2909,7 +2917,9 @@ process SomaticAggregateSv {
 
 process SomaticAggregateLOHHLA {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(preditHLA) from cohortSomaticAggregateLOHHLA.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2935,7 +2945,9 @@ process SomaticAggregateLOHHLA {
 
 process SomaticAggregateMetadata {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(metaDataFile) from cohortSomaticAggregateMetadata.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2964,7 +2976,9 @@ if (runAggregate && runGermline) {
 // --- Aggregate per-sample germline data, MAF
 process GermlineAggregateMaf {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(mafFile) from cohortGermlineAggregateMaf.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
@@ -2992,7 +3006,9 @@ process GermlineAggregateMaf {
 // --- Aggregate per-sample germline data, SVs
 process GermlineAggregateSv {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idNormals, cohort, idTumors, placeHolder, noTumor, file(dellyMantaVcf) from cohortGermlineAggregateSv.combine(dellyMantaCombined4AggregateGermline.transpose(), by:[2]).groupTuple(by:[1])
@@ -3033,7 +3049,9 @@ process GermlineAggregateSv {
 if (runAggregate && runQC) {
 process QcBamAggregate {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idNormals, idTumors, placeHolder, cohort, placeHolder1, file(bamStatsFile) from cohortQcBamAggregate.combine(bamsQcStats4Aggregate, by:[2]).groupTuple(by:[3])
@@ -3060,7 +3078,9 @@ if (params.pairing){
 
 process QcConpairAggregate {
 
-  publishDir "${params.outDir}/cohort_level", mode: params.publishDirMode
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(conpairStatsFile) from cohortQcConpairAggregate.combine(conpairStats4Aggregate.transpose(), by:[1,2]).groupTuple(by:[2])
