@@ -140,7 +140,7 @@ if (!runSomatic && runGermline){
 }
 
 if (runAggregate == false){
-  if (!params.mapping && !params.bamMapping && !params.watchMapping && !params.watchBamMapping){
+  if (!params.mapping && !params.bamMapping){
     println "ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
     exit 1
   }
@@ -165,12 +165,10 @@ else if (runAggregate == true){
 
 }
 else {
-  if(!params.watchMapping && !params.watchBamMapping){
   if (runSomatic || runGermline || runQC || params.mapping || params.bamMapping){
     println "ERROR: Conflict input! When running --aggregate [tsv], --mapping/--bamMapping/--pairing/--QC/--somatic/--germline all need to be disabled!"
     println "       If you want to run aggregate somatic/germline/qc, just include needed path the [tsv] and no need to use --QC/--somatic/--germline flag."
     exit 1
-  }
   }
 }
 
@@ -184,7 +182,7 @@ referenceMap = defineReferenceMap()
 
 
 // Skip these processes if starting from aligned BAM files
-if (params.mapping || params.watchMapping) {
+if (params.mapping) {
 
   // Parse input FASTQ mapping
   inputMapping.groupTuple(by: [0])
@@ -294,7 +292,7 @@ if (params.mapping || params.watchMapping) {
 	  def laneCount = item[4].getSimpleName().toInteger()
 
 	  // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
-	  if ( !params.watchMapping){
+	  if ( !params.watch ){
 	  if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 	  }
 
@@ -311,7 +309,7 @@ if (params.mapping || params.watchMapping) {
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 	  def laneCount = item[4].getSimpleName().toInteger()
 
-	  if ( !params.watchMapping){
+	  if ( !params.watch ){
 	  if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
 	  }
 
@@ -417,7 +415,7 @@ if (params.mapping || params.watchMapping) {
   sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
 
 		// Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
-		if ( !params.watchMapping){
+		if ( !params.watch ){
 		if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
 		}
 
