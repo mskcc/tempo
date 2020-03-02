@@ -100,7 +100,7 @@ if (params.mapping || params.bamMapping) {
   }
   else if (params.watch == true) {
     mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.watchMapping(mappingFile, params.assayType).into(3) : TempoUtils.watchBamMapping(mappingFile, params.assayType).into(3)
+    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? watchMapping(mappingFile, params.assayType).into(3) : watchBamMapping(mappingFile, params.assayType).into(3)
   }
   else{}
   if(params.pairing){
@@ -112,7 +112,7 @@ if (params.mapping || params.bamMapping) {
     }
     else if (params.watch == true) {
       pairingFile = file(params.pairing, checkIfExists: false)
-      (checkPairing1, checkPairing2, inputPairing) = TempoUtils.watchPairing(pairingFile).into(3)
+      (checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
     }
     else{}
     if (!runSomatic && !runGermline && !runQC){
@@ -3177,4 +3177,62 @@ def defineReferenceMap() {
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
+}
+
+def watchMapping(tsvFile, assayType) {
+  Channel.watchPath( tsvFile, 'create, modify' )
+      .flatMap{ it.readLines() }
+      .unique()
+      .filter{ it -> !(it =~ /SAMPLE\t/) }
+      .map{ row ->
+              def idSample = row.split("\t")[0]
+              def target = row.split("\t")[2]
+              def fastqFile1 = file(row.split("\t")[3], checkIfExists: false)
+              def fastqFile2 = file(row.split("\t")[4], checkIfExists: false)
+              def numOfPairs = row.split("\t")[5].toInteger()
+              if(!TempoUtils.checkTarget(target, assayType)){}
+              if(!TempoUtils.checkNumberOfItem(row.split("\t"), 5, tsvFile)){}
+
+              [idSample, numOfPairs, target, fastqFile1, fastqFile2]
+      }
+      .map{ idSample, numOfPairs, target, files_pe1, files_pe2
+              -> tuple( groupKey(idSample, numOfPairs), target, files_pe1, files_pe2)
+      }
+      .transpose()
+}
+
+def watchBamMapping(tsvFile, assayType){
+  Channel.watchPath( tsvFile, 'create, modify' )
+      .flatMap{ it.readLines() }
+      .filter{ it -> !(it =~ /SAMPLE\t/) }
+      .unique()
+      .map{ row ->
+              def idSample = row.split("\t")[0]
+              def target = row.split("\t")[1]
+              def bam = file(row.split("\t")[2], checkIfExists: false)
+              def bai = file(row.split("\t")[3], checkIfExists: false)
+              if(!TempoUtils.checkTarget(target, assayType)){}
+              if(!TempoUtils.checkNumberOfItem(row.split("\t"), 4, tsvFile)){}
+
+              [idSample, target, bam, bai]
+      }
+      .map{ idSample, target, files_pe1, files_pe2
+              -> tuple( groupKey(idSample, 1), target, files_pe1, files_pe2)
+      }
+      .transpose()
+}
+
+def watchPairing(tsvFile){
+  Channel.watchPath( tsvFile, 'create, modify' )
+         .flatMap { it.readLines() }
+         .filter{ it -> !(it =~ /NORMAL_ID\t/) }
+         .filter{ it -> !(it =~ /TUMOR_ID\t/) }
+         .unique()
+         .map { row ->
+              def TUMOR_ID = row.split("\t")[0]
+              def NORMAL_ID = row.split("\t")[1]
+              if(!TempoUtils.checkNumberOfItem(row.split("\t"), 2, tsvFile)){}
+
+              [TUMOR_ID, NORMAL_ID]
+         }
 }
