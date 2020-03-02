@@ -93,14 +93,28 @@ runConpairAll = false
 println ""
 
 if (params.mapping || params.bamMapping) {
-  mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
   TempoUtils.checkAssayType(params.assayType)
-  (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType).into(3)
+  if (params.watch == false) {
+    mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
+    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType).into(3)
+  }
+  else if (params.watch == true) {
+    mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
+    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.watchMapping(mappingFile, params.assayType).into(3) : TempoUtils.watchBamMapping(mappingFile, params.assayType).into(3)
+  }
+  else{}
   if(params.pairing){
-    pairingFile = file(params.pairing, checkIfExists: true)
-    (checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
-    TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
-    if(!TempoUtils.crossValidateSamples(checkMapping2, checkPairing2)){exit 1}
+    if (params.watch == false) {
+      pairingFile = file(params.pairing, checkIfExists: true)
+      (checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
+      TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
+      if(!TempoUtils.crossValidateSamples(checkMapping2, checkPairing2)){exit 1}
+    }
+    else if (params.watch == true) {
+      pairingFile = file(params.pairing, checkIfExists: false)
+      (checkPairing1, checkPairing2, inputPairing) = TempoUtils.watchPairing(pairingFile).into(3)
+    }
+    else{}
     if (!runSomatic && !runGermline && !runQC){
       println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
       exit 1
@@ -113,95 +127,9 @@ if (params.mapping || params.bamMapping) {
     }
   }
 }
-else if (params.watchMapping) {
-  TempoUtils.checkAssayType(params.assayType)
-  Channel.watchPath( params.watchMapping, 'create, modify' )
-        .flatMap{ it.readLines() }
-        .unique()
-	.filter{ it -> !(it =~ /SAMPLE\t/) }
-        .map{ row ->
-                def idSample = row.split("\t")[0]
-                def target = row.split("\t")[2]
-                def fastqFile1 = file(row.split("\t")[3], checkIfExists: false)
-                def fastqFile2 = file(row.split("\t")[4], checkIfExists: false)
-                def numOfPairs = row.split("\t")[5].toInteger()
-
-                [idSample, numOfPairs, target, fastqFile1, fastqFile2]
-        }
-        .map{ idSample, numOfPairs, target, files_pe1, files_pe2
-                -> tuple( groupKey(idSample, numOfPairs), target, files_pe1, files_pe2)
-        }
-        .transpose()
-        .set{inputMapping}
-  if (runSomatic || runGermline || params.mapping || params.bamMapping || params.watchBamMapping || params.watchPairing){
-    println "ERROR: Conflict input! When running --watchMapping [tsv], --mapping/--bamMapping/--watchBamMapping/--pairing/--watchPairing/--somatic/--germline all need to be disabled!"
-    exit 1
-  }
-println "Ready!!!!!!"
-}
-else if (params.watchBamMapping) {
-  TempoUtils.checkAssayType(params.assayType)
-  Channel.watchPath( params.watchBamMapping, 'create, modify' )
-        .flatMap{ it.readLines() }
-	.filter{ it -> !(it =~ /SAMPLE\t/) }
-        .unique()
-        .map{ row ->
-                def idSample = row.split("\t")[0]
-                def target = row.split("\t")[1]
-                def bam = file(row.split("\t")[2], checkIfExists: false)
-                def bai = file(row.split("\t")[3], checkIfExists: false)
-
-                [idSample, target, bam, bai]
-        }
-        .map{ idSample, target, files_pe1, files_pe2
-                -> tuple( groupKey(idSample, 1), target, files_pe1, files_pe2)
-        }
-        .transpose()
-        .set{inputMapping}
-
-  if(params.watchPairing){
-    Channel.watchPath( params.watchPairing, 'create, modify' )
-           .flatMap { it.readLines() }
-	   .filter{ it -> !(it =~ /NORMAL_ID\t/) }
-	   .filter{ it -> !(it =~ /TUMOR_ID\t/) }
-           .unique()
-           .map { row ->
-                def TUMOR_ID = row.split("\t")[0]
-                def NORMAL_ID = row.split("\t")[1]
-
-                [TUMOR_ID, NORMAL_ID]
-           }
-           .set{inputPairing}
-    if (!runSomatic && !runGermline && !runQC){
-      println "ERROR: --watchPairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --watchPairing [tsv]."
-      exit 1
-    }
-  }
-  else{
-    if (runSomatic || runGermline){
-      println "ERROR: --watchPairing [tsv] needed when using --watchMapping [tsv] with --somatic/--germline"
-      exit 1
-    }
-  }
-  if (params.aggregate == true){
-      println "ERROR: --aggregate can't be used in watch mode."
-      exit 1
-  }
-  else if (params.aggregate != false){
-      println "ERROR: --aggregate [tsv] can't be used in watch mode."
-      exit 1
-  }else{}
-
-println "Ready!!!!!!"
-
-}
 else{
   if(params.pairing){
     println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
-    exit 1
-  }
-  if(params.watchPairing){
-    println "ERROR: When --watchPairing [tsv], --watchMapping [tsv] must be provided."
     exit 1
   }
 }
