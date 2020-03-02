@@ -642,11 +642,11 @@ if (params.mapping) {
 */
 
 // If starting with BAM files, parse BAM pairing input
-if (params.bamMapping || params.watchBamMapping) {
+if (params.bamMapping) {
   inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
 }
 
-if (params.pairing || params.watchPairing) {
+if (params.pairing) {
 
   // Parse input FASTQ mapping
 
