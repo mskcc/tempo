@@ -958,6 +958,8 @@ Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
 process SomaticDellyCall {
   tag {idTumor + "__" + idNormal + '@' + svType}
 
+  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
+  
   input:
     each svType from svTypes
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForDelly
@@ -966,7 +968,8 @@ process SomaticDellyCall {
     ])
 
   output:
-    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.filter.bcf") into dellyFilter4Combine
+    set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyFilter4Combine
+    set file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyOutput
 
   when: "delly" in tools && runSomatic
 
@@ -986,6 +989,10 @@ process SomaticDellyCall {
     --samples samples.tsv \
     --outfile ${idTumor}__${idNormal}_${svType}.filter.bcf \
     ${idTumor}__${idNormal}_${svType}.bcf
+
+
+  bcftools view --output-type z ${idTumor}__${idNormal}_${svType}.filter.bcf > ${idTumor}__${idNormal}_${svType}.delly.vcf.gz
+  tabix --preset vcf ${idTumor}__${idNormal}_${svType}.delly.vcf.gz
   """
 }
 
@@ -1058,31 +1065,19 @@ dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(manta4Combine, by: 
 process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
-    set idTumor, idNormal, target, file(dellyBcfs), file(mantaFile) from dellyMantaCombineChannel
+    set idTumor, idNormal, target, file(dellyVcfs), file(dellyVcfsIndex), file(mantaFile) from dellyMantaCombineChannel
 
   output:
     set file("${outputPrefix}.delly.manta.vcf.gz"), file("${outputPrefix}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedOutput, dellyMantaCombined4Aggregate
-    set file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz"), file("${outputPrefix}_{BND,DEL,DUP,INS,INV}.delly.vcf.gz.tbi") into dellyOutput
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """ 
-  for f in *.bcf
-  do 
-    bcftools view --output-type z \$f > \${f%%.*}.delly.vcf.gz
-  done
-
-  for f in *.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
-  
   bcftools view \
     --samples ${idTumor},${idNormal} \
     --output-type z \
@@ -2227,6 +2222,8 @@ Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
+  publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+
   input:
     each svType from svTypesGermline
     set idNormal, target, file(bamNormal), file(baiNormal) from bamsForDellyGermline
@@ -2235,7 +2232,8 @@ process GermlineDellyCall {
     ])
 
   output:
-    set idNormal, target, file("${idNormal}_${svType}.filter.bcf") into dellyFilter4CombineGermline
+    set idNormal, target, file("${idNormal}_${svType}.delly.vcf.gz"), file("${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyFilter4CombineGermline
+    set file("*delly.vcf.gz"), file("*delly.vcf.gz.tbi") into dellyOutputGermline
 
   when: 'delly' in tools && runGermline
 
@@ -2252,6 +2250,9 @@ process GermlineDellyCall {
     --filter germline \
     --outfile ${idNormal}_${svType}.filter.bcf \
     ${idNormal}_${svType}.bcf
+
+  bcftools view --output-type z ${idNormal}_${svType}.filter.bcf > ${idNormal}_${svType}.delly.vcf.gz
+  tabix --preset vcf ${idNormal}_${svType}.delly.vcf.gz
   """
 }
 
@@ -2316,33 +2317,21 @@ dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5).combine(manta4Combine
 process GermlineMergeDellyAndManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
   publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
-    set idNormal, target, file(dellyBcf), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
+    set idNormal, target, file(dellyVcf), file(dellyVcfIndex), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
 
   output:
     set file("${idNormal}.delly.manta.vcf.gz"), file("${idNormal}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedOutputGermline, dellyMantaCombined4AggregateGermline
-    set file("*delly.vcf.gz"), file("*delly.vcf.gz.tbi") into dellyOutputGermline
 
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
   script:
   """ 
-  for f in *.bcf
-  do 
-    bcftools view --output-type z \$f > \${f%%.*}.delly.vcf.gz
-  done
-
-  for f in *.delly.vcf.gz
-  do
-    tabix --preset vcf \$f
-  done
-
   bcftools concat \
     --allow-overlaps \
     --output-type z \
