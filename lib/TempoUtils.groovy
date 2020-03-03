@@ -25,14 +25,13 @@ class TempoUtils {
   static def extractCohort(tsvFile) {
     def allRows = [:]
     Channel.from(tsvFile)
-    .splitCsv(sep: '\t')
+    .splitCsv(sep: '\t', header: true)
     .map { row ->
-      if(!checkNumberOfItem(row, 1, tsvFile)){System.exit(1)}
+      if(!checkNumberOfItem(row, 3, tsvFile)){System.exit(1)}
       if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
-      def path = file(row[0], checkIfExists: true)
-      def section = file(path.getParent()).getName().toString()
+      checkHeader([row.TUMOR_ID, row.NORMAL_ID, row.COHORT], tsvFile)
 
-      [section, path]
+      [row.COHORT, row.TUMOR_ID, row.NORMAL_ID]
     }
   }
 
