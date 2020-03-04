@@ -2691,7 +2691,6 @@ conpairContami4Aggregate = (!runConpairAll ? conpairContami : conpairAllContami)
 */
 
 if ( !(runAggregate == false) && !(runAggregate == true) && !params.mapping && !params.bamMapping ){
-  if(runSomatic){
   runSomatic = true
   runGermline = true
   runQC = true
@@ -2706,6 +2705,7 @@ if ( !(runAggregate == false) && !(runAggregate == true) && !params.mapping && !
 	        return item
 	    }
 	    .set {aggregateList}
+  if(runSomatic){
     somatic4Aggregate = aggregateList.somatic
     somatic4Aggregate.flatMap{  item ->
 			    def filePathString = []
