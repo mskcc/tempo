@@ -31,7 +31,7 @@ class TempoUtils {
       if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
       checkHeader([row.TUMOR_ID, row.NORMAL_ID, row.COHORT], tsvFile)
 
-      [row.COHORT, row.TUMOR_ID, row.NORMAL_ID]
+      [row.COHORT, row.TUMOR_ID, row.NORMAL_ID, row.PATH]
     }
   }
 
