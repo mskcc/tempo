@@ -2737,6 +2737,12 @@ if ( !params.mapping && !params.bamMapping ){
                   dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
                   conpairConcord4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/qc/" + idNormal + "/*/*.concordance.txt")]
                   conpairContami4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/qc/" + idNormal + "/*/*.contamination.txt")]
+		  alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/qc/" + idTumor + "/*/*.alfred.tsv.gz/")]
+		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/qc/" + idNormal + "/*/*.alfred.tsv.gz/")]
+		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/qc/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
+		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/qc/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
+		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/qc/" + idTumor + "/*/*.hs_metrics.txt")]
+		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/qc/" + idNormal + "/*/*.hs_metrics.txt")]
                 }
 		.set {aggregateList}
   inputSomaticAggregateMaf = aggregateList.NeoantigenMaf4Aggregate.transpose().groupTuple(by:[2])
@@ -2754,9 +2760,9 @@ if ( !params.mapping && !params.bamMapping ){
   inputGermlineAggregateMaf = aggregateList.mafFile4AggregateGermline.transpose().groupTuple(by:[2])
   inputGermlineAggregateSv = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1])
   inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1])
-  //inputAlfredIgnoreY.transpose().groupTuple(by:[2])
-  //inputAlfredIgnoreN.transpose().groupTuple(by:[2])
-  //inputHsMetrics.transpose().groupTuple(by:[2])
+  inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0])
+  inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0])
+  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0])
   inputConpairConcord4Aggregate = aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2])
   inputConpairContami4Aggregate = aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2])
 
@@ -3208,7 +3214,7 @@ process GermlineAggregateSv {
 
 
 if (runAggregate && runQC) {
-/*
+
 process QcBamAggregate {
 
   tag {cohort}
@@ -3236,7 +3242,7 @@ process QcBamAggregate {
   Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
   """
 }
-*/
+
 if (params.pairing){
 
 process QcConpairAggregate {
