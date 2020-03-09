@@ -190,7 +190,7 @@ When no additional _Sectionarguments_ are given, pipeline will throw an error in
 ***Compatible _Section Arguments_ Combinations:***
 * `--somatic` with or without `--aggregate true/<tsv>`
 * `--somatic --germline` with or without `--aggregate true/<tsv>`
-* `--somatic --QC` with or without --aggregate true/<tsv>`
+* `--somatic --QC` with or without `--aggregate true/<tsv>`
 * `--QC` with or without `--aggregate true/<tsv>`: `QcConpair` will be performed together with `QcAlfred` and `QcCollectHsMetrics`.
 
 ***Incompatible _Section Arguments_:***
