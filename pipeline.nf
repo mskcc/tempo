@@ -2688,24 +2688,7 @@ if ( !params.mapping && !params.bamMapping ){
 	      .set{inputAggregate}
   }
   else{
-    Channel.watchPath(file(runAggregate), 'create, modify')
-           .flatMap { it.readLines() }
-           .unique()
-           .filter{ it -> !(it =~ /TUMOR_ID/)}
-           .map{ row ->
-                def idNormal = row.split("\t")[0]
-                def idTumor = row.split("\t")[1]
-                def cohort = row.split("\t")[2]
-                def cohortSize = row.split("\t")[3].toInteger()
-                def path = row.split("\t")[4]
-                if(!TempoUtils.checkNumberOfItem(row.split("\t"), 5, file(runAggregate))){}
-
-                [cohort, cohortSize, idTumor, idNormal, path]
-           }
-           .map { cohort, cohortSize, idTumor, idNormal, path
-                      -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal, path)
-           }
-           .transpose()
+    watchAggregateWithPath(file(runAggregate, checkIfExists: true))
 	   .set{inputAggregate}
   }
   inputAggregate.fork{ cohort, idTumor, idNormal, path ->
@@ -2768,23 +2751,7 @@ else if(!(runAggregate == false)) {
 	        .set{inputAggregate}
     }
     else{
-      Channel.watchPath(file(runAggregate), 'create, modify')
-             .flatMap { it.readLines() }
-             .unique()
-             .filter{ it -> !(it =~ /TUMOR_ID/)}
-             .map{ row ->
-                  def idNormal = row.split("\t")[0]
-                  def idTumor = row.split("\t")[1]
-                  def cohort = row.split("\t")[2]
-                  def cohortSize = row.split("\t")[3].toInteger()
-                  if(!TempoUtils.checkNumberOfItem(row.split("\t"), 4, file(runAggregate))){}
-
-                  [cohort, cohortSize, idTumor, idNormal]
-             }
-             .map { cohort, cohortSize, idTumor, idNormal
-                        -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal)
-             }
-             .transpose()
+      watchAggregate(file(runAggregate, checkIfExists: false))
 	     .set{inputAggregate}
     }
   }
@@ -3352,4 +3319,42 @@ def defineReferenceMap() {
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
+}
+
+
+def watchAggregateWithPath(tsvFile) {
+  Channel.watchPath(tsvFile, 'create, modify')
+         .splitCsv(sep: '\t', header: true)
+         .map{ row ->
+              def idNormal = row.NORMAL_ID
+              def idTumor = row.TUMOR_ID
+              def cohort = row.COHORT
+              def cohortSize = row.COHORT_SIZE
+              def path = row.PATH
+              if(!TempoUtils.checkNumberOfItem(row, 5, file(runAggregate))){}
+
+              [cohort, cohortSize, idTumor, idNormal, path]
+         }
+         .map { cohort, cohortSize, idTumor, idNormal, path
+                    -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal, path)
+         }
+         .transpose()
+}
+
+def watchAggregate(tsvFile) {
+  Channel.watchPath(file(runAggregate), 'create, modify')
+         .splitCsv(sep: '\t', header: true)
+         .map{ row ->
+              def idNormal = row.NORMAL_ID
+              def idTumor = row.TUMOR_ID
+              def cohort = row.COHORT
+              def cohortSize = row.COHORT_SIZE
+              if(!TempoUtils.checkNumberOfItem(row, 4, file(runAggregate))){}
+
+              [cohort, cohortSize, idTumor, idNormal]
+         }
+         .map { cohort, cohortSize, idTumor, idNormal
+                    -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal)
+         }
+         .transpose()
 }
