@@ -3170,17 +3170,16 @@ def defineReferenceMap() {
 
 def watchMapping(tsvFile, assayType) {
   Channel.watchPath( tsvFile, 'create, modify' )
-      .flatMap{ it.readLines() }
-      .unique()
-      .filter{ it -> !(it =~ /SAMPLE\t/) }
-      .map{ row ->
-              def idSample = row.split("\t")[0]
-              def target = row.split("\t")[2]
-              def fastqFile1 = file(row.split("\t")[3], checkIfExists: false)
-              def fastqFile2 = file(row.split("\t")[4], checkIfExists: false)
-              def numOfPairs = row.split("\t")[5].toInteger()
+	 .splitCsv(sep: '\t', header: true)
+	 .unique()
+	 .map{ row ->
+              def idSample = row.SAMPLE
+              def target = row.TARGET
+              def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: false)
+              def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: false)
+              def numOfPairs = row.NUM_OF_PAIRS.toInteger()
               if(!TempoUtils.checkTarget(target, assayType)){}
-              if(!TempoUtils.checkNumberOfItem(row.split("\t"), 5, tsvFile)){}
+              if(!TempoUtils.checkNumberOfItem(row, 5, tsvFile)){}
 
               [idSample, numOfPairs, target, fastqFile1, fastqFile2]
       }
@@ -3192,16 +3191,15 @@ def watchMapping(tsvFile, assayType) {
 
 def watchBamMapping(tsvFile, assayType){
   Channel.watchPath( tsvFile, 'create, modify' )
-      .flatMap{ it.readLines() }
-      .filter{ it -> !(it =~ /SAMPLE\t/) }
-      .unique()
-      .map{ row ->
-              def idSample = row.split("\t")[0]
-              def target = row.split("\t")[1]
-              def bam = file(row.split("\t")[2], checkIfExists: false)
-              def bai = file(row.split("\t")[3], checkIfExists: false)
+	 .splitCsv(sep: '\t', header: true)
+	 .unique()
+	 .map{ row ->
+              def idSample = row.SAMPLE
+              def target = row.TARGET
+              def bam = file(row.BAM, checkIfExists: false)
+              def bai = file(row.BAI, checkIfExists: false)
               if(!TempoUtils.checkTarget(target, assayType)){}
-              if(!TempoUtils.checkNumberOfItem(row.split("\t"), 4, tsvFile)){}
+              if(!TempoUtils.checkNumberOfItem(row, 4, tsvFile)){}
 
               [idSample, target, bam, bai]
       }
@@ -3213,14 +3211,12 @@ def watchBamMapping(tsvFile, assayType){
 
 def watchPairing(tsvFile){
   Channel.watchPath( tsvFile, 'create, modify' )
-         .flatMap { it.readLines() }
-         .filter{ it -> !(it =~ /NORMAL_ID\t/) }
-         .filter{ it -> !(it =~ /TUMOR_ID\t/) }
-         .unique()
+	 .splitCsv(sep: '\t', header: true)
+	 .unique()
          .map { row ->
-              def TUMOR_ID = row.split("\t")[0]
-              def NORMAL_ID = row.split("\t")[1]
-              if(!TempoUtils.checkNumberOfItem(row.split("\t"), 2, tsvFile)){}
+              def TUMOR_ID = row.TUMOR_ID
+              def NORMAL_ID = row.NORMAL_ID
+              if(!TempoUtils.checkNumberOfItem(row, 2, tsvFile)){}
 
               [TUMOR_ID, NORMAL_ID]
          }
