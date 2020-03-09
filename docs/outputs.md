@@ -164,6 +164,7 @@ outDir/cohort_level/
 │   ├── cna_armlevel.txt
 │   ├── cna_facets_run_info.txt
 │   ├── cna_genelevel.txt
+...
 ```
 
 These outputs are just naively concatenated together from per sample output files (duplicated header are removed).
