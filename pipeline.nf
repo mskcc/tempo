@@ -3325,6 +3325,7 @@ def defineReferenceMap() {
 def watchAggregateWithPath(tsvFile) {
   Channel.watchPath(tsvFile, 'create, modify')
          .splitCsv(sep: '\t', header: true)
+	 .unique()
          .map{ row ->
               def idNormal = row.NORMAL_ID
               def idTumor = row.TUMOR_ID
@@ -3344,6 +3345,7 @@ def watchAggregateWithPath(tsvFile) {
 def watchAggregate(tsvFile) {
   Channel.watchPath(file(runAggregate), 'create, modify')
          .splitCsv(sep: '\t', header: true)
+	 .unique()
          .map{ row ->
               def idNormal = row.NORMAL_ID
               def idTumor = row.TUMOR_ID
