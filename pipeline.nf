@@ -3329,7 +3329,7 @@ def watchAggregateWithPath(tsvFile) {
               def idNormal = row.NORMAL_ID
               def idTumor = row.TUMOR_ID
               def cohort = row.COHORT
-              def cohortSize = row.COHORT_SIZE
+              def cohortSize = row.COHORT_SIZE.toInteger()
               def path = row.PATH
               if(!TempoUtils.checkNumberOfItem(row, 5, file(runAggregate))){}
 
@@ -3348,7 +3348,7 @@ def watchAggregate(tsvFile) {
               def idNormal = row.NORMAL_ID
               def idTumor = row.TUMOR_ID
               def cohort = row.COHORT
-              def cohortSize = row.COHORT_SIZE
+              def cohortSize = row.COHORT_SIZE.toInteger()
               if(!TempoUtils.checkNumberOfItem(row, 4, file(runAggregate))){}
 
               [cohort, cohortSize, idTumor, idNormal]
