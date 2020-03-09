@@ -141,7 +141,7 @@ Example:
 |...|...|
 |normal_sample_n|tumor_sample_n|
 
-#### Aggregate File (`--aggregate true/false/<tsv>`)
+### Aggregate File (`--aggregate true/false/<tsv>`)
 
 * When boolean value `true` is given (equal to only give `--aggregate`), TEMPO will aggregate all the samples in the mapping and pairing file as one cohort named "default cohort". 
 * When `--aggregate <tsv>` file is given, the pipeline will aggregate samples and tumor/normal pairs based on the value is given in `COHORT` column. Each sample and tumor/normal pairs can be assigned to different cohorts in different rows.
