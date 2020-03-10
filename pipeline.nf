@@ -97,6 +97,7 @@ if (params.mapping || params.bamMapping) {
   TempoUtils.checkAssayType(params.assayType)
   (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType).into(3)
   if(params.pairing){
+    pairingQc = params.pairing
     pairingFile = file(params.pairing, checkIfExists: true)
     (checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
     TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
@@ -694,7 +695,7 @@ if (params.pairing) {
 			  .set{bamFiles}
 
 
-} // End of "if (params.pairing) {}"
+} // End of "if (pairingQc) {}"
 
 /*
 ================================================================================
@@ -2466,7 +2467,7 @@ process QcAlfred {
 
 //doing QcPileup and QcConpair/QcConpairAll only when --pairing [tsv] is given
 
-if (params.pairing) {
+if (pairingQc) {
 process QcPileup {
   tag {idSample}
 
@@ -2669,7 +2670,7 @@ process QcConpairAll {
 // -- Run based on QcConpairAll channels or the single QcConpair channels
 conpairConcord4Aggregate = (!runConpairAll ? conpairConcord : conpairAllConcord)
 conpairContami4Aggregate = (!runConpairAll ? conpairContami : conpairAllContami)
-} // End of "if (params.pairing){}", doing QcPileup or QcConpair/QcConpairAll only when --pairing [tsv] is given
+} // End of "if (pairingQc){}", doing QcPileup or QcConpair/QcConpairAll only when --pairing [tsv] is given
 
 } // End of "if (runQc){}"
 
@@ -2683,6 +2684,7 @@ if ( !params.mapping && !params.bamMapping ){
   runSomatic = true
   runGermline = true
   runQC = true
+  pairingQc = true
   if(!params.watch){
     TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
 	      .set{inputAggregate}
@@ -2898,8 +2900,10 @@ else if(!(runAggregate == false)) {
   inputAlfredIgnoreY = alfredIgnoreY
   inputAlfredIgnoreN = alfredIgnoreN
   inputHsMetrics = hsMetrics
+  if (pairingQc){
   inputConpairConcord4Aggregate = cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputConpairContami4Aggregate = cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2])
+  }
   }
 }
 else{}
@@ -3199,7 +3203,7 @@ process QcBamAggregate {
   """
 }
 
-if (params.pairing){
+if (pairingQc){
 
 process QcConpairAggregate {
 
