@@ -185,12 +185,16 @@ referenceMap = defineReferenceMap()
 if (params.mapping) {
 
   // Parse input FASTQ mapping
+  if(params.watch != true){
   inputMapping.groupTuple(by: [0])
               .map { idSample, targets, files_pe1, files_pe2
                 -> tuple(groupKey(idSample, targets.size()), targets, files_pe1, files_pe2)
               }
               .transpose()
-              .map{ idSample, target, file_pe1, file_pe2 ->
+	      .set{ inputMapping }
+  }
+
+  inputMapping.map{ idSample, target, file_pe1, file_pe2 ->
                    [idSample, target, file_pe1, file_pe2, file_pe1.getSimpleName(), file_pe1.getSimpleName()]
               }
               .set{ inputFastqs }
@@ -3187,6 +3191,7 @@ def watchMapping(tsvFile, assayType) {
               -> tuple( groupKey(idSample, numOfPairs), target, files_pe1, files_pe2)
       }
       .transpose()
+      .unique()
 }
 
 def watchBamMapping(tsvFile, assayType){
@@ -3207,6 +3212,7 @@ def watchBamMapping(tsvFile, assayType){
               -> tuple( groupKey(idSample, 1), target, files_pe1, files_pe2)
       }
       .transpose()
+      .unique()
 }
 
 def watchPairing(tsvFile){
@@ -3220,4 +3226,5 @@ def watchPairing(tsvFile){
 
               [TUMOR_ID, NORMAL_ID]
          }
+	 .unique()
 }
