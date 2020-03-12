@@ -3344,6 +3344,7 @@ def watchAggregateWithPath(tsvFile) {
                     -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal, path)
          }
          .transpose()
+	 .unique()
 }
 
 def watchAggregate(tsvFile) {
@@ -3363,4 +3364,5 @@ def watchAggregate(tsvFile) {
                     -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal)
          }
          .transpose()
+	 .unique()
 }
