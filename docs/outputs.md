@@ -140,24 +140,31 @@ When run with the flag `--aggregate`, the pipeline will output aggregate all sam
 
 ```shell
 outDir/cohort_level/
-├── alignment_qc.txt
-├── cna_armlevel.txt
-├── cna_facets_run_info.txt
-├── cna_genelevel.txt
-├── cna_hisens_run_segmentation.seg
-├── cna_purity_run_segmentation.seg
-├── concordance_qc.txt
-├── contamination_qc.txt
-├── DNA.IntegerCPN_CI.txt
-├── HLAlossPrediction_CI.txt
-├── mut_germline.maf
-├── mut_somatic.maf
-├── mut_somatic_neoantigens.txt
-├── sample_data.txt
-├── sv_germline.vcf.gz
-├── sv_germline.vcf.gz.tbi
-├── sv_somatic.vcf.gz
-└── sv_somatic.vcf.gz.tbi
+├── default_cohort
+│   ├── alignment_qc.txt
+│   ├── cna_armlevel.txt
+│   ├── cna_facets_run_info.txt
+│   ├── cna_genelevel.txt
+│   ├── cna_hisens_run_segmentation.seg
+│   ├── cna_purity_run_segmentation.seg
+│   ├── concordance_qc.txt
+│   ├── contamination_qc.txt
+│   ├── DNA.IntegerCPN_CI.txt
+│   ├── HLAlossPrediction_CI.txt
+│   ├── mut_germline.maf
+│   ├── mut_somatic.maf
+│   ├── mut_somatic_neoantigens.txt
+│   ├── sample_data.txt
+│   ├── sv_germline.vcf.gz
+│   ├── sv_germline.vcf.gz.tbi
+│   ├── sv_somatic.vcf.gz
+│   └── sv_somatic.vcf.gz.tbi
+├── cohort2
+│   ├── alignment_qc.txt
+│   ├── cna_armlevel.txt
+│   ├── cna_facets_run_info.txt
+│   ├── cna_genelevel.txt
+...
 ```
 
 These outputs are just naively concatenated together from per sample output files (duplicated header are removed).
