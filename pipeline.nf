@@ -233,16 +233,16 @@ if (params.mapping) {
     inputSize = fastqFile1.size()
     if (workflow.profile == "juno") {
       if (inputSize > 10.GB) {
-        task.time = { 744.h }
+        task.time = { 500.h }
       }
       else if (inputSize < 5.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
       }
-      // if it's the last time to try, use 744h as time limit no matter for what reason it failed before
-      task.time = task.attempt < 3 ? task.time : { 744.h }
+      // if it's the last time to try, use 500h as time limit no matter for what reason it failed before
+      task.time = task.attempt < 3 ? task.time : { 500.h }
     }
 
     """
@@ -269,15 +269,15 @@ if (params.mapping) {
     inputSize = fastqFile2.size()
     if (workflow.profile == "juno") {
       if (inputSize > 10.GB) {
-        task.time = { 744.h }
+        task.time = { 500.h }
       }
       else if (inputSize < 5.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
       }
-      task.time = task.attempt < 3 ? task.time : { 744.h }
+      task.time = task.attempt < 3 ? task.time : { 500.h }
     }
 
     """
@@ -360,20 +360,20 @@ if (params.mapping) {
     script:
     // LSF resource allocation for juno
     // if running on juno, check the total size of the FASTQ pairs in order to allocate the runtime limit for the job, via LSF `bsub -W`
-    // if total size of the FASTQ pairs is over 20 GB, use 744 hours
-    // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 744h.
+    // if total size of the FASTQ pairs is over 20 GB, use 500 hours
+    // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 500h.
     inputSize = sizeFastqFile1 + sizeFastqFile2
     if (workflow.profile == "juno") {
       if (inputSize > 18.GB) {
-        task.time = { 744.h }
+        task.time = { 500.h }
       }
       else if (inputSize < 9.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
       }
-      task.time = task.attempt < 3 ? task.time : { 744.h }
+      task.time = task.attempt < 3 ? task.time : { 500.h }
     }
     
     // mem --- total size of the FASTQ pairs in MB (max memory `samtools sort` can take advantage of)
@@ -473,15 +473,15 @@ if (params.mapping) {
     script:
     if (workflow.profile == "juno") {
       if(bam.size() > 120.GB) {
-        task.time = { 744.h }
+        task.time = { 500.h }
       }
       else if (bam.size() < 100.GB) {
         task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
       }
-      task.time = task.attempt < 3 ? task.time : { 744.h }
+      task.time = task.attempt < 3 ? task.time : { 500.h }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -495,7 +495,7 @@ if (params.mapping) {
     gatk MarkDuplicates \
       ${javaOptions} \
       --TMP_DIR ./ \
-      --MAX_RECORDS_IN_RAM 74400 \
+      --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
       --METRICS_FILE ${idSample}.bam.metrics \
       --ASSUME_SORT_ORDER coordinate \
@@ -529,13 +529,13 @@ if (params.mapping) {
       sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 480.GB) {
-          task.time = { 744.h }
+          task.time = { 500.h }
         }
         else if (bam.size() < 240.GB) {
           task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
         }
         else {
-          task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+          task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
         }
       }
     }
@@ -543,7 +543,7 @@ if (params.mapping) {
       sparkConf = " BaseRecalibrator"
       task.cpus = 4
       task.memory = { 6.GB }
-      if (workflow.profile == "juno"){ task.time = { 744.h } }
+      if (workflow.profile == "juno"){ task.time = { 500.h } }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -590,13 +590,13 @@ if (params.mapping) {
       sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 200.GB){
-          task.time = { 744.h }
+          task.time = { 500.h }
         }
         else if (bam.size() < 100.GB) {
           task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
         }
         else {
-          task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+          task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
         }
       }
     }
@@ -604,7 +604,7 @@ if (params.mapping) {
       sparkConf = " ApplyBQSR"
       task.cpus = 4
       task.memory = { 6.GB }
-      if (workflow.profile == "juno"){ task.time = { 744.h } }
+      if (workflow.profile == "juno"){ task.time = { 500.h } }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -1668,15 +1668,15 @@ process RunNeoantigen {
 
   if (workflow.profile == "juno") {
     if(mafFile.size() > 10.MB){
-      task.time = { 744.h }
+      task.time = { 500.h }
     }
     else if (mafFile.size() < 5.MB){
       task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
     }
     else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+      task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
     }
-    task.time = task.attempt < 3 ? task.time : { 744.h }
+    task.time = task.attempt < 3 ? task.time : { 500.h }
   }
 
   outputPrefix = "${idTumor}__${idNormal}"
@@ -2402,15 +2402,15 @@ process QcCollectHsMetrics {
   script:
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
-      task.time = { 744.h }
+      task.time = { 500.h }
     }
     else if (bam.size() < 100.GB) {
       task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
     }
     else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+      task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
     }
-    task.time = task.attempt < 3 ? task.time : { 744.h }
+    task.time = task.attempt < 3 ? task.time : { 500.h }
   }
 
   memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -2463,15 +2463,15 @@ process QcAlfred {
   script:
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
-      task.time = { 744.h }
+      task.time = { 500.h }
     }
     else if (bam.size() < 100.GB) {
       task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
     }
     else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 744.h }
+      task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
     }
-    task.time = task.attempt < 3 ? task.time : { 744.h }
+    task.time = task.attempt < 3 ? task.time : { 500.h }
   }
 
   options = ""
