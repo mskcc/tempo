@@ -3,12 +3,12 @@ FROM rocker/tidyverse:3.6.1
 LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="2.3.0" \
-      version.facets_suite="1.6.2" \
+      version.image="3.0.0" \
+      version.facets_suite="2.0.4" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
       version.pctGCdata="0.2.0" \
-      source.facets_suite="https://github.com/mskcc/facets-suite/releases/tag/1.6.0" \
+      source.facets_suite="https://github.com/mskcc/facets-suite/releases/tag/2.0.4" \
       source.facets="https://github.com/mskcc/facets/archive/v0.5.14.tar.gz" \
       version.htstools="0.1.1" \
       version.htslib="1.5" \
