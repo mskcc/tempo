@@ -236,10 +236,10 @@ if (params.mapping) {
         task.time = { 500.h }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        task.time = task.exitStatus != 143 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+        task.time = task.exitStatus != 143 ? { 6.h } : { 500.h }
       }
       // if it's the last time to try, use 500h as time limit no matter for what reason it failed before
       task.time = task.attempt < 3 ? task.time : { 500.h }
@@ -249,6 +249,7 @@ if (params.mapping) {
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
+    timeout --preserve-status ${task.time.toSeconds() -10} \
       zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz"}}'
       touch `ls *R1.splitLanes.fastq.gz | wc -l`.laneCount
     """
@@ -272,10 +273,10 @@ if (params.mapping) {
         task.time = { 500.h }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        task.time = task.exitStatus != 143 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+        task.time = task.exitStatus != 143 ? { 6.h } : { 500.h }
       }
       task.time = task.attempt < 3 ? task.time : { 500.h }
     }
@@ -284,6 +285,7 @@ if (params.mapping) {
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
+    timeout --preserve-status ${task.time.toSeconds() -10} \
       zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz"}}'
       touch `ls *R2.splitLanes.fastq.gz | wc -l`.laneCount
     """
@@ -477,10 +479,10 @@ if (params.mapping) {
         task.time = { 500.h }
       }
       else if (bam.size() < 100.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        task.time = task.exitStatus != 143 ? { 3.h } : { 6.h }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+        task.time = task.exitStatus != 143 ? { 6.h } : { 500.h }
       }
       task.time = task.attempt < 3 ? task.time : { 500.h }
     }
@@ -534,10 +536,10 @@ if (params.mapping) {
           task.time = { 500.h }
         }
         else if (bam.size() < 240.GB) {
-          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+          task.time = task.exitStatus != 143 ? { 3.h } : { 6.h }
         }
         else {
-          task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+          task.time = task.exitStatus != 143 ? { 6.h } : { 500.h }
         }
       }
     }
@@ -595,10 +597,10 @@ if (params.mapping) {
           task.time = { 500.h }
         }
         else if (bam.size() < 100.GB) {
-          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+          task.time = task.exitStatus != 143 ? { 3.h } : { 6.h }
         }
         else {
-          task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+          task.time = task.exitStatus != 143 ? { 6.h } : { 500.h }
         }
       }
     }
