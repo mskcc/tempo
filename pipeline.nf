@@ -93,15 +93,29 @@ runConpairAll = false
 println ""
 
 if (params.mapping || params.bamMapping) {
-  mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
   TempoUtils.checkAssayType(params.assayType)
-  (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType).into(3)
+  if (params.watch == false) {
+    mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
+    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType).into(3)
+  }
+  else if (params.watch == true) {
+    mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
+    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? watchMapping(mappingFile, params.assayType).into(3) : watchBamMapping(mappingFile, params.assayType).into(3)
+  }
+  else{}
   if(params.pairing){
     pairingQc = params.pairing
-    pairingFile = file(params.pairing, checkIfExists: true)
-    (checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
-    TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
-    if(!TempoUtils.crossValidateSamples(checkMapping2, checkPairing2)){exit 1}
+    if (params.watch == false) {
+      pairingFile = file(params.pairing, checkIfExists: true)
+      (checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
+      TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
+      if(!TempoUtils.crossValidateSamples(checkMapping2, checkPairing2)){exit 1}
+    }
+    else if (params.watch == true) {
+      pairingFile = file(params.pairing, checkIfExists: false)
+      (checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
+    }
+    else{}
     if (!runSomatic && !runGermline && !runQC){
       println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
       exit 1
@@ -172,12 +186,16 @@ referenceMap = defineReferenceMap()
 if (params.mapping) {
 
   // Parse input FASTQ mapping
+  if(params.watch != true){
   inputMapping.groupTuple(by: [0])
               .map { idSample, targets, files_pe1, files_pe2
                 -> tuple(groupKey(idSample, targets.size()), targets, files_pe1, files_pe2)
               }
               .transpose()
-              .map{ idSample, target, file_pe1, file_pe2 ->
+	      .set{ inputMapping }
+  }
+
+  inputMapping.map{ idSample, target, file_pe1, file_pe2 ->
                    [idSample, target, file_pe1, file_pe2, file_pe1.getSimpleName(), file_pe1.getSimpleName()]
               }
               .set{ inputFastqs }
@@ -279,7 +297,9 @@ if (params.mapping) {
 	  def laneCount = item[4].getSimpleName().toInteger()
 
 	  // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
+	  if ( !params.watch ){
 	  if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+	  }
 
 	  [idSample, target, fastq, fileID, lane, laneCount]
         }
@@ -294,7 +314,9 @@ if (params.mapping) {
 	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
 	  def laneCount = item[4].getSimpleName().toInteger()
 
+	  if ( !params.watch ){
 	  if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+	  }
 
 	  [idSample, target, fastq, fileID, lane, laneCount]
         }
@@ -398,7 +420,9 @@ if (params.mapping) {
   sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
 
 		// Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
+		if ( !params.watch ){
 		if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
+		}
 
 		[idSample, target, bam, fileID, lane]
 	   }
@@ -557,7 +581,7 @@ if (params.mapping) {
 
     output:
       set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup
-      set idSample, target, val("${params.outDir}/bams/${idSample}/${idSample}.bam"), val("${params.outDir}/bams/${idSample}/${idSample}.bam.bai") into bamResults
+      set idSample, target, val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
       file("file-size.txt") into bamSize
 
     script:
@@ -3325,6 +3349,62 @@ def defineReferenceMap() {
   return result_array
 }
 
+def watchMapping(tsvFile, assayType) {
+  Channel.watchPath( tsvFile, 'create, modify' )
+	 .splitCsv(sep: '\t', header: true)
+	 .unique()
+	 .map{ row ->
+              def idSample = row.SAMPLE
+              def target = row.TARGET
+              def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: false)
+              def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: false)
+              def numOfPairs = row.NUM_OF_PAIRS.toInteger()
+              if(!TempoUtils.checkTarget(target, assayType)){}
+              if(!TempoUtils.checkNumberOfItem(row, 5, tsvFile)){}
+
+              [idSample, numOfPairs, target, fastqFile1, fastqFile2]
+      }
+      .map{ idSample, numOfPairs, target, files_pe1, files_pe2
+              -> tuple( groupKey(idSample, numOfPairs), target, files_pe1, files_pe2)
+      }
+      .transpose()
+      .unique()
+}
+
+def watchBamMapping(tsvFile, assayType){
+  Channel.watchPath( tsvFile, 'create, modify' )
+	 .splitCsv(sep: '\t', header: true)
+	 .unique()
+	 .map{ row ->
+              def idSample = row.SAMPLE
+              def target = row.TARGET
+              def bam = file(row.BAM, checkIfExists: false)
+              def bai = file(row.BAI, checkIfExists: false)
+              if(!TempoUtils.checkTarget(target, assayType)){}
+              if(!TempoUtils.checkNumberOfItem(row, 4, tsvFile)){}
+
+              [idSample, target, bam, bai]
+      }
+      .map{ idSample, target, files_pe1, files_pe2
+              -> tuple( groupKey(idSample, 1), target, files_pe1, files_pe2)
+      }
+      .transpose()
+      .unique()
+}
+
+def watchPairing(tsvFile){
+  Channel.watchPath( tsvFile, 'create, modify' )
+	 .splitCsv(sep: '\t', header: true)
+	 .unique()
+         .map { row ->
+              def TUMOR_ID = row.TUMOR_ID
+              def NORMAL_ID = row.NORMAL_ID
+              if(!TempoUtils.checkNumberOfItem(row, 2, tsvFile)){}
+
+              [TUMOR_ID, NORMAL_ID]
+         }
+	 .unique()
+}
 
 def watchAggregateWithPath(tsvFile) {
   Channel.watchPath(tsvFile, 'create, modify')
