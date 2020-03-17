@@ -455,7 +455,7 @@ if (params.mapping) {
 
     script:
     """
-    timeout --perserve-status ${task.time.toSeconds() -10} \
+    timeout --preserve-status ${task.time.toSeconds() -10} \
     samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
     """
   }
@@ -493,7 +493,7 @@ if (params.mapping) {
     maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
-    timeout --perserve-status ${task.time.toSeconds() -10} \
+    timeout --preserve-status ${task.time.toSeconds() -10} \
     gatk MarkDuplicates \
       ${javaOptions} \
       --TMP_DIR ./ \
@@ -615,7 +615,7 @@ if (params.mapping) {
     javaOptions = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     """
     echo -e "${idSample}\t${bam.size()}" > file-size.txt
-    timeout --perserve-status ${task.time.toSeconds() -10} \
+    timeout --preserve-status ${task.time.toSeconds() -10} \
     gatk \
       ${sparkConf} \
       ${javaOptions} \
