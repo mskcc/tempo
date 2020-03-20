@@ -62,8 +62,8 @@ RUN cd /tmp \
     && cd /tmp/pctGCdata-${PCTGCDATA} \
     && R CMD INSTALL . \
     && cd /tmp/facets-${FACETS_VERSION} \
-    && R CMD INSTALL . \
     && cd /tmp/facets-suite-${FACETS_SUITE_VERSION} \
+    && Rscript -e "devtools::install() \
     # correct shebang line
     && sed -i "s/opt\/common\/CentOS_6-dev\/R\/R-3.2.2\//usr\//g" *.R \
     # copy execs to /usr/bin/facets-suite
