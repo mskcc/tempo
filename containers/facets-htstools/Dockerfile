@@ -26,7 +26,7 @@ ENV PCTGCDATA 0.2.0
 # Requirements
 RUN apt-get update && apt-get install -y g++ tar bzip2 libbz2-dev libc6-dev libxt-dev liblzma-dev libgtk2.0-dev libcairo2-dev xvfb xauth xfonts-base
 
-RUN R -e "install.packages(c('Cairo','argparse','gridExtra', 'binom', 'BiocManager'), repos='http://cran.us.r-project.org')" \
+RUN R -e "install.packages(c('Cairo','argparse','gridExtra', 'binom', 'BiocManager', 'diptest', 'egg'), repos='http://cran.us.r-project.org')" \
     && R -e "BiocManager::install('rtracklayer')"
 
 # Install htslib
@@ -65,6 +65,8 @@ RUN cd /tmp \
     && R CMD INSTALL . \
     && cd /tmp/facets-suite-${FACETS_SUITE_VERSION} \
     && R CMD INSTALL . \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/summarize_project.py \
+    && mv summarize_project.py /usr/bin \
     # correct shebang line
     && sed -i "s/opt\/common\/CentOS_6-dev\/R\/R-3.2.2\//usr\//g" *.R \
     # copy execs to /usr/bin/facets-suite
