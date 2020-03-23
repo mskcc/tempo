@@ -1714,39 +1714,20 @@ process SomaticFacetsAnnotation {
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.somatic.final.maf") into finalMaf4Aggregate
-    set idTumor, idNormal, target, file("${outputPrefix}.somatic.final.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into mafAndArmLevel4MetaDataParser
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.*level.unfiltered.txt") into FacetsArmGeneOutput
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsArmLev4Aggregate
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsGeneLev4Aggregate
     file("file-size.txt") into mafSize
     file("${outputPrefix}.somatic.final.maf") into finalMafOutput
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
-  mapFile = "${idTumor}__${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
-    --facets_files ${mapFile} \
-    --maf ${maf} \
-    --out_maf ${outputPrefix}.facets.maf
-
-  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
-    --filenames ${hisens_cncf} \
-    --targetFile exome \
-    --outfile ${outputPrefix}.genelevel.unfiltered.txt
-
-  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.genelevel.unfiltered.txt
-
-  Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
-    --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.unfiltered.txt
-
-  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.armlevel.unfiltered.txt
+  Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
+    --facets-output ${purity_rdata} \
+    --maf-file ${maf} \
+    --facets-algorithm em \
+    --output ${outputPrefix}.facets.maf
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
 
@@ -1784,7 +1765,7 @@ process RunMsiSensor {
   """
 }
 
-
+/*
 facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
 			   .combine(msi4MetaDataParser, by: [0,1,2])
 			   .combine(mutSig4MetaDataParser, by: [0,1,2])
@@ -1836,6 +1817,7 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
+*/
 }
 
 /*
@@ -2216,16 +2198,12 @@ process GermlineFacetsAnnotation {
   when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
 
   script:
-  mapFile = "${idTumor}_${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}.germline"
   """
-  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
-
-  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
-    --facets_files ${mapFile} \
-    --maf ${maf} \
-    --out_maf ${outputPrefix}.facets.maf
+  Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
+    --facets-output ${purity_rdata} \
+    --maf-file ${maf} \
+    --output ${outputPrefix}.facets.maf
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.final.maf
   """
