@@ -1540,7 +1540,7 @@ process DoFacets {
     --everything \
     --legacy-output T
 
-  python3 /usr/bin/facets-suite/summarize_project.py \
+  python3 /usr/bin/summarize_project.py \
     -p ${tag} \
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
