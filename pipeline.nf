@@ -1487,9 +1487,9 @@ process RunMutationSignatures {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
+  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "*.snp_pileup.gz"
   publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
-  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,seg,txt}"
+  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,out,seg,txt}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFiles4DoFacets
@@ -1507,44 +1507,44 @@ process DoFacets {
   when: "facets" in tools && runSomatic
 
   script:
-  outfile = idTumor + "__" + idNormal + ".snp_pileup.dat.gz"
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
+  outfile = tag + ".snp_pileup.gz"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   touch .Rprofile
 
-  snp-pileup \
-    --count-orphans \
-    --pseudo-snps=50 \
-    --gzip \
-    ${facetsVcf} \
-    ${outfile} \
-    ${bamNormal} ${bamTumor}
+  export SNP_PILEUP=/usr/bin/snp-pileup
+
+  Rscript /usr/bin/facets-suite/snp-pileup-wrapper.R \
+    --pseudo-snps 50 \
+    --vcf-file ${facetsVcf} \
+    --output-prefix ${tag} \
+    --normal-bam ${bamNormal} \
+    --tumor-bam ${bamTumor}
 
   mkdir ${outputDir}
 
-  Rscript /usr/bin/facets-suite/doFacets.R \
+  Rscript /usr/bin/facets-suite/run-facets-wrapper.R \
     --cval ${params.facets.cval} \
-    --snp_nbhd ${params.facets.snp_nbhd} \
-    --ndepth ${params.facets.ndepth} \
-    --min_nhet ${params.facets.min_nhet} \
-    --purity_cval ${params.facets.purity_cval} \
-    --purity_snp_nbhd ${params.facets.purity_snp_nbhd} \
-    --purity_ndepth ${params.facets.purity_ndepth} \
-    --purity_min_nhet ${params.facets.purity_min_nhet} \
+    --snp-window-size ${params.facets.snp_nbhd} \
+    --normal-depth ${params.facets.ndepth} \
+    --min-nhet ${params.facets.min_nhet} \
+    --purity-cval ${params.facets.purity_cval}\
+    --purity-min-nhet ${params.facets.purity_min_nhet} \
     --genome ${params.facets.genome} \
-    --counts_file ${outfile} \
-    --TAG ${tag} \
+    --counts-file ${outfile} \
+    --sample-id ${tag} \
     --directory ${outputDir} \
-    --R_lib /usr/local/lib/R/site-library \
+    --facets-lib-path /usr/local/lib/R/site-library \
     --seed ${params.facets.seed} \
-    --tumor_id ${idTumor}
+    --everything \
+    --legacy-output T
 
   python3 /usr/bin/facets-suite/summarize_project.py \
     -p ${tag} \
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
-    -s ${outputDir}/*seg  
+    -s ${outputDir}/*seg
   """
 }
 
