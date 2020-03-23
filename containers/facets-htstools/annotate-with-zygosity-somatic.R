@@ -51,8 +51,8 @@ print (paste0("Reading: ", maf_file))
 maf <- suppressMessages(suppressWarnings(fread(maf_file)))
 
 # check for required columns
-req_cols <- c("t_alt_count", "t_depth", "purity", "tcn.em", "lcn.em", "cf.em",
-              "ccf_Mcopies_em", "ccf_Mcopies_prob95_em")  # added for ccf estimate threshold -> subclonal mutations
+req_cols <- c("t_alt_count", "t_depth", "purity", "tcn", "lcn", "cf",
+              "ccf_expected_copies", "ccf_expected_copies_prob95")  # added for ccf estimate threshold -> subclonal mutations
 for (col in req_cols) { if ( !(col %in% names(maf)) ) { print (paste("Missing required column in maf: ", col, sep=""))} }
 
 # initialize zygosity related variables
@@ -79,8 +79,8 @@ for (idx in 1:dim(maf)[1]){
   #   next
   # }
 
-  lcn = maf$lcn.em[idx]
-  tcn = maf$tcn.em[idx]
+  lcn = maf$lcn[idx]
+  tcn = maf$tcn[idx]
   purity = maf$purity[idx]
   t_depth = maf$t_depth[idx]
   t_alt_count = maf$t_alt_count[idx]
@@ -100,7 +100,7 @@ for (idx in 1:dim(maf)[1]){
 
   mcn = tcn - lcn
 
-  if (maf$ccf_Mcopies_upper_em[idx] < 0.80 & maf$ccf_Mcopies_prob95_em[idx] < 0.80) {
+  if (maf$ccf_Mcopies_upper_em[idx] < 0.80 & maf$ccf_expected_copies_prob95[idx] < 0.80) {
     maf$zygosity_flag[idx] = 'subclonal'
     next
   }
