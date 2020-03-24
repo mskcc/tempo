@@ -1506,7 +1506,7 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
-    set idTumor, idNormal, target, file("*/*.arm_level.txt") into FacetsArmLev4MetaDataParser
+    set idTumor, idNormal, target, file("*/*.qc.txt") into FacetsQC4MetaDataParser
 
   when: "facets" in tools && runSomatic
 
@@ -1771,7 +1771,7 @@ process RunMsiSensor {
 
 
 facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
-			   .combine(FacetsArmLev4MetaDataParser, by: [0,1,2])
+			   .combine(FacetsQC4MetaDataParser, by: [0,1,2])
 			   .combine(msi4MetaDataParser, by: [0,1,2])
 			   .combine(mutSig4MetaDataParser, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [1,2])
@@ -1785,7 +1785,7 @@ process MetaDataParser {
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 
   input:
-    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(armLevel), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
+    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
     ]) 
@@ -1812,7 +1812,7 @@ process MetaDataParser {
     --tumorID ${idTumor} \
     --normalID ${idNormal} \
     --facetsPurity_out ${purityOut} \
-    --facetsArmLevel ${armLevel} \
+    --facetsQC ${qcOutput} \
     --MSIsensor_output ${msifile} \
     --mutational_signatures_output ${mutSig} \
     --polysolver_output ${polysolverFile} \
