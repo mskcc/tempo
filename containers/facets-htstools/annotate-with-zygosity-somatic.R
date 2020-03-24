@@ -100,7 +100,7 @@ for (idx in 1:dim(maf)[1]){
 
   mcn = tcn - lcn
 
-  if (maf$ccf_expected_copies_upper_em[idx] < 0.80 & maf$ccf_expected_copies_prob95[idx] < 0.80) {
+  if (maf$ccf_expected_copies_upper[idx] < 0.80 & maf$ccf_expected_copies_prob95[idx] < 0.80) {
     maf$zygosity_flag[idx] = 'subclonal'
     next
   }
