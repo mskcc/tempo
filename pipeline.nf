@@ -1457,7 +1457,7 @@ process SomaticAnnotateMaf {
 }
 
 
-mafFile.into{mafFileForMafAnno; mafFileForMutSig}
+mafFile.into{mafFile; mafFileForMutSig}
 
 // --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
 process RunMutationSignatures {
@@ -1643,68 +1643,12 @@ process RunLOHHLA {
 }
 
 
-facetsForMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
-
-
-// --- Do FACETS MAF annotation and post processing
-process SomaticFacetsAnnotation {
-  tag {idTumor + "__" + idNormal}
-
-  publishDir "${params.outDir}/somatic/${outputPrefix}/facets/${facetsPath}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
-  
-  input:
-    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileSomatic
-
-  output:
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf") into FacetsAnnotationMafFile
-    set idTumor, idNormal, target, file("${outputPrefix}.facets.zygosity.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into mafAndArmLevel4MetaDataParser
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.*level.unfiltered.txt") into FacetsArmGeneOutput
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsArmLev4Aggregate
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsGeneLev4Aggregate
-    file("file-size.txt") into mafSize
-
-  when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
-
-  script:
-  mapFile = "${idTumor}__${idNormal}.map"
-  outputPrefix = "${idTumor}__${idNormal}"
-  """
-  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
-
-  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
-    --facets_files ${mapFile} \
-    --maf ${maf} \
-    --out_maf ${outputPrefix}.facets.maf
-  
-  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
-    --filenames ${hisens_cncf} \
-    --targetFile exome \
-    --outfile ${outputPrefix}.genelevel.unfiltered.txt
-
-  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.genelevel.unfiltered.txt
-
-  Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
-    --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.unfiltered.txt
-
-  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.armlevel.unfiltered.txt
-
-  Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
-
-  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
-
-  """
-}
-
-
-hlaOutput.combine(FacetsAnnotationMafFile, by: [1,2]).set{ input4Neoantigen }
+hlaOutput.combine(mafFile, by: [1,2]).set{ input4Neoantigen }
 
 // --- Run neoantigen prediction pipeline
 process RunNeoantigen {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.maf"
   publishDir "${params.outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*.txt"
 
   input:
@@ -1716,8 +1660,7 @@ process RunNeoantigen {
   output:
     set val("placeHolder"), idTumor, idNormal, file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStats4Aggregate
     file("${idTumor}__${idNormal}.all_neoantigen_predictions.txt") into NetMhcStatsOutput
-    set val("placeHolder"), idTumor, idNormal, file("*.final.maf") into NeoantigenMaf4Aggregate
-    file("*.final.maf") into NeoantigenMafOutput
+    set idTumor, idNormal, target, file("${outputDir}/${outputPrefix}.neoantigens.maf") into mafFileForMafAnno
 
   when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
@@ -1752,7 +1695,64 @@ process RunNeoantigen {
     --output_dir ${outputDir}
 
   awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
-  mv ${outputDir}/${outputPrefix}.neoantigens.maf ${outputPrefix}.somatic.final.maf
+  """
+}
+
+
+facetsForMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
+
+
+// --- Do FACETS MAF annotation and post processing
+process SomaticFacetsAnnotation {
+  tag {idTumor + "__" + idNormal}
+
+  publishDir "${params.outDir}/somatic/${outputPrefix}/facets/${facetsPath}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
+
+  input:
+    set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileSomatic
+
+  output:
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.somatic.final.maf") into finalMaf4Aggregate
+    set idTumor, idNormal, target, file("${outputPrefix}.somatic.final.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into mafAndArmLevel4MetaDataParser
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.*level.unfiltered.txt") into FacetsArmGeneOutput
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsArmLev4Aggregate
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsGeneLev4Aggregate
+    file("file-size.txt") into mafSize
+    file("${outputPrefix}.somatic.final.maf") into finalMafOutput
+
+  when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
+
+  script:
+  mapFile = "${idTumor}__${idNormal}.map"
+  outputPrefix = "${idTumor}__${idNormal}"
+  """
+  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
+  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
+
+  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
+    --facets_files ${mapFile} \
+    --maf ${maf} \
+    --out_maf ${outputPrefix}.facets.maf
+
+  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
+    --filenames ${hisens_cncf} \
+    --targetFile exome \
+    --outfile ${outputPrefix}.genelevel.unfiltered.txt
+
+  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.genelevel.unfiltered.txt
+
+  Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
+    --filenames ${purity_cncf} \
+    --outfile ${outputPrefix}.armlevel.unfiltered.txt
+
+  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.armlevel.unfiltered.txt
+
+  Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
+
+  echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
+
+  mv ${outputPrefix}.facets.zygosity.maf ${outputPrefix}.somatic.final.maf
   """
 }
 
@@ -2718,7 +2718,7 @@ if ( !params.mapping && !params.bamMapping ){
 	   .set{inputAggregate}
   }
   inputAggregate.fork{ cohort, idTumor, idNormal, path ->
-		  NeoantigenMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
+		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
                   NetMhcStats4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.all_neoantigen_predictions.txt")]
                   FacetsPurity4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_purity.seg")]
                   FacetsHisens4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_hisens.seg")]
@@ -2743,7 +2743,7 @@ if ( !params.mapping && !params.bamMapping ){
 		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/qc/" + idNormal + "/*/*.hs_metrics.txt")]
                 }
 		.set {aggregateList}
-  inputSomaticAggregateMaf = aggregateList.NeoantigenMaf4Aggregate.transpose().groupTuple(by:[2])
+  inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
   inputSomaticAggregateNetMHC = aggregateList.NetMhcStats4Aggregate.transpose().groupTuple(by:[2])
   inputPurity4Aggregate = aggregateList.FacetsPurity4Aggregate.transpose().groupTuple(by:[2])
   inputHisens4Aggregate = aggregateList.FacetsHisens4Aggregate.transpose().groupTuple(by:[2])
@@ -2809,7 +2809,7 @@ else if(!(runAggregate == false)) {
                        cohortQcConpairAggregate1
                 }
   if (runSomatic){
-  inputSomaticAggregateMaf = cohortSomaticAggregateMaf.combine(NeoantigenMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+  inputSomaticAggregateMaf = cohortSomaticAggregateMaf.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputSomaticAggregateNetMHC = cohortSomaticAggregateNetMHC.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputPurity4Aggregate = cohortSomaticAggregateFacets.combine(FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputHisens4Aggregate = cohortSomaticAggregateFacets1.combine(FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2839,7 +2839,7 @@ else if(!(runAggregate == false)) {
   			ignoreN: alfred =~ /.+\.alfred\.per_readgroup\.tsv\.gz/
   		     }
   		     .set{bamsQcStats4Aggregate}
-  
+
   inputPairing1.combine(bamsQcStats4Aggregate.ignoreY)
   	     .branch { item ->
   		def idTumor = item[0]
