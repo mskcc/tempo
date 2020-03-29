@@ -1487,9 +1487,9 @@ process RunMutationSignatures {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "*.snp_pileup.dat.gz"
-  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
-  publishDir "${params.outDir}/somatic/${tag}/facets", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,seg,txt}"
+  publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.gz"
+  publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
+  publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,out,seg,txt}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFiles4DoFacets
@@ -1503,48 +1503,52 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*_hisens.seg") into FacetsHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
+    set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
+    set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
+    set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
+    set idTumor, idNormal, target, file("*/*.qc.txt") into FacetsQC4MetaDataParser
 
   when: "facets" in tools && runSomatic
 
   script:
-  outfile = idTumor + "__" + idNormal + ".snp_pileup.dat.gz"
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
+  outfile = tag + ".snp_pileup.gz"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
   """
   touch .Rprofile
 
-  snp-pileup \
-    --count-orphans \
-    --pseudo-snps=50 \
-    --gzip \
-    ${facetsVcf} \
-    ${outfile} \
-    ${bamNormal} ${bamTumor}
+  export SNP_PILEUP=/usr/bin/snp-pileup
+
+  Rscript /usr/bin/facets-suite/snp-pileup-wrapper.R \
+    --pseudo-snps 50 \
+    --vcf-file ${facetsVcf} \
+    --output-prefix ${tag} \
+    --normal-bam ${bamNormal} \
+    --tumor-bam ${bamTumor}
 
   mkdir ${outputDir}
 
-  Rscript /usr/bin/facets-suite/doFacets.R \
+  Rscript /usr/bin/facets-suite/run-facets-wrapper.R \
     --cval ${params.facets.cval} \
-    --snp_nbhd ${params.facets.snp_nbhd} \
-    --ndepth ${params.facets.ndepth} \
-    --min_nhet ${params.facets.min_nhet} \
-    --purity_cval ${params.facets.purity_cval} \
-    --purity_snp_nbhd ${params.facets.purity_snp_nbhd} \
-    --purity_ndepth ${params.facets.purity_ndepth} \
-    --purity_min_nhet ${params.facets.purity_min_nhet} \
+    --snp-window-size ${params.facets.snp_nbhd} \
+    --normal-depth ${params.facets.ndepth} \
+    --min-nhet ${params.facets.min_nhet} \
+    --purity-cval ${params.facets.purity_cval}\
+    --purity-min-nhet ${params.facets.purity_min_nhet} \
     --genome ${params.facets.genome} \
-    --counts_file ${outfile} \
-    --TAG ${tag} \
+    --counts-file ${outfile} \
+    --sample-id ${tag} \
     --directory ${outputDir} \
-    --R_lib /usr/local/lib/R/site-library \
+    --facets-lib-path /usr/local/lib/R/site-library \
     --seed ${params.facets.seed} \
-    --tumor_id ${idTumor}
+    --everything \
+    --legacy-output T
 
-  python3 /usr/bin/facets-suite/summarize_project.py \
+  python3 /usr/bin/summarize_project.py \
     -p ${tag} \
     -c ${outputDir}/*cncf.txt \
     -o ${outputDir}/*out \
-    -s ${outputDir}/*seg  
+    -s ${outputDir}/*seg
   """
 }
 
@@ -1707,7 +1711,6 @@ facetsForMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomat
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/facets/${facetsPath}", mode: params.publishDirMode, pattern: "*{armlevel,genelevel}.unfiltered.txt"
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
 
   input:
@@ -1715,39 +1718,21 @@ process SomaticFacetsAnnotation {
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.somatic.final.maf") into finalMaf4Aggregate
-    set idTumor, idNormal, target, file("${outputPrefix}.somatic.final.maf"), file("${outputPrefix}.armlevel.unfiltered.txt") into mafAndArmLevel4MetaDataParser
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.*level.unfiltered.txt") into FacetsArmGeneOutput
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.armlevel.unfiltered.txt") into FacetsArmLev4Aggregate
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.genelevel.unfiltered.txt") into FacetsGeneLev4Aggregate
     file("file-size.txt") into mafSize
     file("${outputPrefix}.somatic.final.maf") into finalMafOutput
+    set idTumor, idNormal, target, file("${outputPrefix}.somatic.final.maf") into maf4MetaDataParser
 
   when: tools.containsAll(["facets", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
-  mapFile = "${idTumor}__${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
 
-  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
-    --facets_files ${mapFile} \
-    --maf ${maf} \
-    --out_maf ${outputPrefix}.facets.maf
-
-  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
-    --filenames ${hisens_cncf} \
-    --targetFile exome \
-    --outfile ${outputPrefix}.genelevel.unfiltered.txt
-
-  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.genelevel.unfiltered.txt
-
-  Rscript --no-init-file /usr/bin/facets-suite/armLevel.R \
-    --filenames ${purity_cncf} \
-    --outfile ${outputPrefix}.armlevel.unfiltered.txt
-
-  sed -i -e s@${idTumor}@${outputPrefix}@g ${outputPrefix}.armlevel.unfiltered.txt
+  Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
+    --facets-output ${purity_rdata} \
+    --maf-file ${maf} \
+    --facets-algorithm em \
+    --output ${outputPrefix}.facets.maf
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R ${outputPrefix}.facets.maf ${outputPrefix}.facets.zygosity.maf
 
@@ -1786,7 +1771,8 @@ process RunMsiSensor {
 }
 
 
-facetsPurity4MetaDataParser.combine(mafAndArmLevel4MetaDataParser, by: [0,1,2])
+facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
+			   .combine(FacetsQC4MetaDataParser, by: [0,1,2])
 			   .combine(msi4MetaDataParser, by: [0,1,2])
 			   .combine(mutSig4MetaDataParser, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [1,2])
@@ -1800,7 +1786,7 @@ process MetaDataParser {
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 
   input:
-    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(armLevel), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
+    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
     ]) 
@@ -1827,7 +1813,7 @@ process MetaDataParser {
     --tumorID ${idTumor} \
     --normalID ${idNormal} \
     --facetsPurity_out ${purityOut} \
-    --facetsArmLevel ${armLevel} \
+    --facetsQC ${qcOutput} \
     --MSIsensor_output ${msifile} \
     --mutational_signatures_output ${mutSig} \
     --polysolver_output ${polysolverFile} \
@@ -2217,16 +2203,12 @@ process GermlineFacetsAnnotation {
   when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
 
   script:
-  mapFile = "${idTumor}_${idNormal}.map"
   outputPrefix = "${idTumor}__${idNormal}.germline"
   """
-  echo "Tumor_Sample_Barcode\tRdata_filename" > ${mapFile}
-  echo "${idTumor}\t${purity_rdata.fileName}" >> ${mapFile}
-
-  Rscript --no-init-file /usr/bin/facets-suite/mafAnno.R \
-    --facets_files ${mapFile} \
-    --maf ${maf} \
-    --out_maf ${outputPrefix}.facets.maf
+  Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
+    --facets-output ${purity_rdata} \
+    --maf-file ${maf} \
+    --output ${outputPrefix}.facets.maf
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.final.maf
   """
@@ -2723,11 +2705,11 @@ if ( !params.mapping && !params.bamMapping ){
   inputAggregate.fork{ cohort, idTumor, idNormal, path ->
 		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
                   NetMhcStats4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.all_neoantigen_predictions.txt")]
-                  FacetsPurity4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_purity.seg")]
-                  FacetsHisens4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_hisens.seg")]
-                  FacetsOutLog4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*_OUT.txt")]
-                  FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*.armlevel.unfiltered.txt")]
-                  FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*.genelevel.unfiltered.txt")]
+                  FacetsPurity4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_purity.seg")]
+                  FacetsHisens4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_hisens.seg")]
+                  FacetsOutLog4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
+                  FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*/*.arm_level.txt")]
+                  FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
                   dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
                   predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*30.DNA.HLAlossPrediction_CI.txt")]
@@ -3019,11 +3001,11 @@ process SomaticAggregateFacets {
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
-  mv *{genelevel,armlevel}.unfiltered.txt facets_tmp/
-  cat facets_tmp/*genelevel.unfiltered.txt | head -n 1 > cna_genelevel.txt
-  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*genelevel.unfiltered.txt >> cna_genelevel.txt
-  cat facets_tmp/*armlevel.unfiltered.txt | head -n 1 > cna_armlevel.txt
-  cat facets_tmp/*armlevel.unfiltered.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt || [[ \$? == 1 ]]
+  mv *{gene_level,arm_level}.txt facets_tmp/
+  cat facets_tmp/*gene_level.txt | head -n 1 > cna_genelevel.txt
+  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*gene_level.txt >> cna_genelevel.txt
+  cat facets_tmp/*arm_level.txt | head -n 1 > cna_armlevel.txt
+  cat facets_tmp/*arm_level.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt || [[ \$? == 1 ]]
   """
 }
 
