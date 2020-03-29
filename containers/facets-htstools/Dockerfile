@@ -3,12 +3,12 @@ FROM rocker/tidyverse:3.6.1
 LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="2.3.0" \
-      version.facets_suite="1.6.2" \
+      version.image="3.0.0" \
+      version.facets_suite="2.0.4" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
       version.pctGCdata="0.2.0" \
-      source.facets_suite="https://github.com/mskcc/facets-suite/releases/tag/1.6.0" \
+      source.facets_suite="https://github.com/mskcc/facets-suite/releases/tag/2.0.4" \
       source.facets="https://github.com/mskcc/facets/archive/v0.5.14.tar.gz" \
       version.htstools="0.1.1" \
       version.htslib="1.5" \
@@ -19,14 +19,14 @@ LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
 
 ENV HTSTOOLS_VERSION 0.1.1
 ENV HTSLIB_VERSION 1.5
-ENV FACETS_SUITE_VERSION 1.6.2
+ENV FACETS_SUITE_VERSION 2.0.4
 ENV FACETS_VERSION 0.5.14
 ENV PCTGCDATA 0.2.0
 
 # Requirements
 RUN apt-get update && apt-get install -y g++ tar bzip2 libbz2-dev libc6-dev libxt-dev liblzma-dev libgtk2.0-dev libcairo2-dev xvfb xauth xfonts-base
 
-RUN R -e "install.packages(c('Cairo','argparse','gridExtra', 'binom', 'BiocManager'), repos='http://cran.us.r-project.org')" \
+RUN R -e "install.packages(c('Cairo','argparse','gridExtra', 'binom', 'BiocManager', 'diptest', 'egg'), repos='http://cran.us.r-project.org')" \
     && R -e "BiocManager::install('rtracklayer')"
 
 # Install htslib
@@ -64,6 +64,9 @@ RUN cd /tmp \
     && cd /tmp/facets-${FACETS_VERSION} \
     && R CMD INSTALL . \
     && cd /tmp/facets-suite-${FACETS_SUITE_VERSION} \
+    && R CMD INSTALL . \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/summarize_project.py \
+    && mv summarize_project.py /usr/bin \
     # correct shebang line
     && sed -i "s/opt\/common\/CentOS_6-dev\/R\/R-3.2.2\//usr\//g" *.R \
     # copy execs to /usr/bin/facets-suite

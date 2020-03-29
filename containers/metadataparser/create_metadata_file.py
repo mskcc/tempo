@@ -2,8 +2,9 @@
 
 
 __author__  = "Evan Biederstedt"
-__email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com"
-__version__ = "0.2.1"
+__contributor__  = "Yixiao Gong"
+__email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com; gongy@mskcc.org"
+__version__ = "0.2.2"
 __status__  = "Dev"
 
 
@@ -14,7 +15,7 @@ Usage: python3 create_metadata_file.py [-h] --sampleID SAMPLEID
                                --tumorID TUMORID
                                --normalID NORMALID
                                [--facetsPurity_out FACETSPURITY_OUT]
-                               [--facetsArmLevel FACETSARMLEVEL]
+                               [--facetsQC FACETS_QC]
                                [--MSIsensor_output MSISENSOR_OUTPUT]
                                [--mutational_signatures_output MUTATIONAL_SIGNATURES_OUTPUT]
                                [--polysolver_output POLYSOLVER_OUTPUT]
@@ -27,8 +28,8 @@ Usage: python3 create_metadata_file.py [-h] --sampleID SAMPLEID
       --facetsPurity_out FACETSPURITY_OUT
                             FACETS purity output, *_purity.out; used to measure
                             ploidy and purity
-     --facetsArmLevel FACETSARMLEVEL
-                            FACETS armLevel output, *armlevel.tsv; used to measure WGD
+     --facetsQC FACETS_QC
+                            FACETS QC output, *.qc.txt; used to measure WGD
      --MSIsensor_output MSISENSOR_OUTPUT
                             MSIsensor output, *.msisensor.tsv
      --mutational_signatures_output MUTATIONAL_SIGNATURES_OUTPUT
@@ -56,7 +57,7 @@ parser.add_argument('--sampleID', help = 'sample ID from channel, should always 
 parser.add_argument('--tumorID', help = 'tumor ID from channel, should always exist', required = True)
 parser.add_argument('--normalID', help = 'normal ID from channel, should always exist', required = True)
 parser.add_argument('--facetsPurity_out', help = 'FACETS purity output, *_purity.out; used to measure ploidy and purity', required = False)
-parser.add_argument('--facetsArmLevel', help = 'FACETS armLevel output, *armlevel.tsv; used to measure WGD', required = False)
+parser.add_argument('--facetsQC', help = 'FACETS default QC output, *.qc.txt; used to measure WGD', required = False)
 parser.add_argument('--MSIsensor_output', help = 'MSIsensor output, *.msisensor.tsv', required = False)
 parser.add_argument('--mutational_signatures_output', help = 'output *txt of mutational signatures', required = False)
 parser.add_argument('--polysolver_output', help = 'output *txt of HLA genotypes, winners.hla.txt', required = False)
@@ -76,7 +77,7 @@ sampleID = args.sampleID
 tumorID = args.tumorID
 normalID = args.normalID
 facetsPurityPloidy = args.facetsPurity_out
-facetsArmLevel = args.facetsArmLevel
+facetsQC = args.facetsQC
 MSIoutput = args.MSIsensor_output
 mutationalSignatures = args.mutational_signatures_output
 HLAoutput = args.polysolver_output
@@ -99,13 +100,13 @@ if facetsPurityPloidy is not None:
     results["ploidy"] = [purity_out.iloc[16].str.split(' = ')[0][1]]
 
 
-if facetsArmLevel is not None:
+if facetsQC is not None:
     ## parse WGD from facets-suite *.armlevel.tsv
-    armLevel = pd.read_csv(facetsArmLevel, sep="\t")
+    qc = pd.read_csv(facetsQC, sep="\t")
     ## create WGD column
-    if str(armLevel.WGD.unique()).replace("['", "").replace("']", "")=='WGD':
+    if qc.wgd.unique() == [True]:
     	results["WGD_status"] = [True]
-    elif str(armLevel.WGD.unique()).replace("['", "").replace("']", "")=='no WGD':
+    elif qc.wgd.unique() == [False]:
     	results["WGD_status"] = [False]
     else:
     	results["WGD_status"] = ['NA']  ## hard-coding string NA, not NaN or None
@@ -122,7 +123,6 @@ if mutationalSignatures is not None:
     ## parse mutational signatures output
     mutsig = pd.read_csv(mutationalSignatures, sep="\t")
     ## create mutational signatures columns
-    results["Number_of_Mutations"] = mutsig['Number of Mutations']
     results["Signature_1"] =  mutsig['Signature.1']
     results["Signature_2"] =  mutsig['Signature.2']
     results["Signature_3"] =  mutsig['Signature.3']
@@ -202,6 +202,7 @@ if MAF_input is not None and coding_baits_BED is not None:
     else: 
     	tmb = None ## this shouldn't happen
 
+    results["Number_of_Mutations"] = len(maf.index)
     results['TMB']=[tmb]
 
 ## write to *tsv
