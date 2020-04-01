@@ -91,7 +91,7 @@ These outputs are:
 - `facets`: Individual copy-number profiles from FACETS, per tumor-normal pair.
 - `lohhla`: LOHHLA output.
 - `manta`: Manta output.
-- `meta_data: Summarized meta_data file which includes the following results:
+- `meta_data`: Summarized meta_data file which includes the following results:
   - Purity and Ploidy
   - WGS Status
   - MSI information including MSI_Total_Sites, MSI_Somatic_Sites, MSIscore
