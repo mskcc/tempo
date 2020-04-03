@@ -104,9 +104,9 @@ if facetsQC is not None:
     ## parse WGD from facets-suite *.armlevel.tsv
     qc = pd.read_csv(facetsQC, sep="\t")
     ## create WGD column
-    if qc.wgd.unique() == [True]:
+    if qc.wgd.count(True) > 0:
     	results["WGD_status"] = [True]
-    elif qc.wgd.unique() == [False]:
+    elif qc.wgd.count(False) > 0:
     	results["WGD_status"] = [False]
     else:
     	results["WGD_status"] = ['NA']  ## hard-coding string NA, not NaN or None
