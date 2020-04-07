@@ -447,8 +447,6 @@ if (params.mapping) {
   process MergeBams {
     tag {idSample}
 
-    beforeScript = "module load singularity/3.1.1; unset R_LIBS; catch_USR2 () { echo 'caught USR2 signal'; exit 2 ; } ; trap catch_USR2 USR2"
-
     input:
       set idSample, file(bam), target from groupedBam
 
@@ -470,8 +468,6 @@ if (params.mapping) {
 // GATK MarkDuplicates
   process MarkDuplicates {
     tag {idSample}
-
-    beforeScript = "module load singularity/3.1.1; unset R_LIBS; catch_USR2 () { echo 'caught USR2 signal'; exit 2 ; } ; trap catch_USR2 USR2"
 
     input:
       set idSample, file(bam), target from mergedBam
@@ -579,8 +575,6 @@ if (params.mapping) {
   // GATK ApplyBQSR, RecalibrateBAM
   process RecalibrateBam {
     tag {idSample}
-
-    beforeScript = "module load singularity/3.1.1; unset R_LIBS; catch_USR2 () { echo 'caught USR2 signal'; exit 2 ; } ; trap catch_USR2 USR2"
 
     publishDir "${params.outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
 
