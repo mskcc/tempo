@@ -333,7 +333,17 @@ if (params.mapping) {
           tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
         }
         .map{ idSample, target, fastqPairs, fileID, lane ->
-             [idSample, target, fastqPairs[0], fastqPairs[0].size(), fastqPairs[1], fastqPairs[1].size(), fileID, lane]
+             [idSample, target, fastqPairs[0], fastqPairs[1], fileID, lane]
+        }
+        .map{ item ->
+                idSample = item[0]
+                target = item[1]
+                fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
+                fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
+                fileID = item[4]
+                lane = item[5]
+
+             [idSample, target, fastqPair1, fastqPair1.size(), fastqPair2, fastqPair2.size(), fileID, lane]
         }
         .mix(fastqsNoNeedSplit)
   }
