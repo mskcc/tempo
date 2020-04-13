@@ -196,7 +196,7 @@ if (params.mapping) {
   }
 
   inputMapping.map{ idSample, target, file_pe1, file_pe2 ->
-                   [idSample, target, file_pe1, file_pe2, file_pe1.getSimpleName(), file_pe1.getSimpleName()]
+                   [idSample, target, file_pe1, file_pe2, idSample + "@" + file_pe1.getSimpleName(), file_pe1.getSimpleName()]
               }
               .set{ inputFastqs }
 
@@ -225,7 +225,7 @@ if (params.mapping) {
 
     output:
       file("file-size.txt") into R1Size
-      set idSample, target, file("*R1.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR1
+      set idSample, target, file("*R1*.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR1
 
     when: params.splitLanes
 
@@ -245,12 +245,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { 500.h }
     }
 
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
     """
-      fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
+      fcid=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
-      echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
-      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().replaceAll("_+R1(?!.*R1)", "")}@"var"_L00"lane"_R1.splitLanes.fastq.gz"}}'
-      touch `ls *R1.splitLanes.fastq.gz | wc -l`.laneCount
+      echo -e "${idSample}@${file(fastqFile1)}\t${inputSize}" > file-size.txt
+      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
+      touch `ls *R1*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
   process SplitLanesR2 {
@@ -261,7 +262,7 @@ if (params.mapping) {
 
     output:
       file("file-size.txt") into R2Size
-      set idSample, target, file("*R2.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR2
+      set idSample, target, file("*_R2*.splitLanes.fastq.gz"), file("*.fcid"), file("*.laneCount") into perLaneFastqsR2
 
     when: params.splitLanes
 
@@ -280,12 +281,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { 500.h }
     }
 
+    filePartNo = fastqFile2.getSimpleName().split("_R2")[1]
     """
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
-      echo -e "${idSample}@\${fcid}@R2\t${inputSize}" > file-size.txt
-      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().replaceAll("_+R2(?!.*R2)", "")}@"var"_L00"lane"_R2.splitLanes.fastq.gz"}}'
-      touch `ls *R2.splitLanes.fastq.gz | wc -l`.laneCount
+      echo -e "${idSample}@${file(fastqFile2)}\t${inputSize}" > file-size.txt
+      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
+      touch `ls *_R2*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
 
@@ -331,7 +333,17 @@ if (params.mapping) {
           tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
         }
         .map{ idSample, target, fastqPairs, fileID, lane ->
-             [idSample, target, fastqPairs[0], fastqPairs[0].size(), fastqPairs[1], fastqPairs[1].size(), fileID, lane]
+             [idSample, target, fastqPairs[0], fastqPairs[1], fileID, lane]
+        }
+        .map{ item ->
+                idSample = item[0]
+                target = item[1]
+                fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
+                fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
+                fileID = item[4]
+                lane = item[5]
+
+             [idSample, target, fastqPair1, fastqPair1.size(), fastqPair2, fastqPair2.size(), fileID, lane]
         }
         .mix(fastqsNoNeedSplit)
   }
@@ -402,17 +414,18 @@ if (params.mapping) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
     """
     rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
     readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
     touch `zcat $fastqFile1 | head -1 | tr ':/\t ' '@' | cut -d '@' -f2-`.readId
     set -e
     set -o pipefail
-    echo -e "${idSample}@\${rgID}\t${inputSize}" > file-size.txt
+    echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
     fastp --html ${idSample}@\${rgID}.fastp.html --json ${idSample}@\${rgID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${rgID}.bam
+    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${rgID}${filePartNo}.bam
 
-    samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}.sorted.bam ${idSample}@\${rgID}.bam
+    samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}${filePartNo}.sorted.bam ${idSample}@\${rgID}${filePartNo}.bam
     """
   }
 
@@ -2713,7 +2726,7 @@ if ( !params.mapping && !params.bamMapping ){
                   FacetsPurity4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_purity.seg")]
                   FacetsHisens4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_hisens.seg")]
                   FacetsOutLog4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
-                  FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*/*.arm_level.txt")]
+                  FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.arm_level.txt")]
                   FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
                   dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
@@ -2748,9 +2761,9 @@ if ( !params.mapping && !params.bamMapping ){
   inputGermlineAggregateMaf = aggregateList.mafFile4AggregateGermline.transpose().groupTuple(by:[2])
   inputGermlineAggregateSv = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
   inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
-  inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0])
-  inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0])
-  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0])
+  inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
+  inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
+  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
   inputConpairConcord4Aggregate = aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2])
   inputConpairContami4Aggregate = aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2])
 
