@@ -78,7 +78,6 @@ RUN cd /tmp \
 # Use geneLevel.R old facetsSuite 1.6.3 to fix incorrect AMP filtering in geneLevel calls
 RUN cd /usr/bin/facets-suite \
     && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/geneLevel.R \
-    && mkdir data \
     && cd data \
     && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/OncoKB_allCuratedGenes_v1.19_patch_1.json \
     && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/Homo_sapiens.GRCh37.75.canonical_exons.bed \
