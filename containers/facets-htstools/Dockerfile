@@ -76,9 +76,18 @@ RUN cd /tmp \
     && rm -rf /var/cache/apk/* /tmp/*
 
 # Use geneLevel.R old facetsSuite 1.6.3 to fix incorrect AMP filtering in geneLevel calls
-RUN cd /tmp \
+RUN cd /usr/bin/facets-suite \
     && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/geneLevel.R \
-    && mv geneLevel.R /usr/bin/facets-suite/
+    && mkdir data \
+    && cd data \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/OncoKB_allCuratedGenes_v1.19_patch_1.json \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/Homo_sapiens.GRCh37.75.canonical_exons.bed \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/FACETS_CALL_table.tsv \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/CytobandTableRed.Ensemblgrch37.txt \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/impact341_targets.ilist \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/impact410_targets.ilist \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/impact468_targets.ilist
+
 
 ENV PYTHONNOUSERSITE set
 ENV FACETS_OVERRIDE_EXITCODE set
