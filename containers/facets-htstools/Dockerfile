@@ -76,7 +76,7 @@ RUN cd /tmp \
     && rm -rf /var/cache/apk/* /tmp/*
 
 # Use geneLevel.R old facetsSuite 1.6.3 to fix incorrect AMP filtering in geneLevel calls
-RUN cd /tmp /
+RUN cd /tmp \
     && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/geneLevel.R \
     && mv geneLevel.R /usr/bin/facets-suite/
 
