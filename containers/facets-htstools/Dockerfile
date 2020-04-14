@@ -3,7 +3,7 @@ FROM rocker/tidyverse:3.6.1
 LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="3.0.0" \
+      version.image="3.0.1" \
       version.facets_suite="2.0.4" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
@@ -74,6 +74,11 @@ RUN cd /tmp \
     && cp -r /tmp/facets-suite-${FACETS_SUITE_VERSION}/* /usr/bin/facets-suite/ \
     # clean up
     && rm -rf /var/cache/apk/* /tmp/*
+
+# Use geneLevel.R old facetsSuite 1.6.3 to fix incorrect AMP filtering in geneLevel calls
+RUN cd /tmp /
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/geneLevel.R \
+    && mv geneLevel.R /usr/bin/facets-suite/
 
 ENV PYTHONNOUSERSITE set
 ENV FACETS_OVERRIDE_EXITCODE set
