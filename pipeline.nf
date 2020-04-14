@@ -1560,7 +1560,7 @@ process DoFacets {
   cd ${outputDir}
   rm -rf ${tag}.gene_level.txt
   Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
-    --filenames ${tag}.hisens.cncf.txt \
+    --filenames ${tag}_hisens.cncf.txt \
     --targetFile exome \
     --outfile ${tag}.gene_level.txt
   cd ../
