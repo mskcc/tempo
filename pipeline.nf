@@ -1563,7 +1563,7 @@ process DoFacets {
     --filenames ${tag}_hisens.cncf.txt \
     --targetFile exome \
     --outfile ${tag}.gene_level.txt
-  cd ../
+  cd -
 
   python3 /usr/bin/summarize_project.py \
     -p ${tag} \
