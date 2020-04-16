@@ -206,8 +206,11 @@ if (params.mapping) {
 
   fastqsNeedSplit
         .filter{ item -> !(item[2].getName() =~ /_L(\d){3}_/) }
-        .map{ idSample, target, file_pe1, file_pe2, fileID, lane -> [idSample, target, file_pe1, file_pe2] }
-        .into{ inputFastqR1; inputFastqR2 }
+        .multiMap{ idSample, target, file_pe1, file_pe2, fileID, lane ->
+		inputFastqR1: [idSample, target, file_pe1, file_pe1.toString()]
+		inputFastqR2: [idSample, target, file_pe2, file_pe2.toString()]
+	}
+        .set{ fastqsNeedSplit }
 
   fastqsNoNeedSplit
         .filter{ item -> item[2].getName() =~ /_L(\d){3}_/ }
@@ -218,10 +221,10 @@ if (params.mapping) {
 
 
   process SplitLanesR1 {
-    tag {idSample + "@" + file(fastqFile1)}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set idSample, target, file(fastqFile1), file(fastqFile2) from inputFastqR1
+      set idSample, target, file(fastqFile1), fileID from fastqsNeedSplit.inputFastqR1
 
     output:
       file("file-size.txt") into R1Size
@@ -249,16 +252,16 @@ if (params.mapping) {
     """
       fcid=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
-      echo -e "${idSample}@${file(fastqFile1)}\t${inputSize}" > file-size.txt
+      echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
       zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *R1*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
   process SplitLanesR2 {
-    tag {idSample + "@" + file(fastqFile2)}   // The tag directive allows you to associate each process executions with a custom label
+    tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
     input:
-      set idSample, target, file(fastqFile1), file(fastqFile2) from inputFastqR2
+      set idSample, target, file(fastqFile2), fileID from fastqsNeedSplit.inputFastqR2
 
     output:
       file("file-size.txt") into R2Size
@@ -285,7 +288,7 @@ if (params.mapping) {
     """
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
-      echo -e "${idSample}@${file(fastqFile2)}\t${inputSize}" > file-size.txt
+      echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
       zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *_R2*.splitLanes.fastq.gz | wc -l`.laneCount
     """
@@ -2723,7 +2726,7 @@ if ( !params.mapping && !params.bamMapping ){
     watchAggregateWithPath(file(runAggregate, checkIfExists: true))
 	   .set{inputAggregate}
   }
-  inputAggregate.fork{ cohort, idTumor, idNormal, path ->
+  inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->
 		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
                   NetMhcStats4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.all_neoantigen_predictions.txt")]
                   FacetsPurity4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_purity.seg")]
