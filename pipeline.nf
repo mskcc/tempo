@@ -92,6 +92,8 @@ runConpairAll = false
 
 println ""
 
+pairingQc = params.pairing
+
 if (params.mapping || params.bamMapping) {
   TempoUtils.checkAssayType(params.assayType)
   if (params.watch == false) {
@@ -104,7 +106,9 @@ if (params.mapping || params.bamMapping) {
   }
   else{}
   if(params.pairing){
-    pairingQc = params.pairing
+    if(runQC){
+      pairingQc = true
+    }
     if (params.watch == false) {
       pairingFile = file(params.pairing, checkIfExists: true)
       (checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
