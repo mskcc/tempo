@@ -1548,14 +1548,14 @@ process DoFacets {
 
   mkdir ${outputDir}
 
-  attemptNumber=0
   set +e
   i=1
   seed=\$((${params.facets.seed}-1))
+  attemptNumber=0
 
   while [ \$i -eq 1 ]
   do
-  attemptNum=$((attemptNumber + 1 ))
+  attemptNumber=\$(( attemptNumber + 1 ))
   if [ \$attemptNumber -gt 4 ]; then 
     break
   fi
