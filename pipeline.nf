@@ -1548,16 +1548,19 @@ process DoFacets {
 
   mkdir ${outputDir}
 
+  attemptNumber=0
   set +e
   i=1
   seed=\$((${params.facets.seed}-1))
 
   while [ \$i -eq 1 ]
   do
+  attemptNum=$((attemptNumber + 1 ))
+  if [ \$attemptNumber -gt 4 ]; then 
+    break
+  fi
   seed=\$((seed+i))
-  rm -rf ${outputDir}/seed.txt
-  echo \$seed > ${outputDir}/seed.txt
-
+  
   Rscript /usr/bin/facets-suite/run-facets-wrapper.R \
     --cval ${params.facets.cval} \
     --snp-window-size ${params.facets.snp_nbhd} \
