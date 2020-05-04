@@ -1548,6 +1548,19 @@ process DoFacets {
 
   mkdir ${outputDir}
 
+  set +e
+  i=1
+  seed=\$((${params.facets.seed}-1))
+  attemptNumber=0
+
+  while [ \$i -eq 1 ]
+  do
+  attemptNumber=\$(( attemptNumber + 1 ))
+  if [ \$attemptNumber -gt 4 ]; then 
+    break
+  fi
+  seed=\$((seed+i))
+  
   Rscript /usr/bin/facets-suite/run-facets-wrapper.R \
     --cval ${params.facets.cval} \
     --snp-window-size ${params.facets.snp_nbhd} \
@@ -1560,9 +1573,13 @@ process DoFacets {
     --sample-id ${tag} \
     --directory ${outputDir} \
     --facets-lib-path /usr/local/lib/R/site-library \
-    --seed ${params.facets.seed} \
+    --seed \$seed \
     --everything \
     --legacy-output T
+
+  i=\$?
+  done
+  set -e
 
   cd ${outputDir}
   rm -rf ${tag}.gene_level.txt
