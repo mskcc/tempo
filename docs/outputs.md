@@ -103,6 +103,10 @@ These outputs are:
 - `neoantigens`: Neoantigen predictions from NetMHCpan per sample.
 - `strelka2`: Manta output.
 
+::: warning Be aware
+* LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release.
+:::
+
 ## Germline data
 
 The result of the germline analyses is output in the `germline` folder:
