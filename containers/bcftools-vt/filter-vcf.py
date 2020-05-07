@@ -8,8 +8,9 @@ Output: 'input_filename.filter.vcf'
 """
 
 __author__  = "Philip Jonsson"
-__email__   = "jonssonp@mskcc.org"
-__version__ = "0.2.0"
+__contributor__  = "Yixiao Gong"
+__email__   = "jonssonp@mskcc.org; gongy@mskcc.org"
+__version__ = "0.2.1"
 __status__  = "Dev"
 
 import sys, os
@@ -75,13 +76,14 @@ for var in vcf_in.fetch():
             'C': var.samples[tumor]['CU'],
             'G': var.samples[tumor]['GU'],
             'T': var.samples[tumor]['TU']
-        }        
-        tier1_other = sum([alleles[a][0] for a in alleles if a not in [alt, ref]])
-        tier2_other = sum([alleles[a][1] for a in alleles if a not in [alt, ref]])
-        alt_reads = alleles[alt][0]
-
-        if (tier1_other + tier2_other) >= alt_reads * 0.5:
-            new_flags.append('multiallelic2')
+        }
+	valid_alleles = [key for key in alleles.keys() if all(isinstance(item,int) for item in alleles[key])]
+        tier1_other = sum([alleles[a][0] for a in valid_alleles if a not in [alt, ref]])
+        tier2_other = sum([alleles[a][1] for a in valid_alleles if a not in [alt, ref]])
+	if alt in valid_alleles:
+		alt_reads = alleles[alt][0]
+		if (tier1_other + tier2_other) >= alt_reads * 0.5:
+			new_flags.append('multiallelic2')
     
     ## Add an additional strand-bias filer
     ## Only MuTect2 provides sufficient variant information for this
