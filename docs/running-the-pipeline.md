@@ -30,7 +30,8 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 
 **Section arguments:**
 * `--somatic`, `--germline` and `--QC` flags are boolean that indicate to run the somatic, germline variant calling and QC modules, respectively. Default value are `false` for all. Note: Currently the pipeline will enable `--somatic` automatically if only `--germline` is enabled, since germline analysis needs results from somatic analysis for now. (default: `false` for all)
-* `--aggregate <true, false, or [a tsv file]>` can be boolean or be given a path to a tsv file. When boolean value is given, it has to work together with `--somatic`, `--germline` and/or `--QC` to aggregate the results of these operations together as a cohort. There will be a `cohort_level/` directory generated under `--outDir [path]`. (default: `false`). When `--aggregate [tsv]` mode is given, the pipeline will only aggregate the result in the directories appear in the TSV file. And it can not work with any of the following arguments: `--somatic`, `--germline`, `--QC`, `--mapping/--bamMapping [tsv]`, `--pairing [tsv]`.
+* `--aggregate <true, false, or [a tsv file]>` can be boolean or be given a path to a tsv file. Default value is `false`. It has to work together with `--somatic`, `--germline` and/or `--QC` to aggregate the results of these operations together as a cohort. There will be a `cohort_level/[cohort]/` directory generated under `--outDir [path]`. When boolean value `true` is given (equal to only give `--aggregate`), TEMPO will aggregate all the samples in the mapping and pairing file as one cohort named "default cohort". When `--aggregate <tsv>` file is given, the pipeline will aggregate samples and tumor/normal pairs based on the value is given in `COHORT` columns. Each sample and tumor/normal pairs can be assigned to different cohorts in different rows.
+
 
 **Optional arguments:**
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
@@ -68,8 +69,7 @@ Tempo checks for the following aspects:
 8. Required Arguments are provided and valid
 9. Reference files all exists
 10. Samples are present both in mapping and pairing files at the same time
-11. Duplicated files are in the mapping file
-But we suggest you do your own validation of your input to ensure smooth execution.
+11. Duplicated files are in the mapping file after alignment is done.So we suggest you do your own validation of your input for this aspect to ensure smooth execution.
 :::
 
 ### The Mapping Files
@@ -140,6 +140,29 @@ Example:
 |...|...|
 |normal_sample_n|tumor_sample_n|
 
+### Aggregate File (`--aggregate true/false/<tsv>`)
+
+* When boolean value `true` is given (equal to only give `--aggregate`), TEMPO will aggregate all the samples in the mapping and pairing file as one cohort named "default cohort". 
+* When `--aggregate <tsv>` file is given, the pipeline will aggregate samples and tumor/normal pairs based on the value is given in `COHORT` column. Each sample and tumor/normal pairs can be assigned to different cohorts in different rows.
+* When running aggregation only mode, `PATH` column need to be provided to introduce the TEMPO result directories for each sample and tumor/normal pairs (only up to the parent folder of `qc`, `somatic` and `germline` folder).
+
+Example:
+
+|NORMAL_ID|TUMOR_ID|COHORT|PATH(only applicable for runing aggregate only mode)|
+|:---:|:---:|:---:|:---:|:---:|
+|normal_sample_1|normal_sample_1|cohort1|/home/tempo/v1/result|
+|normal_sample_2|tumor_sample_2|cohort1|/home/tempo/v1/result|
+|normal_sample_3|tumor_sample_3|...|...|
+|normal_sample_n|tumor_sample_n|cohort2|/home/tempo/v2/result|
+
+The `--pairing <tsv>` file will be exactly the same as using FASTQ mapping TSV file, describing below.
+
+::: tip Note
+The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `pipeline.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
+
+Different from FASTQ mapping tsv, in this TSV file each SAMPLE id can only appear once, meaning the pipeline will not combine different BAMs for you for the same sample.
+:::
+
 ## Execution Mode
 
 There are overall 4 execution modes that TEMPO accept, depending on the way of input arguments are given. The pipeline will throw an error when it detects incompatible _Section arguments_ (`--somatic`, `--germline`, `--QC`, `--aggregate`) combinations. Compatibility of analysis argument combinations are described below:
@@ -149,7 +172,7 @@ When no additional _Section arguments_ are given, only alignment steps will be p
 
 ***Compatible _Section Arguments_ Combinations:***
 * `--QC`: `QcAlfred` and `QcCollectHsMetrics` will be performed.
-* `--QC --aggregate`: `QcAlfred` and `QcCollectHsMetrics` will be performed and aggregated in `cohort_level/` folder.
+* `--QC --aggregate true/<tsv>`: `QcAlfred` and `QcCollectHsMetrics` will be performed and aggregated in `cohort_level/[cohort]` folder.
 
 ***Incompatible _Section Arguments_:***
 * `--somatic`: No pairing infomation.
@@ -164,36 +187,18 @@ When `--bamMapping <tsv>` is given, the pipeline will use BAM input and skip ali
 When no additional _Sectionarguments_ are given, pipeline will throw an error indicating that `--pairing <tsv>` is not used.
 
 ***Compatible _Section Arguments_ Combinations:***
-* `--somatic` with or without `--aggregate`
-* `--somatic --germline` with or without `--aggregate`
-* `--somatic --QC` with or without `--aggregate`
-* `--QC` with or without `--aggregate`: `QcConpair` will be performed together with `QcAlfred` and `QcCollectHsMetrics`.
+* `--somatic` with or without `--aggregate true/<tsv>`
+* `--somatic --germline` with or without `--aggregate true/<tsv>`
+* `--somatic --QC` with or without `--aggregate true/<tsv>`
+* `--QC` with or without `--aggregate true/<tsv>`: `QcConpair` will be performed together with `QcAlfred` and `QcCollectHsMetrics`.
 
 ***Incompatible _Section Arguments_:***
-* `--germline` with or without `--aggregate` and `--QC`: The pipeline will auto-enable `--somatic` because germline analysis need the results from somatic analysis at this stage.
-* `--mapping <tsv>`: Conflicts.
+* `--germline` with or without `--aggregate true/<tsv>` and `--QC`: The pipeline will auto-enable `--somatic` because germline analysis need the results from somatic analysis at this stage.
+* `--aggregate <tsv>`: Conflicts.
 
 ### `--aggregate <tsv>` only
-This mode can only be run on the TEMPO produced output structure. It explicitly relies on the output structure and T/N pair names that are auto-generated by TEMPO to identify how and what files need to be aggregated together as a cohort level result under folder `cohort_level/`. Please refer to [Outputs](outputs.md#outputs) for more detail.
+This mode can only be run when the TEMPO produced output structure path is provided as `PATH` column in `--aggregate <tsv>`. It explicitly relies on the output structure ((only up to the parent folder of `qc`, `somatic` and `germline` folder) that are auto-generated by TEMPO to identify how and what files need to be aggregated together as a cohort level result under folder `cohort_level/[cohort]`. Please refer to [Outputs](outputs.md#outputs) for more detail.
 
-Example of the input TSV file:
-
-|PATH|
-|:---:|
-|~/Result/qc/tumor1__normal1/|
-|~/Result/somatic/tumor1__normal1/|
-|~/Result/germline/tumor1__normal1/|
-|~/Result/qc/tumor2__normal2/|
-|...|...|
-|~/Result/qc/tumor3__normal3/|
-
-::: tip Note
-We highly recommend you to use command line to list all the Tumor/Normal result folders you want to aggregate to ensure the exists of the result folders. Example code:
-```shell
-echo "PATH" > aggregate.tsv
-ls -d ~/Result/*/* >> aggregate.tsv
-```
-:::
 
 ***Compatible _Section Arguments_ Combinations:***
 * The pipeline will auto-detect which sections need to be aggregated, so no _Section_Arguments_ need to be given.

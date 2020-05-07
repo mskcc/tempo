@@ -15,6 +15,7 @@ nf.*
 *.txt
 *.txt.*
 *.pdf
+*.pdf.*
 *.gz
 *.bam.*
 Result/

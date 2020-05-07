@@ -91,7 +91,7 @@ These outputs are:
 - `facets`: Individual copy-number profiles from FACETS, per tumor-normal pair.
 - `lohhla`: LOHHLA output.
 - `manta`: Manta output.
-- `meta_data: Summarized meta_data file which includes the following results:
+- `meta_data`: Summarized meta_data file which includes the following results:
   - Purity and Ploidy
   - WGS Status
   - MSI information including MSI_Total_Sites, MSI_Somatic_Sites, MSIscore
@@ -102,6 +102,10 @@ These outputs are:
 - `mutect2`: Manta output.
 - `neoantigens`: Neoantigen predictions from NetMHCpan per sample.
 - `strelka2`: Manta output.
+
+::: warning Be aware
+* LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release.
+:::
 
 ## Germline data
 
@@ -140,24 +144,31 @@ When run with the flag `--aggregate`, the pipeline will output aggregate all sam
 
 ```shell
 outDir/cohort_level/
-├── alignment_qc.txt
-├── cna_armlevel.txt
-├── cna_facets_run_info.txt
-├── cna_genelevel.txt
-├── cna_hisens_run_segmentation.seg
-├── cna_purity_run_segmentation.seg
-├── concordance_qc.txt
-├── contamination_qc.txt
-├── DNA.IntegerCPN_CI.txt
-├── HLAlossPrediction_CI.txt
-├── mut_germline.maf
-├── mut_somatic.maf
-├── mut_somatic_neoantigens.txt
-├── sample_data.txt
-├── sv_germline.vcf.gz
-├── sv_germline.vcf.gz.tbi
-├── sv_somatic.vcf.gz
-└── sv_somatic.vcf.gz.tbi
+├── default_cohort
+│   ├── alignment_qc.txt
+│   ├── cna_armlevel.txt
+│   ├── cna_facets_run_info.txt
+│   ├── cna_genelevel.txt
+│   ├── cna_hisens_run_segmentation.seg
+│   ├── cna_purity_run_segmentation.seg
+│   ├── concordance_qc.txt
+│   ├── contamination_qc.txt
+│   ├── DNA.IntegerCPN_CI.txt
+│   ├── HLAlossPrediction_CI.txt
+│   ├── mut_germline.maf
+│   ├── mut_somatic.maf
+│   ├── mut_somatic_neoantigens.txt
+│   ├── sample_data.txt
+│   ├── sv_germline.vcf.gz
+│   ├── sv_germline.vcf.gz.tbi
+│   ├── sv_somatic.vcf.gz
+│   └── sv_somatic.vcf.gz.tbi
+├── cohort2
+│   ├── alignment_qc.txt
+│   ├── cna_armlevel.txt
+│   ├── cna_facets_run_info.txt
+│   ├── cna_genelevel.txt
+...
 ```
 
 These outputs are just naively concatenated together from per sample output files (duplicated header are removed).

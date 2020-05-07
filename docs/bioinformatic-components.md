@@ -21,7 +21,6 @@ Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (c
 * __PCR-duplicate marking__ using [GATK MarkDuplicates](https://software.broadinstitute.org/gatk).
 * __Base-quality score recalibration__ with [GATK BaseRecalibrator and ApplyBQSR](https://software.broadinstitute.org/gatk/).
 
-A complete Directed Acyclic Graph can be found [here](./alignment.pdf)
 
 ## Somatic Analyses
 
@@ -34,14 +33,15 @@ A complete Directed Acyclic Graph can be found [here](./alignment.pdf)
 * __Mutational signatures__ are inferred with [https://github.com/mskcc/mutation-signatures](https://github.com/mskcc/mutation-signatures).
 * __Neoantigen prediction__ using estimates of class I MHC binding affinity is performed with [NetMHC 4.0](https://www.ncbi.nlm.nih.gov/pubmed/28978689) and integrated into the set of SNV/indel calls using [https://github.com/taylor-lab/neoantigen-dev](https://github.com/taylor-lab/neoantigen-dev) (_Note: this repository is currently private_).
 
-A complete Directed Acyclic Graph can be found [here](./somatic.pdf) and [here](./somaticBAM.pdf)
+::: warning Be aware
+
+LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release. :::
 
 ## Germline Analyses
 
 * __SNVs and indels__ are called using [HaplotypeCaller](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.0.8.0/org_broadinstitute_hellbender_tools_walkers_haplotypecaller_HaplotypeCaller.php) and [Strelka2](https://github.com/Illumina/strelka). Subsequently, they are combined, annotated and filtered as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#germline-snvs-and-indels).
 * __Structural variants__ are detected by [Delly](https://github.com/dellytools/delly) and [Manta](https://github.com/Illumina/manta) then combined, filtered and annotated as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-and-germline-svs).
 
-A complete Directed Acyclic Graph can be found [here](./somaticGermline.pdf) and [here](./somaticGermlineBAM.pdf)
 
 ## Quality Control
 
@@ -50,4 +50,3 @@ A complete Directed Acyclic Graph can be found [here](./somaticGermline.pdf) and
 * __Hybridisation-selection metrics__ are generated using [CollectHsMetrics](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.6/picard_analysis_directed_CollectHsMetrics.php). Only for exomes.
 * __Contamination and concordance metrics__ for tumor-normal pairs using [Conpair](https://github.com/mskcc/Conpair).
 
-A complete Directed Acyclic Graph can be found [here](./qc.pdf) and [here](./qcBAM.pdf)
