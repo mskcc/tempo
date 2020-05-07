@@ -69,8 +69,7 @@ Tempo checks for the following aspects:
 8. Required Arguments are provided and valid
 9. Reference files all exists
 10. Samples are present both in mapping and pairing files at the same time
-11. Duplicated files are in the mapping file
-But we suggest you do your own validation of your input to ensure smooth execution.
+11. Duplicated files are in the mapping file after alignment is done.So we suggest you do your own validation of your input for this aspect to ensure smooth execution.
 :::
 
 ### The Mapping Files
