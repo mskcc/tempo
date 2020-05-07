@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN R -e "install.packages(c('gtools','argparse','coneproj','data.table'), dependencies=TRUE)"
 
-RUN git clone https://github.com/mskcc/tempoSig
+RUN git clone --branch docker --single-branch https://github.com/mskcc/tempoSig
 
 RUN R -e "install.packages('tempoSig', repos=NULL, type='source')"
 
