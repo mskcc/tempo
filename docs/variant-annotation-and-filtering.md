@@ -39,7 +39,7 @@ The following columns are added to the final MAF file, in addition to those adde
     - `LEVEL_*` and `Highest_level`: Indicates whether there is any drug at the given level of actionability and which is the highest level of actionability, if any. Note that this is cancer-type agnostic in current implementation.
     - `citations`: References for OncoKB annotation.
 ::: Be aware
-* Because TEMPO is blind of the cancer type (`ONCOTREE_CODE`) when running `, so Level1s and 2As can not be annotated. The highest level will be Level 2B. You will need to re-run `oncokb_annotator/MafAnnotator.py` with this information to get detailed oncokb level.oncokb_annotator/MafAnnotator.py`, so Level1s and 2As can not be annotated. The highest level will be Level 2B. You will need to re-run `oncokb_annotator/MafAnnotator.py` with this information to get detailed oncokb level.
+* Because TEMPO is blind of the cancer type (`ONCOTREE_CODE`) when running, so Level1s and 2As can not be annotated. The highest level will be Level 2B. You will need to re-run `oncokb_annotator/MafAnnotator.py` with this information to get detailed oncokb level.
 :::
 - Variant caller metadata (development feature, subject to changes):
     - MuTect2<sup>1</sup>:
