@@ -1,12 +1,12 @@
-FROM ubuntu:18.04
+FROM halllab/bcftools:v1.9
 
-LABEL maintainer="Sinisa Ivkovic (ivkovics@mskcc.org)" \
+LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
       version.ubuntu="18.04" \
-      version.delly="0.8.1" \
+      version.delly="0.8.2" \
       version.htslib="1.9"
 
 # set the environment variables
-ENV delly_version 0.8.1
+ENV delly_version 0.8.2
 ENV htslib_version 1.9
 
 # run update
@@ -17,6 +17,7 @@ RUN apt-get update -y && apt-get install -y \
     vim  \
     wget \
     unzip \
+    procps \
     build-essential \
     libboost-all-dev \
     zlib1g-dev \
@@ -45,4 +46,4 @@ RUN unzip v${delly_version}.zip
 WORKDIR /usr/local/bin/delly-${delly_version}
 RUN make all
 WORKDIR /usr/local/bin
-RUN ln -s /usr/local/bin/delly-0.8.1/src/delly /usr/local/bin/delly
+RUN ln -s /usr/local/bin/delly-${delly_version}/src/delly /usr/local/bin/delly
