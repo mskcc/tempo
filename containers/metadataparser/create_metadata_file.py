@@ -123,7 +123,6 @@ if mutationalSignatures is not None:
     ## parse mutational signatures output
     mutsig = pd.read_csv(mutationalSignatures, sep="\t")
     ## create mutational signatures columns
-    results["Number_of_Mutations"] = mutsig['Number of Mutations']
     results["SBS1.observed"] = mutsig['SBS1.observed']
     results["SBS1.pvalue"] = mutsig['SBS1.pvalue']
     results["SBS2.observed"] = mutsig['SBS2.observed']
