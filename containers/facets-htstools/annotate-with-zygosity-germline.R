@@ -49,7 +49,7 @@ print (paste0("Reading: ", maf_file))
 maf <- fread(maf_file)
 
 # check for required columns
-req_cols <- c("t_alt_count", "t_depth", "n_depth", "purity", "tcn.em", "lcn.em")
+req_cols <- c("t_alt_count", "t_depth", "n_depth", "purity", "tcn", "lcn")
 for (col in req_cols) { if ( !(col %in% names(maf)) ) { print (paste("Missing required column in maf: ", col, sep=""))} }
 
 # initialize zygosity related variables
@@ -76,8 +76,8 @@ for (idx in 1:dim(maf)[1]){
   #   next
   # }
 
-  lcn = maf$lcn.em[idx]
-  tcn = maf$tcn.em[idx]
+  lcn = maf$lcn[idx]
+  tcn = maf$tcn[idx]
   purity = maf$purity[idx]
   t_depth = maf$t_depth[idx]
   t_alt_count = maf$t_alt_count[idx]
