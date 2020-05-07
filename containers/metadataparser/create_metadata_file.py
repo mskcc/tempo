@@ -123,7 +123,6 @@ if mutationalSignatures is not None:
     ## parse mutational signatures output
     mutsig = pd.read_csv(mutationalSignatures, sep="\t")
     ## create mutational signatures columns
-<<<<<<< HEAD
     results["Number_of_Mutations"] = mutsig['Number of Mutations']
     results["SBS1.observed"] = mutsig['SBS1.observed']
     results["SBS1.pvalue"] = mutsig['SBS1.pvalue']
@@ -259,38 +258,6 @@ if mutationalSignatures is not None:
     results["SBS84.pvalue"] = mutsig['SBS84.pvalue']
     results["SBS85.observed"] = mutsig['SBS85.observed']
     results["SBS85.pvalue"] = mutsig['SBS85.pvalue']
-=======
-    results["Signature_1"] =  mutsig['Signature.1']
-    results["Signature_2"] =  mutsig['Signature.2']
-    results["Signature_3"] =  mutsig['Signature.3']
-    results["Signature_4"] =  mutsig['Signature.4']
-    results["Signature_5"] =  mutsig['Signature.5']
-    results["Signature_6"] =  mutsig['Signature.6']
-    results["Signature_7"] =  mutsig['Signature.7']
-    results["Signature_8"] =  mutsig['Signature.8']
-    results["Signature_9"] =  mutsig['Signature.9']
-    results["Signature_10"] =  mutsig['Signature.10']
-    results["Signature_11"] =  mutsig['Signature.11']
-    results["Signature_12"] =  mutsig['Signature.12']
-    results["Signature_13"] =  mutsig['Signature.13']
-    results["Signature_14"] =  mutsig['Signature.14']
-    results["Signature_15"] =  mutsig['Signature.15']
-    results["Signature_16"] =  mutsig['Signature.16']
-    results["Signature_17"] =  mutsig['Signature.17']
-    results["Signature_18"] =  mutsig['Signature.18']
-    results["Signature_19"] =  mutsig['Signature.19']
-    results["Signature_20"] =  mutsig['Signature.20']
-    results["Signature_21"] =  mutsig['Signature.21']
-    results["Signature_22"] =  mutsig['Signature.22']
-    results["Signature_23"] =  mutsig['Signature.23']
-    results["Signature_24"] =  mutsig['Signature.24']
-    results["Signature_25"] =  mutsig['Signature.25']
-    results["Signature_26"] =  mutsig['Signature.26']
-    results["Signature_27"] =  mutsig['Signature.27']
-    results["Signature_28"] =  mutsig['Signature.28']
-    results["Signature_29"] =  mutsig['Signature.29']
-    results["Signature_30"] =  mutsig['Signature.30']
->>>>>>> 578e0f63136a0751312b2faa3aecf40bcb30747a
 
 if HLAoutput is not None:
     ## parse polysovler winners.hla.txt
