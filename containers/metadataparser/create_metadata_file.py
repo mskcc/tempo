@@ -2,8 +2,9 @@
 
 
 __author__  = "Evan Biederstedt"
+__contributor__  = "Yixiao Gong"
 __email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com"
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __status__  = "Dev"
 
 
