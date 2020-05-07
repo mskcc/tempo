@@ -428,11 +428,11 @@ if (params.mapping) {
     touch `zcat $fastqFile1 | head -1 | tr ':/\t ' '@' | cut -d '@' -f2-`.readId
     set -e
     set -o pipefail
-    echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
     fastp --html ${idSample}@\${rgID}.fastp.html --json ${idSample}@\${rgID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
     bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${rgID}${filePartNo}.bam
 
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}${filePartNo}.sorted.bam ${idSample}@\${rgID}${filePartNo}.bam
+    echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
     """
   }
 
@@ -472,10 +472,12 @@ if (params.mapping) {
 
     output:
       set idSample, file("${idSample}.merged.bam"), target into mergedBam
+      file("size.txt") into sizeOutput
 
     script:
     """
     samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
+    echo -e "${idSample}\t`du -hs ${idSample}.merged.bam`" > size.txt
     """
   }
 
