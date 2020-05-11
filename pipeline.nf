@@ -434,8 +434,8 @@ if (params.mapping) {
     if ${params.anonymizeFQ}; then
       ln -s ${fastqFile1} ${idSample}@\${rgID}@R1${filePartNo}.fastq.gz
       ln -s ${fastqFile2} ${idSample}@\${rgID}@R2${filePartNo}.fastq.gz
-      fastq1=`echo ${idSample}@\${rgID}@R1_${filePartNo}.fastq.gz`
-      fastq2=`echo ${idSample}@\${rgID}@R2_${filePartNo}.fastq.gz`
+      fastq1=`echo ${idSample}@\${rgID}@R1${filePartNo}.fastq.gz`
+      fastq2=`echo ${idSample}@\${rgID}@R2${filePartNo}.fastq.gz`
     fi
 
     fastp --html ${idSample}@\${rgID}${filePartNo}.fastp.html --json ${idSample}@\${rgID}${filePartNo}.fastp.json --in1 \${fastq1} --in2 \${fastq2}
