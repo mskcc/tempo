@@ -431,7 +431,7 @@ if (params.mapping) {
 
     fastq1=${fastqFile1}
     fastq2=${fastqFile2}
-    if ${params.anonymousFQ}; then
+    if ${params.anonymizeFQ}; then
       ln -s ${fastqFile1} ${idSample}@\${rgID}@R1_${filePartNo}.fastq.gz
       ln -s ${fastqFile2} ${idSample}@\${rgID}@R2_${filePartNo}.fastq.gz
       fastq1=`echo ${idSample}@\${rgID}@R1_${filePartNo}.fastq.gz`
