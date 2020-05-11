@@ -428,8 +428,18 @@ if (params.mapping) {
     touch `zcat $fastqFile1 | head -1 | tr ':/\t ' '@' | cut -d '@' -f2-`.readId
     set -e
     set -o pipefail
-    fastp --html ${idSample}@\${rgID}.fastp.html --json ${idSample}@\${rgID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${rgID}${filePartNo}.bam
+
+    fastq1=${fastqFile1}
+    fastq2=${fastqFile2}
+    if ${params.anonymousFQ}; then
+      ln -s ${fastqFile1} ${idSample}@\${rgID}@R1_${filePartNo}.fastq.gz
+      ln -s ${fastqFile2} ${idSample}@\${rgID}@R2_${filePartNo}.fastq.gz
+      fastq1=`echo ${idSample}@\${rgID}@R1_${filePartNo}.fastq.gz`
+      fastq2=`echo ${idSample}@\${rgID}@R2_${filePartNo}.fastq.gz`
+    fi
+
+    fastp --html ${idSample}@\${rgID}${filePartNo}.fastp.html --json ${idSample}@\${rgID}${filePartNo}.fastp.json --in1 \${fastq1} --in2 \${fastq2}
+    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} \${fastq1} \${fastq2} | samtools view -Sb - > ${idSample}@\${rgID}${filePartNo}.bam
 
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}${filePartNo}.sorted.bam ${idSample}@\${rgID}${filePartNo}.bam
     echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
