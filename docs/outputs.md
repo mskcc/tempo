@@ -4,102 +4,171 @@ All paths below are relative to the base directory `outDir` as described in the 
 ```shell
 outDir
 ├── bams
+├── cohort_level
+├── germline
 ├── qc
-├── somatic
-└── germline
+└── somatic
 ```
 
 ## BAM Files 
 
 The `bams` folder contains the final aligned and post-processed BAM files along with index files.
+```shell
+outDir/bams/
+├── DU874145-N
+│   ├── DU874145-N.bam
+│   └── DU874145-N.bam.bai
+├── DU874145-T
+│   ├── DU874145-T.bam
+│   └── DU874145-T.bam.bai
+...
+```
 
 ## QC Outputs
 
 FASTQ file, read alignment and basic BAM file QC is in the `qc` directory:
 
 ```shell
-qc
-├── alfred
-├── collecthsmetrics
-├── conpair
-├── fastp
-├── alignment_qc.txt
-├── concordance_qc.txt
-└── contamination_qc.txt
+outDir/qc
+├── DU874145-N
+│   ├── alfred
+│   ├── collecthsmetrics
+│   ├── conpair
+│   ├── fastp
+│   └── pileup
+├── DU874145-T
+│   ├── alfred
+│   ├── collecthsmetrics
+│   ├── conpair
+│   ├── fastp
+│   └── pileup
+...
 ```
 
 These outputs are:
-- `fastp` (folder): An HTML report for each FASTQ file pair per sample.
-- `alfred` (folder): A per-sample and per-readgroup BAM file alignment metrics in text and PDF files.
-- `collectshsmetrics` (folder): For exomes, per-sample hybridisation-selection metrics in the.
-- `conpair` (folder): Per tumor-normal-pair, the Conpair-generated SNP pileup files.
-- `alignment_qc.txt`: Aggregated read-alignments statistics file, from the `alfred` and `collectshsmetrics` folders.
-- `concordance_qc.txt`: Aggregated tumor-normal sample concordance estimates from Conpair.
-- `contamination_qc.txt`: Aggregated sample contamination estimates from Conpair.
+- `fastp`: A HTML report for each FASTQ lane pair per sample.
+- `alfred`: A per-sample and per-readgroup BAM file alignment metrics in text and PDF files.
+- `collectshsmetrics`: For exomes, per-sample hybridisation-selection metrics in the.
+- `conpair`: Per tumor-normal-pair, the Conpair-generated concordance and contamination files.
+- `pileup`: Per tumor-normal-pair, the Conpair-generated SNP pileup files.
 
 ## Somatic data
 
 The result of the somatic analyses is output in summarized forms in the `somatic` folder: 
 
 ```shell
-somatic
-├── facets
-├── mut_somatic.maf
-├── mut_somatic_neoantigens.txt
-├── cna_armlevel.txt
-├── cna_genelevel.txt
-├── cna_hisens.seg
-├── cna_purity.seg
-├── cna_facets_run_info.txt
-├── sv_somatic.vcf.{gz,.gz.tbi}
-└── sample_data.txt
+outDir/somatic
+├── DU874145-T__DU874145-N
+│   ├── combined_mutations
+│   ├── combined_svs
+│   ├── delly
+│   ├── facets
+│   ├── lohhla
+│   ├── manta
+│   ├── meta_data
+│   ├── mutect2
+│   ├── neoantigen
+│   └── strelka2
+└── DU874146-T__DU874146-N
+    ├── combined_mutations
+    ├── combined_svs
+    ├── delly
+    ├── facets
+    ├── lohhla
+    ├── manta
+    ├── meta_data
+    ├── mutect2
+    ├── neoantigen
+    └── strelka2
 ```
 
 These outputs are:
-- `facets` (folder): Individual copy-number profiles from FACETS, per tumor-normal pair.
-- `mut_somatic.maf`: Filtered mutations from MuTect2 and Strelka2, annotated with mutational effects, neoantigen predictions, and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
-- `mut_somatic_neoantigens.txt`: Neoantigen predictions from NetMHCpan for all samples.
-- `cna_armlevel.txt`, `cna_genelevel.txt`, and `cna_hisens.seg`, `cna_purity.seg`, and `cna_facets_run_info.txt`, summarized arm- and gene-level output from Facets, as well as IGV-style segmentation files and Facets run information.
-- `sv_somatic.vcf.gz`: All structural variants detected by Delly and Manta.
-- `sample_data.txt` : Merged metadata across samples and analyses.
+- `combined_mutatations`: unfiltered and final filtered maf per tumor-normal pair.
+  - `*.somatic.unfiltered.maf`: Unfiltered mutations `generated in the SomaticAnnotateMaf`.
+  - `*.somatic.final.maf`: Filtered mutations from MuTect2 and Strelka2, annotated with mutational effects, neoantigen predictions, and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
+- `combined_svs`: Combined Delly and Manta SV calls.
+- `delly`: Delly output.
+- `facets`: Individual copy-number profiles from FACETS, per tumor-normal pair.
+- `lohhla`: LOHHLA output.
+- `manta`: Manta output.
+- `meta_data`: Summarized meta_data file which includes the following results:
+  - Purity and Ploidy
+  - WGS Status
+  - MSI information including MSI_Total_Sites, MSI_Somatic_Sites, MSIscore
+  - Number of Mutations
+  - All 30 Mutational Signatures
+  - HLA genotyping
+  - TMB
+- `mutect2`: Manta output.
+- `neoantigens`: Neoantigen predictions from NetMHCpan per sample.
+- `strelka2`: Manta output.
+
+::: warning Be aware
+* LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release.
+:::
 
 ## Germline data
 
-The result of the germline analyses is output in summarized forms in the `germline` folder: 
+The result of the germline analyses is output in the `germline` folder:
 
 ```shell
-germline/
-├── mut_germline.maf
-└── sv_germline.{gz,.gz.tbi}
+outDir/germline/
+├── DU874145-N
+│   ├── combined_mutations
+│   ├── combined_svs
+│   ├── delly
+│   ├── haplotypecaller
+│   ├── manta
+│   └── strelka2
+└── DU874146-N
+    ├── combined_mutations
+    ├── combined_svs
+    ├── delly
+    ├── haplotypecaller
+    ├── manta
+    └── strelka2
 ```
 
 These outputs are:
-- `mut_germline.maf`: Filtered mutations from HaplotypeCaller and Strelka2, annotated with mutational effects and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#germline-snvs-and-indels).
-- `sv_germline.vcf.gz`: All structural variants Delly and Manta.
+- `combined_mutatations`: unfiltered and final filtered maf per tumor-normal pair.
+  - `*.germline.unfiltered.maf`: Unfiltered mutations `generated in the GermlineAnnotateMaf`.
+  - `*.germline.final.maf`: Filtered mutations from HaplotypeCaller and Strelka2, annotated with mutational effects and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#germline-snvs-and-indels).
+- `combined_svs`: Combined Delly and Manta SV calls.
+- `delly`: Delly output.
+- `manta`: Manta output.
+- `strelka2`: Manta output.
 
-## Extended Outputs
+## Cohort Level Outputs
 
-When run with the flag `--publishAll`, the pipeline will output additional intermediate data from select processes. These are:
+When run with the flag `--aggregate`, the pipeline will output aggregate all samples together for each processes and output as a single file for each processes. The files are:
 
 ```shell
-somatic
-├── mutations
-    └── mutect2
-    └── strelka2
-├── structural_variants
-    └── delly
-    └── manta    
-├── facets
-└── lohhla
-
-germline
-├── mutations
-    └── haplotypecaller
-    └── strelka2
-└── structural_variants
-    └── delly
-    └── manta
+outDir/cohort_level/
+├── default_cohort
+│   ├── alignment_qc.txt
+│   ├── cna_armlevel.txt
+│   ├── cna_facets_run_info.txt
+│   ├── cna_genelevel.txt
+│   ├── cna_hisens_run_segmentation.seg
+│   ├── cna_purity_run_segmentation.seg
+│   ├── concordance_qc.txt
+│   ├── contamination_qc.txt
+│   ├── DNA.IntegerCPN_CI.txt
+│   ├── HLAlossPrediction_CI.txt
+│   ├── mut_germline.maf
+│   ├── mut_somatic.maf
+│   ├── mut_somatic_neoantigens.txt
+│   ├── sample_data.txt
+│   ├── sv_germline.vcf.gz
+│   ├── sv_germline.vcf.gz.tbi
+│   ├── sv_somatic.vcf.gz
+│   └── sv_somatic.vcf.gz.tbi
+├── cohort2
+│   ├── alignment_qc.txt
+│   ├── cna_armlevel.txt
+│   ├── cna_facets_run_info.txt
+│   ├── cna_genelevel.txt
+...
 ```
 
-The `mutations` subdirectory contain VCFs with the unfiltered variant calls from the somatic and germline SNV/indel and SV callers. Additionally, these directories contain per-sample unfiltered MAF files generated in the `SomaticAnnotateMaf` and `GermlineAnnotateMaf` process, respectively. The `facets` subdirectory will contain the full arm- and gene-level outputs per sample. In the `lohhla` subdirectory the full LOHHLA LOH output metrics will be together with a PDF file with graphical output.
-
+These outputs are just naively concatenated together from per sample output files (duplicated header are removed).

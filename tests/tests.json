@@ -1,34 +1,26 @@
 {
     "test_make_bam_part": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--test"],
-        "checks": [{"type": "checkNumberOfLines", "filename": "make_bam_output.tsv", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
-    },
-    "test_delly": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bamPairing", "tests/test_somatic.tsv", "-profile", "test", "--tools", "delly", "--test" , "--somatic", "--germline"],
-        "checks": [{"type": "checkExitCode", "expected": 0}]
+        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "-profile", "test"],
+        "checks": [{"type": "checkNumberOfLines", "filename": "bamMapping.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
     },
     "test_manta_strelka": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bamPairing", "tests/test_somatic.tsv", "-profile", "test", "--tools", "manta,strelka2", "--test", "--somatic", "--germline"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--bamMapping", "tests/test_somatic.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--tools", "manta,strelka2", "--somatic", "--germline"],
+        "checks": [{"type": "checkExitCode", "expected": 0}]
+    },
+    "test_sv": {
+        "command": ["./nextflow", "run", "pipeline.nf", "--bamMapping", "tests/test_somatic.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--tools", "delly,manta", "--somatic", "--germline", "--aggregate"],
         "checks": [{"type": "checkExitCode", "expected": 0}]
     },
     "test_msisensor": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bamPairing", "tests/test_somatic.tsv", "-profile", "test", "--tools", "msisensor", "--test", "--somatic"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--bamMapping", "tests/test_somatic.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--tools", "msisensor", "--somatic"],
         "checks": [{"type": "checkExitCode", "expected": 0}]
     },
     "test_pairing_file_validation_pipeline": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "--somatic", "-profile", "test"],
         "checks": [{"type": "checkExitCode", "expected": 1}]
-    },
-    "test_mixed_assay_validation_pipeline": {
-	    "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_mixed_samples.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "-profile", "test"],
-	    "checks": [{"type": "checkExitCode", "expected": 1}]
     },
     "test_nonUnique_sampleLane_validation_pipeline": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/duplicate_samplelane_makebamqc.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test"],
-        "checks": [{"type": "checkExitCode", "expected": 1}]
-    },
-    "test_pairing_file_validation_make_bam": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bamPairing", "tests/test_BAM_map_pair_inputs.tsv", "--somatic", "--germline", "-profile", "test"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/duplicate_samplelane_makebamqc.tsv", "-profile", "test"],
         "checks": [{"type": "checkExitCode", "expected": 1}]
     }
 }
