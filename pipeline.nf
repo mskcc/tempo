@@ -1673,6 +1673,7 @@ process RunLOHHLA {
     --HLAfastaLoc ${hlaFasta} \
     --HLAexonLoc ${hlaDat} \
     --CopyNumLoc tumor_purity_ploidy.txt \
+    --minCoverageFilter ${params.lohhla.minCoverageFilter} \
     --hlaPath massaged.winners.hla.txt \
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
