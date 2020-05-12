@@ -89,7 +89,7 @@ runSomatic = params.somatic
 runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
-wallTimeErrorCode = params.wallTimeErrorCode ? params.wallTimeErrorCode.split(',').collect{it.trim().toLowerCase()} : []
+wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect{it.trim().toLowerCase()} : []
 
 println ""
 
@@ -244,10 +244,10 @@ if (params.mapping) {
         task.time = { params.maxWallTime }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
       // if it's the last time to try, use 500h as time limit no matter for what reason it failed before
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
@@ -281,10 +281,10 @@ if (params.mapping) {
         task.time = { params.maxWallTime }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
@@ -388,10 +388,10 @@ if (params.mapping) {
         task.time = { params.maxWallTime }
       }
       else if (inputSize < 9.GB) {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
@@ -499,10 +499,10 @@ if (params.mapping) {
         task.time = { params.maxWallTime }
       }
       else if (bam.size() < 100.GB) {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
@@ -555,10 +555,10 @@ if (params.mapping) {
           task.time = { params.maxWallTime }
         }
         else if (bam.size() < 240.GB) {
-          task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
         }
         else {
-          task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
         }
       }
     }
@@ -616,10 +616,10 @@ if (params.mapping) {
           task.time = { params.maxWallTime }
         }
         else if (bam.size() < 100.GB) {
-          task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
         }
         else {
-          task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
         }
       }
     }
@@ -1723,10 +1723,10 @@ process RunNeoantigen {
       task.time = { params.maxWallTime }
     }
     else if (mafFile.size() < 5.MB){
-      task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }
@@ -2435,10 +2435,10 @@ process QcCollectHsMetrics {
       task.time = { params.maxWallTime }
     }
     else if (bam.size() < 100.GB) {
-      task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }
@@ -2496,10 +2496,10 @@ process QcAlfred {
       task.time = { params.maxWallTime }
     }
     else if (bam.size() < 100.GB) {
-      task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.medWallTime } : { params.minWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus.toString() in wallTimeErrorCode ? { params.maxWallTime } : { params.medWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }
