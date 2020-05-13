@@ -1497,10 +1497,10 @@ process RunMutationSignatures {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  python /mutation-signatures/main.py \
-    /mutation-signatures/Stratton_signatures30.txt \
-    ${outputPrefix}.somatic.maf \
-    ${outputPrefix}.mutsig.txt
+  maf2cat2.R ${outputPrefix}.somatic.maf \
+  ${outputPrefix}.trinucmat.txt
+  tempoSig.R --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
+  ${outputPrefix}.mutsig.txt
   """
 }
 
@@ -1674,6 +1674,7 @@ process RunLOHHLA {
     --HLAfastaLoc ${hlaFasta} \
     --HLAexonLoc ${hlaDat} \
     --CopyNumLoc tumor_purity_ploidy.txt \
+    --minCoverageFilter ${params.lohhla.minCoverageFilter} \
     --hlaPath massaged.winners.hla.txt \
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
