@@ -52,7 +52,7 @@ Quality Control
 -----------------
  - QcAlfred - BAM QC metrics
  - QcCollectHsMetrics --- *For WES only* Calculate hybrid-selection metrics, GATK4 CollectHsMetrics
- - QcBamAggregate --- aggregates information from QcAlfred and QcCollectHsMetrics across all samples
+ - QcBamSummarize --- summarize information from QcAlfred and QcCollectHsMetrics for each samples
  - QcConpair --- Tumor-Normal quality/contamination
  - QcConpairAll --- Tumor-Normal All Combination quality/contamination
 
@@ -66,6 +66,7 @@ Cohort Aggregation
  - SomaticAggregateMetaData --- collect outputs, sample data
  - GermlineAggregateMaf --- collect outputs, MAF
  - GermlineAggregateSv --- collect outputs, SVs
+ - QcBamAggregate --- aggregates information from QcBamSummarize across all samples
  - QcConpairAggregate --- aggregates information from QcConpair or QcConpairAll across all sample
 
 */
@@ -202,7 +203,7 @@ if (params.mapping) {
   inputMapping.map{ idSample, target, file_pe1, file_pe2 ->
                    [idSample, target, file_pe1, file_pe2, idSample + "@" + file_pe1.getSimpleName(), file_pe1.getSimpleName()]
               }
-              .set{ inputFastqs }
+              .into{ inputFastqs; inputMapping }
 
   if (params.splitLanes) {
   inputFastqs
@@ -670,7 +671,7 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; inputMapping}
 }
 
 if (params.pairing) {
@@ -2425,7 +2426,7 @@ process QcCollectHsMetrics {
 
   output:
     file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
+    set idSample, file("${idSample}.hs_metrics.txt") into hsMetrics4BamSummarize
 
   when: params.assayType == "exome" && runQC
 
@@ -2485,7 +2486,7 @@ process QcAlfred {
     ])
 
   output:
-    set idSample, file("${idSample}.alfred*tsv.gz") into bamsQcStats4Aggregate
+    set idSample, file("${idSample}.alfred.*tsv.gz") into alfred4BamSummarize
     set file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into alfredOutput
 
   when: runQC
@@ -2518,6 +2519,36 @@ process QcAlfred {
     --outfile ${outfile} \
     ${bam} && \
     Rscript --no-init-file /opt/alfred/scripts/stats.R ${outfile}
+  """
+}
+
+alfred4BamSummarize.groupTuple(by:[0],size:2).map{[it[0],it[1][0],it[1][1]]}.set{alfred4BamSummarize}
+inputBamSummarize = params.assayType == "exome" ? alfred4BamSummarize.combine(hsMetrics4BamSummarize, by:[0]) : alfred4BamSummarize
+
+process QcBamSummarize {
+
+  tag {idSample}
+
+  publishDir "${params.outDir}/bams/${idSample}/", mode: params.publishDirMode
+
+  input:
+    set idSample, file(alfred), file(alfred1), file(hsMetrics) from inputBamSummarize
+
+  output:
+    set idSample, file('*.bam_qc.txt') into bamSummarize4Aggregate
+
+  when: runQC
+
+  script:
+  if (params.assayType == "exome") {
+    options = "wes"
+  }
+  else {
+    options = 'wgs'
+  }
+  """
+  Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
+  mv alignment_qc.txt ${idSample}.bam_qc.txt
   """
 }
 
@@ -2767,12 +2798,8 @@ if ( !params.mapping && !params.bamMapping ){
                   dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
                   conpairConcord4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".concordance.txt")]
                   conpairContami4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".contamination.txt")]
-		  alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.tsv.gz/")]
-		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
-		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
-		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
-		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
-		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
+		  bamSummarizeTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*.bam_qc.txt")]
+		  bamSummarizeNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*.bam_qc.txt")]
                 }
 		.set {aggregateList}
   inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
@@ -2790,9 +2817,12 @@ if ( !params.mapping && !params.bamMapping ){
   inputGermlineAggregateMaf = aggregateList.mafFile4AggregateGermline.transpose().groupTuple(by:[2])
   inputGermlineAggregateSv = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
   inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
-  inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
-  inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
-  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
+  input4QcBamAggregate = aggregateList.bamSummarizeTumor.combine(aggregateList.bamSummarizeNormal, by:[0,1,2])
+			   .transpose()
+			   .groupTuple(by:[0])
+			   .map{ cohort, idTumors, idNormals, filesTumor, filesNormal ->
+				[cohort, idTumors.unique() + idNormals.unique(), filesTumor.unique() + filesNormal.unique()]
+			   }
   inputConpairConcord4Aggregate = aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2])
   inputConpairContami4Aggregate = aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2])
 
@@ -2813,10 +2843,15 @@ else if(!(runAggregate == false)) {
 	     .set{inputAggregate}
     }
   }
-  else if(runAggregate == true){
+  else if(runAggregate == true && pairingQc){
     inputPairing.into{inputPairing; cohortTable}
     cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
 	       .set{inputAggregate}
+  }
+  else if(runAggregate == true && !pairingQc){
+    inputMapping.map{["default_cohort", it[0]]}
+		.unique()
+		.set{inputAggregate}
   }
   else{}
   inputAggregate.into{ cohortSomaticAggregateMaf;
@@ -2834,9 +2869,7 @@ else if(!(runAggregate == false)) {
                        cohortGermlineAggregateMaf;
                        cohortGermlineAggregateSv;
                        cohortGermlineAggregateSv1;
-                       cohortQcBamAggregate;
-                       cohortQcBamAggregate1;
-                       cohortQcBamAggregate2;
+		       cohortQcBamAggregate;
                        cohortQcConpairAggregate;
                        cohortQcConpairAggregate1
                 }
@@ -2862,104 +2895,27 @@ else if(!(runAggregate == false)) {
   }
 
   if (runQC){
-  inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3}
-  bamsQcStats4Aggregate.branch{ item ->
-  			def idSample = item[0]
-  			def alfred = item[1]
-  
-  			ignoreY: alfred =~ /.+\.alfred\.tsv\.gz/
-  			ignoreN: alfred =~ /.+\.alfred\.per_readgroup\.tsv\.gz/
-  		     }
-  		     .set{bamsQcStats4Aggregate}
+    if ( pairingQc || (runAggregate != true && runAggregate != false)){
+      cohortQcBamAggregate.groupTuple(by:[0])
+			  .map{ cohort, idTumors, idNormals ->
+				[cohort, idTumors.unique() + idNormals.unique()]
+			  }
+			  .map{ cohort, idSamples
+				-> tuple( groupKey(cohort, idSamples instanceof Collection ? idSamples.size() : 1), idSamples )
+			  }
+			  .transpose()
+			  .set{cohortQcBamAggregate}
+    }
 
-  inputPairing1.combine(bamsQcStats4Aggregate.ignoreY)
-  	     .branch { item ->
-  		def idTumor = item[0]
-  		def idNormal = item[1]
-  		def idSample = item[2]
-  		def alfred = item[3]
-  
-  		tumor: idSample == idTumor
-  		normal: idSample == idNormal
-  	    }
-  	    .set{alfredIgnoreY}
-  alfredIgnoreY.tumor.combine(alfredIgnoreY.normal, by:[0,1])
-  		   .combine(cohortQcBamAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
-  		   .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
-  		   .groupTuple(by:[0])
-  		   .map{ item ->
-  			def cohort = item[0]
-  			def idTumors = item[1].unique()
-  			def idNormals = item[2].unique()
-  			def fileTumor = item[3].unique()
-  			def fileNormal = item[4].unique()
-  
-  			  [cohort, idTumors, idNormals, fileTumor, fileNormal]
-  		   }
-  		   .unique()
-  		   .set{alfredIgnoreY}
-  
-  inputPairing2.combine(bamsQcStats4Aggregate.ignoreN)
-  	     .branch { item ->
-  		def idTumor = item[0]
-  		def idNormal = item[1]
-  		def idSample = item[2]
-  		def alfred = item[3]
-  
-  		tumor: idSample == idTumor
-  		normal: idSample == idNormal
-  	    }
-  	    .set{alfredIgnoreN}
-  alfredIgnoreN.tumor.combine(alfredIgnoreN.normal, by:[0,1])
-  		   .combine(cohortQcBamAggregate1.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
-  		   .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
-  		   .groupTuple(by:[0])
-  		   .map{ item ->
-  			def cohort = item[0]
-  			def idTumors = item[1].unique()
-  			def idNormals = item[2].unique()
-  			def fileTumor = item[3].unique()
-  			def fileNormal = item[4].unique()
-  
-  			[cohort, idTumors, idNormals, fileTumor, fileNormal]
-  		   }
-  		   .unique()
-  		   .set{alfredIgnoreN}
-  
-  
-  inputPairing3.combine(collectHsMetrics4Aggregate)
-  	     .branch { item ->
-  		def idTumor = item[0]
-  		def idNormal = item[1]
-  		def idSample = item[2]
-  		def hsMetrics = item[3]
-  
-  		tumor: idSample == idTumor
-  		normal: idSample == idNormal
-  	    }
-  	    .set{hsMetrics}
-  hsMetrics.tumor.combine(hsMetrics.normal, by:[0,1])
-  	       .combine(cohortQcBamAggregate2.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
-  	       .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
-  	       .groupTuple(by:[0])
-  	       .map{ item ->
-  		    def cohort = item[0]
-  		    def idTumors = item[1].unique()
-  		    def idNormals = item[2].unique()
-  		    def fileTumor = item[3].unique()
-  		    def fileNormal = item[4].unique()
-  		    
-  		    [cohort, idTumors, idNormals, fileTumor, fileNormal]
-  	       }
-  	       .unique()
-  	       .set{hsMetrics}
-  inputAlfredIgnoreY = alfredIgnoreY
-  inputAlfredIgnoreN = alfredIgnoreN
-  inputHsMetrics = hsMetrics
-  if (pairingQc){
-  inputConpairConcord4Aggregate = cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputConpairContami4Aggregate = cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2])
-  }
+    bamSummarize4Aggregate.combine(cohortQcBamAggregate.map{ item -> [item[1], item[0]]})
+			  .filter{it[0]==it[2]}
+			  .map{ item -> [item[3], item[0], item[1]]}
+			  .groupTuple(by:[0])
+			  .set{input4QcBamAggregate}
+    if (pairingQc){
+      inputConpairConcord4Aggregate = cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputConpairContami4Aggregate = cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2])
+    }
   }
 }
 else{}
@@ -3238,9 +3194,7 @@ process QcBamAggregate {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, idTumors, idNormals, file(alfedIgnoreYTumor), file(alfredIgnoreYNoraml) from inputAlfredIgnoreY
-    set cohort, idTumors, idNormals, file(alfedIgnoreNTumor), file(alfredIgnoreNNoraml) from inputAlfredIgnoreN
-    set cohort, idTumors, idNormals, file(hsMetricsTumor), file(hsMetricsNoraml) from inputHsMetrics
+    set cohort, idSamples, file(filesBamSummarize) from input4QcBamAggregate
 
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
@@ -3248,14 +3202,9 @@ process QcBamAggregate {
   when: runQC
 
   script:
-  if (params.assayType == "exome") {
-    options = "wes"
-  }
-  else {
-    options = 'wgs'
-  }
   """
-  Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
+  ls *.bam_qc.txt | head -1 | xargs -n1 head -1 > alignment_qc.txt
+  cat *.bam_qc.txt | grep -v "TotalReads" >> alignment_qc.txt
   """
 }
 
