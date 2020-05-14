@@ -6,42 +6,25 @@ outDir
 ├── bams
 ├── cohort_level
 ├── germline
-├── qc
 └── somatic
 ```
 
 ## BAM Files 
 
 The `bams` folder contains the final aligned and post-processed BAM files along with index files.
+It also contains FASTQ QC and basic BAM file QC.
 ```shell
 outDir/bams/
 ├── DU874145-N
 │   ├── DU874145-N.bam
-│   └── DU874145-N.bam.bai
+│   ├── DU874145-N.bam.bai
+│   ├── alfred
+│   ├── collecthsmetrics
+│   ├── fastp
+│   └── pileup
 ├── DU874145-T
 │   ├── DU874145-T.bam
 │   └── DU874145-T.bam.bai
-...
-```
-
-## QC Outputs
-
-FASTQ file, read alignment and basic BAM file QC is in the `qc` directory:
-
-```shell
-outDir/qc
-├── DU874145-N
-│   ├── alfred
-│   ├── collecthsmetrics
-│   ├── conpair
-│   ├── fastp
-│   └── pileup
-├── DU874145-T
-│   ├── alfred
-│   ├── collecthsmetrics
-│   ├── conpair
-│   ├── fastp
-│   └── pileup
 ...
 ```
 
@@ -49,7 +32,6 @@ These outputs are:
 - `fastp`: A HTML report for each FASTQ lane pair per sample.
 - `alfred`: A per-sample and per-readgroup BAM file alignment metrics in text and PDF files.
 - `collectshsmetrics`: For exomes, per-sample hybridisation-selection metrics in the.
-- `conpair`: Per tumor-normal-pair, the Conpair-generated concordance and contamination files.
 - `pileup`: Per tumor-normal-pair, the Conpair-generated SNP pileup files.
 
 ## Somatic data
@@ -61,6 +43,7 @@ outDir/somatic
 ├── DU874145-T__DU874145-N
 │   ├── combined_mutations
 │   ├── combined_svs
+│   ├── conpair
 │   ├── delly
 │   ├── facets
 │   ├── lohhla
@@ -87,6 +70,7 @@ These outputs are:
   - `*.somatic.unfiltered.maf`: Unfiltered mutations `generated in the SomaticAnnotateMaf`.
   - `*.somatic.final.maf`: Filtered mutations from MuTect2 and Strelka2, annotated with mutational effects, neoantigen predictions, and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
 - `combined_svs`: Combined Delly and Manta SV calls.
+- `conpair`: Per tumor-normal-pair, the Conpair-generated concordance and contamination files.
 - `delly`: Delly output.
 - `facets`: Individual copy-number profiles from FACETS, per tumor-normal pair.
 - `lohhla`: LOHHLA output.
