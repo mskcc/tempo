@@ -80,7 +80,7 @@ These outputs are:
   - WGS Status
   - MSI information including MSI_Total_Sites, MSI_Somatic_Sites, MSIscore
   - Number of Mutations
-  - All 30 Mutational Signatures
+  - All 60 Mutational Signatures
   - HLA genotyping
   - TMB
 - `mutect2`: Manta output.
