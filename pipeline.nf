@@ -1,6 +1,11 @@
 #!/usr/bin/env nextflow
 
 /*
+vim: syntax=groovy
+-*- mode: groovy;-*-
+*/
+
+/*
 ================================================================================
 --------------------------------------------------------------------------------
 Processes overview:
@@ -90,6 +95,7 @@ runSomatic = params.somatic
 runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
+wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect{it.trim().toLowerCase()} : []
 
 println ""
 
@@ -241,16 +247,16 @@ if (params.mapping) {
     inputSize = fastqFile1.size()
     if (workflow.profile == "juno") {
       if (inputSize > 10.GB) {
-        task.time = { 500.h }
+        task.time = { params.maxWallTime }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
       // if it's the last time to try, use 500h as time limit no matter for what reason it failed before
-      task.time = task.attempt < 3 ? task.time : { 500.h }
+      task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
     filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
@@ -278,15 +284,15 @@ if (params.mapping) {
     inputSize = fastqFile2.size()
     if (workflow.profile == "juno") {
       if (inputSize > 10.GB) {
-        task.time = { 500.h }
+        task.time = { params.maxWallTime }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
-      task.time = task.attempt < 3 ? task.time : { 500.h }
+      task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
     filePartNo = fastqFile2.getSimpleName().split("_R2")[1]
@@ -380,20 +386,20 @@ if (params.mapping) {
     script:
     // LSF resource allocation for juno
     // if running on juno, check the total size of the FASTQ pairs in order to allocate the runtime limit for the job, via LSF `bsub -W`
-    // if total size of the FASTQ pairs is over 20 GB, use 500 hours
+    // if total size of the FASTQ pairs is over 20 GB, use params.maxWallTimeours
     // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 500h.
     inputSize = sizeFastqFile1 + sizeFastqFile2
     if (workflow.profile == "juno") {
       if (inputSize > 18.GB) {
-        task.time = { 500.h }
+        task.time = { params.maxWallTime }
       }
       else if (inputSize < 9.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
-      task.time = task.attempt < 3 ? task.time : { 500.h }
+      task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
     
     // mem --- total size of the FASTQ pairs in MB (max memory `samtools sort` can take advantage of)
@@ -429,8 +435,18 @@ if (params.mapping) {
     touch `zcat $fastqFile1 | head -1 | tr ':/\t ' '@' | cut -d '@' -f2-`.readId
     set -e
     set -o pipefail
-    fastp --html ${idSample}@\${rgID}.fastp.html --json ${idSample}@\${rgID}.fastp.json --in1 ${fastqFile1} --in2 ${fastqFile2}
-    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} ${fastqFile1} ${fastqFile2} | samtools view -Sb - > ${idSample}@\${rgID}${filePartNo}.bam
+
+    fastq1=${fastqFile1}
+    fastq2=${fastqFile2}
+    if ${params.anonymizeFQ}; then
+      ln -s ${fastqFile1} ${idSample}@\${rgID}@R1${filePartNo}.fastq.gz
+      ln -s ${fastqFile2} ${idSample}@\${rgID}@R2${filePartNo}.fastq.gz
+      fastq1=`echo ${idSample}@\${rgID}@R1${filePartNo}.fastq.gz`
+      fastq2=`echo ${idSample}@\${rgID}@R2${filePartNo}.fastq.gz`
+    fi
+
+    fastp --html ${idSample}@\${rgID}${filePartNo}.fastp.html --json ${idSample}@\${rgID}${filePartNo}.fastp.json --in1 \${fastq1} --in2 \${fastq2}
+    bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} \${fastq1} \${fastq2} | samtools view -Sb - > ${idSample}@\${rgID}${filePartNo}.bam
 
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}${filePartNo}.sorted.bam ${idSample}@\${rgID}${filePartNo}.bam
     echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
@@ -496,15 +512,15 @@ if (params.mapping) {
     script:
     if (workflow.profile == "juno") {
       if(bam.size() > 120.GB) {
-        task.time = { 500.h }
+        task.time = { params.maxWallTime }
       }
       else if (bam.size() < 100.GB) {
-        task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
-      task.time = task.attempt < 3 ? task.time : { 500.h }
+      task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -552,13 +568,13 @@ if (params.mapping) {
       sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 480.GB) {
-          task.time = { 500.h }
+          task.time = { params.maxWallTime }
         }
         else if (bam.size() < 240.GB) {
-          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
         }
         else {
-          task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
         }
       }
     }
@@ -566,7 +582,7 @@ if (params.mapping) {
       sparkConf = " BaseRecalibrator"
       task.cpus = 4
       task.memory = { 6.GB }
-      if (workflow.profile == "juno"){ task.time = { 500.h } }
+      if (workflow.profile == "juno"){ task.time = { params.maxWallTime } }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -613,13 +629,13 @@ if (params.mapping) {
       sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
       if (workflow.profile == "juno") {
         if (bam.size() > 200.GB){
-          task.time = { 500.h }
+          task.time = { params.maxWallTime }
         }
         else if (bam.size() < 100.GB) {
-          task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
         }
         else {
-          task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
         }
       }
     }
@@ -627,7 +643,7 @@ if (params.mapping) {
       sparkConf = " ApplyBQSR"
       task.cpus = 4
       task.memory = { 6.GB }
-      if (workflow.profile == "juno"){ task.time = { 500.h } }
+      if (workflow.profile == "juno"){ task.time = { params.maxWallTime } }
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -1482,7 +1498,7 @@ process SomaticAnnotateMaf {
 
 mafFile.into{mafFile; mafFileForMutSig}
 
-// --- Run Mutational Signatures, github.com/mskcc/mutation-signatures
+// --- Run Mutational Signatures
 process RunMutationSignatures {
   tag {idTumor + "__" + idNormal}
 
@@ -1721,15 +1737,15 @@ process RunNeoantigen {
 
   if (workflow.profile == "juno") {
     if(mafFile.size() > 10.MB){
-      task.time = { 500.h }
+      task.time = { params.maxWallTime }
     }
     else if (mafFile.size() < 5.MB){
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
     }
-    task.time = task.attempt < 3 ? task.time : { 500.h }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }
 
   outputPrefix = "${idTumor}__${idNormal}"
@@ -2433,15 +2449,15 @@ process QcCollectHsMetrics {
   script:
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
-      task.time = { 500.h }
+      task.time = { params.maxWallTime }
     }
     else if (bam.size() < 100.GB) {
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
     }
-    task.time = task.attempt < 3 ? task.time : { 500.h }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }
 
   memMultiplier = params.mem_per_core ? task.cpus : 1
@@ -2494,15 +2510,15 @@ process QcAlfred {
   script:
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
-      task.time = { 500.h }
+      task.time = { params.maxWallTime }
     }
     else if (bam.size() < 100.GB) {
-      task.time = task.exitStatus != 140 ? { 3.h } : { 6.h }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus != 140 ? { 6.h } : { 500.h }
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
     }
-    task.time = task.attempt < 3 ? task.time : { 500.h }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }
 
   options = ""
