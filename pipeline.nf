@@ -364,7 +364,7 @@ if (params.mapping) {
   process AlignReads {
     tag {fileID + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/qc/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
+    publishDir "${params.outDir}/bams/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
       set idSample, target, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, fileID, lane from fastqFiles
@@ -2411,7 +2411,7 @@ if (runQC) {
 process QcCollectHsMetrics {
   tag {idSample}
 
-  publishDir "${params.outDir}/qc/${idSample}/collecthsmetrics", mode: params.publishDirMode
+  publishDir "${params.outDir}/bams/${idSample}/collecthsmetrics", mode: params.publishDirMode
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4CollectHsMetrics
@@ -2473,7 +2473,7 @@ Channel.from(true, false).set{ ignore_read_groups }
 process QcAlfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
-  publishDir "${params.outDir}/qc/${idSample}/alfred", mode: params.publishDirMode
+  publishDir "${params.outDir}/bams/${idSample}/alfred", mode: params.publishDirMode
 
   input:
     each ignore_rg from ignore_read_groups
@@ -2528,7 +2528,7 @@ if (pairingQc) {
 process QcPileup {
   tag {idSample}
 
-  publishDir "${params.outDir}/qc/${idSample}/pileup/", mode: params.publishDirMode
+  publishDir "${params.outDir}/bams/${idSample}/pileup/", mode: params.publishDirMode
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4QcPileup
@@ -2610,8 +2610,7 @@ pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
 process QcConpair {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/qc/${idTumor}/conpair/", mode: params.publishDirMode
-  publishDir "${params.outDir}/qc/${idNormal}/conpair/", mode: params.publishDirMode
+  publishDir "${params.outDir}/somatic/${outPrefix}/conpair/", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
@@ -2766,14 +2765,14 @@ if ( !params.mapping && !params.bamMapping ){
                   mafFile4AggregateGermline: [idTumor, idNormal, cohort, "placeHolder", file(path + "/germline/" + idNormal + "/*/" + idTumor + "__" + idNormal + ".germline.final.maf")]
                   dellyMantaCombined4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
-                  conpairConcord4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/qc/" + idTumor + "/*/" + idTumor + "__" + idNormal + ".concordance.txt")]
-                  conpairContami4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/qc/" + idTumor + "/*/" + idTumor + "__" + idNormal + ".contamination.txt")]
-		  alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/qc/" + idTumor + "/*/*.alfred.tsv.gz/")]
-		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/qc/" + idNormal + "/*/*.alfred.tsv.gz/")]
-		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/qc/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
-		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/qc/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
-		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/qc/" + idTumor + "/*/*.hs_metrics.txt")]
-		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/qc/" + idNormal + "/*/*.hs_metrics.txt")]
+                  conpairConcord4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".concordance.txt")]
+                  conpairContami4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".contamination.txt")]
+		  alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.tsv.gz/")]
+		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
+		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
+		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
+		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
+		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
                 }
 		.set {aggregateList}
   inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
