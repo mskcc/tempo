@@ -1599,6 +1599,14 @@ process DoFacets {
   done
   set -e
 
+  cd ${outputDir}
+  rm -rf ${tag}.gene_level.txt
+  Rscript --no-init-file /usr/bin/facets-suite/geneLevel.R \
+    --filenames ${tag}_hisens.cncf.txt \
+    --targetFile exome \
+    --outfile ${tag}.gene_level.txt
+  cd -
+
   python3 /usr/bin/summarize_project.py \
     -p ${tag} \
     -c ${outputDir}/*cncf.txt \
