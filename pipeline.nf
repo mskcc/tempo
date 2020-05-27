@@ -377,8 +377,8 @@ if (params.mapping) {
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
-      file("*.html") into fastPHtml
-      file("*.json") into fastPJson
+      set idSample, file("*.html") into fastPHtml
+      set idSample, file("*.json") into fastPJson
       file("file-size.txt") into laneSize
       set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
 
@@ -2789,6 +2789,8 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
 		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
 		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
+      fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
+      fastpNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.fastp.json")]
                 }
 		.set {aggregateList}
   inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
@@ -2809,8 +2811,9 @@ if ( !params.mapping && !params.bamMapping ){
   inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
   inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
   inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
-  inputConpairConcord4Aggregate = aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2])
-  inputConpairContami4Aggregate = aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2])
+  aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
+  aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
+  aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}.into{inputFastP4MultiQC}
 
 }
 else if(!(runAggregate == false)) {
@@ -2854,7 +2857,8 @@ else if(!(runAggregate == false)) {
                        cohortQcBamAggregate1;
                        cohortQcBamAggregate2;
                        cohortQcConpairAggregate;
-                       cohortQcConpairAggregate1
+                       cohortQcConpairAggregate1;
+                       cohortQcFastPAggregate
                 }
   if (runSomatic){
   inputSomaticAggregateMaf = cohortSomaticAggregateMaf.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2878,7 +2882,7 @@ else if(!(runAggregate == false)) {
   }
 
   if (runQC){
-  inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3}
+  inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3;inputPairing4}
   bamsQcStats4Aggregate.branch{ item ->
   			def idSample = item[0]
   			def alfred = item[1]
@@ -2969,12 +2973,39 @@ else if(!(runAggregate == false)) {
   	       }
   	       .unique()
   	       .set{hsMetrics}
+  inputPairing4.combine(fastPJson)
+         .branch { item ->
+      def idTumor = item[0]
+      def idNormal = item[1]
+      def idSample = item[2]
+      def jsonFiles = item[3]
+  
+      tumor: idSample == idTumor
+      normal: idSample == idNormal
+        }
+        .set{fastPMetrics}
+  fastPMetrics.tumor.combine(fastPMetrics.normal, by:[0,1])
+           .combine(cohortQcFastPAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+           .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+           .groupTuple(by:[0])
+           .map{ item ->
+          def cohort = item[0]
+          def idTumors = item[1].unique()
+          def idNormals = item[2].unique()
+          def fileTumor = item[3].unique()
+          def fileNormal = item[4].unique()
+          
+          [cohort, idTumors, idNormals, fileTumor, fileNormal]
+           }
+           .unique()
+           .set{fastPMetrics}
   inputAlfredIgnoreY = alfredIgnoreY
   inputAlfredIgnoreN = alfredIgnoreN
   inputHsMetrics = hsMetrics
+  inputFastP4MultiQC = fastPMetrics
   if (pairingQc){
-  inputConpairConcord4Aggregate = cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputConpairContami4Aggregate = cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2])
+  cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
+  cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
   }
   }
 }
@@ -3247,6 +3278,8 @@ process GermlineAggregateSv {
 
 if (runAggregate && runQC) {
 
+inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
+
 process QcBamAggregate {
 
   tag {cohort}
@@ -3305,6 +3338,29 @@ process QcConpairAggregate {
   touch concordance_qc.txt contamination_qc.txt
   """
 }
+
+process RunMultiQC {
+  tag {cohort}
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+
+  input:
+    set cohort, idTumors, idNormals, file(hsMetricsTumor), file(hsMetricsNoraml) from inputHsMetrics4MultiQC
+    set cohort, idTumors, idNormals, file(fastPTumor), file(fastPNoraml) from inputFastP4MultiQC
+    set idTumors, idNormals, cohort, placeHolder, file(concordFile) from inputConpairConcord4MultiQC
+    set idTumors, idNormals, cohort, placeHolder, file(contamiFile) from inputConpairContami4MultiQC
+
+  output:
+    file "*multiqc_report*.html" into multiqc_report
+
+  when: runQC
+
+  script:
+  """
+  multiqc .
+  """
+}
+
 }
 }
 
