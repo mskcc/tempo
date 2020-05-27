@@ -3279,6 +3279,8 @@ process GermlineAggregateSv {
 if (runAggregate && runQC) {
 
 inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
+inputAlfredIgnoreY.into{inputAlfredIgnoreY; inputAlfredIgnoreY4MultiQC }
+inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
 
 process QcBamAggregate {
 
@@ -3349,6 +3351,8 @@ process RunMultiQC {
     set cohort, idTumors, idNormals, file(fastPTumor), file(fastPNoraml) from inputFastP4MultiQC
     set idTumors, idNormals, cohort, placeHolder, file(concordFile) from inputConpairConcord4MultiQC
     set idTumors, idNormals, cohort, placeHolder, file(contamiFile) from inputConpairContami4MultiQC
+    set cohort, idTumors, idNormals, file(alfedIgnoreYTumor), file(alfredIgnoreYNoraml) from inputAlfredIgnoreY4MultiQC
+    set cohort, idTumors, idNormals, file(alfedIgnoreNTumor), file(alfredIgnoreNNoraml) from inputAlfredIgnoreN4MultiQC
 
   output:
     file "*multiqc_report*.html" into multiqc_report
