@@ -3,7 +3,7 @@ custom_logo_url: 'https://ccstempo.netlify.app/'
 custom_logo_title: 'CCS - Tempo'
 
 report_header_info:
-    - Contact E-mail: 'noronhaa@mskcc.org'
+    - Contact E-mail: 'skicomputing@mskcc.org'
     - Application Type: 'Exome'
     - Project Type: 'Whole Exome Repo'
     - Sequencing Platform: 'Illumina Hiseq'
