@@ -1,0 +1,10 @@
+custom_logo: 'tempoLogo.png'
+custom_logo_url: 'https://ccstempo.netlify.app/'
+custom_logo_title: 'CCS - Tempo'
+
+report_header_info:
+    - Contact E-mail: 'noronhaa@mskcc.org'
+    - Application Type: 'WGS'
+    - Project Type: 'Whole Genome Sequencing Repo'
+    - Sequencing Platform: 'Illumina Hiseq'
+    - Sequencing Setup: '2x100'
