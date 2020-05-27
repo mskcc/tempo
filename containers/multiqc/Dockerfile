@@ -8,5 +8,4 @@ LABEL \
 RUN mkdir /usr/bin/multiqc_custom_config
 COPY wgs_multiqc_config.yaml /usr/bin/multiqc_custom_config
 COPY exome_multiqc_config.yaml /usr/bin/multiqc_custom_config
-COPY exome_multiqc_config.yaml /usr/bin/multiqc_custom_config
-COPY conpair_contamination_mqc.yaml /usr/bin/multiqc_custom_config
+COPY conpair_custom_mqc.yaml /usr/bin/multiqc_custom_config
