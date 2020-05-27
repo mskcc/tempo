@@ -8,3 +8,15 @@ report_header_info:
     - Project Type: 'Whole Exome Repo'
     - Sequencing Platform: 'Illumina Hiseq'
     - Sequencing Setup: '2x100'
+custom_data:
+    example_files:
+        file_format: 'tsv'
+        section_name: 'Conpair T-N Results'
+        description: 'Concordance and contamination estimations for tumor–normal pairs as performed by customized version of Conpair'
+        plot_type: 'table'
+        pconfig:
+            id: 'conpair_table'
+            namespace: 'Concordance estimates'
+sp:
+    example_files:
+        fn: 'conpair.tsv'
