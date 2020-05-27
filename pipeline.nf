@@ -3357,10 +3357,16 @@ process RunMultiQC {
   output:
     file "*multiqc_report*.html" into multiqc_report
 
-  when: runQC
+  when: runQC && params.assayType == "exome"
 
   script:
   """
+  echo -e "Tumor\tNormal\tTumor_Contamination\tNormal_Contamination\tConcordance" > contamination.tsv
+  for i in ./*contamination.txt ; do 
+     j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+  done
+  
   multiqc .
   """
 }
