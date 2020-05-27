@@ -3366,6 +3366,9 @@ process RunMultiQC {
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
+
+  cp usr/bin/multiqc_custom_config/exome_multiqc_config.yaml . 
+  cp usr/bin/multiqc_custom_config/conpair_custom_mqc.yaml . 
   
   multiqc .
   """
