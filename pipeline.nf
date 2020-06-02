@@ -1708,7 +1708,7 @@ process RunLOHHLA {
   if find Figures -mindepth 1 | read
   then
     mv Figures/* .
-    mv ${idTumor}.minCoverage_30.HLA.pdf ${outputPrefix}.HLA.pdf
+    mv ${idTumor}.minCoverage_${params.lohhla.minCoverageFilter}.HLA.pdf ${outputPrefix}.HLA.pdf
   fi
   """
 }
