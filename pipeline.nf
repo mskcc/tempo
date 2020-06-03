@@ -378,7 +378,7 @@ if (params.mapping) {
 
     output:
       set idSample, file("*.html") into fastPHtml
-      set idSample, file("*.json") into fastPJson
+      set idSample, file("*.json") into fastPJson, fastPJson4sampleMultiQC
       file("file-size.txt") into laneSize
       set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
 
@@ -686,7 +686,15 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
+
+  bamPaths4MultiQC.map{idSample, target, bam, bai ->
+    [ idSample,target, bam.getParent() ]
+  }.into{ locateFastP4MultiQC}
+
+  locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
+    [idSample, file(bamFolder + "/fastp/*json")]
+  }.set{fastPJson4sampleMultiQC}
 }
 
 if (params.pairing) {
@@ -2440,7 +2448,7 @@ process QcCollectHsMetrics {
     ])
 
   output:
-    file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
+    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
     set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
 
   when: params.assayType == "exome" && runQC
@@ -2502,7 +2510,7 @@ process QcAlfred {
 
   output:
     set idSample, file("${idSample}.alfred*tsv.gz") into bamsQcStats4Aggregate
-    set file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into alfredOutput
+    set idSample, file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into alfredOutput
 
   when: runQC
 
@@ -2537,6 +2545,36 @@ process QcAlfred {
   """
 }
 
+process SampleRunMultiQC {
+  tag {idSample}
+  label 'multiqc_process'
+
+  publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
+  
+  input:
+    set idSample, alfredTsvFile, alfredPdfFile from alfredOutput
+    set idSample, fastpJsonFile from fastPJson4sampleMultiQC
+    set idSample, hsmetricsFile into collectHsMetricsOutput
+
+
+  output:
+    file "*multiqc_report*.html" into multiqc_report
+
+  script: 
+  if (params.assayType == "exome") {
+    assay = "exome"
+  }
+  else {
+    assay = 'wgs'
+  }
+  """
+  cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
+  cp /usr/bin/multiqc_custom_config/tempoLogo.png .
+  
+  multiqc .
+  """
+
+}
 
 //doing QcPileup and QcConpair/QcConpairAll only when --pairing [tsv] is given
 
@@ -3343,6 +3381,7 @@ process QcConpairAggregate {
 
 process RunMultiQC {
   tag {cohort}
+  label 'multiqc_process'
 
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
@@ -3361,7 +3400,7 @@ process RunMultiQC {
 
   script:
   """
-  echo -e "Tumor\tNormal\tTumor_Contamination\tNormal_Contamination\tConcordance" > contamination.tsv
+  echo -e "Tumor\tNormal\tTumor_Contamination\tNormal_Contamination\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
