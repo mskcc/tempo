@@ -3379,7 +3379,7 @@ process QcConpairAggregate {
   """
 }
 
-process RunMultiQC {
+process CohortRunMultiQC {
   tag {cohort}
   label 'multiqc_process'
 
