@@ -2545,7 +2545,9 @@ process QcAlfred {
   """
 }
 
-alfredOutput.join(fastPJson4sampleMultiQC, by:0)
+alfredOutput
+  .groupTuple(size:2, by:0)
+  .join(fastPJson4sampleMultiQC, by:0)
   .join(collectHsMetricsOutput, by:0)
   .set{sampleMetrics4MultiQC}
 
@@ -2569,6 +2571,11 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
+  zcat ${idSample}.alfred.per_readgroup.tsv.gz | grep ^MQ | cut -f 3-4,6 | tail -n +2 > ${idSample}.MQ.alfred.tsv
+  for i in \$(cut -f 3 ${idSample}.MQ.alfred.tsv | sort | uniq) ; do
+    awk -F"\\t" -v rg="\$i" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 1-2 > ${idSample}.\$i.rgY.MQ.alfred.tsv
+  done
+  
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
