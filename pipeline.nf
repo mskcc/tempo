@@ -2545,6 +2545,10 @@ process QcAlfred {
   """
 }
 
+alfredOutput.join(fastPJson4sampleMultiQC, by:0)
+  .join(collectHsMetricsOutput, by:0)
+  .join{sampleMetrics4MultiQC}
+
 process SampleRunMultiQC {
   tag {idSample}
   label 'multiqc_process'
@@ -2552,10 +2556,7 @@ process SampleRunMultiQC {
   publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idSample, file(alfredTsvFile), file(alfredPdfFile) from alfredOutput
-    set idSample, file(fastpJsonFile) from fastPJson4sampleMultiQC
-    set idSample, file(hsmetricsFile) from collectHsMetricsOutput
-
+    set idSample, file(alfredTsvFile), file(alfredPdfFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
 
   output:
     file "*multiqc_report*.html" into sample_multiqc_report
