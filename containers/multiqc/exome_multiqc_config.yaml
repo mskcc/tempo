@@ -44,7 +44,7 @@ sp:
     conpair:
         fn: 'conpair.tsv'
     alfredrg:
-        fn: '*.rgY.alfred.tsv'
+        fn: '*.rgY.MQ.alfred.tsv'
     alfred:
-        fn: '*.rgN.alfred.tsv'
+        fn: '*.rgN.MQ.alfred.tsv'
 
