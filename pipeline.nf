@@ -692,7 +692,7 @@ if (params.bamMapping) {
     [ idSample,target, bam.getParent() ]
   }.set{ locateFastP4MultiQC}
 
-  locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
+locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
     [idSample, file(bamFolder + "/fastp/*json")]
   }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
 }
@@ -2547,7 +2547,7 @@ process QcAlfred {
 
 alfredOutput.join(fastPJson4sampleMultiQC, by:0)
   .join(collectHsMetricsOutput, by:0)
-  .join{sampleMetrics4MultiQC}
+  .set{sampleMetrics4MultiQC}
 
 process SampleRunMultiQC {
   tag {idSample}
@@ -2717,6 +2717,40 @@ process QcConpair {
   mv ${outPrefix}_concordance.txt ${outPrefix}.concordance.txt
   mv ${outPrefix}_contamination.txt ${outPrefix}.contamination.txt
   """
+}
+
+process SomaticRunMultiQC {
+   tag {idTumor + "__" + idNormal}
+   label 'multiqc_process'
+
+  publishDir "${params.outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  
+  
+  input:
+    set placeholder, idTumor, idNormal, file(conpairResults) from conpairOutput
+
+  output:
+    file "*multiqc_report*.html" into somatic_multiqc_report
+
+  script: 
+  outPrefix = "${idTumor}__${idNormal}"
+  if (params.assayType == "exome") {
+    assay = "exome"
+  }
+  else {
+    assay = 'wgs'
+  }
+  """
+  echo -e "Tumor\tNormal\tTumor_Contamination\tNormal_Contamination\tConcordance" > conpair.tsv
+  for i in ./*contamination.txt ; do 
+     j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+  done
+  cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
+  cp /usr/bin/multiqc_custom_config/tempoLogo.png .
+  
+  multiqc .
+  """
+
 }
 
 if(runConpairAll){
@@ -3380,6 +3414,40 @@ process QcConpairAggregate {
   """
 }
 
+
+inputHsMetrics4MultiQC
+  .map{cohort, idTumors, idNormals, hsMetricsTumor, hsMetricsNormal ->
+    [cohort, hsMetricsTumor, hsMetricsNormal]
+  }.set{inputHsMetrics4MultiQC}
+inputFastP4MultiQC
+  .map{ cohort, idTumors, idNormals, fastPTumor, fastPNormal ->
+    [cohort, fastPTumor, fastPNormal]
+  }.set{inputFastP4MultiQC}
+inputAlfredIgnoreY4MultiQC
+  .map{ cohort, idTumors, idNormals, alfedIgnoreYTumor, alfredIgnoreYNormal -> 
+    [cohort, alfedIgnoreYTumor, alfredIgnoreYNormal ]
+  }.set{inputAlfredIgnoreY4MultiQC}
+inputAlfredIgnoreN4MultiQC
+  .map{ cohort, idTumors, idNormals, alfedIgnoreNTumor, alfredIgnoreNNormal -> 
+    [cohort, alfedIgnoreNTumor, alfredIgnoreNNormal ]
+  }.set{inputAlfredIgnoreN4MultiQC}
+inputConpairConcord4MultiQC
+  .map{ idTumors, idNormals, cohort, placeHolder, concordFile ->
+    [cohort, concordFile]
+  }.set{inputConpairConcord4MultiQC}
+inputConpairContami4MultiQC
+  .map{ idTumors, idNormals, cohort, placeHolder, contamiFile ->
+    [cohort, contamiFile]
+  }.set{inputConpairContami4MultiQC}
+
+inputHsMetrics4MultiQC
+  .join(inputFastP4MultiQC,by:0)
+  .join(inputAlfredIgnoreY4MultiQC,by:0)
+  .join(inputAlfredIgnoreN4MultiQC,by:0)
+  .join(inputConpairConcord4MultiQC,by:0)
+  .join(inputConpairContami4MultiQC,by:0)
+  .set{inputCohortRunMultiQC}
+
 process CohortRunMultiQC {
   tag {cohort}
   label 'multiqc_process'
@@ -3387,12 +3455,7 @@ process CohortRunMultiQC {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, idTumors, idNormals, file(hsMetricsTumor), file(hsMetricsNoraml) from inputHsMetrics4MultiQC
-    set cohort, idTumors, idNormals, file(fastPTumor), file(fastPNoraml) from inputFastP4MultiQC
-    set idTumors, idNormals, cohort, placeHolder, file(concordFile) from inputConpairConcord4MultiQC
-    set idTumors, idNormals, cohort, placeHolder, file(contamiFile) from inputConpairContami4MultiQC
-    set cohort, idTumors, idNormals, file(alfedIgnoreYTumor), file(alfredIgnoreYNoraml) from inputAlfredIgnoreY4MultiQC
-    set cohort, idTumors, idNormals, file(alfedIgnoreNTumor), file(alfredIgnoreNNoraml) from inputAlfredIgnoreN4MultiQC
+    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfedIgnoreYTumor), file(alfredIgnoreYNormal), file(alfedIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile) from inputCohortRunMultiQC
 
   output:
     file "*multiqc_report*.html" into cohort_multiqc_report
