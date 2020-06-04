@@ -20,3 +20,38 @@ custom_data:
 sp:
     example_files:
         fn: 'conpair.tsv'
+
+custom_data:
+    example_files:
+        file_format: 'tsv'
+        section_name: 'Alfred RG Aware Mapping Quality'
+        description: 'Read-group aware mapping quality'
+        plot_type: 'linegraph'
+        pconfig:
+            id: 'alfred_rgN_mapping_linegraph'
+            title: 'Per read-group Mapping Quality'
+            ylab: 'Read Count'
+            xlab: 'MQ'
+            ymin: 0 
+sp:
+    example_files:
+        fn: '*.rgN.alfred.tsv'
+
+
+custom_data:
+    example_files:
+        file_format: 'tsv'
+        section_name: 'Alfred Mapping Quality'
+        description: 'Sample mapping quality'
+        plot_type: 'linegraph'
+        pconfig:
+            id: 'alfred_rgY_mapping_linegraph'
+            title: 'Overall Sample Mapping Quality'
+            ylab: 'Read Count'
+            xlab: 'MQ'
+            ymin: 0 
+sp:
+    example_files:
+        fn: '*.rgY.alfred.tsv'
+
+        
