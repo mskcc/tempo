@@ -378,7 +378,7 @@ if (params.mapping) {
 
     output:
       set idSample, file("*.html") into fastPHtml
-      set idSample, file("*.json") into fastPJson, fastPJson4sampleMultiQC
+      set idSample, file("*.json") into fastPJson4cohortMultiQC, fastPJson4sampleMultiQC
       file("file-size.txt") into laneSize
       set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
 
@@ -690,11 +690,11 @@ if (params.bamMapping) {
 
   bamPaths4MultiQC.map{idSample, target, bam, bai ->
     [ idSample,target, bam.getParent() ]
-  }.into{ locateFastP4MultiQC}
+  }.set{ locateFastP4MultiQC}
 
   locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
     [idSample, file(bamFolder + "/fastp/*json")]
-  }.set{fastPJson4sampleMultiQC}
+  }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
 }
 
 if (params.pairing) {
@@ -2552,13 +2552,13 @@ process SampleRunMultiQC {
   publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idSample, alfredTsvFile, alfredPdfFile from alfredOutput
-    set idSample, fastpJsonFile from fastPJson4sampleMultiQC
-    set idSample, hsmetricsFile into collectHsMetricsOutput
+    set idSample, file(alfredTsvFile), file(alfredPdfFile) from alfredOutput
+    set idSample, file(fastpJsonFile) from fastPJson4sampleMultiQC
+    set idSample, file(hsmetricsFile) from collectHsMetricsOutput
 
 
   output:
-    file "*multiqc_report*.html" into multiqc_report
+    file "*multiqc_report*.html" into sample_multiqc_report
 
   script: 
   if (params.assayType == "exome") {
@@ -3011,7 +3011,7 @@ else if(!(runAggregate == false)) {
   	       }
   	       .unique()
   	       .set{hsMetrics}
-  inputPairing4.combine(fastPJson)
+  inputPairing4.combine(fastPJson4cohortMultiQC)
          .branch { item ->
       def idTumor = item[0]
       def idNormal = item[1]
@@ -3394,7 +3394,7 @@ process CohortRunMultiQC {
     set cohort, idTumors, idNormals, file(alfedIgnoreNTumor), file(alfredIgnoreNNoraml) from inputAlfredIgnoreN4MultiQC
 
   output:
-    file "*multiqc_report*.html" into multiqc_report
+    file "*multiqc_report*.html" into cohort_multiqc_report
 
   when: runQC && params.assayType == "exome"
 
