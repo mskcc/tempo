@@ -2740,7 +2740,7 @@ process SomaticRunMultiQC {
     assay = 'wgs'
   }
   """
-  echo -e "Tumor\tNormal\tTumor_Contamination\tNormal_Contamination\tConcordance" > conpair.tsv
+  echo -e "Tumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
@@ -3463,15 +3463,20 @@ process CohortRunMultiQC {
   when: runQC && params.assayType == "exome"
 
   script:
+  if (params.assayType == "exome") {
+    assay = "exome"
+  }
+  else {
+    assay = 'wgs'
+  }
   """
-  echo -e "Tumor\tNormal\tTumor_Contamination\tNormal_Contamination\tConcordance" > conpair.tsv
+  echo -e "Tumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
 
-  cp /usr/bin/multiqc_custom_config/exome_multiqc_config.yaml multiqc_config.yaml
-  cp /usr/bin/multiqc_custom_config/conpair_custom_mqc.yaml . 
+  cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
   multiqc .
