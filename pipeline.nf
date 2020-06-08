@@ -2591,7 +2591,7 @@ process QcPileup {
   tag {idSample}
 
   publishDir "${params.outDir}/bams/${idSample}/pileup/", mode: params.publishDirMode
-
+4
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4QcPileup
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -2750,7 +2750,7 @@ process SomaticRunMultiQC {
   echo -e "Tumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
-     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
@@ -3480,7 +3480,13 @@ process CohortRunMultiQC {
   echo -e "Tumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
-     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2,3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+  done
+
+  for j in ./*.alfred.tsv.gz ; do
+     idSample=\$(basename \$j | cut -f 1 -d. )
+     zcat \$j | grep ^MQ | cut -f 3-4,6 | tail -n +2 > \$idSample.MQ.alfred.tsv
+     cat \$idSample.MQ.alfred.tsv | cut -f 1-2 > \$idSample.rgN.MQ.alfred.tsv
   done
 
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
