@@ -2561,7 +2561,7 @@ process SampleRunMultiQC {
     set idSample, file(alfredTsvFile), file(alfredPdfFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
 
   output:
-    set file "*multiqc_report*.html", file "multiqc_data*/" into sample_multiqc_report
+    set file("*multiqc_report*.html"), path("multiqc_data") into sample_multiqc_report
 
   script: 
   if (params.assayType == "exome") {
@@ -2736,7 +2736,7 @@ process SomaticRunMultiQC {
     set placeholder, idTumor, idNormal, file(conpairResults) from conpairOutput
 
   output:
-    set file "*multiqc_report*.html", file "multiqc_data*/" into somatic_multiqc_report
+    set file("*multiqc_report*.html"), file("multiqc_data") into somatic_multiqc_report
 
   script: 
   outPrefix = "${idTumor}__${idNormal}"
@@ -3465,7 +3465,7 @@ process CohortRunMultiQC {
     set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfedIgnoreYTumor), file(alfredIgnoreYNormal), file(alfedIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile) from inputCohortRunMultiQC
 
   output:
-    set file "*multiqc_report*.html", file "multiqc_data*/" into cohort_multiqc_report
+    set file("*multiqc_report*.html"), file("multiqc_data") into cohort_multiqc_report
 
   when: runQC && params.assayType == "exome"
 

@@ -48,3 +48,49 @@ sp:
     alfred:
         fn: '*.rgN.MQ.alfred.tsv'
 
+table_cond_formatting_rules:
+    Tumor_Contamination: 
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    Normal_Contamination:
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    Concordance:
+        pass:
+            - gt: 90
+            - eq: 90
+        warn:
+            - lt: 90
+        fail:
+            - lt: 75        
+    mqc-generalstats-picard-FOLD_ENRICHMENT:
+        pass:
+            - gt: 45
+            - eq: 45
+        warn:
+            - lt: 45
+        fail:
+            - lt: 30
+    FOLD_ENRICHMENT:
+        pass:
+            - gt: 45
+            - eq: 45
+        warn:
+            - lt: 45
+        fail:
+            - lt: 30
+
+table_cond_formatting_colours:
+    - pass: '#5cb85c'
+    - warn: '#f0ad4e'
+    - fail: '#d9534f'
