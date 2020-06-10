@@ -39,8 +39,7 @@ custom_data:
             id: 'alfred_rgY_mapping_linegraph'
             title: 'Per read-group Mapping Quality'
             ylab: 'Read Count'
-            xlab: 'MQ'
-            ymin: 0 
+            xlab: 'Mapping Quality'
     alfred:
         file_format: 'tsv'
         section_name: 'Alfred Mapping Quality'
@@ -50,8 +49,7 @@ custom_data:
             id: 'alfred_rgN_mapping_linegraph'
             title: 'Overall Sample Mapping Quality'
             ylab: 'Read Count'
-            xlab: 'MQ'
-            ymin: 0 
+            xlab: 'Mapping Quality'
      
 sp:
     genstatsconpair:
@@ -166,3 +164,9 @@ picard_config:
     general_stats_target_coverage:
         - 30
         - 50
+
+module_order:
+    - fastp:
+       custom_config:
+            write_general_stats: false
+            write_separate_table: true
