@@ -9,6 +9,19 @@ report_header_info:
     - Sequencing Platform: 'Illumina Hiseq'
     - Sequencing Setup: '2x100'
 custom_data:
+    genstatsconpair:
+        plot_type: 'generalstats'
+        pconfig:
+            - Tumor:
+                hidden: True
+            - Normal:
+                hidden: False
+            - Tumor_Contamination:
+                hidden: False
+            - Normal_Contamination:
+                hidden: False
+            - Concordance:
+                hidden: False
     conpair:
         file_format: 'tsv'
         section_name: 'Conpair T-N Results'
@@ -41,6 +54,8 @@ custom_data:
             ymin: 0 
      
 sp:
+    genstatsconpair:
+        fn: 'conpair_genstat.tsv'
     conpair:
         fn: 'conpair.tsv'
     alfredrg:
@@ -49,6 +64,30 @@ sp:
         fn: '*.rgN.MQ.alfred.tsv'
 
 table_cond_formatting_rules:
+    mqc-generalstats-genstatsconpair-Tumor_Contamination: 
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    mqc-generalstats-genstatsconpair-Normal_Contamination:
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    mqc-generalstats-genstatsconpair-Concordance:
+        pass:
+            - gt: 90
+            - eq: 90
+        warn:
+            - lt: 90
+        fail:
+            - lt: 75  
     Tumor_Contamination: 
         pass:
             - lt: 1
@@ -72,7 +111,7 @@ table_cond_formatting_rules:
         warn:
             - lt: 90
         fail:
-            - lt: 75        
+            - lt: 75  
     mqc-generalstats-picard-FOLD_ENRICHMENT:
         pass:
             - gt: 45
@@ -89,8 +128,41 @@ table_cond_formatting_rules:
             - lt: 45
         fail:
             - lt: 30
+    mqc-generalstats-picard-PCT_TARGET_BASES_50X:
+        pass:
+            - gt: 75
+            - eq: 75
+        warn:
+            - lt: 75
+    PCT_PF_UQ_READS_ALIGNED:
+        pass:
+            - gt: 60
+            - eq: 60
+        warn:
+            - lt: 60
+        fail:
+            - lt: 40 
 
 table_cond_formatting_colours:
     - pass: '#5cb85c'
     - warn: '#f0ad4e'
     - fail: '#d9534f'
+
+picard_config:
+    HsMetrics_table_cols:
+        - MEAN_TARGET_COVERAGE
+        - MEAN_BAIT_COVERAGE
+        - ZERO_CVG_TARGETS_PCT
+        - FOLD_ENRICHMENT
+        - PCT_TARGET_BASES_50X
+        - PCT_TARGET_BASES_30X
+        - AT_DROPOUT
+        - GC_DROPOUT
+    HsMetrics_table_cols_hidden:
+        - ZERO_CVG_TARGETS_PCT
+        - PF_READS
+        - PF_UNIQUE_READS
+        - PF_UQ_BASES_ALIGNED
+    general_stats_target_coverage:
+        - 30
+        - 50

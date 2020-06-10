@@ -2747,11 +2747,12 @@ process SomaticRunMultiQC {
     assay = 'wgs'
   }
   """
-  echo -e "Tumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
+  echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
-     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
+  cp conpair.tsv conpair_genstat.tsv
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
@@ -3477,11 +3478,12 @@ process CohortRunMultiQC {
     assay = 'wgs'
   }
   """
-  echo -e "Tumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
+  echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
-     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
+  cp conpair.tsv conpair_genstat.tsv
 
   for j in ./*.alfred.tsv.gz ; do
      idSample=\$(basename \$j | cut -f 1 -d. )
