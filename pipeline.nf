@@ -2572,8 +2572,10 @@ process SampleRunMultiQC {
   }
   """
   zcat ${idSample}.alfred.per_readgroup.tsv.gz | grep ^MQ | cut -f 3-4,6 | tail -n +2 > ${idSample}.MQ.alfred.tsv
+  echo -e "\\t\$(seq 0 60 | paste -sd"\\t")" > ${idSample}.rgY.MQ.alfred.tsv
   for i in \$(cut -f 3 ${idSample}.MQ.alfred.tsv | sort | uniq) ; do
-    awk -F"\\t" -v rg="\$i" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 1-2 > ${idSample}.\$i.rgY.MQ.alfred.tsv
+    echo -ne "${idSample}@\$i\\t" >> ${idSample}.rgY.MQ.alfred.tsv
+    awk -F"\\t" -v rg="\$i" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${idSample}.rgY.MQ.alfred.tsv
   done
   
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
@@ -3484,11 +3486,13 @@ process CohortRunMultiQC {
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
   cp conpair.tsv conpair_genstat.tsv
-
-  for j in ./*.alfred.tsv.gz ; do
-     idSample=\$(basename \$j | cut -f 1 -d. )
-     zcat \$j | grep ^MQ | cut -f 3-4,6 | tail -n +2 > \$idSample.MQ.alfred.tsv
-     cat \$idSample.MQ.alfred.tsv | cut -f 1-2 > \$idSample.rgN.MQ.alfred.tsv
+  
+  echo -e "\\t\$(seq 0 60 | paste -sd"\\t")" > allSamples.rgN.MQ.alfred.tsv
+  for i in *.alfred.tsv.gz ; do 
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3-4,6 | tail -n +2 > \$idSample.MQ.alfred.tsv
+    echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
+    cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
   done
 
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
