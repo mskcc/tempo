@@ -164,9 +164,3 @@ picard_config:
     general_stats_target_coverage:
         - 30
         - 50
-
-module_order:
-    - fastp:
-       custom_config:
-            write_general_stats: false
-            write_separate_table: true

@@ -2561,7 +2561,7 @@ process SampleRunMultiQC {
     set idSample, file(alfredTsvFile), file(alfredPdfFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
 
   output:
-    set file("*multiqc_report*.html"), path("multiqc_data") into sample_multiqc_report
+    set idSample, file("*multiqc_report*.html"), path("multiqc_data") into sample_multiqc_report
 
   script: 
   if (params.assayType == "exome") {
@@ -2581,7 +2581,7 @@ process SampleRunMultiQC {
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
-  multiqc .
+  multiqc . --cl_config "title: \\"${idSample} MultiQC Report\\"
   """
 
 }
@@ -2738,7 +2738,7 @@ process SomaticRunMultiQC {
     set placeholder, idTumor, idNormal, file(conpairResults) from conpairOutput
 
   output:
-    set file("*multiqc_report*.html"), file("multiqc_data") into somatic_multiqc_report
+    set idTumor, idNormal, file("*multiqc_report*.html"), file("multiqc_data") into somatic_multiqc_report
 
   script: 
   outPrefix = "${idTumor}__${idNormal}"
@@ -2758,7 +2758,7 @@ process SomaticRunMultiQC {
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
-  multiqc .
+  multiqc . --cl_config "title: \\"${idTumor}__${idNormal} MultiQC Report\\"
   """
 
 }
@@ -3468,7 +3468,8 @@ process CohortRunMultiQC {
     set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfedIgnoreYTumor), file(alfredIgnoreYNormal), file(alfedIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile) from inputCohortRunMultiQC
 
   output:
-    set file("*multiqc_report*.html"), file("multiqc_data") into cohort_multiqc_report
+    set cohort, file("*multiqc_report*.html"), file("multiqc_data") into cohort_multiqc_report
+    file("allSamples.rgN.MQ.alfred.tsv") into alfredparse
 
   when: runQC && params.assayType == "exome"
 
@@ -3498,7 +3499,7 @@ process CohortRunMultiQC {
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
-  multiqc .
+  multiqc . --cl_config "title: \\"${Cohort} MultiQC Report\\""
   """
 }
 
