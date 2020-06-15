@@ -2,8 +2,8 @@
 
 
 __author__  = "Evan Biederstedt"
-__contributor__  = "Yixiao Gong"
-__email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com; gongy@mskcc.org"
+__contributor__  = "Yixiao Gong, Anne Marie Noronha"
+__email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com; gongy@mskcc.org; noronhaa@mskcc.org"
 __version__ = "0.2.3"
 __status__  = "Dev"
 
@@ -51,6 +51,7 @@ The script assumes no special output subdirectory, and assumes only three assay 
 import argparse
 import pandas as pd
 import pybedtools
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--sampleID', help = 'sample ID from channel, should always exist', required = True)
@@ -280,7 +281,7 @@ if MAF_input is not None and coding_baits_BED is not None:
     maf.Mutation_Status = maf.Mutation_Status.astype(str)
     ## subset based on only non-synonymous coding mutations
     maf = maf[maf.Mutation_Status != 'GERMLINE']
-    variant_classes = ["Missense_Mutation", "Nonsense_Mutation", "Nonstop_Mutation", "Frame_Shift_Ins", "Frame_Shift_Del","In_Frame_Del","In_Frame_Ins","Translation_Start_Site", "Splice_Site"]
+    variant_classes = ["Missense_Mutation", "Nonsense_Mutation", "Nonstop_Mutation", "Frame_Shift_Ins", "Frame_Shift_Del","In_Frame_Del","In_Frame_Ins","Translation_Start_Site", "Splice_Site", "Splice_Region"]
     non_syn_mut = maf[maf.Variant_Classification.isin(variant_classes)].reset_index(drop=True)
     ## only take Chromosome, Start_Position, End_Position
     non_syn_mut_bed = non_syn_mut[["Chromosome", "Start_Position", "End_Position", "Variant_Classification", "Hugo_Symbol"]]  ## keeping the last two columns for debugging
@@ -292,17 +293,20 @@ if MAF_input is not None and coding_baits_BED is not None:
     CodingRegionsBaits = pybedtools.BedTool.from_dataframe(coding_baits_regions)
     resulting_intersection = nonSynonymousMuts.intersect(CodingRegionsBaits)
     ## read into a pandas DataFrame, and count the number of rows; this is the number of mutations in non-synonymous coding mutations in canonical exons only
-    resultdf = pd.read_csv(resulting_intersection.fn, sep="\t", header=None)
+    mutationNum = 0
+    if os.path.getsize(resulting_intersection.fn) > 0:
+        resultdf = pd.read_csv(resulting_intersection.fn, sep="\t", header=None)
+	mutationNum = len(resultdf.index)
     ## conditional based on BED file used:
     ## AgilentExon_51MB_b37_v3_baits.bed, total_cds_size = 30.89918
     ## IDT_Exome_v1_FP_b37_baits.bed, total_cds_size = 36.00458
     ## WGS, total_cds_size = 45.57229
     if "AgilentExon_51MB_b37" in coding_baits_BED:
-    	tmb = len(resultdf.index)/30.89918
+    	tmb = mutationNum/30.89918
     elif "IDT_Exome_v1_FP_b37" in coding_baits_BED:
-    	tmb = len(resultdf.index)/36.00458
+    	tmb = mutationNum/36.00458
     elif "b37_wgs_calling_regions" in coding_baits_BED:
-    	tmb = len(resultdf.index)/45.57229
+    	tmb = mutationNum/45.57229
     else: 
     	tmb = None ## this shouldn't happen
 
