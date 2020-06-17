@@ -1791,7 +1791,7 @@ process SomaticFacetsAnnotation {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
-
+  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
     --facets-output ${purity_rdata} \
     --maf-file ${maf} \
@@ -1803,6 +1803,9 @@ process SomaticFacetsAnnotation {
   echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
 
   mv ${outputPrefix}.facets.zygosity.maf ${outputPrefix}.somatic.final.maf
+  else
+    cp ${maf} ${outputPrefix}.somatic.final.maf
+  fi
   """
 }
 
@@ -2269,12 +2272,16 @@ process GermlineFacetsAnnotation {
   script:
   outputPrefix = "${idTumor}__${idNormal}.germline"
   """
+  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
     --facets-output ${purity_rdata} \
     --maf-file ${maf} \
     --output ${outputPrefix}.facets.maf
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.final.maf
+  else 
+    cp ${maf} ${outputPrefix}.final.maf
+  fi
   """
 }
 
@@ -3004,7 +3011,11 @@ process SomaticAggregateMaf {
   ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
+  for i in mut/*.maf ; do 
+    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then 
+      cat \$i
+    fi
+  done | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
   cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
   """
 }
@@ -3195,7 +3206,11 @@ process GermlineAggregateMaf {
   ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf
+  for i in mut/*.maf ; do 
+    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then 
+      cat \$i
+    fi
+  done | grep ^Hugo | head -n1 > mut_germline.maf
   cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf
 
   """
