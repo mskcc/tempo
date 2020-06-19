@@ -2562,6 +2562,7 @@ process SampleRunMultiQC {
 
   output:
     set idSample, file("*multiqc_report*.html"), path("*multiqc_data*.zip") into sample_multiqc_report
+    set idSample, file("QC_Status.txt")
 
   script: 
   if (params.assayType == "exome") {
@@ -2581,7 +2582,13 @@ process SampleRunMultiQC {
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
+  multiqc .
+  rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
+  general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
+
   multiqc . --cl_config "title: \\"${idSample} MultiQC Report\\"" -z
+  rm -rf pre_multiqc_data
+
   """
 
 }
@@ -2758,7 +2765,13 @@ process SomaticRunMultiQC {
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
+  multiqc .
+  rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
+  general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
+
   multiqc . --cl_config "title: \\"${idTumor}__${idNormal} MultiQC Report\\"" -z
+  rm -rf pre_multiqc_data
+
   """
 
 }
@@ -3498,7 +3511,13 @@ process CohortRunMultiQC {
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
+  multiqc .
+  rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
+  general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
+
   multiqc . --cl_config "title: \\"${cohort} MultiQC Report\\"" -z
+  rm -rf pre_multiqc_data
+
   """
 }
 

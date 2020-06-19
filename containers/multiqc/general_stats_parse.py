@@ -26,6 +26,8 @@ def main():
     qcStatus = pd.DataFrame(columns=["Status","Reason"])
 
     for index, row in genStats.iterrows():
+        if "@" in index:
+            continue
         statusIter = dict()
         for i in configData["table_cond_formatting_rules"]:
             if i in list(genStats):
