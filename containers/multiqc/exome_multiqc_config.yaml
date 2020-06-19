@@ -50,6 +50,13 @@ custom_data:
             title: 'Overall Sample Mapping Quality'
             ylab: 'Read Count'
             xlab: 'Mapping Quality'
+    genstats-QCStatus:
+        plot_type: 'generalstats'
+        pconfig:
+            - Status:
+                hidden: False
+            - Reason:
+                hidden: False
      
 sp:
     genstatsconpair:
@@ -60,6 +67,8 @@ sp:
         fn: '*.rgY.MQ.alfred.tsv'
     alfred:
         fn: '*.rgN.MQ.alfred.tsv'
+    genstats-QCStatus:
+        fn: "QC_Status.txt"
 
 table_cond_formatting_rules:
     mqc-generalstats-genstatsconpair-Tumor_Contamination: 
