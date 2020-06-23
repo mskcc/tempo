@@ -378,7 +378,7 @@ if (params.mapping) {
 
     output:
       set idSample, file("*.html") into fastPHtml
-      set idSample, file("*.json") into fastPJson4cohortMultiQC, fastPJson4sampleMultiQC
+      set idSample, file("*.json"), fileID into fastPJson4MultiQC
       file("file-size.txt") into laneSize
       set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
 
@@ -451,6 +451,16 @@ if (params.mapping) {
     echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
     """
   }
+
+  fastPJson4MultiQC
+    .groupTuple(by:[2])
+    .map{idSample, jsonFile, fileID -> 
+      def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
+      [idSampleout, jsonFile]
+    }.groupTuple(by: [0])
+    .map{ idSample, jsonFile -> 
+      [idSample, jsonFile.flatten()]
+    }.into{fastPJson4cohortMultiQC; fastPJson4sampleMultiQC} 
 
   // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
   def allReadIds = [:]
@@ -3088,8 +3098,8 @@ else if(!(runAggregate == false)) {
           def cohort = item[0]
           def idTumors = item[1].unique()
           def idNormals = item[2].unique()
-          def fileTumor = item[3].unique()
-          def fileNormal = item[4].unique()
+          def fileTumor = item[3].flatten().unique()
+          def fileNormal = item[4].flatten().unique()
           
           [cohort, idTumors, idNormals, fileTumor, fileNormal]
            }
