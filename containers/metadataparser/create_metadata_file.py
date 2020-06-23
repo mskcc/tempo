@@ -296,7 +296,7 @@ if MAF_input is not None and coding_baits_BED is not None:
     mutationNum = 0
     if os.path.getsize(resulting_intersection.fn) > 0:
         resultdf = pd.read_csv(resulting_intersection.fn, sep="\t", header=None)
-	mutationNum = len(resultdf.index)
+        mutationNum = len(resultdf.index)
     ## conditional based on BED file used:
     ## AgilentExon_51MB_b37_v3_baits.bed, total_cds_size = 30.89918
     ## IDT_Exome_v1_FP_b37_baits.bed, total_cds_size = 36.00458
