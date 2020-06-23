@@ -1,9 +1,9 @@
 FROM amancevice/pandas:0.24.2
 
 LABEL maintainer="Evan Biederstedt <evan.biederstedt@gmail.com>" \
-    contributor="Philip Jonsson <philip.jonsson@mskcc.org>; Yixiao Gong <gongy@mskcc.org>" \
-    version.image="0.5.2" \
-    version.create_metadata_file="0.2.2" \
+    contributor="Philip Jonsson <philip.jonsson@mskcc.org>; Yixiao Gong <gongy@mskcc.org>; Anne Marie Noronha <noronhaa@mskcc.org>" \
+    version.image="0.5.4" \
+    version.create_metadata_file="0.2.3" \
     version.create-aggregate-qc-file="0.2.0" \
     description="Debian image to run script with Python3.x"
 
@@ -20,5 +20,5 @@ RUN R -e "install.packages(c('data.table'), repos = 'http://cran.r-project.org')
 
 COPY create_metadata_file.py /usr/bin
 COPY create-aggregate-qc-file.R /usr/bin
-RUN chmod +x /usr/bin/create_metadata_file.py
-RUN chmod +x /usr/bin/create-aggregate-qc-file.R
+RUN chmod +rx /usr/bin/create_metadata_file.py
+RUN chmod +rx /usr/bin/create-aggregate-qc-file.R
