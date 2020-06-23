@@ -4,7 +4,7 @@
 __author__  = "Evan Biederstedt"
 __contributor__  = "Yixiao Gong, Anne Marie Noronha"
 __email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com; gongy@mskcc.org; noronhaa@mskcc.org"
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 __status__  = "Dev"
 
 
