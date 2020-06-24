@@ -2,10 +2,10 @@
 
 ## Tabulate alignment metrics from Alfred and CollectHsMetrics across multiple samples
 ## author  = Philip Jonsson
-## contributor = Evan Biederstedt, evan.biederstedt@gmail.com, 2019
+## contributor = Evan Biederstedt, evan.biederstedt@gmail.com, 2019 ; Anne Marie Noronha, noronhaa@mskcc.org, 2020
 
-## email   = jonssonp@mskcc.org, evan.biederstedt@gmail.com
-## version = 0.2.0
+## email   = jonssonp@mskcc.org, evan.biederstedt@gmail.com, noronhaa@mskcc.org
+## version = 0.2.1
 ## status  = Dev
 
 suppressPackageStartupMessages({
@@ -67,8 +67,8 @@ read_hs_metrics = function(file) {
 if (!interactive()) {
     
     # Run-time parameters
-    num_cores = detectCores()
     assay_type = args[1]
+    num_cores = args[2]
     
     # Parse output from Alfred 
     alfred_files = dir(getwd(), pattern = '*.alfred.tsv.gz$')

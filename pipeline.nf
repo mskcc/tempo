@@ -3285,6 +3285,7 @@ process QcBamAggregate {
   else {
     options = 'wgs'
   }
+  options = options + " ${task.cpus}"
   """
   Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
   """
