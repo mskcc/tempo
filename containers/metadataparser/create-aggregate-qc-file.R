@@ -11,6 +11,7 @@
 suppressPackageStartupMessages({
     library(data.table)
     library(parallel)
+    library(argparse)
 })
 
 args = commandArgs(TRUE)
@@ -19,6 +20,13 @@ if (is.null(args) | length(args)<1) {
     message('Usage: create-aggregate-qc-file.R assay\n')
     quit()
 }
+
+parser = ArgumentParser(description = 'Aggregate QC metrics across samples')
+parser$add_argument('-n', '--num-cores', type = 'integer', required = TRUE, default = 1,
+                    help = 'number of cores')
+parser$add_argument('-a', '--assay-type', type = 'character', required = TRUE, default = 'wes',
+                    help = 'Assay type')
+args = parser$parse_args()
 
 ## Parse Alfred output ----------------------------------------------------------------------------------------------
 read_alfred_qc = function(file) {
@@ -67,8 +75,8 @@ read_hs_metrics = function(file) {
 if (!interactive()) {
     
     # Run-time parameters
-    assay_type = args[1]
-    num_cores = args[2]
+    num_cores = args$num_cores
+    assay_type = args$assay_type
     
     # Parse output from Alfred 
     alfred_files = dir(getwd(), pattern = '*.alfred.tsv.gz$')

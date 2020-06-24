@@ -16,7 +16,7 @@ RUN pip install 'joblib>=0.12.5'
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     r-base-core r-base-dev
-RUN R -e "install.packages(c('data.table'), repos = 'http://cran.r-project.org')"
+RUN R -e "install.packages(c('data.table','argparse'), repos = 'http://cran.r-project.org')"
 
 COPY create_metadata_file.py /usr/bin
 COPY create-aggregate-qc-file.R /usr/bin
