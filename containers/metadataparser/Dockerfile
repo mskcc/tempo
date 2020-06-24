@@ -2,9 +2,9 @@ FROM amancevice/pandas:0.24.2
 
 LABEL maintainer="Evan Biederstedt <evan.biederstedt@gmail.com>" \
     contributor="Philip Jonsson <philip.jonsson@mskcc.org>; Yixiao Gong <gongy@mskcc.org>; Anne Marie Noronha <noronhaa@mskcc.org>" \
-    version.image="0.5.4" \
+    version.image="0.5.5" \
     version.create_metadata_file="0.2.4" \
-    version.create-aggregate-qc-file="0.2.0" \
+    version.create-aggregate-qc-file="0.2.1" \
     description="Debian image to run script with Python3.x"
 
 RUN apt-get update && apt-get install bedtools
