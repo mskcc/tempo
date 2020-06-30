@@ -1668,7 +1668,7 @@ process RunLOHHLA {
 
   output:
     set file("*30.DNA.HLAlossPrediction_CI.txt"), file("*DNA.IntegerCPN_CI.txt"), file("*.pdf"), file("*.RData") optional true into lohhlaOutput
-    set val("placeHolder"), idTumor, idNormal, file("*30.DNA.HLAlossPrediction_CI.txt") into predictHLA4Aggregate
+    set val("placeHolder"), idTumor, idNormal, file("*.DNA.HLAlossPrediction_CI.txt") into predictHLA4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*DNA.IntegerCPN_CI.txt") into intCPN4Aggregate
 
   when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
@@ -1694,18 +1694,21 @@ process RunLOHHLA {
     --gatkDir /picard-tools \
     --novoDir /opt/conda/bin
 
-  if [[ -f ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt ]]
+  if [[ -f ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt ]]
   then
-    sed -i "s/^${idTumor}/${outputPrefix}/g" ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt
+    sed -i "s/^${idTumor}/${outputPrefix}/g" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
   fi
 
-  touch ${outputPrefix}.30.DNA.HLAlossPrediction_CI.txt
-  touch ${outputPrefix}.30.DNA.IntegerCPN_CI.txt
+  touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
+  touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
+
+  mv ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt ${outputPrefix}.DNA.HLAlossPrediction_CI.txt
+  mv ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt ${outputPrefix}.DNA.IntegerCPN_CI.txt
 
   if find Figures -mindepth 1 | read
   then
     mv Figures/* .
-    mv ${idTumor}.minCoverage_30.HLA.pdf ${outputPrefix}.minCoverage_30.HLA.pdf 
+    mv ${idTumor}.minCoverage_${params.lohhla.minCoverageFilter}.HLA.pdf ${outputPrefix}.HLA.pdf
   fi
   """
 }
@@ -1791,7 +1794,7 @@ process SomaticFacetsAnnotation {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
-
+  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
     --facets-output ${purity_rdata} \
     --maf-file ${maf} \
@@ -1803,6 +1806,9 @@ process SomaticFacetsAnnotation {
   echo -e "${outputPrefix}\t`wc -l ${outputPrefix}.facets.zygosity.maf | cut -d ' ' -f1`" > file-size.txt
 
   mv ${outputPrefix}.facets.zygosity.maf ${outputPrefix}.somatic.final.maf
+  else
+    cp ${maf} ${outputPrefix}.somatic.final.maf
+  fi
   """
 }
 
@@ -2269,12 +2275,16 @@ process GermlineFacetsAnnotation {
   script:
   outputPrefix = "${idTumor}__${idNormal}.germline"
   """
+  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
     --facets-output ${purity_rdata} \
     --maf-file ${maf} \
     --output ${outputPrefix}.facets.maf
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.final.maf
+  else 
+    cp ${maf} ${outputPrefix}.final.maf
+  fi
   """
 }
 
@@ -2775,7 +2785,7 @@ if ( !params.mapping && !params.bamMapping ){
                   FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
                   dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
-                  predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*30.DNA.HLAlossPrediction_CI.txt")]
+                  predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
                   intCPN4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*DNA.IntegerCPN_CI.txt")]
                   MetaData4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.sample_data.txt")]
                   mafFile4AggregateGermline: [idTumor, idNormal, cohort, "placeHolder", file(path + "/germline/" + idNormal + "/*/" + idTumor + "__" + idNormal + ".germline.final.maf")]
@@ -3004,7 +3014,11 @@ process SomaticAggregateMaf {
   ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
+  for i in mut/*.maf ; do 
+    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then 
+      cat \$i
+    fi
+  done | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
   cat mut/*.maf | grep -Ev "^#|^Hugo_Symbol" | sort -k5,5V -k6,6n >> mut_somatic.maf
   """
 }
@@ -3195,7 +3209,11 @@ process GermlineAggregateMaf {
   ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
-  cat mut/*.maf | grep ^Hugo | head -n1 > mut_germline.maf
+  for i in mut/*.maf ; do 
+    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then 
+      cat \$i
+    fi
+  done | grep ^Hugo | head -n1 > mut_germline.maf
   cat mut/*.maf | grep -Ev "^#|^Hugo" | sort -k5,5V -k6,6n >> mut_germline.maf
 
   """
@@ -3265,13 +3283,13 @@ process QcBamAggregate {
 
   script:
   if (params.assayType == "exome") {
-    options = "wes"
+    assayType = "wes"
   }
   else {
-    options = 'wgs'
+    assayType = 'wgs'
   }
   """
-  Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R ${options}
+  Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R -n ${task.cpus} -a ${assayType}
   """
 }
 
