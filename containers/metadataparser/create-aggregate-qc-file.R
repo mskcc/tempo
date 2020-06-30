@@ -2,15 +2,16 @@
 
 ## Tabulate alignment metrics from Alfred and CollectHsMetrics across multiple samples
 ## author  = Philip Jonsson
-## contributor = Evan Biederstedt, evan.biederstedt@gmail.com, 2019
+## contributor = Evan Biederstedt, evan.biederstedt@gmail.com, 2019 ; Anne Marie Noronha, noronhaa@mskcc.org, 2020
 
-## email   = jonssonp@mskcc.org, evan.biederstedt@gmail.com
-## version = 0.2.0
+## email   = jonssonp@mskcc.org, evan.biederstedt@gmail.com, noronhaa@mskcc.org
+## version = 0.2.1
 ## status  = Dev
 
 suppressPackageStartupMessages({
     library(data.table)
     library(parallel)
+    library(argparse)
 })
 
 args = commandArgs(TRUE)
@@ -19,6 +20,13 @@ if (is.null(args) | length(args)<1) {
     message('Usage: create-aggregate-qc-file.R assay\n')
     quit()
 }
+
+parser = ArgumentParser(description = 'Aggregate QC metrics across samples')
+parser$add_argument('-n', '--num-cores', type = 'integer', required = TRUE, default = 1,
+                    help = 'number of cores')
+parser$add_argument('-a', '--assay-type', type = 'character', required = TRUE, default = 'wes',
+                    help = 'Assay type')
+args = parser$parse_args()
 
 ## Parse Alfred output ----------------------------------------------------------------------------------------------
 read_alfred_qc = function(file) {
@@ -67,8 +75,8 @@ read_hs_metrics = function(file) {
 if (!interactive()) {
     
     # Run-time parameters
-    num_cores = detectCores()
-    assay_type = args[1]
+    num_cores = args$num_cores
+    assay_type = args$assay_type
     
     # Parse output from Alfred 
     alfred_files = dir(getwd(), pattern = '*.alfred.tsv.gz$')
