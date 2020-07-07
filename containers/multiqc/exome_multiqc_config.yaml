@@ -3,9 +3,8 @@ custom_logo_url: 'https://ccstempo.netlify.app/'
 custom_logo_title: 'CCS - Tempo'
 
 report_header_info:
-    - Contact E-mail: 'skicomputing@mskcc.org'
-    - Application Type: 'Exome'
-    - Project Type: 'Whole Exome Repo'
+    - Analysis Workflow: Tempo
+    - Assay Type: 'Exome'
     - Sequencing Platform: 'Illumina Hiseq'
     - Sequencing Setup: '2x100'
 custom_data:
@@ -38,7 +37,7 @@ custom_data:
         pconfig:
             id: 'alfred_rgY_mapping_linegraph'
             title: 'Per read-group Mapping Quality'
-            ylab: 'Read Count'
+            ylab: 'Fraction of Reads'
             xlab: 'Mapping Quality'
     alfred:
         file_format: 'tsv'
@@ -48,7 +47,7 @@ custom_data:
         pconfig:
             id: 'alfred_rgN_mapping_linegraph'
             title: 'Overall Sample Mapping Quality'
-            ylab: 'Read Count'
+            ylab: 'Fraction of Reads'
             xlab: 'Mapping Quality'
     genstats-QCStatus:
         plot_type: 'generalstats'
