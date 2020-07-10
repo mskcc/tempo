@@ -1562,7 +1562,8 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
-    set idTumor, idNormal, target, file("*/*.qc.txt") into FacetsQC4MetaDataParser, FacetsQC4MultiQC
+    set idTumor, idNormal, target, file("*/*.qc.txt") into FacetsQC4MetaDataParser
+    set idTumor, idNormal, file("*/*.qc.txt"), file("*_OUT.txt") into FacetsQC4SomaticMultiQC, FacetsQC4Aggregate
 
   when: "facets" in tools && runSomatic
 
@@ -1633,14 +1634,10 @@ process DoFacets {
   """
 }
 
-FacetsQC4MultiQC
-  .map{idTumor, idNormal, target, qcFiles -> 
-    [idTumor, idNormal, qcFiles]
-  }.into{FacetsQC4SomaticMultiQC ; FacetsQC4Aggregate}
 FacetsQC4Aggregate 
-  .map{idTumor, idNormal, qcFiles -> 
-    ["placeHolder",idTumor, idNormal, qcFiles ]
-  }.into{FacetsQC4Aggregate}
+  .map{idTumor, idNormal, qcFiles, summaryFiles -> 
+    ["placeHolder",idTumor, idNormal, qcFiles, summaryFiles ]
+  }.set{FacetsQC4Aggregate}
 
 
 
@@ -2578,7 +2575,7 @@ process SampleRunMultiQC {
   publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idSample, file(alfredTsvFile), file(alfredPdfFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
+    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
 
   output:
     set idSample, file("*multiqc_report*.html"), path("*multiqc_data*.zip") into sample_multiqc_report
@@ -2592,10 +2589,21 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
-  zcat ${idSample}.alfred.per_readgroup.tsv.gz | grep ^MQ | cut -f 3,5-6 | tail -n +2 > ${idSample}.MQ.alfred.tsv
-  for i in \$(cut -f 3 ${idSample}.MQ.alfred.tsv | sort | uniq) ; do
-    echo -ne "${idSample}@\$i\\t" >> ${idSample}.rgY.MQ.alfred.tsv
-    awk -F"\\t" -v rg="\$i" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${idSample}.rgY.MQ.alfred.tsv
+
+  for i in *.alfred.tsv.gz ; do 
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
+    echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
+    cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
+  done
+
+  for i in *.alfred.per_readgroup.tsv.gz ; do
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > ${idSample}.MQ.alfredY.tsv
+    for j in \$(cut -f 3 ${idSample}.MQ.alfredY.tsv | sort | uniq) ; do
+      echo -ne "${idSample}@\$j\\t" >> ${idSample}.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${idSample}.rgY.MQ.alfred.tsv
+    done
   done
   
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
@@ -2767,7 +2775,7 @@ process SomaticRunMultiQC {
   publishDir "${params.outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idTumor, idNormal, file(conpairFiles), file(facetsQCfiles) from somaticMultiQCinput
+    set idTumor, idNormal, file(conpairFiles), file(facetsQCFiles), file(facetsSummaryFiles) from somaticMultiQCinput
 
   output:
     set idTumor, idNormal, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into somatic_multiqc_report
@@ -2894,7 +2902,7 @@ if ( !params.mapping && !params.bamMapping ){
                   FacetsOutLog4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
                   FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.arm_level.txt")]
                   FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
-                  FacetsQC4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.qc.txt")]
+                  FacetsQC4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.qc.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
                   dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
                   predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*30.DNA.HLAlossPrediction_CI.txt")]
@@ -3492,8 +3500,8 @@ inputConpairContami4MultiQC
     [cohort, contamiFile]
   }.set{inputConpairContami4MultiQC}
 inputFacetsQC4CohortMultiQC
-  .map{ idTumors, idNormals, cohort, placeHolder, qcFile ->
-    [cohort, qcFile]
+  .map{ idTumors, idNormals, cohort, placeHolder, qcFile, summaryFile ->
+    [cohort, qcFile, summaryFile]
   }.set{inputFacetsQC4CohortMultiQC}
 
 inputHsMetrics4MultiQC
@@ -3512,7 +3520,7 @@ process CohortRunMultiQC {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(qcFile) from inputCohortRunMultiQC
+    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsQCFile), file(FacetsSummaryFile) from inputCohortRunMultiQC
 
   output:
     set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
@@ -3539,6 +3547,15 @@ process CohortRunMultiQC {
     zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
     echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
     cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
+  done
+
+  for i in *.alfred.per_readgroup.tsv.gz ; do
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > ${idSample}.MQ.alfredY.tsv
+    for j in \$(cut -f 3 ${idSample}.MQ.alfredY.tsv | sort | uniq) ; do
+      echo -ne "${idSample}@\$j\\t" >> ${idSample}.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${idSample}.rgY.MQ.alfred.tsv
+    done
   done
 
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
