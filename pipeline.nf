@@ -2944,7 +2944,7 @@ if ( !params.mapping && !params.bamMapping ){
   inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
   aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
   aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
-  aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}.into{inputFastP4MultiQC}
+  aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
 
 }
 else if(!(runAggregate == false)) {
@@ -3551,10 +3551,10 @@ process CohortRunMultiQC {
 
   for i in *.alfred.per_readgroup.tsv.gz ; do
     idSample=\$(basename \$i | cut -f 1 -d.)
-    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > ${idSample}.MQ.alfredY.tsv
-    for j in \$(cut -f 3 ${idSample}.MQ.alfredY.tsv | sort | uniq) ; do
-      echo -ne "${idSample}@\$j\\t" >> ${idSample}.rgY.MQ.alfred.tsv
-      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${idSample}.rgY.MQ.alfred.tsv
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
+    for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
+      echo -ne "\${idSample}@\$j\\t" >> ${idSample}.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>\$idSample.rgY.MQ.alfred.tsv
     done
   done
 
