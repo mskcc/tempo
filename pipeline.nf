@@ -349,12 +349,12 @@ if (params.mapping) {
              [idSample, target, fastqPairs[0], fastqPairs[1], fileID, lane]
         }
         .map{ item ->
-                idSample = item[0]
-                target = item[1]
-                fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
-                fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
-                fileID = item[4]
-                lane = item[5]
+                def idSample = item[0]
+                def target = item[1]
+                def fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
+                def fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
+                def fileID = item[4]
+                def lane = item[5]
 
              [idSample, target, fastqPair1, fastqPair1.size(), fastqPair2, fastqPair2.size(), fileID, lane]
         }
