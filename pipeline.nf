@@ -2612,11 +2612,10 @@ process SampleRunMultiQC {
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
   multiqc .
-  rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
-  general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
+  general_stats_parse.py 
+  rm -rf multiqc_report.html multiqc_data
 
   multiqc . -z
-  rm -rf pre_multiqc_data
 
   """
 
@@ -2801,11 +2800,10 @@ process SomaticRunMultiQC {
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
   multiqc .
-  rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
-  general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
+  general_stats_parse.py 
+  rm -rf multiqc_report.html multiqc_data
 
   multiqc . -z
-  rm -rf pre_multiqc_data
 
   """
 
@@ -3563,8 +3561,8 @@ process CohortRunMultiQC {
     idSample=\$(basename \$i | cut -f 1 -d.)
     zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
     for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
-      echo -ne "\${idSample}@\$j\\t" >> \$idSample.rgY.MQ.alfred.tsv
-      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>\$idSample.rgY.MQ.alfred.tsv
+      echo -ne "\${idSample}@\$j\\t" >> ${cohort}.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${cohort}.rgY.MQ.alfred.tsv
     done
   done
 
@@ -3572,11 +3570,10 @@ process CohortRunMultiQC {
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
   
   multiqc .
-  rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
-  general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
+  general_stats_parse.py  
+  rm -rf multiqc_report.html multiqc_data
 
   multiqc . --cl_config "title: \\"${cohort} MultiQC Report\\"" -z
-  rm -rf pre_multiqc_data
 
   """
 }

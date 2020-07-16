@@ -2,7 +2,8 @@ FROM ewels/multiqc:1.9
 
 LABEL \
   authors="Anne Marie Noronha (noronhaa@mskcc.org)" \
-  version.image="0.0.6"
+  version.image="0.0.7" \
+  version.general_stats_parse="0.0.2"
 
 RUN apk update 
 RUN echo "http://dl-8.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories 
