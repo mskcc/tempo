@@ -1800,6 +1800,7 @@ process SomaticFacetsAnnotation {
   mv ${outputPrefix}.facets.zygosity.maf ${outputPrefix}.somatic.final.maf
   else
     cp ${maf} ${outputPrefix}.somatic.final.maf
+    echo -e "${outputPrefix}\t0" > file-size.txt
   fi
   """
 }
