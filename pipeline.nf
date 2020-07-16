@@ -2590,19 +2590,19 @@ process SampleRunMultiQC {
   }
   """
 
-  for i in *.alfred.tsv.gz ; do 
+  for i in ${idSample}.alfred.tsv.gz ; do 
     idSample=\$(basename \$i | cut -f 1 -d.)
     zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
     echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
     cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
   done
 
-  for i in *.alfred.per_readgroup.tsv.gz ; do
+  for i in ${idSample}.alfred.per_readgroup.tsv.gz ; do
     idSample=\$(basename \$i | cut -f 1 -d.)
-    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > ${idSample}.MQ.alfredY.tsv
-    for j in \$(cut -f 3 ${idSample}.MQ.alfredY.tsv | sort | uniq) ; do
-      echo -ne "${idSample}@\$j\\t" >> ${idSample}.rgY.MQ.alfred.tsv
-      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  ${idSample}.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${idSample}.rgY.MQ.alfred.tsv
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
+    for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
+      echo -ne "\${idSample}@\$j\\t" >> \$idSample.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> \$idSample.rgY.MQ.alfred.tsv
     done
   done
   
@@ -3553,8 +3553,8 @@ process CohortRunMultiQC {
     idSample=\$(basename \$i | cut -f 1 -d.)
     zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
     for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
-      echo -ne "\${idSample}@\$j\\t" >> ${idSample}.rgY.MQ.alfred.tsv
-      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>\$idSample.rgY.MQ.alfred.tsv
+      echo -ne "\${idSample}@\$j\\t" >> \$idSample.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>\$idSample.rgY.MQ.alfred.tsv
     done
   done
 
