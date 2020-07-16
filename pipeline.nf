@@ -2613,7 +2613,7 @@ process SampleRunMultiQC {
   rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
   general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
 
-  multiqc . --cl_config "title: \\"${idSample} MultiQC Report\\"" -z
+  multiqc . -z
   rm -rf pre_multiqc_data
 
   """
@@ -2802,7 +2802,7 @@ process SomaticRunMultiQC {
   rm -rf multiqc_report.html ; mv multiqc_data/ pre_multiqc_data
   general_stats_parse.py --config-file multiqc_config.yaml --general-stats-file pre_multiqc_data/multiqc_general_stats.txt
 
-  multiqc . --cl_config "title: \\"${idTumor}__${idNormal} MultiQC Report\\"" -z
+  multiqc . -z
   rm -rf pre_multiqc_data
 
   """
