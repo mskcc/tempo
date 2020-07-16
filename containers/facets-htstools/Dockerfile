@@ -3,12 +3,11 @@ FROM rocker/tidyverse:3.6.1
 LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="3.0.1" \
-      version.facets_suite="2.0.4" \
+      version.image="3.0.3" \
+      version.facets_suite="2.0.8" \
       version.facets="0.5.14"\
       version.alpine="3.8" \
       version.pctGCdata="0.2.0" \
-      source.facets_suite="https://github.com/mskcc/facets-suite/releases/tag/2.0.4" \
       source.facets="https://github.com/mskcc/facets/archive/v0.5.14.tar.gz" \
       version.htstools="0.1.1" \
       version.htslib="1.5" \
@@ -19,7 +18,7 @@ LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
 
 ENV HTSTOOLS_VERSION 0.1.1
 ENV HTSLIB_VERSION 1.5
-ENV FACETS_SUITE_VERSION 2.0.4
+ENV FACETS_SUITE_VERSION 2.0.8
 ENV FACETS_VERSION 0.5.14
 ENV PCTGCDATA 0.2.0
 
@@ -65,8 +64,6 @@ RUN cd /tmp \
     && R CMD INSTALL . \
     && cd /tmp/facets-suite-${FACETS_SUITE_VERSION} \
     && R CMD INSTALL . \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/summarize_project.py \
-    && mv summarize_project.py /usr/bin \
     # correct shebang line
     && sed -i "s/opt\/common\/CentOS_6-dev\/R\/R-3.2.2\//usr\//g" *.R \
     # copy execs to /usr/bin/facets-suite
@@ -75,18 +72,9 @@ RUN cd /tmp \
     # clean up
     && rm -rf /var/cache/apk/* /tmp/*
 
-# Use geneLevel.R old facetsSuite 1.6.3 to fix incorrect AMP filtering in geneLevel calls
-RUN cd /usr/bin/facets-suite \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/geneLevel.R \
-    && cd data \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/OncoKB_allCuratedGenes_v1.19_patch_1.json \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/Homo_sapiens.GRCh37.75.canonical_exons.bed \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/FACETS_CALL_table.tsv \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/CytobandTableRed.Ensemblgrch37.txt \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/impact341_targets.ilist \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/impact410_targets.ilist \
-    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/data/impact468_targets.ilist
-
+# Use old facetsSuite 1.6.3 summarize_project.py
+RUN cd /usr/bin \
+    && wget https://raw.githubusercontent.com/mskcc/facets-suite/1.6.3/summarize_project.py
 
 ENV PYTHONNOUSERSITE set
 ENV FACETS_OVERRIDE_EXITCODE set
