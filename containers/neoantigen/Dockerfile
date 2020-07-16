@@ -1,13 +1,14 @@
 FROM ubuntu:18.04
 
-LABEL maintainer="Allan Bolipata <bolipatc@mskcc.org>, Evan Biederstedt <evan.biederstedt@gmail.com>" \
-    version.image="0.3.0" \
-    version.neoantigen-dev="0.3.1" \
+LABEL maintainer="Allan Bolipata <bolipatc@mskcc.org>, Evan Biederstedt <evan.biederstedt@gmail.com>, Yixiao Gong <gongy@mskcc.org>" \
+    version.image="0.3.2" \
+    version.neoantigen-dev="0.3.2" \
     version.netMHC="4.0a" \
     version.netMHCpan="4.0a" \
     version.python="2.7.15rc1"
 
 ENV TMPDIR="/tmp"
+ENV NEOANTIGEN_VERSION 2.0.8
 
 RUN apt-get update && apt-get install -y \
     tcsh \
@@ -48,9 +49,10 @@ RUN cd /usr/local/bin/netMHCpan-4.0/ \
     && rm -rf data.Linux.tar.gz
 
 # Add neoantigen-dev
-COPY neoantigen-dev-0.3.1.tar.gz /tmp
+cd /tmp \
+    && wget https://github.com/taylor-lab/neoantigen-dev/archive/${NEOANTIGEN_VERSION}.tar.gz -O neoantigen-dev-${NEOANTIGEN_VERSION}.tar.gz
 
-RUN tar -xvf /tmp/neoantigen-dev-0.3.1.tar.gz -C /usr/local/bin \
+RUN tar -xvf /tmp/neoantigen-dev-${NEOANTIGEN_VERSION}.tar.gz -C /usr/local/bin \
     && mv /usr/local/bin/neoantigen-dev-0.3.1/ /usr/local/bin/neoantigen/ \
     && cd /usr/local/bin/neoantigen/ \
     && pip install -r requirements.txt
