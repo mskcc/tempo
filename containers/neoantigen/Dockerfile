@@ -53,6 +53,6 @@ cd /tmp \
     && wget https://github.com/taylor-lab/neoantigen-dev/archive/${NEOANTIGEN_VERSION}.tar.gz -O neoantigen-dev-${NEOANTIGEN_VERSION}.tar.gz
 
 RUN tar -xvf /tmp/neoantigen-dev-${NEOANTIGEN_VERSION}.tar.gz -C /usr/local/bin \
-    && mv /usr/local/bin/neoantigen-dev-0.3.1/ /usr/local/bin/neoantigen/ \
+    && mv /usr/local/bin/neoantigen-dev-${NEOANTIGEN_VERSION}/ /usr/local/bin/neoantigen/ \
     && cd /usr/local/bin/neoantigen/ \
     && pip install -r requirements.txt
