@@ -41,7 +41,6 @@ def main():
                 if i[j]['suffix'] == "%":
                     if i[j]['rid']in list(genStats):
                         genStats[i[j]['rid']] = genStats[i[j]['rid']] * 100
-    print(genStats["mqc-generalstats-picard-PCT_TARGET_BASES_50X"])
 
     print(list(genStats))
     qcStatus = pd.DataFrame(columns=["Status","Reason"])
