@@ -1659,7 +1659,7 @@ process RunLOHHLA {
     set file(hlaFasta), file(hlaDat) from Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat])
 
   output:
-    set file("*30.DNA.HLAlossPrediction_CI.txt"), file("*DNA.IntegerCPN_CI.txt"), file("*.pdf"), file("*.RData") optional true into lohhlaOutput
+    set file("*.DNA.HLAlossPrediction_CI.txt"), file("*DNA.IntegerCPN_CI.txt"), file("*.pdf"), file("*.RData") into lohhlaOutput
     set val("placeHolder"), idTumor, idNormal, file("*.DNA.HLAlossPrediction_CI.txt") into predictHLA4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*DNA.IntegerCPN_CI.txt") into intCPN4Aggregate
 
@@ -1696,6 +1696,12 @@ process RunLOHHLA {
 
   mv ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt ${outputPrefix}.DNA.HLAlossPrediction_CI.txt
   mv ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt ${outputPrefix}.DNA.IntegerCPN_CI.txt
+
+  if [[ -f ${outputPrefix}.All_HLA_alleles_homozygous.DNA.HLAlossPrediction_CI.txt ]]
+  then
+    rm -rf ${outputPrefix}.All_HLA_alleles_homozygous.DNA.HLAlossPrediction_CI.txt
+    touch ${outputPrefix}.DNA.HLAlossPrediction_CI.txt
+  fi
 
   if find Figures -mindepth 1 | read
   then
