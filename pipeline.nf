@@ -1689,6 +1689,8 @@ process RunLOHHLA {
   if [[ -f ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt ]]
   then
     sed -i "s/^${idTumor}/${outputPrefix}/g" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
+  else
+    rm -rf *.DNA.HLAlossPrediction_CI.txt
   fi
 
   touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
@@ -1696,12 +1698,6 @@ process RunLOHHLA {
 
   mv ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt ${outputPrefix}.DNA.HLAlossPrediction_CI.txt
   mv ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt ${outputPrefix}.DNA.IntegerCPN_CI.txt
-
-  if [[ -f ${outputPrefix}.All_HLA_alleles_homozygous.DNA.HLAlossPrediction_CI.txt ]]
-  then
-    rm -rf ${outputPrefix}.All_HLA_alleles_homozygous.DNA.HLAlossPrediction_CI.txt
-    touch ${outputPrefix}.DNA.HLAlossPrediction_CI.txt
-  fi
 
   if find Figures -mindepth 1 | read
   then
