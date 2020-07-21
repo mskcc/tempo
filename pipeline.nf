@@ -2616,7 +2616,7 @@ process SampleRunMultiQC {
   general_stats_parse.py 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . -z
+  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" -z
 
   """
 
@@ -2804,7 +2804,7 @@ process SomaticRunMultiQC {
   general_stats_parse.py 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . -z
+  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" -z
 
   """
 
@@ -3569,12 +3569,23 @@ process CohortRunMultiQC {
 
   cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
   cp /usr/bin/multiqc_custom_config/tempoLogo.png .
+
+  hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
+  fastpNum=`ls ./*fastp*json | wc -l`
+  mqcSampleNum=\$((hsMetricsNum + fastpNum ))
   
-  multiqc .
+  multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))"
   general_stats_parse.py  
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"${cohort} MultiQC Report\\"" -z
+  if [ \$hsMetricsNum -gt 50 ] ; then 
+    cp genstats-QC_Status.txt QC_Status.txt
+    beeswarm_config="max_table_rows: \${mqcSampleNum}"
+  else
+    beeswarm_config="max_table_rows: \$(( mqcSampleNum + 1 ))"
+  fi
+
+  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" -z
 
   """
 }
