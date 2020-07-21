@@ -95,6 +95,9 @@ runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
 wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect{it.trim().toLowerCase()} : []
+multiqcTempoLogo = workflow.projectDir + "/lib/multiqc_config/tempoLogo.png"
+multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_config.yaml"
+multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
 
 println ""
 
@@ -2579,6 +2582,7 @@ process SampleRunMultiQC {
   
   input:
     set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
     set idSample, file("*multiqc_report*.html"), path("*multiqc_data*.zip") into sample_multiqc_report
@@ -2609,9 +2613,8 @@ process SampleRunMultiQC {
     done
   done
   
-  cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
-  cp /usr/bin/multiqc_custom_config/tempoLogo.png .
-  
+  cp ${assay}_multiqc_config.yaml multiqc_config.yaml
+
   multiqc .
   general_stats_parse.py 
   rm -rf multiqc_report.html multiqc_data
@@ -2778,6 +2781,7 @@ process SomaticRunMultiQC {
   
   input:
     set idTumor, idNormal, file(conpairFiles), file(facetsQCFiles), file(facetsSummaryFiles) from somaticMultiQCinput
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
     set idTumor, idNormal, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into somatic_multiqc_report
@@ -2797,8 +2801,7 @@ process SomaticRunMultiQC {
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
   cp conpair.tsv conpair_genstat.tsv
-  cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
-  cp /usr/bin/multiqc_custom_config/tempoLogo.png .
+  cp ${assay}_multiqc_config.yaml multiqc_config.yaml
   
   multiqc .
   general_stats_parse.py 
@@ -3530,6 +3533,7 @@ process CohortRunMultiQC {
 
   input:
     set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsQCFile), file(FacetsSummaryFile) from inputCohortRunMultiQC
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
     set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
@@ -3567,8 +3571,7 @@ process CohortRunMultiQC {
     done
   done
 
-  cp /usr/bin/multiqc_custom_config/${assay}_multiqc_config.yaml multiqc_config.yaml
-  cp /usr/bin/multiqc_custom_config/tempoLogo.png .
+  cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
   hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`

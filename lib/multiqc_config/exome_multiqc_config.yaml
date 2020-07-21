@@ -6,7 +6,7 @@ show_analysis_paths: False
 
 report_header_info:
     - Analysis Workflow: Tempo
-    - Assay Type: 'WGS'
+    - Assay Type: 'Exome'
     - Sequencing Platform: 'Illumina Hiseq'
     - Sequencing Setup: '2x100'
 custom_data:
