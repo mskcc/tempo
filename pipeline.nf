@@ -2617,7 +2617,7 @@ process SampleRunMultiQC {
   rm -rf multiqc_report.html multiqc_data
 
   multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" -z
-
+  mv genstats-QC_Status.txt QC_Status.txt
   """
 
 }

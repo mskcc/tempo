@@ -60,6 +60,7 @@ custom_data:
                 hidden: False
     QCStatus:
         plot_type: 'table'
+        pconfig:
             - Status:
                 hidden: False
             - Reason:
