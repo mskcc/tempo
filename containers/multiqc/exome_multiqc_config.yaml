@@ -59,6 +59,7 @@ custom_data:
             - Reason:
                 hidden: False
     QCStatus:
+        plot_type: 'table'
             - Status:
                 hidden: False
             - Reason:
