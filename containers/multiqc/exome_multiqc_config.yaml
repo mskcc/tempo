@@ -58,6 +58,11 @@ custom_data:
                 hidden: False
             - Reason:
                 hidden: False
+    QCStatus:
+            - Status:
+                hidden: False
+            - Reason:
+                hidden: False
     facets_qc:
         file_format: 'tsv'
         section_name: 'Facets QC'
@@ -84,6 +89,8 @@ sp:
     alfred:
         fn: '*.rgN.MQ.alfred.tsv'
     genstats-QCStatus:
+        fn: "genstats-QC_Status.txt"
+    QCStatus:
         fn: "QC_Status.txt"
     facets_qc:
         fn: "*.qc.txt"

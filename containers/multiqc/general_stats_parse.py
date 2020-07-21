@@ -60,7 +60,7 @@ def main():
                 sampleStatus = p
         qcStatus = qcStatus.append(pd.Series({"Status":sampleStatus}, name=index))
 
-    qcStatus.to_csv("QC_Status.txt",index=True, sep="\t")
+    qcStatus.to_csv("genstats-QC_Status.txt",index=True, sep="\t")
 
 def assessDataPoint(dataPoint,PF_metrics):
     truth = list()
