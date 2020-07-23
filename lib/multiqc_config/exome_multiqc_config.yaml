@@ -65,7 +65,7 @@ custom_data:
         plot_type: 'table'
         pconfig:
             id: 'qcstatus_pf'
-            namespace: 'QC_staus_pass_filter'
+            namespace: 'QC_status_pass_filter'
     facets_qc:
         file_format: 'tsv'
         section_name: 'Facets QC'
