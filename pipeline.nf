@@ -95,6 +95,9 @@ runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
 wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect{it.trim().toLowerCase()} : []
+multiqcTempoLogo = workflow.projectDir + "/lib/multiqc_config/tempoLogo.png"
+multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_config.yaml"
+multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
 
 println ""
 
@@ -349,12 +352,12 @@ if (params.mapping) {
              [idSample, target, fastqPairs[0], fastqPairs[1], fileID, lane]
         }
         .map{ item ->
-                idSample = item[0]
-                target = item[1]
-                fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
-                fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
-                fileID = item[4]
-                lane = item[5]
+                def idSample = item[0]
+                def target = item[1]
+                def fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
+                def fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
+                def fileID = item[4]
+                def lane = item[5]
 
              [idSample, target, fastqPair1, fastqPair1.size(), fastqPair2, fastqPair2.size(), fileID, lane]
         }
@@ -377,8 +380,8 @@ if (params.mapping) {
       set file(genomeFile), file(bwaIndex) from Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex])
 
     output:
-      file("*.html") into fastPHtml
-      file("*.json") into fastPJson
+      set idSample, file("*.html") into fastPHtml
+      set idSample, file("*.json"), fileID into fastPJson4MultiQC
       file("file-size.txt") into laneSize
       set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
 
@@ -451,6 +454,16 @@ if (params.mapping) {
     echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
     """
   }
+
+  fastPJson4MultiQC
+    .groupTuple(by:[2])
+    .map{idSample, jsonFile, fileID -> 
+      def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
+      [idSampleout, jsonFile]
+    }.groupTuple(by: [0])
+    .map{ idSample, jsonFile -> 
+      [idSample, jsonFile.flatten()]
+    }.into{fastPJson4cohortMultiQC; fastPJson4sampleMultiQC} 
 
   // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
   def allReadIds = [:]
@@ -686,7 +699,15 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
+
+  bamPaths4MultiQC.map{idSample, target, bam, bai ->
+    [ idSample,target, bam.getParent() ]
+  }.set{ locateFastP4MultiQC}
+
+locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
+    [idSample, file(bamFolder + "/fastp/*json")]
+  }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
 }
 
 if (params.pairing) {
@@ -1545,6 +1566,7 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
     set idTumor, idNormal, target, file("*/*.qc.txt") into FacetsQC4MetaDataParser
+    set idTumor, idNormal, file("*/*.qc.txt"), file("*_OUT.txt") into FacetsQC4SomaticMultiQC, FacetsQC4Aggregate
 
   when: "facets" in tools && runSomatic
 
@@ -1606,6 +1628,12 @@ process DoFacets {
     -s ${outputDir}/*seg
   """
 }
+
+FacetsQC4Aggregate 
+  .map{idTumor, idNormal, qcFiles, summaryFiles -> 
+    ["placeHolder",idTumor, idNormal, qcFiles, summaryFiles ]
+  }.set{FacetsQC4Aggregate}
+
 
 
 // Run Polysolver
@@ -2445,7 +2473,7 @@ process QcCollectHsMetrics {
     ])
 
   output:
-    file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
+    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
     set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
 
   when: params.assayType == "exome" && runQC
@@ -2507,7 +2535,7 @@ process QcAlfred {
 
   output:
     set idSample, file("${idSample}.alfred*tsv.gz") into bamsQcStats4Aggregate
-    set file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into alfredOutput
+    set idSample, file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into alfredOutput
 
   when: runQC
 
@@ -2542,6 +2570,62 @@ process QcAlfred {
   """
 }
 
+alfredOutput
+  .groupTuple(size:2, by:0)
+  .join(fastPJson4sampleMultiQC, by:0)
+  .join(collectHsMetricsOutput, by:0)
+  .set{sampleMetrics4MultiQC}
+
+process SampleRunMultiQC {
+  tag {idSample}
+  label 'multiqc_process'
+
+  publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
+  
+  input:
+    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
+
+  output:
+    set idSample, file("*multiqc_report*.html"), path("*multiqc_data*.zip") into sample_multiqc_report
+    set idSample, file("QC_Status.txt")
+
+  script: 
+  if (params.assayType == "exome") {
+    assay = "exome"
+  }
+  else {
+    assay = 'wgs'
+  }
+  """
+
+  for i in ${idSample}.alfred.tsv.gz ; do 
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
+    echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
+    cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
+  done
+
+  for i in ${idSample}.alfred.per_readgroup.tsv.gz ; do
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
+    for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
+      echo -ne "\${idSample}@\$j\\t" >> \$idSample.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> \$idSample.rgY.MQ.alfred.tsv
+    done
+  done
+  
+  cp ${assay}_multiqc_config.yaml multiqc_config.yaml
+
+  multiqc .
+  general_stats_parse.py 
+  rm -rf multiqc_report.html multiqc_data
+
+  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" -z
+  mv genstats-QC_Status.txt QC_Status.txt
+  """
+
+}
 
 //doing QcPileup and QcConpair/QcConpairAll only when --pairing [tsv] is given
 
@@ -2550,7 +2634,7 @@ process QcPileup {
   tag {idSample}
 
   publishDir "${params.outDir}/bams/${idSample}/pileup/", mode: params.publishDirMode
-
+4
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4QcPileup
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
@@ -2685,6 +2769,52 @@ process QcConpair {
   """
 }
 
+conpairOutput
+  .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
+    [idTumor, idNormal, conpairFiles]
+  }.join(FacetsQC4SomaticMultiQC, by:[0,1])
+  .set{ somaticMultiQCinput }
+
+process SomaticRunMultiQC {
+   tag {idTumor + "__" + idNormal}
+   label 'multiqc_process'
+
+  publishDir "${params.outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  
+  
+  input:
+    set idTumor, idNormal, file(conpairFiles), file(facetsQCFiles), file(facetsSummaryFiles) from somaticMultiQCinput
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
+
+  output:
+    set idTumor, idNormal, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into somatic_multiqc_report
+
+  script: 
+  outPrefix = "${idTumor}__${idNormal}"
+  if (params.assayType == "exome") {
+    assay = "exome"
+  }
+  else {
+    assay = 'wgs'
+  }
+  """
+  echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
+  for i in ./*contamination.txt ; do 
+     j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+  done
+  cp conpair.tsv conpair_genstat.tsv
+  cp ${assay}_multiqc_config.yaml multiqc_config.yaml
+  
+  multiqc .
+  general_stats_parse.py 
+  rm -rf multiqc_report.html multiqc_data
+
+  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" -z
+
+  """
+
+}
+
 if(runConpairAll){
 pileupT4Combine.combine(pileupN4Combine).unique().set{ pileupConpairAll }
 
@@ -2778,6 +2908,7 @@ if ( !params.mapping && !params.bamMapping ){
                   FacetsOutLog4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
                   FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.arm_level.txt")]
                   FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
+                  FacetsQC4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.qc.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
                   dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
                   predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
@@ -2794,6 +2925,8 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
 		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
 		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
+      fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
+      fastpNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.fastp.json")]
                 }
 		.set {aggregateList}
   inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
@@ -2803,6 +2936,7 @@ if ( !params.mapping && !params.bamMapping ){
   inputOutLog4Aggregate = aggregateList.FacetsOutLog4Aggregate.transpose().groupTuple(by:[2])
   inputArmLev4Aggregate = aggregateList.FacetsArmLev4Aggregate.transpose().groupTuple(by:[2])
   inputGeneLev4Aggregate = aggregateList.FacetsGeneLev4Aggregate.transpose().groupTuple(by:[2])
+  inputFacetsQC4CohortMultiQC = aggregateList.FacetsQC4Aggregate.transpose().groupTuple(by:[2])
   inputSomaticAggregateSv = aggregateList.dellyMantaCombined4Aggregate.transpose().groupTuple(by:[2])
   inputSomaticAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4Aggregate.transpose().groupTuple(by:[2])
   inputPredictHLA4Aggregate = aggregateList.predictHLA4Aggregate.transpose().groupTuple(by:[2])
@@ -2814,8 +2948,9 @@ if ( !params.mapping && !params.bamMapping ){
   inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
   inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
   inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
-  inputConpairConcord4Aggregate = aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2])
-  inputConpairContami4Aggregate = aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2])
+  aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
+  aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
+  aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
 
 }
 else if(!(runAggregate == false)) {
@@ -2847,6 +2982,7 @@ else if(!(runAggregate == false)) {
                        cohortSomaticAggregateFacets2;
                        cohortSomaticAggregateFacets3;
                        cohortSomaticAggregateFacets4;
+                       cohortSomaticAggregateFacets5;
                        cohortSomaticAggregateSv;
                        cohortSomaticAggregateSv1;
                        cohortSomaticAggregateLOHHLA;
@@ -2859,7 +2995,8 @@ else if(!(runAggregate == false)) {
                        cohortQcBamAggregate1;
                        cohortQcBamAggregate2;
                        cohortQcConpairAggregate;
-                       cohortQcConpairAggregate1
+                       cohortQcConpairAggregate1;
+                       cohortQcFastPAggregate
                 }
   if (runSomatic){
   inputSomaticAggregateMaf = cohortSomaticAggregateMaf.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2869,6 +3006,7 @@ else if(!(runAggregate == false)) {
   inputOutLog4Aggregate = cohortSomaticAggregateFacets2.combine(FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputArmLev4Aggregate = cohortSomaticAggregateFacets3.combine(FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputGeneLev4Aggregate = cohortSomaticAggregateFacets4.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2])
+  inputFacetsQC4CohortMultiQC = cohortSomaticAggregateFacets5.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2])
   inputSomaticAggregateSv = cohortSomaticAggregateSv.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputSomaticAggregateSvTbi = cohortSomaticAggregateSv1.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputPredictHLA4Aggregate = cohortSomaticAggregateLOHHLA.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -2883,7 +3021,7 @@ else if(!(runAggregate == false)) {
   }
 
   if (runQC){
-  inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3}
+  inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3;inputPairing4}
   bamsQcStats4Aggregate.branch{ item ->
   			def idSample = item[0]
   			def alfred = item[1]
@@ -2974,12 +3112,39 @@ else if(!(runAggregate == false)) {
   	       }
   	       .unique()
   	       .set{hsMetrics}
+  inputPairing4.combine(fastPJson4cohortMultiQC)
+         .branch { item ->
+      def idTumor = item[0]
+      def idNormal = item[1]
+      def idSample = item[2]
+      def jsonFiles = item[3]
+  
+      tumor: idSample == idTumor
+      normal: idSample == idNormal
+        }
+        .set{fastPMetrics}
+  fastPMetrics.tumor.combine(fastPMetrics.normal, by:[0,1])
+           .combine(cohortQcFastPAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+           .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+           .groupTuple(by:[0])
+           .map{ item ->
+          def cohort = item[0]
+          def idTumors = item[1].unique()
+          def idNormals = item[2].unique()
+          def fileTumor = item[3].flatten().unique()
+          def fileNormal = item[4].flatten().unique()
+          
+          [cohort, idTumors, idNormals, fileTumor, fileNormal]
+           }
+           .unique()
+           .set{fastPMetrics}
   inputAlfredIgnoreY = alfredIgnoreY
   inputAlfredIgnoreN = alfredIgnoreN
   inputHsMetrics = hsMetrics
+  inputFastP4MultiQC = fastPMetrics
   if (pairingQc){
-  inputConpairConcord4Aggregate = cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputConpairContami4Aggregate = cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2])
+  cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
+  cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
   }
   }
 }
@@ -3260,6 +3425,10 @@ process GermlineAggregateSv {
 
 if (runAggregate && runQC) {
 
+inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
+inputAlfredIgnoreY.into{inputAlfredIgnoreY; inputAlfredIgnoreY4MultiQC }
+inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
+
 process QcBamAggregate {
 
   tag {cohort}
@@ -3267,8 +3436,8 @@ process QcBamAggregate {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, idTumors, idNormals, file(alfedIgnoreYTumor), file(alfredIgnoreYNoraml) from inputAlfredIgnoreY
-    set cohort, idTumors, idNormals, file(alfedIgnoreNTumor), file(alfredIgnoreNNoraml) from inputAlfredIgnoreN
+    set cohort, idTumors, idNormals, file(alfredIgnoreYTumor), file(alfredIgnoreYNoraml) from inputAlfredIgnoreY
+    set cohort, idTumors, idNormals, file(alfredIgnoreNTumor), file(alfredIgnoreNNoraml) from inputAlfredIgnoreN
     set cohort, idTumors, idNormals, file(hsMetricsTumor), file(hsMetricsNoraml) from inputHsMetrics
 
   output:
@@ -3318,6 +3487,114 @@ process QcConpairAggregate {
   touch concordance_qc.txt contamination_qc.txt
   """
 }
+
+
+inputHsMetrics4MultiQC
+  .map{cohort, idTumors, idNormals, hsMetricsTumor, hsMetricsNormal ->
+    [cohort, hsMetricsTumor, hsMetricsNormal]
+  }.set{inputHsMetrics4MultiQC}
+inputFastP4MultiQC
+  .map{ cohort, idTumors, idNormals, fastPTumor, fastPNormal ->
+    [cohort, fastPTumor, fastPNormal]
+  }.set{inputFastP4MultiQC}
+inputAlfredIgnoreY4MultiQC
+  .map{ cohort, idTumors, idNormals, alfredIgnoreYTumor, alfredIgnoreYNormal -> 
+    [cohort, alfredIgnoreYTumor, alfredIgnoreYNormal ]
+  }.set{inputAlfredIgnoreY4MultiQC}
+inputAlfredIgnoreN4MultiQC
+  .map{ cohort, idTumors, idNormals, alfredIgnoreNTumor, alfredIgnoreNNormal -> 
+    [cohort, alfredIgnoreNTumor, alfredIgnoreNNormal ]
+  }.set{inputAlfredIgnoreN4MultiQC}
+inputConpairConcord4MultiQC
+  .map{ idTumors, idNormals, cohort, placeHolder, concordFile ->
+    [cohort, concordFile]
+  }.set{inputConpairConcord4MultiQC}
+inputConpairContami4MultiQC
+  .map{ idTumors, idNormals, cohort, placeHolder, contamiFile ->
+    [cohort, contamiFile]
+  }.set{inputConpairContami4MultiQC}
+inputFacetsQC4CohortMultiQC
+  .map{ idTumors, idNormals, cohort, placeHolder, qcFile, summaryFile ->
+    [cohort, qcFile, summaryFile]
+  }.set{inputFacetsQC4CohortMultiQC}
+
+inputHsMetrics4MultiQC
+  .join(inputFastP4MultiQC,by:0)
+  .join(inputAlfredIgnoreY4MultiQC,by:0)
+  .join(inputAlfredIgnoreN4MultiQC,by:0)
+  .join(inputConpairConcord4MultiQC,by:0)
+  .join(inputConpairContami4MultiQC,by:0)
+  .join(inputFacetsQC4CohortMultiQC,by:0)
+  .set{inputCohortRunMultiQC}
+
+process CohortRunMultiQC {
+  tag {cohort}
+  label 'multiqc_process'
+
+  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+
+  input:
+    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsQCFile), file(FacetsSummaryFile) from inputCohortRunMultiQC
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
+
+  output:
+    set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
+
+  when: runQC && params.assayType == "exome"
+
+  script:
+  if (params.assayType == "exome") {
+    assay = "exome"
+  }
+  else {
+    assay = 'wgs'
+  }
+  """
+  echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
+  for i in ./*contamination.txt ; do 
+     j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
+     echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
+  done
+  cp conpair.tsv conpair_genstat.tsv
+  
+  for i in *.alfred.tsv.gz ; do 
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
+    echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
+    cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
+  done
+
+  for i in *.alfred.per_readgroup.tsv.gz ; do
+    idSample=\$(basename \$i | cut -f 1 -d.)
+    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
+    for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
+      echo -ne "\${idSample}@\$j\\t" >> ${cohort}.rgY.MQ.alfred.tsv
+      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${cohort}.rgY.MQ.alfred.tsv
+    done
+  done
+
+  cp ${assay}_multiqc_config.yaml multiqc_config.yaml
+
+  hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
+  fastpNum=`ls ./*fastp*json | wc -l`
+  mqcSampleNum=\$((hsMetricsNum + fastpNum ))
+  
+  multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))"
+  general_stats_parse.py  
+  rm -rf multiqc_report.html multiqc_data
+
+  if [ \$hsMetricsNum -gt 50 ] ; then 
+    cp genstats-QC_Status.txt QC_Status.txt
+    beeswarm_config="max_table_rows: \${mqcSampleNum}"
+  else
+    beeswarm_config="max_table_rows: \$(( mqcSampleNum + 1 ))"
+  fi
+
+  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" -z
+
+  """
+}
+
 }
 }
 
