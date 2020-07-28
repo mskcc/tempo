@@ -1,0 +1,214 @@
+custom_logo: 'tempoLogo.png'
+custom_logo_url: 'https://ccstempo.netlify.app/'
+custom_logo_title: 'CCS - Tempo'
+
+show_analysis_paths: False
+
+report_header_info:
+    - Analysis Workflow: Tempo
+    - Assay Type: 'Exome'
+    - Sequencing Platform: 'Illumina Hiseq'
+    - Sequencing Setup: '2x100'
+custom_data:
+    genstatsconpair:
+        plot_type: 'generalstats'
+        pconfig:
+            - Tumor:
+                hidden: True
+            - Normal:
+                hidden: False
+            - Tumor_Contamination:
+                hidden: False
+            - Normal_Contamination:
+                hidden: False
+            - Concordance:
+                hidden: False
+    conpair:
+        file_format: 'tsv'
+        section_name: 'Conpair T-N Results'
+        description: 'Concordance and contamination estimations for tumor–normal pairs as performed by customized version of Conpair'
+        plot_type: 'table'
+        pconfig:
+            id: 'conpair_table'
+            namespace: 'Concordance_estimates'
+    alfredrg:
+        file_format: 'tsv'
+        section_name: 'Alfred RG-Aware Mapping Quality'
+        description: 'Sample mapping quality with respect to read group'
+        plot_type: 'linegraph'
+        pconfig:
+            id: 'alfred_rgY_mapping_linegraph'
+            title: 'Per read-group Mapping Quality'
+            ylab: 'Fraction of Reads'
+            xlab: 'Mapping Quality'
+    alfred:
+        file_format: 'tsv'
+        section_name: 'Alfred RG-Unaware Mapping Quality'
+        description: 'Sample mapping quality without respect to read group'
+        plot_type: 'linegraph'
+        pconfig:
+            id: 'alfred_rgN_mapping_linegraph'
+            title: 'Per-sample Sample Mapping Quality'
+            ylab: 'Fraction of Reads'
+            xlab: 'Mapping Quality'
+    genstats-QCStatus:
+        plot_type: 'generalstats'
+        pconfig:
+            - Status:
+                hidden: False
+            - Reason:
+                hidden: False
+    QCStatus:
+        plot_type: 'table'
+        pconfig:
+            - Status:
+                hidden: False
+            - Reason:
+                hidden: False
+    facets_qc:
+        file_format: 'tsv'
+        section_name: 'Facets QC'
+        description: 'Results from Facets QC'
+        plot_type: 'table'
+        pconfig:
+            id: 'facets_qc'
+            namespace: 'facets_qc'
+    facets_summary:
+        file_format: 'tsv'
+        section_name: 'Facets Run Summary'
+        description: 'Results from Facets'
+        plot_type: 'table'
+        pconfig:
+            id: 'facets_summary'
+            namespace: 'facets_summary_report'
+sp:
+    genstatsconpair:
+        fn: 'conpair_genstat.tsv'
+    conpair:
+        fn: 'conpair.tsv'
+    alfredrg:
+        fn: '*.rgY.MQ.alfred.tsv'
+    alfred:
+        fn: '*.rgN.MQ.alfred.tsv'
+    genstats-QCStatus:
+        fn: "genstats-QC_Status.txt"
+    QCStatus:
+        fn: "QC_Status.txt"
+    facets_qc:
+        fn: "*.qc.txt"
+        contents: "mafr_median_clonal"
+    facets_summary:
+        fn: "*_OUT.txt"
+        contents: "purity_cval"
+
+table_cond_formatting_rules:
+    mqc-generalstats-genstatsconpair-Tumor_Contamination: 
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    mqc-generalstats-genstatsconpair-Normal_Contamination:
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    mqc-generalstats-genstatsconpair-Concordance:
+        pass:
+            - gt: 90
+            - eq: 90
+        warn:
+            - lt: 90
+        fail:
+            - lt: 75  
+    Tumor_Contamination: 
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    Normal_Contamination:
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    Concordance:
+        pass:
+            - gt: 90
+            - eq: 90
+        warn:
+            - lt: 90
+        fail:
+            - lt: 75  
+    mqc-generalstats-picard-FOLD_ENRICHMENT:
+        pass:
+            - gt: 45
+            - eq: 45
+        warn:
+            - lt: 45
+        fail:
+            - lt: 30
+    FOLD_ENRICHMENT:
+        pass:
+            - gt: 45
+            - eq: 45
+        warn:
+            - lt: 45
+        fail:
+            - lt: 30
+    mqc-generalstats-picard-PCT_TARGET_BASES_50X:
+        pass:
+            - gt: 75
+            - eq: 75
+        warn:
+            - lt: 75
+    PCT_PF_UQ_READS_ALIGNED:
+        pass:
+            - gt: 60
+            - eq: 60
+        warn:
+            - lt: 60
+        fail:
+            - lt: 40 
+    dipLogR_flag:
+        fail: 
+            - s_eq: 'turnoff'
+    wgd:
+        fail: 
+            - s_eq: 'turnoff'
+
+table_cond_formatting_colours:
+    - pass: '#5cb85c'
+    - warn: '#f0ad4e'
+    - fail: '#d9534f'
+
+picard_config:
+    HsMetrics_table_cols:
+        - MEAN_TARGET_COVERAGE
+        - MEAN_BAIT_COVERAGE
+        - ZERO_CVG_TARGETS_PCT
+        - FOLD_ENRICHMENT
+        - PCT_TARGET_BASES_50X
+        - PCT_TARGET_BASES_30X
+        - AT_DROPOUT
+        - GC_DROPOUT
+    HsMetrics_table_cols_hidden:
+        - ZERO_CVG_TARGETS_PCT
+        - PF_READS
+        - PF_UNIQUE_READS
+        - PF_UQ_BASES_ALIGNED
+    general_stats_target_coverage:
+        - 30
+        - 50
+table_columns_visible:
+    fastp: False
