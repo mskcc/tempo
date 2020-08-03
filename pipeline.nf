@@ -3301,7 +3301,7 @@ process SomaticAggregateLOHHLA {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(preditHLA), file(intCPN) from inputPredictHLA4Aggregate
+    set cohort, file(preditHLA), file(intCPN) from inputSomaticAggregateLOHHLA
 
   output:
     file("DNA.IntegerCPN_CI.txt") into lohhlaDNAIntegerCPNOutput
