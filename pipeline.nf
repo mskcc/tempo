@@ -3213,7 +3213,7 @@ inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
 		     .join(inputOutLog4Aggregate, by:[0])
 		     .join(inputArmLev4Aggregate, by:[0])
 		     .join(inputGeneLev4Aggregate, by:[0])
-		     .set(inputSomaticAggregateFacets)
+		     .set{inputSomaticAggregateFacets}
 
 process SomaticAggregateFacets {
 
