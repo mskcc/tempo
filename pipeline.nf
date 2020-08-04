@@ -628,7 +628,7 @@ if (params.mapping) {
       ])
 
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
       set idSample, target, val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
       file("file-size.txt") into bamSize
 
@@ -696,7 +696,7 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
 
   bamPaths4MultiQC.map{idSample, target, bam, bai ->
     [ idSample,target, bam.getParent() ]
@@ -2513,6 +2513,37 @@ process QcCollectHsMetrics {
 }
 
 // Alfred, BAM QC
+
+process QcQualimap {
+  tag {idSample}
+  
+  publishDir "${params.outDir}/bams/${idSample}/", mode: params.publishDirMode, pattern: "qualimap/"
+
+  input:
+    set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
+    set file(idtTargets), file(agilentTargets) from Channel.value([
+      referenceMap.idtTargetsUnzipped, referenceMap.agilentTargetsUnzipped
+    ])
+
+  output:
+    set idSample, file("qualimap/genome_results.txt"), file("qualimap/raw_data_qualimapReport/*.txt") into qualimap4MultiQC, qualimap4Aggregate
+    set idSample, file("qualimap/qualimapReport.html") into qualimapOutput
+  
+  when: runQC   
+
+  script:
+  if (params.assayType == "exome"){
+    if ( target == "idt"){
+      gffOptions = "-gff ${idtTargets}"
+    } else {
+      gffOptions = "-gff ${agilentTargets}"
+    }
+  } else { gffOptions = "" }
+  """
+  qualimap bamqc -bam ${bam} -c -gd HUMAN ${gffOptions} -outdir qualimap
+  """
+}
+
 Channel.from(true, false).set{ ignore_read_groups }
 process QcAlfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
@@ -2569,6 +2600,7 @@ alfredOutput
   .groupTuple(size:2, by:0)
   .join(fastPJson4sampleMultiQC, by:0)
   .join(collectHsMetricsOutput, by:0)
+  .join(qualimap4MultiQC, by:0)
   .set{sampleMetrics4MultiQC}
 
 process SampleRunMultiQC {
@@ -2578,7 +2610,7 @@ process SampleRunMultiQC {
   publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idSample, file(alfredTsvFile), file(alfredPdfFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
+    set idSample, file(alfredTsvFile), file(alfredPdfFile), file(fastpJsonFile), file(hsmetricsFile), file(qualimapGenomeResults), file(qualimapDetailedResults) from sampleMetrics4MultiQC
 
   output:
     set idSample, file("*multiqc_report*.html"), path("*multiqc_data*.zip") into sample_multiqc_report
@@ -3593,14 +3625,17 @@ def defineReferenceMap() {
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
     // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
+    'idtTargetsUnzipped' : checkParamReturnFile("idtTargetsUnzipped"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
     'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
+    'agilentTargetsUnzipped' : checkParamReturnFile("agilentTargetsUnzipped"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
+    'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
