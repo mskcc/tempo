@@ -9,16 +9,16 @@ report_header_info:
     - Assay Type: 'Exome'
     - Sequencing Platform: 'Illumina Hiseq'
 custom_data:
-    genstats-QCStatus:
+    genstats_QCStatus:
         plot_type: 'generalstats'
         pconfig:
             - Status:
-                description: 'Refer to QC Criteria section for threshold definitions'
+                description: 'Refer to QC Criteria section at the bottom of this report for more information'
                 hidden: False
             - Reason:
-                description: 'Explanation of Status column'
+                description: 'Explanation of pass/warn/fail in Status column'
                 hidden: False
-    genstats-MSKCC-Conpair:
+    genstats_mskcc_conpair:
         plot_type: 'generalstats'
         pconfig:
             - Tumor:
@@ -31,7 +31,7 @@ custom_data:
                 hidden: False
             - Concordance:
                 hidden: False
-    MSKCC-Conpair:
+    mskcc_conpair:
         file_format: 'tsv'
         section_name: 'Conpair'
         description: "Concordance and contamination estimations for Tumor/Normal pairs as performed by MSKCC's release of <a href='https://github.com/mskcc/conpair'>Conpair</a>"
@@ -87,19 +87,20 @@ custom_data:
         file_format: 'tsv'
         section_name: 'QC criteria'
         plot_type: 'table'
+        description: "These thresholds are used to calculate whether a sample is given a status of 'pass', 'warn' or 'fail'. These metrics have been decided by the Tempo team and are intended for guidance only."
         pconfig:
             id: 'criteria_tab'
             namespace: 'criteria_tabby'
 sp:
-    genstats-MSKCC-Conpair:
+    genstats_mskcc_conpair:
         fn: 'conpair_genstat.tsv'
-    MSKCC-Conpair:
+    mskcc_conpair:
         fn: 'conpair.tsv'
     alfredrg:
         fn: '*.rgY.MQ.alfred.tsv'
     alfred:
         fn: '*.rgN.MQ.alfred.tsv'
-    genstats-QCStatus:
+    genstats_QCStatus:
         fn: "genstats-QC_Status.txt"
     QCStatus:
         fn: "QC_Status.txt"
@@ -120,7 +121,7 @@ table_cond_formatting_rules:
             - s_eq: 'warn'
         fail:
             - s_eq: 'fail'
-    mqc-generalstats-genstats-MSKCC-Conpair-Tumor_Contamination: 
+    mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
         pass:
             - lt: 1
             - eq: 1
@@ -128,7 +129,7 @@ table_cond_formatting_rules:
             - gt: 1
         fail:
             - gt: 5
-    mqc-generalstats-genstats-MSKCC-Conpair-Normal_Contamination:
+    mqc-generalstats-genstats_mskcc_conpair-Normal_Contamination:
         pass:
             - lt: 1
             - eq: 1
@@ -136,7 +137,7 @@ table_cond_formatting_rules:
             - gt: 1
         fail:
             - gt: 5
-    mqc-generalstats-genstats-MSKCC-Conpair-Concordance:
+    mqc-generalstats-genstats_mskcc_conpair-Concordance:
         pass:
             - gt: 90
             - eq: 90
@@ -217,4 +218,4 @@ table_columns_visible:
     fastp: False
 report_section_order:
     criteria:
-        order: -1000
+        order: 1000
