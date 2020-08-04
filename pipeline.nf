@@ -95,9 +95,9 @@ runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
 wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect{it.trim().toLowerCase()} : []
-multiqcTempoLogo = workflow.projectDir + "/lib/multiqc_config/tempoLogo.png"
 multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_config.yaml"
 multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
+multiqcTempoLogo = workflow.projectDir + "/docs/tempoLogo.png"
 
 println ""
 
@@ -2650,10 +2650,10 @@ process SampleRunMultiQC {
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
   multiqc .
-  general_stats_parse.py 
+  general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" -z
+  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes FASTQ and alignment statistics for the sample ${idSample}.<br/>This report does not include QC metrics from the Tumor/Normal pair that includes ${idSample}. To review pairing QC, please refer to the multiqc_report.html from the somatic-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z
   mv genstats-QC_Status.txt QC_Status.txt
   """
 
@@ -2838,10 +2838,10 @@ process SomaticRunMultiQC {
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
   
   multiqc .
-  general_stats_parse.py 
+  general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" -z
+  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z
 
   """
 
@@ -3612,7 +3612,7 @@ process CohortRunMultiQC {
   mqcSampleNum=\$((hsMetricsNum + fastpNum ))
   
   multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))"
-  general_stats_parse.py  
+  general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
   if [ \$hsMetricsNum -gt 50 ] ; then 
@@ -3622,7 +3622,7 @@ process CohortRunMultiQC {
     beeswarm_config="max_table_rows: \$(( mqcSampleNum + 1 ))"
   fi
 
-  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" -z
+  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" --cl_config "report_comment: \\"This report includes FASTQ and alignment for all samples in ${cohort}and Tumor/Normal pair statistics for all pairs in ${cohort}.\\"" -z
 
   """
 }
