@@ -1,22 +1,23 @@
-FROM ewels/multiqc:1.9
+FROM continuumio/miniconda3:4.8.2
 
-LABEL \
-  authors="Anne Marie Noronha (noronhaa@mskcc.org)" \
-  version.image="0.0.9" \
-  version.general_stats_parse="0.0.3"
+LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
+    version.base="4.8.2" \
+    version.image="0.0.9" \
+    version.general_stats_parse="0.0.3"
 
-RUN apk update 
-RUN echo "http://dl-8.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories 
-RUN apk add gcc g++ gfortran 
-RUN apk add python3-dev
-RUN wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
-RUN pip install --no-cache-dir pandas
-RUN apk del --purge build-base libgfortran libpng-dev freetype-dev python3-dev py-pip
+ENV envName "multiqc"
 
-RUN mkdir /usr/lib/python3.8/site-packages/multiqc/tempo_configs
-COPY example_wgs_multiqc_config.yaml /usr/lib/python3.8/site-packages/multiqc/tempo_configs
-COPY example_exome_multiqc_config.yaml /usr/lib/python3.8/site-packages/multiqc/tempo_configs
-COPY tempoLogo.png /usr/lib/python3.8/site-packages/multiqc/tempo_configs
-RUN chmod 744 /usr/lib/python3.8/site-packages/multiqc/tempo_configs/*
-COPY general_stats_parse.py /usr/bin/general_stats_parse.py
-RUN chmod 755 /usr/bin/general_stats_parse.py
+RUN apt-get update && apt-get install -y procps && apt-get clean -y
+
+COPY environment.yml /
+RUN conda update -n base -c defaults conda
+RUN conda env create --name ${envName} -f /environment.yml && conda clean -a
+ENV PATH /opt/conda/envs/${envName}/bin:$PATH
+
+ENV configPath /opt/conda/envs/multiqc/lib/python3.8/site-packages/multiqc/example_tempo_configs
+RUN mkdir -p ${configPath}
+COPY example_wgs_multiqc_config.yaml ${configPath}
+COPY example_exome_multiqc_config.yaml ${configPath}
+RUN chmod 744 ${configPath}/*
+COPY general_stats_parse.py /opt/conda/envs/${envName}/bin/general_stats_parse.py
+RUN chmod 755 /opt/conda/envs/${envName}/bin/general_stats_parse.py
