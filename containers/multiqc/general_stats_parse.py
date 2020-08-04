@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/opt/conda/envs/multiqc/bin/python3.8
 
 __author__       = "Anne Marie Noronha"
 __contributor__  = ""
@@ -69,9 +69,16 @@ def main():
         for p in ["warn","fail"]:
             if p in statusIter.values():
                 sampleStatus = p
-        reasons = [ simpleNames[k] + " " + statusIter[k] + ": " + criteriaTab.loc[simpleNames[k]][statusIter[k]] for k in statusIter.keys() if statusIter[k] in ["warn","fail"] ]
-        if len(reasons) > 0:
+        #reasons = [ simpleNames[k] + " " + statusIter[k] + ": " + criteriaTab.loc[simpleNames[k]][statusIter[k]] for k in statusIter.keys() if statusIter[k] in ["warn","fail"] ]
+        reasons = ""
+        reasonsWarn = [ simpleNames[k] for k in statusIter.keys() if statusIter[k] == "warn" ] 
+        reasonsFail = [ simpleNames[k] for k in statusIter.keys() if statusIter[k] == "fail" ]
+        if len(reasonsFail) + len(reasonsWarn) > 0:
             reasons = "; ".join(reasons)
+            if len(reasonsFail) > 0:
+                reasons += "fail: " + "; ".join(reasonsFail)
+            if len(reasonsWarn) > 0:
+                reasons += "warn: " + "; ".join(reasonsWarn) 
         else:
             reasons = "Passed Tempo Criteria" 
         qcStatus = qcStatus.append(pd.Series({"Status":sampleStatus, "Reason": reasons }, name=index))
@@ -79,7 +86,7 @@ def main():
     print("printing QC status to \"genstats-QC_Status.txt\"")
     qcStatus.to_csv("genstats-QC_Status.txt",index=True, sep="\t")
 
-    if  args.writeCriteria:
+    if args.writeCriteria:
        print("printing Criteria Table to \"CriteriaTable.txt\"")
        criteriaTab.to_csv("CriteriaTable.txt",index=True, sep="\t")
 
@@ -123,7 +130,7 @@ def genCriteriaTable(criteriaJson):
                         exprs += ["!= {}".format(k[l])]
                     elif l in ["s_contains"]:
                         exprs += ["contains {}".format(k[l])]
-                    elif k in ["gt"]:
+                    elif l in ["gt"]:
                         exprs += ["> {}".format(k[l])]
                     else: 
                         exprs += ["< {}".format(k[l])]
