@@ -59,12 +59,13 @@ custom_data:
             - Reason:
                 hidden: False
     QCStatus:
+        file_format: 'tsv'
+        section_name: 'Pass-Fail Status'
+        description: "Pass/Fail status of samples based on Tempo's defined thresholds. These values are only displayed in the General Statistics table unless there are a high number of samples in the cohort"
         plot_type: 'table'
         pconfig:
-            - Status:
-                hidden: False
-            - Reason:
-                hidden: False
+            id: 'qcstatus_pf'
+            namespace: 'QC_status_pass_filter'
     facets_qc:
         file_format: 'tsv'
         section_name: 'Facets QC'
