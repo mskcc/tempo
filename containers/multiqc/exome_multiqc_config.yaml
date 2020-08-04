@@ -2,6 +2,8 @@ custom_logo: 'tempoLogo.png'
 custom_logo_url: 'https://ccstempo.netlify.app/'
 custom_logo_title: 'CCS - Tempo'
 
+show_analysis_paths: False
+
 report_header_info:
     - Analysis Workflow: Tempo
     - Assay Type: 'Exome'
@@ -28,11 +30,11 @@ custom_data:
         plot_type: 'table'
         pconfig:
             id: 'conpair_table'
-            namespace: 'Concordance estimates'
+            namespace: 'Concordance_estimates'
     alfredrg:
         file_format: 'tsv'
-        section_name: 'Alfred RG Aware Mapping Quality'
-        description: 'Read-group aware mapping quality'
+        section_name: 'Alfred RG-Aware Mapping Quality'
+        description: 'Sample mapping quality with respect to read group'
         plot_type: 'linegraph'
         pconfig:
             id: 'alfred_rgY_mapping_linegraph'
@@ -41,12 +43,12 @@ custom_data:
             xlab: 'Mapping Quality'
     alfred:
         file_format: 'tsv'
-        section_name: 'Alfred Mapping Quality'
-        description: 'Sample mapping quality'
+        section_name: 'Alfred RG-Unaware Mapping Quality'
+        description: 'Sample mapping quality without respect to read group'
         plot_type: 'linegraph'
         pconfig:
             id: 'alfred_rgN_mapping_linegraph'
-            title: 'Overall Sample Mapping Quality'
+            title: 'Per-sample Sample Mapping Quality'
             ylab: 'Fraction of Reads'
             xlab: 'Mapping Quality'
     genstats-QCStatus:
@@ -56,7 +58,29 @@ custom_data:
                 hidden: False
             - Reason:
                 hidden: False
-     
+    QCStatus:
+        plot_type: 'table'
+        pconfig:
+            - Status:
+                hidden: False
+            - Reason:
+                hidden: False
+    facets_qc:
+        file_format: 'tsv'
+        section_name: 'Facets QC'
+        description: 'Results from Facets QC'
+        plot_type: 'table'
+        pconfig:
+            id: 'facets_qc'
+            namespace: 'facets_qc'
+    facets_summary:
+        file_format: 'tsv'
+        section_name: 'Facets Run Summary'
+        description: 'Results from Facets'
+        plot_type: 'table'
+        pconfig:
+            id: 'facets_summary'
+            namespace: 'facets_summary_report'
 sp:
     genstatsconpair:
         fn: 'conpair_genstat.tsv'
@@ -67,7 +91,15 @@ sp:
     alfred:
         fn: '*.rgN.MQ.alfred.tsv'
     genstats-QCStatus:
+        fn: "genstats-QC_Status.txt"
+    QCStatus:
         fn: "QC_Status.txt"
+    facets_qc:
+        fn: "*.qc.txt"
+        contents: "mafr_median_clonal"
+    facets_summary:
+        fn: "*_OUT.txt"
+        contents: "purity_cval"
 
 table_cond_formatting_rules:
     mqc-generalstats-genstatsconpair-Tumor_Contamination: 
@@ -148,6 +180,12 @@ table_cond_formatting_rules:
             - lt: 60
         fail:
             - lt: 40 
+    dipLogR_flag:
+        fail: 
+            - s_eq: 'turnoff'
+    wgd:
+        fail: 
+            - s_eq: 'turnoff'
 
 table_cond_formatting_colours:
     - pass: '#5cb85c'
