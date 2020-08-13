@@ -35,7 +35,8 @@ Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (c
 
 ::: warning Be aware
 
-LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release. :::
+LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release. 
+:::
 
 ## Germline Analyses
 
