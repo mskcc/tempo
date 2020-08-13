@@ -1562,6 +1562,7 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*_hisens.seg") into FacetsHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
+    set idTumor, idNormal, target, file("${outputDir}/*") into facetsForFacetsPreview
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
@@ -1627,6 +1628,26 @@ process DoFacets {
     -o ${outputDir}/*out \
     -s ${outputDir}/*seg
   """
+}
+
+process DoFacetsPreviewQC {
+  tag {idTumor + "__" + idNormal}
+
+  input:
+  set idTumor, idNormal, target, file(facetsOutputFiles) from facetsForFacetsPreview
+  
+  output:
+  set idTumor, idNormal, target, file(facetsOutputFiles) into facetsPreviewOut
+
+  when: "facets" in tools && runSomatic
+
+  script:
+  """
+  Rscript -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '.', Sys.glob('./*json')[1])"
+  ll .
+
+  """
+
 }
 
 FacetsQC4Aggregate 
