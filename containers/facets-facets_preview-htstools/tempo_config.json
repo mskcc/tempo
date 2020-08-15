@@ -1,0 +1,21 @@
+{
+  "repo": [
+    {
+      "name": "Tempo",
+      "manifest_file": "./manifest.txt.gz",
+      "counts_file_format": "{sample_id}.snp_pileup.gz"
+    }
+  ],
+  "watcher_dir": "./refit_watcher/",
+  "facets_lib": [
+    {
+      "version": "0.5.14",
+      "lib_path": "/usr/local/lib/R/site-library/facets/"
+    }
+  ],
+  "verify_sshfs_mount" : "juno",
+  "r_script_path" : "/usr/local/bin/Rscript",
+  "facets_suite_lib": "/usr/local/lib/R/site-library/",
+  "facets_suite_run_wrapper": "/usr/bin/facets-suite/run-facets-wrapper.R",
+  "facets_qc_script": "/usr/bin/facets-preview/facets_qc/v1.0/facets_fit_qc.R"
+}
