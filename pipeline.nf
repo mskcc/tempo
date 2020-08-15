@@ -1633,7 +1633,7 @@ process DoFacets {
 
 process DoFacetsPreviewQC {
   tag {idTumor + "__" + idNormal}
-  publishDir "${outDir}/somatic/${tag}/facets/${tag}/${facetsOutputDir}", mode: params.publishDirMode, pattern: "facets_{qc.txt,review.manifest}"
+  publishDir "${outDir}/somatic/${tag}/facets/${tag}/", mode: params.publishDirMode, pattern: "facets_{qc.txt,review.manifest}"
 
   input:
   set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from facetsForFacetsPreview
