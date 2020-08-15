@@ -1563,7 +1563,7 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*_hisens.seg") into FacetsHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
-    set idTumor, idNormal, target, file("${outputDir}/*") into facetsForFacetsPreview
+    set idTumor, idNormal, target, file("${outputDir}/"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into facetsForFacetsPreview
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
@@ -1633,19 +1633,24 @@ process DoFacets {
 
 process DoFacetsPreviewQC {
   tag {idTumor + "__" + idNormal}
+  publishDir "${outDir}/somatic/${tag}/facets/${tag}/${facetsOutputDir}", mode: params.publishDirMode, pattern: "facets_{qc.txt,review.manifest}"
 
   input:
-  set idTumor, idNormal, target, file(facetsOutputFiles) from facetsForFacetsPreview
+  set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from facetsForFacetsPreview
   
   output:
-  set idTumor, idNormal, target, file(facetsOutputFiles) into facetsPreviewOut
+  set idTumor, idNormal, target, file("facets_qc.txt"), file("facets_review.manifest") into facetsPreviewOut
 
   when: "facets" in tools && runSomatic
 
   script:
+  tag = "${idTumor}__${idNormal}"
   """
-  Rscript -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '.', Sys.glob('./*json')[1])"
-  ll .
+  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
+  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
+  gzip manifest.txt
+  mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
+  R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
 
   """
 
