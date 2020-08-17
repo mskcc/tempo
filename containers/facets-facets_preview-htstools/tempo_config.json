@@ -13,7 +13,7 @@
       "lib_path": "/usr/local/lib/R/site-library/facets/"
     }
   ],
-  "verify_sshfs_mount" : "juno",
+  "verify_sshfs_mount" : "",
   "r_script_path" : "/usr/local/bin/Rscript",
   "facets_suite_lib": "/usr/local/lib/R/site-library/",
   "facets_suite_run_wrapper": "/usr/bin/facets-suite/run-facets-wrapper.R",
