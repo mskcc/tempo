@@ -1636,10 +1636,10 @@ process DoFacetsPreviewQC {
   publishDir "${outDir}/somatic/${tag}/facets/${tag}/", mode: params.publishDirMode, pattern: "facets_{qc.txt,review.manifest}"
 
   input:
-  set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from facetsForFacetsPreview
+    set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from facetsForFacetsPreview
   
   output:
-  set idTumor, idNormal, target, file("facets_qc.txt"), file("facets_review.manifest") into facetsPreviewOut
+    set idTumor, idNormal, target, file("facets_qc.txt"), file("facets_review.manifest") into facetsPreviewOut
 
   when: "facets" in tools && runSomatic
 
