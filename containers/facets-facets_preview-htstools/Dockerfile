@@ -12,6 +12,7 @@ RUN R -e "install.packages(c('shinyWidgets', 'shinyjs', 'rhandsontable', 'doPara
 RUN cd /tmp \
     && wget https://github.com/taylor-lab/facets-preview/archive/${FACETS_PREVIEW_VERSION}.tar.gz -O facets-preview-${FACETS_PREVIEW_VERSION}.tar.gz \
     && tar xvzf facets-preview-${FACETS_PREVIEW_VERSION}.tar.gz \
+#    && git clone --single-branch --branch enhance/linux_compatibility2 https://github.com/taylor-lab/facets-preview.git facets-preview-${FACETS_PREVIEW_VERSION} \
     && cd facets-preview-${FACETS_PREVIEW_VERSION} \
     && R CMD INSTALL . \
     && mkdir -p /usr/bin/facets-preview/ \
@@ -20,4 +21,8 @@ RUN cd /tmp \
 
 COPY tempo_config.json /usr/bin/facets-preview/
 RUN chmod 744 /usr/bin/facets-preview/tempo_config.json
+
+# Enable Shiny app utilization (work in progress)
+# RUN apt-get install -y xdg-utils --fix-missing
+# EXPOSE 3838
 
