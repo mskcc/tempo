@@ -2833,7 +2833,8 @@ process SomaticRunMultiQC {
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
 
-  cut -f 1,28,97 ${facetsQCFiles} > ${facetsQCFiles}.qc.txt
+  head -1 ${facetsQCFiles} | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> ${facetsQCFiles}.qc.txt
+  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 >> ${facetsQCFiles}.qc.txt
 
   cp conpair.tsv conpair_genstat.tsv
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
@@ -3590,7 +3591,8 @@ process CohortRunMultiQC {
   done
 
   for i in *.facets_qc.txt ; do 
-    cut -f 1,28,97 \$i > \$i.qc.txt
+    head -1 \$i | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> \$i.qc.txt
+    tail -n +2 \$i | cut -f 1,28,97 >> \$i.qc.txt
   done
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
