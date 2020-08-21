@@ -2544,8 +2544,9 @@ process QcQualimap {
       gffOptions = "-gff ${agilentTargets}"
     }
   } else { gffOptions = "-gd HUMAN" }
+  javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
   """
-  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample}
+  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
   """
 }
 
