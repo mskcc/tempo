@@ -715,7 +715,7 @@ if (params.pairing) {
 
   // Parse input FASTQ mapping
 
-  inputPairing.into{pairing4T; pairing4N; pairingTN; inputPairing}
+  inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing}
   bamsBQSR4Tumor.combine(pairing4T)
                           .filter { item ->
                             def idSample = item[0]
@@ -1659,11 +1659,6 @@ process DoFacetsPreviewQC {
 
 FacetsRunSummary.combine(FacetsPreviewOut, by:[0,1]).into{FacetsQC4Aggregate ; FacetsQC4SomaticMultiQC} // idTumor, idNormal, summaryFiles, qcFiles
 
-FacetsQC4Aggregate 
-  .map{idTumor, idNormal, summaryFiles, qcFiles -> 
-    ["placeHolder",idTumor, idNormal, summaryFiles, qcFiles ]
-  }.set{FacetsQC4Aggregate}
-
 
 
 // Run Polysolver
@@ -1946,6 +1941,10 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
+} else {
+    pairing4QC.map{ idTumor, idNormal -> 
+      ["placeHolder",idTumor, idNormal,"",""]
+    }.set{FacetsQC4Aggregate}
 }
 
 /*
@@ -2799,11 +2798,19 @@ process QcConpair {
   """
 }
 
-conpairOutput
-  .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
-    [idTumor, idNormal, conpairFiles]
-  }.join(FacetsQC4SomaticMultiQC, by:[0,1])
-  .set{ somaticMultiQCinput }
+if (runSomatic) {
+  conpairOutput
+    .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
+      [idTumor, idNormal, conpairFiles]
+    }.join(FacetsQC4SomaticMultiQC, by:[0,1])
+    .set{ somaticMultiQCinput }
+} else {
+  conpairOutput
+    .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
+      [idTumor, idNormal, conpairFiles, "", ""]
+    }.set{ somaticMultiQCinput }
+
+}
 
 process SomaticRunMultiQC {
    tag {idTumor + "__" + idNormal}
@@ -3016,7 +3023,6 @@ else if(!(runAggregate == false)) {
                        cohortSomaticAggregateFacets2;
                        cohortSomaticAggregateFacets3;
                        cohortSomaticAggregateFacets4;
-                       cohortSomaticAggregateFacets5;
                        cohortSomaticAggregateSv;
                        cohortSomaticAggregateSv1;
                        cohortSomaticAggregateLOHHLA;
@@ -3030,7 +3036,8 @@ else if(!(runAggregate == false)) {
                        cohortQcBamAggregate2;
                        cohortQcConpairAggregate;
                        cohortQcConpairAggregate1;
-                       cohortQcFastPAggregate
+                       cohortQcFastPAggregate;
+                       cohortQcFacetsAggregate
                 }
   if (runSomatic){
   inputSomaticAggregateMaf = cohortSomaticAggregateMaf.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -3040,7 +3047,6 @@ else if(!(runAggregate == false)) {
   inputOutLog4Aggregate = cohortSomaticAggregateFacets2.combine(FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputArmLev4Aggregate = cohortSomaticAggregateFacets3.combine(FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputGeneLev4Aggregate = cohortSomaticAggregateFacets4.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-  inputFacetsQC4CohortMultiQC = cohortSomaticAggregateFacets5.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
   inputSomaticAggregateSv = cohortSomaticAggregateSv.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputSomaticAggregateSvTbi = cohortSomaticAggregateSv1.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputPredictHLA4Aggregate = cohortSomaticAggregateLOHHLA.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
@@ -3179,6 +3185,7 @@ else if(!(runAggregate == false)) {
   if (pairingQc){
   cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
   cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
+  cohortQcFacetsAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{inputFacetsQC4CohortMultiQC}
   }
   }
 }
