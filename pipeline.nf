@@ -1658,7 +1658,9 @@ process DoFacetsPreviewQC {
 }
 
 FacetsRunSummary.combine(FacetsPreviewOut, by:[0,1]).into{FacetsQC4Aggregate ; FacetsQC4SomaticMultiQC} // idTumor, idNormal, summaryFiles, qcFiles
-
+FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
+  ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
+}.set{FacetsQC4Aggregate}
 
 
 // Run Polysolver
