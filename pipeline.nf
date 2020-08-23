@@ -2527,7 +2527,7 @@ process QcQualimap {
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
     set file(idtTargets), file(agilentTargets) from Channel.value([
-      referenceMap.idtTargetsUnzipped, referenceMap.agilentTargetsUnzipped
+      file(referenceMap.idtTargets.toString().replaceAll(".gz","")), file(referenceMap.agilentTargets.toString().replaceAll(".gz",""))
     ])
 
   output:
@@ -2537,6 +2537,10 @@ process QcQualimap {
   when: runQC   
 
   script:
+  if (params.genome == "smallGRCh37"){
+    idtTargets = params.genomes["GRCh37"]."idtTargets".replaceAll(".gz","")
+    agilentTargets =  params.genomes["GRCh37"]."agilentTargets".replaceAll(".gz","")
+  }
   if (params.assayType == "exome"){
     if ( target == "idt"){
       gffOptions = "-gff ${idtTargets}"
@@ -2546,7 +2550,7 @@ process QcQualimap {
   } else { gffOptions = "-gd HUMAN" }
   javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
   """
-  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
+  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} -nt ${task.cpus} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
   """
 }
 
@@ -3676,17 +3680,17 @@ def defineReferenceMap() {
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
     // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
-    'idtTargetsUnzipped' : checkParamReturnFile("idtTargetsUnzipped"),
+    //'idtTargetsUnzipped' : checkParamReturnFile("idtTargetsUnzipped"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
     'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
-    'agilentTargetsUnzipped' : checkParamReturnFile("agilentTargetsUnzipped"),
+    //'agilentTargetsUnzipped' : checkParamReturnFile("agilentTargetsUnzipped"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
+    //'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
