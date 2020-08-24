@@ -1943,10 +1943,12 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
-} else {
+} else { 
+  if (params.pairing) {
     pairing4QC.map{ idTumor, idNormal -> 
       ["placeHolder",idTumor, idNormal,"",""]
     }.set{FacetsQC4Aggregate}
+  }
 }
 
 /*
