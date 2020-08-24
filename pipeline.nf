@@ -2522,7 +2522,8 @@ process QcCollectHsMetrics {
 process QcQualimap {
   tag {idSample}
   
-  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*/*"
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
@@ -2532,7 +2533,8 @@ process QcQualimap {
 
   output:
     set idSample, file("${idSample}") into qualimap4MultiQC, qualimap4Aggregate
-    set idSample, file("${idSample}/qualimapReport.html") into qualimapOutput
+    set idSample, file("${idSample}/*.{html,txt}"), file("${idSample}/css/*"), file("${idSample}/raw_data_qualimapReport/*"), file("${idSample}/images_qualimapReport/*") into qualimapOutput
+
   
   when: runQC   
 
