@@ -1,7 +1,7 @@
 FROM rocker/r-ubuntu:18.04
 
 LABEL maintainer="Jun Woo <wooh@mskcc.org>" \
-      version.tempoSig="0.2.1" \
+      version.tempoSig="0.2.2" \
       version.ubuntu="18.04" \
       source.msig="https://github.com/mskcc/tempoSig.git"
 
