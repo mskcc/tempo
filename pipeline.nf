@@ -2931,26 +2931,26 @@ if ( !params.mapping && !params.bamMapping ){
 		.set {aggregateList}
   inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
   inputSomaticAggregateNetMHC = aggregateList.NetMhcStats4Aggregate.transpose().groupTuple(by:[2])
-  inputPurity4Aggregate = aggregateList.FacetsPurity4Aggregate.transpose().groupTuple(by:[2])
-  inputHisens4Aggregate = aggregateList.FacetsHisens4Aggregate.transpose().groupTuple(by:[2])
-  inputOutLog4Aggregate = aggregateList.FacetsOutLog4Aggregate.transpose().groupTuple(by:[2])
-  inputArmLev4Aggregate = aggregateList.FacetsArmLev4Aggregate.transpose().groupTuple(by:[2])
-  inputGeneLev4Aggregate = aggregateList.FacetsGeneLev4Aggregate.transpose().groupTuple(by:[2])
-  inputFacetsQC4CohortMultiQC = aggregateList.FacetsQC4Aggregate.transpose().groupTuple(by:[2])
-  inputSomaticAggregateSv = aggregateList.dellyMantaCombined4Aggregate.transpose().groupTuple(by:[2])
-  inputSomaticAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4Aggregate.transpose().groupTuple(by:[2])
-  inputPredictHLA4Aggregate = aggregateList.predictHLA4Aggregate.transpose().groupTuple(by:[2])
-  inputIntCPN4Aggregate = aggregateList.intCPN4Aggregate.transpose().groupTuple(by:[2])
+  inputPurity4Aggregate = aggregateList.FacetsPurity4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputHisens4Aggregate = aggregateList.FacetsHisens4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputOutLog4Aggregate = aggregateList.FacetsOutLog4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputArmLev4Aggregate = aggregateList.FacetsArmLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputGeneLev4Aggregate = aggregateList.FacetsGeneLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputFacetsQC4CohortMultiQC = aggregateList.FacetsQC4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+  inputSomaticAggregateSv = aggregateList.dellyMantaCombined4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputSomaticAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputPredictHLA4Aggregate = aggregateList.predictHLA4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputIntCPN4Aggregate = aggregateList.intCPN4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
   inputSomaticAggregateMetadata = aggregateList.MetaData4Aggregate.transpose().groupTuple(by:[2])
   inputGermlineAggregateMaf = aggregateList.mafFile4AggregateGermline.transpose().groupTuple(by:[2])
-  inputGermlineAggregateSv = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
-  inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
-  inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
-  inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
-  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}
-  aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
-  aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
-  aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[1], it[2], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
+  inputGermlineAggregateSv = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+  inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+  inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+  inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+  aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
+  aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
+  aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
 
 }
 else if(!(runAggregate == false)) {
@@ -3001,22 +3001,22 @@ else if(!(runAggregate == false)) {
   if (runSomatic){
   inputSomaticAggregateMaf = cohortSomaticAggregateMaf.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
   inputSomaticAggregateNetMHC = cohortSomaticAggregateNetMHC.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputPurity4Aggregate = cohortSomaticAggregateFacets.combine(FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputHisens4Aggregate = cohortSomaticAggregateFacets1.combine(FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputOutLog4Aggregate = cohortSomaticAggregateFacets2.combine(FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputArmLev4Aggregate = cohortSomaticAggregateFacets3.combine(FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputGeneLev4Aggregate = cohortSomaticAggregateFacets4.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputFacetsQC4CohortMultiQC = cohortSomaticAggregateFacets5.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2])
-  inputSomaticAggregateSv = cohortSomaticAggregateSv.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputSomaticAggregateSvTbi = cohortSomaticAggregateSv1.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputPredictHLA4Aggregate = cohortSomaticAggregateLOHHLA.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2])
-  inputIntCPN4Aggregate = cohortSomaticAggregateLOHHLA1.combine(intCPN4Aggregate, by:[1,2]).groupTuple(by:[2])
+  inputPurity4Aggregate = cohortSomaticAggregateFacets.combine(FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputHisens4Aggregate = cohortSomaticAggregateFacets1.combine(FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputOutLog4Aggregate = cohortSomaticAggregateFacets2.combine(FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputArmLev4Aggregate = cohortSomaticAggregateFacets3.combine(FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputGeneLev4Aggregate = cohortSomaticAggregateFacets4.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputFacetsQC4CohortMultiQC = cohortSomaticAggregateFacets5.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+  inputSomaticAggregateSv = cohortSomaticAggregateSv.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputSomaticAggregateSvTbi = cohortSomaticAggregateSv1.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputPredictHLA4Aggregate = cohortSomaticAggregateLOHHLA.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+  inputIntCPN4Aggregate = cohortSomaticAggregateLOHHLA1.combine(intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputSomaticAggregateMetadata = cohortSomaticAggregateMetadata.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
 
   if (runGermline){
   inputGermlineAggregateMaf = cohortGermlineAggregateMaf.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
-  inputGermlineAggregateSv = cohortGermlineAggregateSv.combine(dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
-  inputGermlineAggregateSvTbi = cohortGermlineAggregateSv1.combine(dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{ [it[0].unique(), it[1], it[5].unique()]}
+  inputGermlineAggregateSv = cohortGermlineAggregateSv.combine(dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+  inputGermlineAggregateSvTbi = cohortGermlineAggregateSv1.combine(dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
   }
   }
 
@@ -3053,7 +3053,7 @@ else if(!(runAggregate == false)) {
   			def fileTumor = item[3].unique()
   			def fileNormal = item[4].unique()
   
-  			  [cohort, idTumors, idNormals, fileTumor, fileNormal]
+			  [cohort, fileTumor, fileNormal]
   		   }
   		   .unique()
   		   .set{alfredIgnoreY}
@@ -3080,7 +3080,7 @@ else if(!(runAggregate == false)) {
   			def fileTumor = item[3].unique()
   			def fileNormal = item[4].unique()
   
-  			[cohort, idTumors, idNormals, fileTumor, fileNormal]
+			[cohort, fileTumor, fileNormal]
   		   }
   		   .unique()
   		   .set{alfredIgnoreN}
@@ -3108,7 +3108,7 @@ else if(!(runAggregate == false)) {
   		    def fileTumor = item[3].unique()
   		    def fileNormal = item[4].unique()
   		    
-  		    [cohort, idTumors, idNormals, fileTumor, fileNormal]
+		    [cohort, fileTumor, fileNormal]
   	       }
   	       .unique()
   	       .set{hsMetrics}
@@ -3134,7 +3134,7 @@ else if(!(runAggregate == false)) {
           def fileTumor = item[3].flatten().unique()
           def fileNormal = item[4].flatten().unique()
           
-          [cohort, idTumors, idNormals, fileTumor, fileNormal]
+          [cohort, fileTumor, fileNormal]
            }
            .unique()
            .set{fastPMetrics}
@@ -3143,8 +3143,8 @@ else if(!(runAggregate == false)) {
   inputHsMetrics = hsMetrics
   inputFastP4MultiQC = fastPMetrics
   if (pairingQc){
-  cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
-  cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
+  cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
+  cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
   }
   }
 }
@@ -3209,6 +3209,12 @@ process SomaticAggregateNetMHC {
   """
 }
 
+inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
+		     .join(inputOutLog4Aggregate, by:[0])
+		     .join(inputArmLev4Aggregate, by:[0])
+		     .join(inputGeneLev4Aggregate, by:[0])
+		     .set{inputSomaticAggregateFacets}
+
 process SomaticAggregateFacets {
 
   tag {cohort}
@@ -3216,11 +3222,7 @@ process SomaticAggregateFacets {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set idTumors, idNormals, cohort, placeHolder, file(purity) from inputPurity4Aggregate
-    set idTumors, idNormals, cohort, placeHolder, file(Hisens) from inputHisens4Aggregate
-    set idTumors, idNormals, cohort, placeHolder, file(outLog) from inputOutLog4Aggregate
-    set idTumors, idNormals, cohort, placeHolder, file(armLev) from inputArmLev4Aggregate
-    set idTumors, idNormals, cohort, placeHolder, file(geneLev) from inputGeneLev4Aggregate
+    set cohort, file(purity), file(Hisens), file(outLog), file(armLev), file(geneLev) from inputSomaticAggregateFacets
 
   output:
     set file("cna_hisens_run_segmentation.seg"), file("cna_purity_run_segmentation.seg"), file("cna_armlevel.txt"), file("cna_genelevel.txt"), file("cna_facets_run_info.txt") into FacetsAnnotationAggregatedOutput
@@ -3240,11 +3242,14 @@ process SomaticAggregateFacets {
   awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
   mv *{gene_level,arm_level}.txt facets_tmp/
   cat facets_tmp/*gene_level.txt | head -n 1 > cna_genelevel.txt
-  awk -v FS='\t' '{ if (\$16 != "DIPLOID" && (\$17 == "PASS" || (\$17 == "FAIL" && \$18 == "rescue")))  print \$0 }' facets_tmp/*gene_level.txt >> cna_genelevel.txt
+  awk -v FS='\t' '{ if (\$24 != "DIPLOID" && (\$25 == "PASS" || \$25 == "RESCUE" ))  print \$0 }' facets_tmp/*gene_level.txt >> cna_genelevel.txt
   cat facets_tmp/*arm_level.txt | head -n 1 > cna_armlevel.txt
   cat facets_tmp/*arm_level.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt || [[ \$? == 1 ]]
   """
 }
+
+inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
+		       .set{inputSomaticAggregateSv}
 
 process SomaticAggregateSv {
 
@@ -3253,8 +3258,7 @@ process SomaticAggregateSv {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set idTumors, idNormals, cohort, placeHolder, file(dellyMantaVcf) from inputSomaticAggregateSv
-    set idTumors, idNormals, cohort, placeHolder, file(dellyMantaVcfTbi) from inputSomaticAggregateSvTbi
+    set cohort, file(dellyMantaVcf), file(dellyMantaVcfTbi) from inputSomaticAggregateSv
 
   output:
     file("sv_somatic.vcf.{gz,gz.tbi}") into svAggregatedOutput
@@ -3287,6 +3291,9 @@ process SomaticAggregateSv {
   """
 }
 
+inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
+			 .set{inputSomaticAggregateLOHHLA}
+
 process SomaticAggregateLOHHLA {
 
   tag {cohort}
@@ -3294,8 +3301,7 @@ process SomaticAggregateLOHHLA {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set idTumors, idNormals, cohort, placeHolder, file(preditHLA) from inputPredictHLA4Aggregate
-    set idTumors, idNormals, cohort, placeHolder, file(intCPN) from inputIntCPN4Aggregate
+    set cohort, file(preditHLA), file(intCPN) from inputSomaticAggregateLOHHLA
 
   output:
     file("DNA.IntegerCPN_CI.txt") into lohhlaDNAIntegerCPNOutput
@@ -3380,6 +3386,9 @@ process GermlineAggregateMaf {
 }
 
 // --- Aggregate per-sample germline data, SVs
+inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
+			.set{inputGermlineAggregateSv}
+
 process GermlineAggregateSv {
 
   tag {cohort}
@@ -3387,8 +3396,7 @@ process GermlineAggregateSv {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set idNormals, cohort, file(dellyMantaVcf) from inputGermlineAggregateSv
-    set idNormals, cohort, file(dellyMantaVcfTbi) from inputGermlineAggregateSvTbi
+    set cohort, file(dellyMantaVcf), file(dellyMantaVcfTbi) from inputGermlineAggregateSv
 
   output:
     file("sv_germline.vcf.{gz,gz.tbi}") into svAggregatedGermlineOutput
@@ -3429,6 +3437,10 @@ inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
 inputAlfredIgnoreY.into{inputAlfredIgnoreY; inputAlfredIgnoreY4MultiQC }
 inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
 
+inputAlfredIgnoreY.join(inputAlfredIgnoreN)
+		  .join(inputHsMetrics)
+		  .set{inputQcBamAggregate}
+
 process QcBamAggregate {
 
   tag {cohort}
@@ -3436,9 +3448,7 @@ process QcBamAggregate {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, idTumors, idNormals, file(alfredIgnoreYTumor), file(alfredIgnoreYNoraml) from inputAlfredIgnoreY
-    set cohort, idTumors, idNormals, file(alfredIgnoreNTumor), file(alfredIgnoreNNoraml) from inputAlfredIgnoreN
-    set cohort, idTumors, idNormals, file(hsMetricsTumor), file(hsMetricsNoraml) from inputHsMetrics
+    set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNoraml), file(alfredIgnoreNTumor), file(alfredIgnoreNNoraml), file(hsMetricsTumor), file(hsMetricsNoraml) from inputQcBamAggregate
 
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
@@ -3459,6 +3469,9 @@ process QcBamAggregate {
 
 if (pairingQc){
 
+inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
+			     .set{inputQcConpairAggregate}
+
 process QcConpairAggregate {
 
   tag {cohort}
@@ -3466,8 +3479,7 @@ process QcConpairAggregate {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set idTumors, idNormals, cohort, placeHolder, file(concordFile) from inputConpairConcord4Aggregate
-    set idTumors, idNormals, cohort, placeHolder, file(contamiFile) from inputConpairContami4Aggregate
+    set cohort, file(concordFile), file(contamiFile) from inputQcConpairAggregate
 
   output:
     set file('concordance_qc.txt'), file('contamination_qc.txt') into conpairAggregatedOutput
@@ -3488,35 +3500,6 @@ process QcConpairAggregate {
   """
 }
 
-
-inputHsMetrics4MultiQC
-  .map{cohort, idTumors, idNormals, hsMetricsTumor, hsMetricsNormal ->
-    [cohort, hsMetricsTumor, hsMetricsNormal]
-  }.set{inputHsMetrics4MultiQC}
-inputFastP4MultiQC
-  .map{ cohort, idTumors, idNormals, fastPTumor, fastPNormal ->
-    [cohort, fastPTumor, fastPNormal]
-  }.set{inputFastP4MultiQC}
-inputAlfredIgnoreY4MultiQC
-  .map{ cohort, idTumors, idNormals, alfredIgnoreYTumor, alfredIgnoreYNormal -> 
-    [cohort, alfredIgnoreYTumor, alfredIgnoreYNormal ]
-  }.set{inputAlfredIgnoreY4MultiQC}
-inputAlfredIgnoreN4MultiQC
-  .map{ cohort, idTumors, idNormals, alfredIgnoreNTumor, alfredIgnoreNNormal -> 
-    [cohort, alfredIgnoreNTumor, alfredIgnoreNNormal ]
-  }.set{inputAlfredIgnoreN4MultiQC}
-inputConpairConcord4MultiQC
-  .map{ idTumors, idNormals, cohort, placeHolder, concordFile ->
-    [cohort, concordFile]
-  }.set{inputConpairConcord4MultiQC}
-inputConpairContami4MultiQC
-  .map{ idTumors, idNormals, cohort, placeHolder, contamiFile ->
-    [cohort, contamiFile]
-  }.set{inputConpairContami4MultiQC}
-inputFacetsQC4CohortMultiQC
-  .map{ idTumors, idNormals, cohort, placeHolder, qcFile, summaryFile ->
-    [cohort, qcFile, summaryFile]
-  }.set{inputFacetsQC4CohortMultiQC}
 
 inputHsMetrics4MultiQC
   .join(inputFastP4MultiQC,by:0)
