@@ -35,7 +35,8 @@ Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (c
 
 ::: warning Be aware
 
-LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release. :::
+LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release. 
+:::
 
 ## Germline Analyses
 
@@ -49,4 +50,17 @@ LOHHLA is temporarily disabled due to a bug need future investigation. It will b
 * __BAM file QC metrics__ are generated using [Alfred](https://github.com/tobiasrausch/alfred).
 * __Hybridisation-selection metrics__ are generated using [CollectHsMetrics](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.6/picard_analysis_directed_CollectHsMetrics.php). Only for exomes.
 * __Contamination and concordance metrics__ for tumor-normal pairs using [Conpair](https://github.com/mskcc/Conpair).
+
+### MultiQC Report
+
+A combined MultiQC report is produced at the BAM level, somatic level and cohort level of analysis, highlighting QC metrics and high-level summaries produced by Tempo. Documentation for the QC tool can be found [here](https://multiqc.info/docs/).
+
+The Tempo team has internally derived `pass`/`warn`/`fail` thresholds to present in the QC report. This should be used with discretion by the analyst, as a failure in the QC report may not be a true failure, and so on. By default the following metrics are assessed and a `Status` value is produced in the report:
+* __Tumor_Contamination__ : Estimates percentage of cross-individual contamination in the tumor sample. Cross-contamination may be higher if the sample comes from the recipient of allograft tissue.
+* __Normal_Contamination__ : Estimates percentage of cross-individual contamination in the normal sample. Cross-contamination may be higher if the sample comes from the recipient of allograft tissue.
+* __Concordance__ : measures likelihood of samples coming from the same individual. Low values may indicate sample swap or contamination.
+* __facets_qc__ and __purity__ : Report by [facets-preview](https://github.com/taylor-lab/facets-preview). A `facets_qc` value of `FALSE` indicates that the pair has failed Facets QC. 
+* __Fold Enrichment__ : The fold by which the baited region has been amplified above genomic background. A low metric could indicate inefficiency of the bait selection kit during sample preparation.
+* __ Target Bases 50X__ : The fraction of all target bases achieving 50X or greater coverage. A low metric could indicate insufficient coverage. 
+
 
