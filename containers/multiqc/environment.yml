@@ -6,5 +6,5 @@ channels:
   - anaconda
 
 dependencies:
-  - multiqc=1.9
   - pandas
+  - csvkit=1.0.4
