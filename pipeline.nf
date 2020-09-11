@@ -385,6 +385,7 @@ if (params.mapping) {
       set idSample, file("*.json"), fileID into fastPJson4MultiQC
       file("file-size.txt") into laneSize
       set idSample, target, file("*.sorted.bam"), fileID, lane, file("*.readId") into sortedBam
+      set idSample, target, file("*.sorted.bam"), fileID, lane, filePartNo, env(rgID) into inputQualimapRG
 
     script:
     // LSF resource allocation for juno
@@ -454,6 +455,44 @@ if (params.mapping) {
     samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}${filePartNo}.sorted.bam ${idSample}@\${rgID}${filePartNo}.bam
     echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
     """
+  }
+
+  process QcQualimap_ReadGroup {
+  tag {idSampleRG}
+
+  publishDir "${params.outDir}/bams/${idSampleRG}/qualimap", mode: params.publishDirMode, pattern: "${idSampleRG}/*"
+  publishDir "${params.outDir}/bams/${idSampleRG}/qualimap", mode: params.publishDirMode, pattern: "${idSampleRG}/*/*"
+
+  input:
+    set idSample, target, file(bam), fileID, lane, filePartNo, rgID into inputQualimapRG
+    set file(idtTargets), file(agilentTargets) from Channel.value([
+      file(referenceMap.idtTargets.toString().replaceAll(".gz","")), file(referenceMap.agilentTargets.toString().replaceAll(".gz",""))
+    ])
+
+  output:
+    set idSample, file("${idSampleRG}") into qualimapRG4MultiQC, qualimapRG4Aggregate
+    set idSample, file("${idSampleRG}/*.{html,txt}"), file("${idSampleRG}/css/*"), file("${idSampleRG}/raw_data_qualimapReport/*"), file("${idSampleRG}/images_qualimapReport/*") into qualimapRGOutput
+
+  
+  when: runQC   
+
+  script:
+  idSampleRG="${idSample}@${rgID}${filePartNo}"
+  if (params.genome == "smallGRCh37"){
+    idtTargets = params.genomes["GRCh37"]."idtTargets".replaceAll(".gz","")
+    agilentTargets =  params.genomes["GRCh37"]."agilentTargets".replaceAll(".gz","")
+  }
+  if (params.assayType == "exome"){
+    if ( target == "idt"){
+      gffOptions = "-gff ${idtTargets}"
+    } else {
+      gffOptions = "-gff ${agilentTargets}"
+    }
+  } else { gffOptions = "-gd HUMAN" }
+  javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  """
+  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample}@${rgID}${filePartNo} -nt ${task.cpus} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
+  """
   }
 
   fastPJson4MultiQC
