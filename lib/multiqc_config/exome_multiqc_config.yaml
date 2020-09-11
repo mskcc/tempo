@@ -39,26 +39,6 @@ custom_data:
         pconfig:
             id: 'conpair_table'
             namespace: 'Concordance_estimates'
-    alfredrg:
-        file_format: 'tsv'
-        section_name: 'Alfred RG-Aware Mapping Quality'
-        description: 'Sample mapping quality with respect to read group'
-        plot_type: 'linegraph'
-        pconfig:
-            id: 'alfred_rgY_mapping_linegraph'
-            title: 'Per read-group Mapping Quality'
-            ylab: 'Fraction of Reads'
-            xlab: 'Mapping Quality'
-    alfred:
-        file_format: 'tsv'
-        section_name: 'Alfred RG-Unaware Mapping Quality'
-        description: 'Sample mapping quality without respect to read group'
-        plot_type: 'linegraph'
-        pconfig:
-            id: 'alfred_rgN_mapping_linegraph'
-            title: 'Per-sample Sample Mapping Quality'
-            ylab: 'Fraction of Reads'
-            xlab: 'Mapping Quality'
     QCStatus:
         file_format: 'tsv'
         section_name: 'Pass-Fail Status'
@@ -96,10 +76,6 @@ sp:
         fn: 'conpair_genstat.tsv'
     mskcc_conpair:
         fn: 'conpair.tsv'
-    alfredrg:
-        fn: '*.rgY.MQ.alfred.tsv'
-    alfred:
-        fn: '*.rgN.MQ.alfred.tsv'
     genstats_QCStatus:
         fn: "genstats-QC_Status.txt"
     QCStatus:
