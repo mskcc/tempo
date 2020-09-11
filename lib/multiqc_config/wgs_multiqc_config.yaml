@@ -1,0 +1,223 @@
+custom_logo: 'tempoLogo.png'
+custom_logo_url: 'https://ccstempo.netlify.app/'
+custom_logo_title: 'CCS - Tempo'
+
+show_analysis_paths: False
+
+report_header_info:
+    - Analysis Workflow: 'Tempo'
+    - Assay Type: 'WGS'
+    - Sequencing Platform: 'Illumina Hiseq'
+custom_data:
+    genstats_QCStatus:
+        plot_type: 'generalstats'
+        pconfig:
+            - Status:
+                description: 'Refer to QC Criteria section of this report for more information'
+                hidden: False
+            - Reason:
+                description: 'Explanation of pass/warn/fail in Status column'
+                hidden: True
+    genstats_mskcc_conpair:
+        plot_type: 'generalstats'
+        pconfig:
+            - Tumor:
+                hidden: True
+            - Normal:
+                hidden: False
+            - Tumor_Contamination:
+                hidden: False
+            - Normal_Contamination:
+                hidden: False
+            - Concordance:
+                hidden: False
+    mskcc_conpair:
+        file_format: 'tsv'
+        section_name: 'Conpair'
+        description: "Concordance and contamination estimations for Tumor/Normal pairs as performed by MSKCC's release of <a href='https://github.com/mskcc/conpair'>Conpair</a>"
+        plot_type: 'table'
+        pconfig:
+            id: 'conpair_table'
+            namespace: 'Concordance_estimates'
+    alfredrg:
+        file_format: 'tsv'
+        section_name: 'Alfred RG-Aware Mapping Quality'
+        description: 'Sample mapping quality with respect to read group'
+        plot_type: 'linegraph'
+        pconfig:
+            id: 'alfred_rgY_mapping_linegraph'
+            title: 'Per read-group Mapping Quality'
+            ylab: 'Fraction of Reads'
+            xlab: 'Mapping Quality'
+    alfred:
+        file_format: 'tsv'
+        section_name: 'Alfred RG-Unaware Mapping Quality'
+        description: 'Sample mapping quality without respect to read group'
+        plot_type: 'linegraph'
+        pconfig:
+            id: 'alfred_rgN_mapping_linegraph'
+            title: 'Per-sample Sample Mapping Quality'
+            ylab: 'Fraction of Reads'
+            xlab: 'Mapping Quality'
+    QCStatus:
+        file_format: 'tsv'
+        section_name: 'Pass-Fail Status'
+        description: "Pass/Fail status of samples based on Tempo's defined thresholds. These values are only displayed in the General Statistics table unless there are a high number of samples in the cohort"
+        plot_type: 'table'
+        pconfig:
+            id: 'qcstatus_pf'
+            namespace: 'QC_status_pass_filter'
+    facets_qc:
+        file_format: 'tsv'
+        section_name: 'Facets QC'
+        description: 'Results from Facets QC'
+        plot_type: 'table'
+        pconfig:
+            id: 'facets_qc'
+            namespace: 'facets_qc'
+    facets_summary:
+        file_format: 'tsv'
+        section_name: 'Facets Run Summary'
+        description: 'Results from Facets'
+        plot_type: 'table'
+        pconfig:
+            id: 'facets_summary'
+            namespace: 'facets_summary_report'
+    criteria:
+        file_format: 'tsv'
+        section_name: 'QC criteria'
+        plot_type: 'table'
+        description: "These thresholds are used to calculate whether a sample is given a <b>Status</b> of 'pass', 'warn' or 'fail'. These metrics have been decided by the Tempo team and are intended for guidance only. Status of each sample is given in the General Statistics table. You can find more information about the metrics Tempo uses for QC <a href='https://ccstempo.netlify.app/bioinformatic-components.html#quality-control'>here</a>."
+        pconfig:
+            id: 'criteria_tab'
+            namespace: 'criteria_tabby'
+sp:
+    genstats_mskcc_conpair:
+        fn: 'conpair_genstat.tsv'
+    mskcc_conpair:
+        fn: 'conpair.tsv'
+    alfredrg:
+        fn: '*.rgY.MQ.alfred.tsv'
+    alfred:
+        fn: '*.rgN.MQ.alfred.tsv'
+    genstats_QCStatus:
+        fn: "genstats-QC_Status.txt"
+    QCStatus:
+        fn: "QC_Status.txt"
+    facets_qc:
+        fn: "*.qc.txt"
+        contents: "mafr_median_clonal"
+    facets_summary:
+        fn: "*_OUT.txt"
+        contents: "purity_cval"
+    criteria:
+        fn: 'CriteriaTable.txt' 
+
+table_cond_formatting_rules:
+    all_columns:
+        pass:
+            - s_eq: 'pass'
+        warn:
+            - s_eq: 'warn'
+        fail:
+            - s_eq: 'fail'
+    mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    mqc-generalstats-genstats_mskcc_conpair-Normal_Contamination:
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    mqc-generalstats-genstats_mskcc_conpair-Concordance:
+        pass:
+            - gt: 90
+            - eq: 90
+        warn:
+            - lt: 90
+        fail:
+            - lt: 75  
+    Tumor_Contamination: 
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    Normal_Contamination:
+        pass:
+            - lt: 1
+            - eq: 1
+        warn:
+            - gt: 1
+        fail:
+            - gt: 5
+    Concordance:
+        pass:
+            - gt: 90
+            - eq: 90
+        warn:
+            - lt: 90
+        fail:
+            - lt: 75  
+    mqc-generalstats-picard-FOLD_ENRICHMENT:
+        pass:
+            - gt: 30
+            - eq: 30
+        warn:
+            - lt: 30
+        fail:
+            - lt: 20
+    FOLD_ENRICHMENT:
+        pass:
+            - gt: 45
+            - eq: 45
+        warn:
+            - lt: 45
+        fail:
+            - lt: 30
+    mqc-generalstats-picard-PCT_TARGET_BASES_50X:
+        pass:
+            - gt: 75
+            - eq: 75
+        warn:
+            - lt: 75
+
+table_cond_formatting_colours:
+    - pass: '#5cb85c'
+    - warn: '#f0ad4e'
+    - fail: '#d9534f'
+
+picard_config:
+    HsMetrics_table_cols:
+        - TOTAL_READS
+        - PCT_PF_UQ_READS_ALIGNED
+        - MEAN_TARGET_COVERAGE
+        - MEAN_BAIT_COVERAGE
+        - PCT_EXC_DUPE
+        - ZERO_CVG_TARGETS_PCT
+    HsMetrics_table_cols_hidden:
+        - PF_READS
+        - PF_UNIQUE_READS
+        - AT_DROPOUT
+        - GC_DROPOUT
+        - FOLD_ENRICHMENT
+    general_stats_target_coverage:
+        - 30
+        - 50
+table_columns_visible:
+    fastp: False
+report_section_order:
+    criteria:
+        order: 1000
+    QCStatus:
+        order: 1010
