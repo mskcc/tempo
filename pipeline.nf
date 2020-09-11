@@ -88,6 +88,7 @@ if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_si
 
 // User-set runtime parameters
 publishAll = params.publishAll
+outDir     = file(params.outDir).toAbsolutePath()
 outname = params.outname
 runGermline = params.germline
 runSomatic = params.somatic
@@ -373,7 +374,7 @@ if (params.mapping) {
   process AlignReads {
     tag {fileID + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
 
-    publishDir "${params.outDir}/bams/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
+    publishDir "${outDir}/bams/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
     input:
       set idSample, target, file(fastqFile1), sizeFastqFile1, file(fastqFile2), sizeFastqFile2, fileID, lane from fastqFiles
@@ -622,7 +623,7 @@ if (params.mapping) {
   process RecalibrateBam {
     tag {idSample}
 
-    publishDir "${params.outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
+    publishDir "${outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
 
     input:
       set idSample, file(bam), file(bai), target, file(recalibrationReport) from inputsBQSR
@@ -632,7 +633,7 @@ if (params.mapping) {
 
     output:
       set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup
-      set idSample, target, val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
+      set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
       file("file-size.txt") into bamSize
 
     script:
@@ -714,7 +715,7 @@ if (params.pairing) {
 
   // Parse input FASTQ mapping
 
-  inputPairing.into{pairing4T; pairing4N; pairingTN; inputPairing}
+  inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing}
   bamsBQSR4Tumor.combine(pairing4T)
                           .filter { item ->
                             def idSample = item[0]
@@ -978,7 +979,7 @@ forMutect2Combine.groupTuple().set{ forMutect2Combine }
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/mutect2", mode: params.publishDirMode
+  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/mutect2", mode: params.publishDirMode
 
   input:
     set id, idTumor, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forMutect2Combine
@@ -1022,7 +1023,7 @@ Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
 process SomaticDellyCall {
   tag {idTumor + "__" + idNormal + '@' + svType}
 
-  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
+  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
   
   input:
     each svType from svTypes
@@ -1064,7 +1065,7 @@ process SomaticDellyCall {
 process SomaticRunManta {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
+  publishDir "${outDir}/somatic/${outputPrefix}/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForManta
@@ -1129,7 +1130,7 @@ dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(manta4Combine, by: 
 process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
+  publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(dellyVcfs), file(dellyVcfsIndex), file(mantaFile) from dellyMantaCombineChannel
@@ -1179,7 +1180,7 @@ bams4Strelka.combine(mantaToStrelka, by: [0, 1, 2]).set{input4Strelka}
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"
+  publishDir "${outDir}/somatic/${outputPrefix}/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(mantaCSI), file(mantaCSIi) from input4Strelka
@@ -1450,7 +1451,7 @@ process SomaticCombineChannel {
 process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
+  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from mutationMergedVcf
@@ -1546,9 +1547,9 @@ process RunMutationSignatures {
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.gz"
-  publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
-  publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,out,seg,txt}"
+  publishDir "${outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.gz"
+  publishDir "${outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
+  publishDir "${outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "${outputDir}/*.{Rdata,png,out,seg,txt}"
 
   input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamFiles4DoFacets
@@ -1562,11 +1563,12 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*_hisens.seg") into FacetsHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
+    set idTumor, idNormal, target, file("${outputDir}/"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into Facets4FacetsPreview
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
     set idTumor, idNormal, target, file("*/*.qc.txt") into FacetsQC4MetaDataParser
-    set idTumor, idNormal, file("*/*.qc.txt"), file("*_OUT.txt") into FacetsQC4SomaticMultiQC, FacetsQC4Aggregate
+    set idTumor, idNormal, file("*_OUT.txt") into FacetsRunSummary
 
   when: "facets" in tools && runSomatic
 
@@ -1629,11 +1631,36 @@ process DoFacets {
   """
 }
 
-FacetsQC4Aggregate 
-  .map{idTumor, idNormal, qcFiles, summaryFiles -> 
-    ["placeHolder",idTumor, idNormal, qcFiles, summaryFiles ]
-  }.set{FacetsQC4Aggregate}
+process DoFacetsPreviewQC {
+  tag {idTumor + "__" + idNormal}
+  publishDir "${outDir}/somatic/${tag}/facets/${tag}/", mode: params.publishDirMode, pattern: "${idTumor}__${idNormal}.facets_qc.txt"
 
+  input:
+    set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from Facets4FacetsPreview
+  
+  output:
+    set idTumor, idNormal, file("${idTumor}__${idNormal}.facets_qc.txt") into FacetsPreviewOut
+
+  when: "facets" in tools && runSomatic
+
+  script:
+  tag = "${idTumor}__${idNormal}"
+  """
+  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
+  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
+  gzip manifest.txt
+  mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
+  R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
+  cp facets_qc.txt ${idTumor}__${idNormal}.facets_qc.txt
+
+  """
+
+}
+
+FacetsRunSummary.combine(FacetsPreviewOut, by:[0,1]).into{FacetsQC4Aggregate ; FacetsQC4SomaticMultiQC} // idTumor, idNormal, summaryFiles, qcFiles
+FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
+  ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
+}.set{FacetsQC4Aggregate}
 
 
 // Run Polysolver
@@ -1680,7 +1707,7 @@ bamsForLOHHLA.combine(facetsPurity4LOHHLA, by: [0,1,2])
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/lohhla", mode: params.publishDirMode
+  publishDir "${outDir}/somatic/${outputPrefix}/lohhla", mode: params.publishDirMode
 
   input:
     set idNormal, target, idTumor, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(purityOut), placeHolder, file(winnersHla) from mergedChannelLOHHLA
@@ -1742,7 +1769,7 @@ hlaOutput.combine(mafFile, by: [1,2]).set{ input4Neoantigen }
 process RunNeoantigen {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*.txt"
+  publishDir "${outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*.txt"
 
   input:
     set idNormal, target, placeHolder, file(polysolverFile), idTumor, file(mafFile) from input4Neoantigen
@@ -1800,7 +1827,7 @@ facetsForMafAnno.combine(mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomat
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
+  publishDir "${outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileSomatic
@@ -1876,7 +1903,7 @@ facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
 process MetaDataParser {
   tag {idTumor + "__" + idNormal}
  
-  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
+  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 
   input:
     set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
@@ -1916,6 +1943,12 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
+} else { 
+  if (params.pairing) {
+    pairing4QC.map{ idTumor, idNormal -> 
+      ["placeHolder",idTumor, idNormal,"",""]
+    }.set{FacetsQC4Aggregate}
+  }
 }
 
 /*
@@ -1992,7 +2025,7 @@ haplotypecaller4Combine.groupTuple().set{ haplotypecaller4Combine }
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/haplotypecaller", mode: params.publishDirMode
+  publishDir "${outDir}/germline/${idNormal}/haplotypecaller", mode: params.publishDirMode
 
   input:
     set id, idNormal, target, file(haplotypecallerSnpVcf), file(haplotypecallerSnpVcfIndex), file(haplotypecallerIndelVcf), file(haplotypecallerIndelVcfIndex) from haplotypecaller4Combine
@@ -2033,7 +2066,7 @@ process GermlineCombineHaplotypecallerVcf {
 process GermlineRunStrelka2 {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/strelka2", mode: params.publishDirMode
+  publishDir "${outDir}/germline/${idNormal}/strelka2", mode: params.publishDirMode
 
   input:
     set idNormal, target, file(bamNormal), file(baiNormal) from bamsForStrelkaGermline
@@ -2230,7 +2263,7 @@ process GermlineCombineChannel {
 process GermlineAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/combined_mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
+  publishDir "${outDir}/germline/${idNormal}/combined_mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
 
   input:
     set idTumor, idNormal, target, file(vcfMerged) from mutationMergedGermline
@@ -2284,7 +2317,7 @@ facetsForMafAnnoGermline.combine(mafFileGermline, by: [0,1,2]).set{ facetsMafFil
 process GermlineFacetsAnnotation {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.germline.final.maf"
+  publishDir "${outDir}/germline/${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.germline.final.maf"
 
   input:
     set idTumor, idNormal, target, file(purity_rdata), file(purity_cncf), file(hisens_cncf), facetsPath, file(maf) from facetsMafFileGermline
@@ -2317,7 +2350,7 @@ Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
-  publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
+  publishDir "${outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
 
   input:
     each svType from svTypesGermline
@@ -2355,7 +2388,7 @@ process GermlineDellyCall {
 process GermlineRunManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/manta", mode: params.publishDirMode
+  publishDir "${outDir}/germline/${idNormal}/manta", mode: params.publishDirMode
 
   input:
     set idNormal, target, file(bamNormal), file(baiNormal) from bamsForMantaGermline
@@ -2412,7 +2445,7 @@ dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5).combine(manta4Combine
 process GermlineMergeDellyAndManta {
   tag {idNormal}
 
-  publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
+  publishDir "${outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
     set idNormal, target, file(dellyVcf), file(dellyVcfIndex), file(mantaVcf), file(mantaVcfIndex) from dellyMantaChannelGermline
@@ -2460,7 +2493,7 @@ if (runQC) {
 process QcCollectHsMetrics {
   tag {idSample}
 
-  publishDir "${params.outDir}/bams/${idSample}/collecthsmetrics", mode: params.publishDirMode
+  publishDir "${outDir}/bams/${idSample}/collecthsmetrics", mode: params.publishDirMode
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4CollectHsMetrics
@@ -2522,7 +2555,7 @@ Channel.from(true, false).set{ ignore_read_groups }
 process QcAlfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
-  publishDir "${params.outDir}/bams/${idSample}/alfred", mode: params.publishDirMode
+  publishDir "${outDir}/bams/${idSample}/alfred", mode: params.publishDirMode
 
   input:
     each ignore_rg from ignore_read_groups
@@ -2580,7 +2613,7 @@ process SampleRunMultiQC {
   tag {idSample}
   label 'multiqc_process'
 
-  publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
+  publishDir "${outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
     set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
@@ -2633,7 +2666,7 @@ if (pairingQc) {
 process QcPileup {
   tag {idSample}
 
-  publishDir "${params.outDir}/bams/${idSample}/pileup/", mode: params.publishDirMode
+  publishDir "${outDir}/bams/${idSample}/pileup/", mode: params.publishDirMode
 4
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4QcPileup
@@ -2715,7 +2748,7 @@ pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
 process QcConpair {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${params.outDir}/somatic/${outPrefix}/conpair/", mode: params.publishDirMode
+  publishDir "${outDir}/somatic/${outPrefix}/conpair/", mode: params.publishDirMode
 
   input:
     set idTumor, idNormal, file(pileupTumor), file(pileupNormal) from pileupConpair
@@ -2769,20 +2802,28 @@ process QcConpair {
   """
 }
 
-conpairOutput
-  .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
-    [idTumor, idNormal, conpairFiles]
-  }.join(FacetsQC4SomaticMultiQC, by:[0,1])
-  .set{ somaticMultiQCinput }
+if (runSomatic) {
+  conpairOutput
+    .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
+      [idTumor, idNormal, conpairFiles]
+    }.join(FacetsQC4SomaticMultiQC, by:[0,1])
+    .set{ somaticMultiQCinput }
+} else {
+  conpairOutput
+    .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
+      [idTumor, idNormal, conpairFiles, "", ""]
+    }.set{ somaticMultiQCinput }
+
+}
 
 process SomaticRunMultiQC {
    tag {idTumor + "__" + idNormal}
    label 'multiqc_process'
 
-  publishDir "${params.outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  
+  publishDir "${outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idTumor, idNormal, file(conpairFiles), file(facetsQCFiles), file(facetsSummaryFiles) from somaticMultiQCinput
+    set idTumor, idNormal, file(conpairFiles), file(facetsSummaryFiles), file(facetsQCFiles) from somaticMultiQCinput
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -2802,6 +2843,10 @@ process SomaticRunMultiQC {
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
+
+  head -1 ${facetsQCFiles} | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> ${facetsQCFiles}.qc.txt
+  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 >> ${facetsQCFiles}.qc.txt
+
   cp conpair.tsv conpair_genstat.tsv
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
   
@@ -2908,7 +2953,7 @@ if ( !params.mapping && !params.bamMapping ){
                   FacetsOutLog4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
                   FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.arm_level.txt")]
                   FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
-                  FacetsQC4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.qc.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
+                  FacetsQC4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*.facets_qc.txt")]
                   dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
                   predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
@@ -2982,7 +3027,6 @@ else if(!(runAggregate == false)) {
                        cohortSomaticAggregateFacets2;
                        cohortSomaticAggregateFacets3;
                        cohortSomaticAggregateFacets4;
-                       cohortSomaticAggregateFacets5;
                        cohortSomaticAggregateSv;
                        cohortSomaticAggregateSv1;
                        cohortSomaticAggregateLOHHLA;
@@ -2996,7 +3040,8 @@ else if(!(runAggregate == false)) {
                        cohortQcBamAggregate2;
                        cohortQcConpairAggregate;
                        cohortQcConpairAggregate1;
-                       cohortQcFastPAggregate
+                       cohortQcFastPAggregate;
+                       cohortQcFacetsAggregate
                 }
   if (runSomatic){
   inputSomaticAggregateMaf = cohortSomaticAggregateMaf.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -3006,7 +3051,6 @@ else if(!(runAggregate == false)) {
   inputOutLog4Aggregate = cohortSomaticAggregateFacets2.combine(FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputArmLev4Aggregate = cohortSomaticAggregateFacets3.combine(FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputGeneLev4Aggregate = cohortSomaticAggregateFacets4.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-  inputFacetsQC4CohortMultiQC = cohortSomaticAggregateFacets5.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
   inputSomaticAggregateSv = cohortSomaticAggregateSv.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputSomaticAggregateSvTbi = cohortSomaticAggregateSv1.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputPredictHLA4Aggregate = cohortSomaticAggregateLOHHLA.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
@@ -3145,6 +3189,7 @@ else if(!(runAggregate == false)) {
   if (pairingQc){
   cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
   cohortQcConpairAggregate1.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
+  cohortQcFacetsAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{inputFacetsQC4CohortMultiQC}
   }
   }
 }
@@ -3155,7 +3200,7 @@ process SomaticAggregateMaf {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(mafFile) from inputSomaticAggregateMaf
@@ -3187,7 +3232,7 @@ process SomaticAggregateNetMHC {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(netmhcCombinedFile) from inputSomaticAggregateNetMHC
@@ -3219,7 +3264,7 @@ process SomaticAggregateFacets {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set cohort, file(purity), file(Hisens), file(outLog), file(armLev), file(geneLev) from inputSomaticAggregateFacets
@@ -3255,7 +3300,7 @@ process SomaticAggregateSv {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set cohort, file(dellyMantaVcf), file(dellyMantaVcfTbi) from inputSomaticAggregateSv
@@ -3298,7 +3343,7 @@ process SomaticAggregateLOHHLA {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set cohort, file(preditHLA), file(intCPN) from inputSomaticAggregateLOHHLA
@@ -3325,7 +3370,7 @@ process SomaticAggregateMetadata {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(metaDataFile) from inputSomaticAggregateMetadata
@@ -3356,7 +3401,7 @@ process GermlineAggregateMaf {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set idTumors, idNormals, cohort, placeHolder, file(mafFile) from inputGermlineAggregateMaf
@@ -3393,7 +3438,7 @@ process GermlineAggregateSv {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set cohort, file(dellyMantaVcf), file(dellyMantaVcfTbi) from inputGermlineAggregateSv
@@ -3445,7 +3490,7 @@ process QcBamAggregate {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNoraml), file(alfredIgnoreNTumor), file(alfredIgnoreNNoraml), file(hsMetricsTumor), file(hsMetricsNoraml) from inputQcBamAggregate
@@ -3476,7 +3521,7 @@ process QcConpairAggregate {
 
   tag {cohort}
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
     set cohort, file(concordFile), file(contamiFile) from inputQcConpairAggregate
@@ -3514,10 +3559,10 @@ process CohortRunMultiQC {
   tag {cohort}
   label 'multiqc_process'
 
-  publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsQCFile), file(FacetsSummaryFile) from inputCohortRunMultiQC
+    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile) from inputCohortRunMultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -3556,6 +3601,11 @@ process CohortRunMultiQC {
     done
   done
 
+  for i in *.facets_qc.txt ; do 
+    head -1 \$i | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> \$i.qc.txt
+    tail -n +2 \$i | cut -f 1,28,97 >> \$i.qc.txt
+  done
+
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
   hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
@@ -3583,7 +3633,7 @@ process CohortRunMultiQC {
 
 workflow.onComplete {
   file(params.fileTracking).text = ""
-  file(params.outDir).eachFileRecurse{
+  file(outDir).eachFileRecurse{
     file(params.fileTracking).append(it + "\n")
   }
 }
