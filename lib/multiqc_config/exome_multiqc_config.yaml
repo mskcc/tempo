@@ -97,7 +97,7 @@ sp:
         fn: "QC_Status.txt"
     facets_qc:
         fn: "*.qc.txt"
-        contents: "mafr_median_clonal"
+        contents: "facets_qc"
     facets_summary:
         fn: "*_OUT.txt"
         contents: "purity_cval"
