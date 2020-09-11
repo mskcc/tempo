@@ -21,6 +21,7 @@ outDir/bams/
 │   ├── alfred
 │   ├── collecthsmetrics
 │   ├── fastp
+│   ├── multiqc
 │   └── pileup
 ├── DU874145-T
 │   ├── DU874145-T.bam
@@ -33,6 +34,7 @@ These outputs are:
 - `alfred`: A per-sample and per-readgroup BAM file alignment metrics in text and PDF files.
 - `collectshsmetrics`: For exomes, per-sample hybridisation-selection metrics in the.
 - `pileup`: Per tumor-normal-pair, the Conpair-generated SNP pileup files.
+- `multiqc`: A summary report of FASTQ/BAM QC metrics from Picard, fastp and other tools. 
 
 ## Somatic data
 
@@ -49,6 +51,7 @@ outDir/somatic
 │   ├── lohhla
 │   ├── manta
 │   ├── meta_data
+│   ├── multiqc
 │   ├── mutect2
 │   ├── neoantigen
 │   └── strelka2
@@ -60,6 +63,7 @@ outDir/somatic
     ├── lohhla
     ├── manta
     ├── meta_data
+    ├── multiqc
     ├── mutect2
     ├── neoantigen
     └── strelka2
@@ -83,6 +87,7 @@ These outputs are:
   - All 60 Mutational Signatures
   - HLA genotyping
   - TMB
+- `multiqc`: A summary report of tumor/normal pair QC metrics from Conpair and Facets.
 - `mutect2`: Manta output.
 - `neoantigens`: Neoantigen predictions from NetMHCpan per sample.
 - `strelka2`: Manta output.
@@ -139,6 +144,8 @@ outDir/cohort_level/
 │   ├── contamination_qc.txt
 │   ├── DNA.IntegerCPN_CI.txt
 │   ├── HLAlossPrediction_CI.txt
+│   ├── multiqc_report.html
+│   ├── multiqc_data.zip
 │   ├── mut_germline.maf
 │   ├── mut_somatic.maf
 │   ├── mut_somatic_neoantigens.txt
@@ -155,4 +162,4 @@ outDir/cohort_level/
 ...
 ```
 
-These outputs are just naively concatenated together from per sample output files (duplicated header are removed).
+These outputs are just naively concatenated together from per sample output files (duplicated header are removed). A combined MultiQC summary report is produced containing QC metrics for all samples and tumor/normal pairs in the cohort.
