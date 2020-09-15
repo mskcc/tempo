@@ -632,7 +632,7 @@ if (params.mapping) {
       ])
 
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
       set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
       file("file-size.txt") into bamSize
 
@@ -700,7 +700,7 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
 
   bamPaths4MultiQC.map{idSample, target, bam, bai ->
     [ idSample,target, bam.getParent() ]
@@ -2551,6 +2551,44 @@ process QcCollectHsMetrics {
 }
 
 // Alfred, BAM QC
+
+process QcQualimap {
+  tag {idSample}
+  
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*/*"
+
+  input:
+    set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
+    set file(idtTargets), file(agilentTargets) from Channel.value([
+      file(referenceMap.idtTargets.toString().replaceAll(".gz","")), file(referenceMap.agilentTargets.toString().replaceAll(".gz",""))
+    ])
+
+  output:
+    set idSample, file("${idSample}") into qualimap4MultiQC, qualimap4Aggregate
+    set idSample, file("${idSample}/*.{html,txt}"), file("${idSample}/css/*"), file("${idSample}/raw_data_qualimapReport/*"), file("${idSample}/images_qualimapReport/*") into qualimapOutput
+
+  
+  when: runQC   
+
+  script:
+  if (params.genome == "smallGRCh37"){
+    idtTargets = params.genomes["GRCh37"]."idtTargets".replaceAll(".gz","")
+    agilentTargets =  params.genomes["GRCh37"]."agilentTargets".replaceAll(".gz","")
+  }
+  if (params.assayType == "exome"){
+    if ( target == "idt"){
+      gffOptions = "-gff ${idtTargets}"
+    } else {
+      gffOptions = "-gff ${agilentTargets}"
+    }
+  } else { gffOptions = "-gd HUMAN" }
+  javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  """
+  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} -nt ${task.cpus} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
+  """
+}
+
 Channel.from(true, false).set{ ignore_read_groups }
 process QcAlfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
@@ -2607,6 +2645,7 @@ alfredOutput
   .groupTuple(size:2, by:0)
   .join(fastPJson4sampleMultiQC, by:0)
   .join(collectHsMetricsOutput, by:0)
+  .join(qualimap4MultiQC, by:0)
   .set{sampleMetrics4MultiQC}
 
 process SampleRunMultiQC {
@@ -2616,7 +2655,7 @@ process SampleRunMultiQC {
   publishDir "${outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile) from sampleMetrics4MultiQC
+    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile), file(qualimapFolder) from sampleMetrics4MultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -2968,6 +3007,8 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
 		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
+      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}/")]
+      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}/")]
 		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
 		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
       fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
@@ -2992,6 +3033,7 @@ if ( !params.mapping && !params.bamMapping ){
   inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
   inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+  inputQualimap4CohortMultiQC = aggregateList.qualimapTumor.unique().combine(aggregateList.qualimapNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
   aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
@@ -3038,6 +3080,7 @@ else if(!(runAggregate == false)) {
                        cohortQcBamAggregate;
                        cohortQcBamAggregate1;
                        cohortQcBamAggregate2;
+                       cohortQcBamAggregate3;
                        cohortQcConpairAggregate;
                        cohortQcConpairAggregate1;
                        cohortQcFastPAggregate;
@@ -3065,7 +3108,7 @@ else if(!(runAggregate == false)) {
   }
 
   if (runQC){
-  inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3;inputPairing4}
+  inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3;inputPairing4;inputPairing5}
   bamsQcStats4Aggregate.branch{ item ->
   			def idSample = item[0]
   			def alfred = item[1]
@@ -3182,6 +3225,23 @@ else if(!(runAggregate == false)) {
            }
            .unique()
            .set{fastPMetrics}
+
+  inputPairing5.combine(qualimap4Aggregate)
+    .branch { idTumor, idNormal, idSample, qualimapDir ->
+      tumor:  idSample == idTumor
+      normal: idSample == idNormal
+    }
+    .set{qualimap4AggregateTN}
+  qualimap4AggregateTN.tumor.combine(qualimap4AggregateTN.normal, by:[0,1])
+    .combine(cohortQcBamAggregate3.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+    .map{ item -> [item[6], item[3], item[5]]}
+    .groupTuple(by:[0])
+    .map{ cohort, fileTumor, fileNormal ->
+        [cohort, fileTumor.unique(), fileNormal.unique()]
+    }
+    .unique()
+    .set{inputQualimap4CohortMultiQC}
+
   inputAlfredIgnoreY = alfredIgnoreY
   inputAlfredIgnoreN = alfredIgnoreN
   inputHsMetrics = hsMetrics
@@ -3545,7 +3605,6 @@ process QcConpairAggregate {
   """
 }
 
-
 inputHsMetrics4MultiQC
   .join(inputFastP4MultiQC,by:0)
   .join(inputAlfredIgnoreY4MultiQC,by:0)
@@ -3553,6 +3612,7 @@ inputHsMetrics4MultiQC
   .join(inputConpairConcord4MultiQC,by:0)
   .join(inputConpairContami4MultiQC,by:0)
   .join(inputFacetsQC4CohortMultiQC,by:0)
+  .join(inputQualimap4CohortMultiQC,by:0)
   .set{inputCohortRunMultiQC}
 
 process CohortRunMultiQC {
@@ -3562,7 +3622,7 @@ process CohortRunMultiQC {
   publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile) from inputCohortRunMultiQC
+    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal) from inputCohortRunMultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -3672,14 +3732,17 @@ def defineReferenceMap() {
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
     // Target and Bait BED files
     'idtTargets' : checkParamReturnFile("idtTargets"),
+    //'idtTargetsUnzipped' : checkParamReturnFile("idtTargetsUnzipped"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
     'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
     'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
+    //'agilentTargetsUnzipped' : checkParamReturnFile("agilentTargetsUnzipped"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
     'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
+    //'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
