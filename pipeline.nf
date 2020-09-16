@@ -511,7 +511,7 @@ if (params.mapping) {
     """
   }
 
-
+/*
 // GATK MarkDuplicates
   process MarkDuplicates {
     tag {idSample}
@@ -677,6 +677,99 @@ if (params.mapping) {
       mv ${idSample}.bai ${idSample}.bam.bai
     fi
     """
+  }
+*/
+
+  // GATK MarkDuplicates, BaseRecalibrator , CreateRecalibrationTable, ApplyBQSR, RecalibrateBAM
+  process RecalibrateMergedBam {
+    tag {idSample}
+
+    publishDir "${outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "${idSample}.bam*"
+
+    input:
+      set idSample, file(mergedBam), target from mergedBam
+      set file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex) from Channel.value([
+        referenceMap.genomeFile,
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict,
+        referenceMap.dbsnp,
+        referenceMap.dbsnpIndex,
+        referenceMap.knownIndels,
+        referenceMap.knownIndelsIndex 
+      ])
+
+    output:
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
+      set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
+      file("file-size.txt") into bamSize
+
+    script:
+    if (workflow.profile == "juno") {
+      if(mergedBam.size() > 60.GB) {
+        task.time = { params.maxWallTime }
+      }
+      else if (mergedBam.size() < 50.GB) {
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+      }
+      else {
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+      }
+      task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+    }
+    if (task.attempt < 3 ) {
+      sparkConf = "Spark --conf 'spark.executor.cores = " + task.cpus + "'"
+    }
+    else {
+      sparkConf=""
+      task.cpus = 4
+      task.memory = { 6.GB }
+      if (workflow.profile == "juno"){ task.time = { params.maxWallTime } }
+    }
+    
+    memMultiplier = params.mem_per_core ? task.cpus : 1
+    // when increase memory requested from system every time it retries, keep java Xmx steady, in order to give more memory for java garbadge collection
+    originalMem = task.attempt ==1 ? task.memory : originalMem
+    maxMem = (memMultiplier * originalMem.toString().split(" ")[0].toInteger() - 3)
+    maxMem = maxMem < 4 ? 5 : maxMem
+    javaOptionsDup = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
+    javaOptions    = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+    knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+    """
+    gatk MarkDuplicates \
+      ${javaOptionsDup} \
+      --TMP_DIR ./ \
+      --MAX_RECORDS_IN_RAM 50000 \
+      --INPUT ${mergedBam} \
+      --METRICS_FILE ${idSample}.bam.metrics \
+      --ASSUME_SORT_ORDER coordinate \
+      --CREATE_INDEX true \
+      --OUTPUT ${idSample}.md.bam
+
+    gatk \
+      BaseRecalibrator${sparkConf} \
+      ${javaOptions} \
+      --reference ${genomeFile} \
+      --known-sites ${dbsnp} \
+      ${knownSites} \
+      --verbosity INFO \
+      --input ${idSample}.md.bam \
+      --output ${idSample}.recal.table
+    
+    echo -e "${idSample}\t\$(du -b ${idSample}.md.bam)" > file-size.txt
+    gatk \
+      ApplyBQSR${sparkConf} \
+      ${javaOptions} \
+      --reference ${genomeFile} \
+      --create-output-bam-index true \
+      --bqsr-recal-file ${idSample}.recal.table \
+      --input ${idSample}.md.bam \
+      --output ${idSample}.bam
+    if [[ -f ${idSample}.bai ]]; then
+      mv ${idSample}.bai ${idSample}.bam.bai
+    fi    
+
+    """
+
   }
 
   File file = new File(outname)
