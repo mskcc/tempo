@@ -9,7 +9,7 @@ WORKDIR /
 
 RUN rm -rf /lohhla
 
-RUN wget https://github.com/mskcc/lohhla/archive/1.1.5.zip && unzip 1.1.4.zip && mv /lohhla-1.1.5 /lohhla
+RUN wget https://github.com/mskcc/lohhla/archive/1.1.5.zip && unzip 1.1.5.zip && mv /lohhla-1.1.5 /lohhla
 
 RUN R -e "install.packages(c('plyr'), repos = 'http://cran.r-project.org')"
 
