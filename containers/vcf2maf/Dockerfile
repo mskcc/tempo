@@ -1,9 +1,11 @@
 FROM ubuntu:18.04
 
-LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
+LABEL maintainer="Yixiao Gong (gongy@mskcc.org)" \
+      contributor="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="1.2.3" \
+      contributor="Yixiao Gong (gongy@mskcc.org)" \
+      version.image="1.2.4" \
       version.vcf2maf="1.6.17" \
       version.vep="88" \
       version.htslib="1.9" \
@@ -11,7 +13,7 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       version.samtools="1.9" \
       version.perl="5.26.2-r1" \
       version.alpine="3.8" \
-      version.oncokb_annotator="1.1.0" \
+      version.oncokb_annotator="2.3.3" \
       version.filter_somatic_maf="0.6.0" \
       version.filter_germline_maf="0.2.0" \
       version.annotateMaf="1.0.1" \
@@ -20,7 +22,7 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       source.htslib="https://github.com/samtools/htslib/releases/tag/1.9" \
       source.bcftools="https://github.com/samtools/bcftools/releases/tag/1.9" \
       source.samtools="https://github.com/samtools/samtools/releases/tag/1.9" \
-      source.oncokb_annotator="https://github.com/oncokb/oncokb-annotator/releases/tag/v1.1.0" \
+      source.oncokb_annotator="https://github.com/oncokb/oncokb-annotator/releases/tag/v2.3.3" \
       source.annotateMaf="https://github.com/taylor-lab/annotateMaf"
 
 ENV VCF2MAF_VERSION 1.6.17
@@ -28,7 +30,7 @@ ENV VEP_VERSION 88
 ENV HTSLIB_VERSION 1.9
 ENV SAMTOOLS_VERSION 1.9
 ENV BCFTOOLS_VERSION 1.9
-ENV ONCOKB_VERSION 1.1.0
+ENV ONCOKB_VERSION 2.3.3
 ENV ANNOTATE_MAF 1.0.1
 
 RUN apt-get update --fix-missing && apt-get install -y \
@@ -54,7 +56,6 @@ RUN apt-get update && apt-get install -y \
 
 # Install python dependencies
 RUN pip install --upgrade pip
-RUN pip install matplotlib
 
 RUN apt-get update && apt-get install -y libnet-ssleay-perl libcrypt-ssleay-perl libextutils-pkgconfig-perl
 
@@ -130,13 +131,16 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     r-base-core r-base-dev
 
-RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools', 'argparse'), repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}')"
+RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'knitr', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools', 'argparse'), repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}')"
 
 # install oncokb-annotator
 RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \
             && unzip oncokb_annotator-v${ONCOKB_VERSION} \
             && mkdir -p /usr/bin/oncokb_annotator \
             && cp -r oncokb-annotator-${ONCOKB_VERSION}/* /usr/bin/oncokb_annotator/ \
+            && cd /usr/bin/oncokb_annotator/ \
+            && pip install -r requirements/common.txt -r requirements/pip2.7.txt \
+            && cd - \
             && rm -rf /var/cache/apk/* /tmp/*
    
 # Add filter script
