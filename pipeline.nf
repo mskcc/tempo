@@ -1501,7 +1501,8 @@ process SomaticAnnotateMaf {
     
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
     -i ${outputPrefix}.raw.maf \
-    -o ${outputPrefix}.raw.oncokb.maf
+    -o ${outputPrefix}.raw.oncokb.maf \
+    -b ${params.oncoKB_annotator.token}
 
   Rscript --no-init-file /usr/bin/filter-somatic-maf.R \
     --tumor-vaf ${params.somaticVariant.tumorVaf} \
