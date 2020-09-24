@@ -187,6 +187,11 @@ else {
   }
 }
 
+if (!(params.cosmic in ['v2', 'v3'])) {
+  println "ERROR: Possible values of mutational signature reference --cosmic is 'v2', 'v3'"
+  exit 1
+}
+
 referenceMap = defineReferenceMap()
 
 /*
@@ -1533,14 +1538,24 @@ process RunMutationSignatures {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  """
-  maf2cat2.R ${outputPrefix}.somatic.maf \
-  ${outputPrefix}.trinucmat.txt
-  tempoSig.R --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
-  ${outputPrefix}.mutsig.txt
-  """
+  if( params.cosmic == 'v2' )
+    """
+    maf2cat2.R ${outputPrefix}.somatic.maf \
+    ${outputPrefix}.trinucmat.txt
+    tempoSig.R --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
+    ${outputPrefix}.mutsig.txt
+    """
+  else if( params.cosmic == 'v3' )
+    """
+    maf2cat2.R ${outputPrefix}.somatic.maf \
+    ${outputPrefix}.trinucmat.txt
+    tempoSig.R --pvalue --cosmic_v3 --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
+    ${outputPrefix}.mutsig.txt
+    """
+  else
+    println "ERROR: Unknown parameter --cosmic (values: v2, v3)"
+    exit 1
 }
-
 
 
 // --- Run FACETS 
