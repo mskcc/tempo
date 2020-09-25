@@ -32,7 +32,8 @@ Somatic Analysis
  - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small indel calling by default
  - SomaticCombineChannel --- combine and filter VCFs, bcftools
  - SomaticAnnotateMaf --- annotate MAF, vcf2maf
- - RunMutationSignatures --- mutational signatures
+ - RunMutationSignatures_v2 --- mutational signatures (cosmic v2)
+ - RunMutationSignatures_v3 --- mutational signatures (cosmic v3)
  - DoFacets --- facets-suite: mafAnno.R, geneLevel.R, armLevel.R
  - RunPolysolver --- Polysolver
  - RunLOHHLA --- LOH in HLA
@@ -1538,25 +1539,14 @@ process RunMutationSignatures {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  if( params.cosmic == 'v2' )
-    """
-    maf2cat2.R ${outputPrefix}.somatic.maf \
-    ${outputPrefix}.trinucmat.txt
-    tempoSig.R --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
-    ${outputPrefix}.mutsig.txt
-    """
-  else if( params.cosmic == 'v3' )
-    """
-    maf2cat2.R ${outputPrefix}.somatic.maf \
-    ${outputPrefix}.trinucmat.txt
-    tempoSig.R --pvalue --cosmic_v3 --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
-    ${outputPrefix}.mutsig.txt
-    """
-  else
-    println "ERROR: Unknown parameter --cosmic (values: v2, v3)"
-    exit 1
+  """
+  maf2cat2.R ${outputPrefix}.somatic.maf \
+  ${outputPrefix}.trinucmat.txt
+  head ${outputPrefix}.trinucmat.txt
+  tempoSig.R --cosmic_${param.cosmic} --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
+  ${outputPrefix}.mutsig.txt
+  """
 }
-
 
 // --- Run FACETS 
 process DoFacets {
