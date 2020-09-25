@@ -10,7 +10,7 @@ Output: 'input_filename.filter.vcf'
 __author__  = "Philip Jonsson"
 __contributor__  = "Yixiao Gong"
 __email__   = "jonssonp@mskcc.org; gongy@mskcc.org"
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __status__  = "Dev"
 
 import sys, os
@@ -72,10 +72,10 @@ for var in vcf_in.fetch():
     ## Strelka2 does not produce multiallelic calls by itself but provides info on all alternate bases observed
     if "Strelka2" in info and len(ref) == len(alt) == 1:
         alleles = { # what about indels from Strelka2?
-            'A': var.samples[tumor]['AU'],
-            'C': var.samples[tumor]['CU'],
-            'G': var.samples[tumor]['GU'],
-            'T': var.samples[tumor]['TU']
+            'A': var.samples[tumor].get('AU', [None]),
+            'C': var.samples[tumor].get('CU', [None]),
+            'G': var.samples[tumor].get('GU', [None]),
+            'T': var.samples[tumor].get('TU', [None])
         }
 	valid_alleles = [key for key in alleles.keys() if all(isinstance(item,int) for item in alleles[key])]
         tier1_other = sum([alleles[a][0] for a in valid_alleles if a not in [alt, ref]])
