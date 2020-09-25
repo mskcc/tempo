@@ -127,6 +127,7 @@ if mutationalSignatures is not None:
     ## create mutational signatures columns
     for col in mlist[2:]:
         results[col] = mutsig[col]
+
 if HLAoutput is not None:
     ## parse polysovler winners.hla.txt
     winners = pd.read_csv(HLAoutput, sep="\t", header=None)
