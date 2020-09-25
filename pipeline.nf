@@ -1543,14 +1543,14 @@ process RunMutationSignatures {
     ${outputPrefix}.trinucmat.txt
     tempoSig.R --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
     ${outputPrefix}.mutsig.txt
-    """  
+    """
   else if( params.cosmic == 'v3' )
     """
     maf2cat2.R ${outputPrefix}.somatic.maf \
     ${outputPrefix}.trinucmat.txt
     tempoSig.R --pvalue --cosmic_v3 --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
     ${outputPrefix}.mutsig.txt
-    """  
+    """
   else
     println "ERROR: Unknown parameter --cosmic (values: v2, v3)"
     exit 1
