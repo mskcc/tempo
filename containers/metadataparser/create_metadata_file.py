@@ -106,11 +106,11 @@ if facetsQC is not None:
     qc = pd.read_csv(facetsQC, sep="\t")
     ## create WGD column
     if sum(qc.wgd) > 0:
-    	results["WGD_status"] = [True]
+        results["WGD_status"] = [True]
     elif sum(qc.wgd == False) > 0:
-    	results["WGD_status"] = [False]
+        results["WGD_status"] = [False]
     else:
-    	results["WGD_status"] = ['NA']  ## hard-coding string NA, not NaN or None
+        results["WGD_status"] = ['NA']  ## hard-coding string NA, not NaN or None
 
 if MSIoutput is not None:
     ## parse MSIsensor output
@@ -171,13 +171,13 @@ if MAF_input is not None and coding_baits_BED is not None:
     ## IDT_Exome_v1_FP_b37_baits.bed, total_cds_size = 36.00458
     ## WGS, total_cds_size = 45.57229
     if "AgilentExon_51MB_b37" in coding_baits_BED:
-    	tmb = mutationNum/30.89918
+        tmb = mutationNum/30.89918
     elif "IDT_Exome_v1_FP_b37" in coding_baits_BED:
-    	tmb = mutationNum/36.00458
+        tmb = mutationNum/36.00458
     elif "b37_wgs_calling_regions" in coding_baits_BED:
-    	tmb = mutationNum/45.57229
+        tmb = mutationNum/45.57229
     else: 
-    	tmb = None ## this shouldn't happen
+        tmb = None ## this shouldn't happen
 
     results["Number_of_Mutations"] = len(maf.index)
     results['TMB']=[tmb]
