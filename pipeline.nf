@@ -32,8 +32,7 @@ Somatic Analysis
  - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small indel calling by default
  - SomaticCombineChannel --- combine and filter VCFs, bcftools
  - SomaticAnnotateMaf --- annotate MAF, vcf2maf
- - RunMutationSignatures_v2 --- mutational signatures (cosmic v2)
- - RunMutationSignatures_v3 --- mutational signatures (cosmic v3)
+ - RunMutationSignatures2 --- mutational signatures
  - DoFacets --- facets-suite: mafAnno.R, geneLevel.R, armLevel.R
  - RunPolysolver --- Polysolver
  - RunLOHHLA --- LOH in HLA
