@@ -1543,7 +1543,7 @@ process RunMutationSignatures {
   maf2cat2.R ${outputPrefix}.somatic.maf \
   ${outputPrefix}.trinucmat.txt
   head ${outputPrefix}.trinucmat.txt
-  tempoSig.R --cosmic_${param.cosmic} --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
+  tempoSig.R --cosmic_${params.cosmic} --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
   ${outputPrefix}.mutsig.txt
   """
 }
