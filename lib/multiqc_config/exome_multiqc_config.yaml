@@ -31,6 +31,18 @@ custom_data:
                 hidden: False
             - Concordance:
                 hidden: False
+    genstats_paired_coverage:
+        plot_type: 'generalstats'
+        pconfig:
+            - Tumor_Coverage:
+                    description: "Coverage extracted from Qualimap for paired view"
+                    hidden: False
+            - Normal_Coverage:
+                    description: "Coverage extracted from Qualimap for paired view"
+                    hidden: False
+            - Coverage:
+                    description: "Coverage extracted from Qualimap"
+                    hidden: False
     mskcc_conpair:
         file_format: 'tsv'
         section_name: 'Conpair'
@@ -94,6 +106,8 @@ custom_data:
 sp:
     genstats_mskcc_conpair:
         fn: 'conpair_genstat.tsv'
+    genstats_paired_coverage:
+        fn: 'coverage_split.txt'
     mskcc_conpair:
         fn: 'conpair.tsv'
     alfredrg:
@@ -121,6 +135,30 @@ table_cond_formatting_rules:
             - s_eq: 'warn'
         fail:
             - s_eq: 'fail'
+    mqc-generalstats-genstats_paired_coverage-Tumor_Coverage:
+        pass:
+            - gt: 60
+            - eq: 60
+        warn:
+            - lt: 60
+        fail:
+            - lt: 45
+    mqc-generalstats-genstats_paired_coverage-Normal_Coverage:
+        pass:
+            - gt: 30
+            - eq: 30
+        warn:
+            - lt: 30
+        fail: 
+            - lt: 20
+    mqc-generalstats-genstats_paired_coverage-Coverage:
+        pass: 
+            - gt: 30
+            - eq: 30
+        warn:
+            - lt: 30
+        fail:
+            - lt: 30
     mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
         pass:
             - lt: 1
@@ -177,6 +215,14 @@ table_cond_formatting_rules:
             - lt: 30
         fail:
             - lt: 20
+    mqc-generalstats-qualimap-percentage_aligned:
+        pass:
+            - gt: 98
+            - eq: 98
+        warn:
+            - lt: 98
+        fail:
+            - lt: 85
     FOLD_ENRICHMENT:
         pass:
             - gt: 45
@@ -216,6 +262,11 @@ picard_config:
         - 50
 table_columns_visible:
     fastp: False
+    QualiMap:
+        general_error_rate: True
+        mean_coverage: False
+        median_coverage: False
+        30_x_pc: False
 report_section_order:
     criteria:
         order: 1000
