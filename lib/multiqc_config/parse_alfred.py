@@ -56,6 +56,7 @@ def main():
 		result["_".join(["CO",i])] = graphParser(files[i],i,"CO","Coverage","Count") 
 		result["_".join(["IS",i])] = graphParser(files[i],i,"IS","InsertSize","Count", addIDs=["Layout"])
 		result["_".join(["IC",i])] = graphParser(files[i],i,"IC",["Homopolymer","InDel"],"Count") #bargraph
+		result["_".join(["IC",i])] = defaultCPswitch(result["_".join(["OT",i])])
 		result["_".join(["OT",i])] = graphParser(files[i],i,"OT","Extension","OnTarget") #linegraph
 		result["_".join(["OT",i])] = addXCategory(result["_".join(["OT",i])])
 		result["_".join(["CM",i])] = graphParser(files[i],i,"CM","Chrom","ObsExpRatio") #scatter
@@ -92,6 +93,12 @@ def addPConfig(j,k,v):
 	except:
 		print("invalid object for adding pconfig")
 	finally: return j
+
+def showCPswitch(jObj, showSwitch=False):
+	return addPConfig(jObj,"cpswitch",showSwitch)
+
+def defaultCPswitch(jObj,on_by_default=False):
+	return addPConfig(jObj,"cpswitch_c_active",on_by_default)
 
 def addXPlotLine(jObj,value=1,color='#FF0000'):
 	return addPConfig(jObj,"xPlotLines",[{'color':color,'value':value}])
