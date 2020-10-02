@@ -69,7 +69,7 @@ def main():
 		result["_".join(["GC",i])] = graphParser(files[i],i,"GC","GCcontent","fractionOfReads",ignoreSamples=["Target","Reference"])
 		result["_".join(["CO",i])] = graphParser(files[i],i,"CO","Coverage","Count") 
 		result["_".join(["IS",i])] = graphParser(files[i],i,"IS","InsertSize","Count", addIDs=["Layout"])
-		result["_".join(["IC",i])] = graphParser(files[i],i,"IC",["Homopolymer","InDel"],"Fraction") #bargraph
+		result["_".join(["IC",i])] = graphParser(files[i],i,"IC",["Homopolymer","InDel"],"Count") #bargraph
 		result["_".join(["OT",i])] = graphParser(files[i],i,"OT","Extension","OnTarget") #linegraph
 		result["_".join(["OT",i])] = addXCategory(result["_".join(["OT",i])])
 		result["_".join(["CM",i])] = graphParser(files[i],i,"CM","Chrom","ObsExpRatio") #scatter
