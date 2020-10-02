@@ -31,20 +31,6 @@ lowerQuantile=.001
 
 chromosomes = [str(i) for i in range(1,23)] + ["X","Y","MT"]
 
-linegraph_base = {
-    "id": "custom_data_lineplot",
-    "section_name": "Custom JSON File", # goes into TOC also section header
-    "description": "This plot is a self-contained JSON file.", 
-    "plot_type": "linegraph",
-    "pconfig": {
-        "id": "custom_data_linegraph",
-        "title": "Output from my JSON file", # goes into plot image
-        "ylab": "Number of things"
-    },
-    "data": {
-    }
-}
-
 def usage():
 	parser = argparse.ArgumentParser(description='Search Lims according to Request ID or Sample ID')
 	parser.add_argument('--alfredfiles', dest='alfredFileList', metavar='XXXXX.tsv.gz', type=str, nargs='+', required=False,
