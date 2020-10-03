@@ -30,6 +30,7 @@ upperQuantile=.999
 lowerQuantile=.001
 
 chromosomes = [str(i) for i in range(1,23)] + ["X","Y","MT"]
+chromosomes = [str(i) for i in range(1,23)] + ["X","Y"]
 
 def usage():
 	parser = argparse.ArgumentParser(description='Search Lims according to Request ID or Sample ID')
@@ -56,7 +57,7 @@ def main():
 		result["_".join(["CO",i])] = graphParser(files[i],i,"CO","Coverage","Count") 
 		result["_".join(["IS",i])] = graphParser(files[i],i,"IS","InsertSize","Count", addIDs=["Layout"])
 		result["_".join(["IC",i])] = graphParser(files[i],i,"IC",["Homopolymer","InDel"],"Count") #bargraph
-		result["_".join(["IC",i])] = defaultCPswitch(result["_".join(["OT",i])])
+		result["_".join(["IC",i])] = defaultCPswitch(result["_".join(["IC",i])])
 		result["_".join(["OT",i])] = graphParser(files[i],i,"OT","Extension","OnTarget") #linegraph
 		result["_".join(["OT",i])] = addXCategory(result["_".join(["OT",i])])
 		result["_".join(["CM",i])] = graphParser(files[i],i,"CM","Chrom","ObsExpRatio") #scatter
@@ -139,7 +140,6 @@ def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
 
 def readFiles(listOfFiles,prefix):
 	df = pd.DataFrame()
-	print(listOfFiles)
 	for i in listOfFiles:
 		cmd = "zgrep ^{} {} | cut -f 2- ".format(prefix, i)
 		filterFile = os.popen(cmd).read()
