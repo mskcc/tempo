@@ -231,12 +231,6 @@ table_cond_formatting_rules:
             - lt: 45
         fail:
             - lt: 30
-    mqc-generalstats-picard-PCT_TARGET_BASES_50X:
-        pass:
-            - gt: 75
-            - eq: 75
-        warn:
-            - lt: 75
 
 table_cond_formatting_colours:
     - pass: '#5cb85c'
