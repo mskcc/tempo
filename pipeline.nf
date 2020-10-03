@@ -702,13 +702,15 @@ if (params.mapping) {
 if (params.bamMapping) {
   inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
 
-  bamPaths4MultiQC.map{idSample, target, bam, bai ->
-    [ idSample,target, bam.getParent() ]
-  }.set{ locateFastP4MultiQC}
+  if (runQC){
+    bamPaths4MultiQC.map{idSample, target, bam, bai ->
+      [ idSample,target, bam.getParent() ]
+    }.set{ locateFastP4MultiQC}
 
-locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
-    [idSample, file(bamFolder + "/fastp/*json")]
-  }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
+    locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
+      [idSample, file(bamFolder + "/fastp/*json")]
+    }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
+  } 
 }
 
 if (params.pairing) {
