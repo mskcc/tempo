@@ -140,10 +140,13 @@ def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
 
 def readFiles(listOfFiles,prefix):
 	df = pd.DataFrame()
-	for i in listOfFiles:
-		cmd = "zgrep ^{} {} | cut -f 2- ".format(prefix, i)
-		filterFile = os.popen(cmd).read()
-		df = pd.concat([df,pd.read_table(StringIO(filterFile), sep="\t", comment="#", header=0)], ignore_index=True)
+	cmd = "zgrep ^{} {}".format(prefix, " ".join(listOfFiles)) + " | cut -f 2- | sed '1!{/^Sample\\t/d;}'"
+	filterFile = os.popen(cmd).read()
+	df = pd.read_table(StringIO(filterFile), sep="\t", comment="#", header=0)
+	#for i in listOfFiles:
+	#	cmd = "zgrep ^{} {} | cut -f 2- ".format(prefix, i)
+	#	filterFile = os.popen(cmd).read()
+	#	df = pd.concat([df,pd.read_table(StringIO(filterFile), sep="\t", comment="#", header=0)], ignore_index=True)
 	return df
 
 
