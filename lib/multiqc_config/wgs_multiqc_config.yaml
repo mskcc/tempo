@@ -140,15 +140,15 @@ table_cond_formatting_rules:
             - gt: 60
             - eq: 60
         warn:
-            - lt: 60
+            - lt: 40
         fail:
-            - lt: 45
+            - lt: 40
     mqc-genstats_paired_coverage-Normal_Coverage:
         pass:
             - gt: 30
             - eq: 30
         warn:
-            - lt: 30
+            - lt: 20
         fail: 
             - lt: 20
     mqc-genstats_paired_coverage-Coverage:
@@ -156,9 +156,9 @@ table_cond_formatting_rules:
             - gt: 30
             - eq: 30
         warn:
-            - lt: 30
+            - lt: 20
         fail:
-            - lt: 30
+            - lt: 20
     mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
         pass:
             - lt: 1
