@@ -2658,7 +2658,7 @@ process SampleRunMultiQC {
   
   input:
     set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile), file(qualimapFolder) from sampleMetrics4MultiQC
-    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png"), file("parse_alfred.py") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo,file(multiqcWesConfig).getParent() + "/parse_alfred.py"])
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
     set idSample, file("*multiqc_report*.html"), path("*multiqc_data*.zip") into sample_multiqc_report
@@ -2672,7 +2672,7 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
-  python ./parse_alfred.py --alfredfiles *alfred*tsv.gz
+  parse_alfred.py --alfredfiles *alfred*tsv.gz
   mkdir -p ignoreFolder ; find . -maxdepth 1 \\( -name 'CO_ignore*mqc.json' -o -name 'IS_*mqc.json' -o -name 'GC_ignore*mqc.json' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
   echo -e "\\tCoverage" > coverage_split.txt
   cover=\$(grep -i "mean cover" ./${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
@@ -3615,7 +3615,7 @@ process CohortRunMultiQC {
 
   input:
     set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal) from inputCohortRunMultiQC
-    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png"), file("parse_alfred.py") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo,file(multiqcWesConfig).getParent() + "/parse_alfred.py"])
+    set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
     set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
@@ -3645,7 +3645,7 @@ process CohortRunMultiQC {
   join -1 2 -2 1 -o 1.1,1.2,1.3,2.2 -t \$'\\t' <(join -1 1 -2 1 -t \$'\\t' <(cut -f2,3 conpair_genstat.tsv | tail -n +2 | sort | uniq) <(cat flatCoverage | sort | uniq)) <(cat flatCoverage | sort | uniq) | cut -f 1,3,4 >> coverage_split.txt
   join -1 1 -2 1 -t \$'\\t' <(cut -f 3 conpair_genstat.tsv | sort | uniq | sed "s/\$/\\t/g" ) <(cat flatCoverage | sort | uniq) >> coverage_split.txt
   
-  python ./parse_alfred.py --alfredfiles *alfred*tsv.gz
+  parse_alfred.py --alfredfiles *alfred*tsv.gz
   mkdir -p ignoreFolder ; find . -maxdepth 1 \\( -name 'CO_ignore*mqc.json' -o -name 'IS_*mqc.json' -o -name 'GC_ignore*mqc.json' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
   mv conpair.tsv ignoreFolder
 
