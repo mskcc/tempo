@@ -2875,16 +2875,17 @@ process SomaticRunMultiQC {
   done
 
   head -1 ${facetsQCFiles} | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> ${facetsQCFiles}.qc.txt
-  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 >> ${facetsQCFiles}.qc.txt
+  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 | sed "s/TRUE/PASS/3" | sed "s/FALSE/FAIL/3" >> ${facetsQCFiles}.qc.txt
 
   cp conpair.tsv conpair_genstat.tsv
+  mkdir -p ignoreFolder ; mv conpair.tsv ignoreFolder
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
   
-  multiqc .
+  multiqc . -x ignoreFolder
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z
+  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z -x ignoreFolder
 
   """
 
@@ -3646,10 +3647,11 @@ process CohortRunMultiQC {
   
   python ./parse_alfred.py --alfredfiles *alfred*tsv.gz
   mkdir -p ignoreFolder ; find . -maxdepth 1 \\( -name 'CO_ignore*mqc.json' -o -name 'IS_*mqc.json' -o -name 'GC_ignore*mqc.json' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
+  mv conpair.tsv ignoreFolder
 
   for i in *.facets_qc.txt ; do 
     head -1 \$i | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> \$i.qc.txt
-    tail -n +2 \$i | cut -f 1,28,97 >> \$i.qc.txt
+    tail -n +2 \$i | cut -f 1,28,97 | sed "s/TRUE/PASS/3" | sed "s/FALSE/FAIL/3" >> \$i.qc.txt
   done
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml

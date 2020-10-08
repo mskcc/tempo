@@ -158,7 +158,7 @@ table_cond_formatting_rules:
         warn:
             - lt: 30
         fail:
-            - lt: 30
+            - lt: 20
     mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
         pass:
             - lt: 1
