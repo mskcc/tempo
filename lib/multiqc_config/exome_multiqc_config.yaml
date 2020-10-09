@@ -142,7 +142,7 @@ table_cond_formatting_rules:
         warn:
             - lt: 60
         fail:
-            - lt: 45
+            - lt: 40
     mqc-generalstats-genstats_paired_coverage-Normal_Coverage:
         pass:
             - gt: 30
@@ -161,20 +161,20 @@ table_cond_formatting_rules:
             - lt: 20
     mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 2
+            - eq: 2
         warn:
-            - gt: 1
+            - gt: 2
         fail:
             - gt: 5
     mqc-generalstats-genstats_mskcc_conpair-Normal_Contamination:
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 15
+            - eq: 15
         warn:
-            - gt: 1
+            - gt: 15
         fail:
-            - gt: 5
+            - gt: 20
     mqc-generalstats-genstats_mskcc_conpair-Concordance:
         pass:
             - gt: 90
@@ -182,23 +182,23 @@ table_cond_formatting_rules:
         warn:
             - lt: 90
         fail:
-            - lt: 75  
+            - lt: 50  
     Tumor_Contamination: 
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 2
+            - eq: 2
         warn:
-            - gt: 1
+            - gt: 2
         fail:
             - gt: 5
     Normal_Contamination:
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 15
+            - eq: 15
         warn:
-            - gt: 1
+            - gt: 15
         fail:
-            - gt: 5
+            - gt: 20
     Concordance:
         pass:
             - gt: 90
@@ -206,30 +206,26 @@ table_cond_formatting_rules:
         warn:
             - lt: 90
         fail:
-            - lt: 75  
+            - lt: 50  
     mqc-generalstats-picard-FOLD_ENRICHMENT:
         pass:
             - gt: 30
             - eq: 30
         warn:
             - lt: 30
-        fail:
-            - lt: 20
     mqc-generalstats-qualimap-percentage_aligned:
         pass:
-            - gt: 98
-            - eq: 98
+            - gt: 97
+            - eq: 97
         warn:
-            - lt: 98
+            - lt: 97
         fail:
-            - lt: 85
+            - lt: 60
     FOLD_ENRICHMENT:
         pass:
-            - gt: 45
-            - eq: 45
+            - gt: 30
+            - eq: 30
         warn:
-            - lt: 45
-        fail:
             - lt: 30
 
 table_cond_formatting_colours:
