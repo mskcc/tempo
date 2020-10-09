@@ -3714,7 +3714,7 @@ process CohortRunMultiQC {
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
-  picardMetricsNum=`find . -type f \\( -name "*.hs_metrics.txt" -o -name "*.wgs_metrics.txt" \\) | wc -l`
+  picardMetricsNum=`find . \\( -name "*.hs_metrics.txt" -o -name "*.wgs_metrics.txt" \\) | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`
   mqcSampleNum=\$((picardMetricsNum + fastpNum ))
   
