@@ -632,7 +632,7 @@ if (params.mapping) {
       ])
 
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectPicardMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
       set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
       file("file-size.txt") into bamSize
 
@@ -700,7 +700,7 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectPicardMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
 
   bamPaths4MultiQC.map{idSample, target, bam, bai ->
     [ idSample,target, bam.getParent() ]
@@ -2489,6 +2489,8 @@ process GermlineMergeDellyAndManta {
 */
 
 if (runQC) {
+
+if (params.assayType == "exome"){
 // GATK CollectHsMetrics, WES only
 process QcCollectHsMetrics {
   tag {idSample}
@@ -2496,7 +2498,7 @@ process QcCollectHsMetrics {
   publishDir "${outDir}/bams/${idSample}/collecthsmetrics", mode: params.publishDirMode
 
   input:
-    set idSample, target, file(bam), file(bai) from bamsBQSR4CollectHsMetrics
+    set idSample, target, file(bam), file(bai) from bamsBQSR4CollectPicardMetrics
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -2506,10 +2508,8 @@ process QcCollectHsMetrics {
     ])
 
   output:
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
-
-  when: params.assayType == "exome" && runQC
+    set idSample, file("${idSample}.hs_metrics.txt") into collectPicardMetricsOutput
+    set idSample, file("${idSample}.hs_metrics.txt") into collectPicardMetrics4Aggregate
 
   script:
   if (workflow.profile == "juno") {
@@ -2550,6 +2550,52 @@ process QcCollectHsMetrics {
   """
 }
 
+} else{
+// GATK CollectWgsMetrics, WGS only
+process QcCollectWgsMetrics {
+  tag {idSample}
+
+  publishDir "${outDir}/bams/${idSample}/collectwgsmetrics", mode: params.publishDirMode
+
+  input:
+    set idSample, target, file(bam), file(bai) from bamsBQSR4CollectPicardMetrics
+    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+    ])
+    
+  output:
+    set idSample, file("${idSample}.wgs_metrics.txt") into collectPicardMetricsOutput
+    set idSample, file("${idSample}.wgs_metrics.txt") into collectPicardMetrics4Aggregate
+
+  when: params.assayType == "genome" && runQC
+
+  script:
+  if (workflow.profile == "juno") {
+    if (bam.size() > 200.GB) {
+      task.time = { params.maxWallTime }
+    }
+    else if (bam.size() < 100.GB) {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+    }
+    else {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+    }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+  }
+
+  memMultiplier = params.mem_per_core ? task.cpus : 1
+  javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
+
+  """
+  gatk CollectWgsMetrics \
+    ${javaOptions} \
+    --TMP_DIR ./ \
+    --INPUT ${bam} \
+    --OUTPUT ${idSample}.wgs_metrics.txt \
+    --REFERENCE_SEQUENCE ${genomeFile} 
+  """
+}
+}
 // Alfred, BAM QC
 
 process QcQualimap {
@@ -2644,7 +2690,7 @@ process QcAlfred {
 alfredOutput
   .groupTuple(size:2, by:0)
   .join(fastPJson4sampleMultiQC, by:0)
-  .join(collectHsMetricsOutput, by:0)
+  .join(collectPicardMetricsOutput, by:0)
   .join(qualimap4MultiQC, by:0)
   .set{sampleMetrics4MultiQC}
 
@@ -2655,7 +2701,7 @@ process SampleRunMultiQC {
   publishDir "${outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile), file(qualimapFolder) from sampleMetrics4MultiQC
+    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(picardmetricsFile), file(qualimapFolder) from sampleMetrics4MultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -3009,8 +3055,8 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
       qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}/")]
       qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}/")]
-		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
-		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
+		  picardMetricsTumor: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.wgs_metrics.txt")]
+		  picardMetricsNormal: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.wgs_metrics.txt")]
       fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
       fastpNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.fastp.json")]
                 }
@@ -3034,7 +3080,7 @@ if ( !params.mapping && !params.bamMapping ){
   inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   inputQualimap4CohortMultiQC = aggregateList.qualimapTumor.unique().combine(aggregateList.qualimapNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
-  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+  inputPicardMetrics = aggregateList.picardMetricsTumor.unique().combine(aggregateList.picardMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
   aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
   aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
@@ -3173,18 +3219,18 @@ else if(!(runAggregate == false)) {
   		   .set{alfredIgnoreN}
   
   
-  inputPairing3.combine(collectHsMetrics4Aggregate)
+  inputPairing3.combine(collectPicardMetrics4Aggregate)
   	     .branch { item ->
   		def idTumor = item[0]
   		def idNormal = item[1]
   		def idSample = item[2]
-  		def hsMetrics = item[3]
+  		def picardMetrics = item[3]
   
   		tumor: idSample == idTumor
   		normal: idSample == idNormal
   	    }
-  	    .set{hsMetrics}
-  hsMetrics.tumor.combine(hsMetrics.normal, by:[0,1])
+  	    .set{picardMetrics}
+  picardMetrics.tumor.combine(picardMetrics.normal, by:[0,1])
   	       .combine(cohortQcBamAggregate2.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
   	       .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
   	       .groupTuple(by:[0])
@@ -3198,7 +3244,7 @@ else if(!(runAggregate == false)) {
 		    [cohort, fileTumor, fileNormal]
   	       }
   	       .unique()
-  	       .set{hsMetrics}
+  	       .set{picardMetrics}
   inputPairing4.combine(fastPJson4cohortMultiQC)
          .branch { item ->
       def idTumor = item[0]
@@ -3244,7 +3290,7 @@ else if(!(runAggregate == false)) {
 
   inputAlfredIgnoreY = alfredIgnoreY
   inputAlfredIgnoreN = alfredIgnoreN
-  inputHsMetrics = hsMetrics
+  inputPicardMetrics = picardMetrics
   inputFastP4MultiQC = fastPMetrics
   if (pairingQc){
   cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
@@ -3538,12 +3584,12 @@ process GermlineAggregateSv {
 
 if (runAggregate && runQC) {
 
-inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
+inputPicardMetrics.into{inputPicardMetrics; inputPicardMetrics4MultiQC}
 inputAlfredIgnoreY.into{inputAlfredIgnoreY; inputAlfredIgnoreY4MultiQC }
 inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
 
 inputAlfredIgnoreY.join(inputAlfredIgnoreN)
-		  .join(inputHsMetrics)
+		  .join(inputPicardMetrics)
 		  .set{inputQcBamAggregate}
 
 process QcBamAggregate {
@@ -3553,7 +3599,7 @@ process QcBamAggregate {
   publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNoraml), file(alfredIgnoreNTumor), file(alfredIgnoreNNoraml), file(hsMetricsTumor), file(hsMetricsNoraml) from inputQcBamAggregate
+    set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(hsMetricsTumor), file(hsMetricsNormal) from inputQcBamAggregate
 
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
@@ -3605,7 +3651,7 @@ process QcConpairAggregate {
   """
 }
 
-inputHsMetrics4MultiQC
+inputPicardMetrics4MultiQC
   .join(inputFastP4MultiQC,by:0)
   .join(inputAlfredIgnoreY4MultiQC,by:0)
   .join(inputAlfredIgnoreN4MultiQC,by:0)
@@ -3622,7 +3668,7 @@ process CohortRunMultiQC {
   publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal) from inputCohortRunMultiQC
+    set cohort, file(picardMetricsTumor), file(picardMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal) from inputCohortRunMultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -3668,15 +3714,15 @@ process CohortRunMultiQC {
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
-  hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
+  picardMetricsNum=`find . -type f \\( -name "*.hs_metrics.txt" -o -name "*.wgs_metrics.txt" \\) | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`
-  mqcSampleNum=\$((hsMetricsNum + fastpNum ))
+  mqcSampleNum=\$((picardMetricsNum + fastpNum ))
   
   multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))"
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  if [ \$hsMetricsNum -gt 50 ] ; then 
+  if [ \$picardMetricsNum -gt 50 ] ; then 
     cp genstats-QC_Status.txt QC_Status.txt
     beeswarm_config="max_table_rows: \${mqcSampleNum}"
   else

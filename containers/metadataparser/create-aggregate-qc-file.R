@@ -5,7 +5,7 @@
 ## contributor = Evan Biederstedt, evan.biederstedt@gmail.com, 2019 ; Anne Marie Noronha, noronhaa@mskcc.org, 2020
 
 ## email   = jonssonp@mskcc.org, evan.biederstedt@gmail.com, noronhaa@mskcc.org
-## version = 0.2.1
+## version = 0.2.2
 ## status  = Dev
 
 suppressPackageStartupMessages({
@@ -14,12 +14,13 @@ suppressPackageStartupMessages({
     library(argparse)
 })
 
-args = commandArgs(TRUE)
+#args = commandArgs(TRUE)
 
-if (is.null(args) | length(args)<1) {
-    message('Usage: create-aggregate-qc-file.R assay\n')
-    quit()
-}
+#if (is.null(args) | length(args)<1) {
+#    message('Usage: create-aggregate-qc-file.R assay\n')
+#    quit()
+#} 
+## default values now exist for each argument. error message is no longer necessary.
 
 parser = ArgumentParser(description = 'Aggregate QC metrics across samples')
 parser$add_argument('-n', '--num-cores', type = 'integer', required = TRUE, default = 1,
@@ -69,6 +70,17 @@ read_hs_metrics = function(file) {
     return(input_file)
 }
 
+read_wgs_metrics = function(file) {
+    input_file = fread(cmd = paste('grep -A2 \"## METRICS\"', file, '| tail -n +2')) 
+    input_file[, Sample := gsub('.wgs_metrics.txt', '', file)]
+    input_file = input_file[,c("Sample","MEAN_COVERAGE","SD_COVERAGE","MEDIAN_COVERAGE","PCT_EXC_TOTAL","PCT_1X","PCT_10X","PCT_20X","PCT_50X","PCT_100X")]
+    
+    setnames(input_file, 
+        old = c("Sample","MEAN_COVERAGE","SD_COVERAGE",               "MEDIAN_COVERAGE","PCT_EXC_TOTAL",        "PCT_1X","PCT_10X","PCT_20X","PCT_50X","PCT_100X"), 
+        new = c("Sample","MeanCoverage", "StandardDeviationOfCoverage","MedianCoverage","FractionExcludedBases","FractionBases1X","FractionBases10X","FractionBases20X","FractionBases50X","FractionBases100X"))
+
+    return(input_file)
+}
 
 ## Execute in run directory ----------------------------------------------------------------------------------------
 
@@ -91,6 +103,14 @@ if (!interactive()) {
         setkey(outMatrix, Sample)
         setkey(hs_metrics_out, Sample)
         outMatrix = as.data.table(merge(outMatrix, hs_metrics_out, by = 'Sample'))
+        outMatrix[, MedianCoverage:=NULL]
+    } else if (assay_type == 'wgs'){
+        wgs_metrics_files = dir(getwd(), pattern = '*.wgs_metrics.txt$')
+        wgs_metrics_out = mclapply(wgs_metrics_files, read_wgs_metrics, mc.cores = num_cores) 
+        wgs_metrics_out = as.data.table(rbindlist(wgs_metrics_out, fill=TRUE))   ## same as do.call('rbind', ... )
+        setkey(outMatrix, Sample)
+        setkey(hs_metrics_out, Sample)
+        outMatrix = as.data.table(merge(outMatrix, wgs_metrics_out, by = 'Sample'))
         outMatrix[, MedianCoverage:=NULL]
     }
     
