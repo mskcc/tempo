@@ -80,6 +80,9 @@ custom_data:
             id: 'qcstatus_pf'
             namespace: 'QC_status_pass_filter'
     facets_qc:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets QC'
         description: 'Results from Facets QC'
@@ -88,6 +91,9 @@ custom_data:
             id: 'facets_qc'
             namespace: 'facets_qc'
     facets_summary:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets Run Summary'
         description: 'Results from Facets'
@@ -227,6 +233,15 @@ table_cond_formatting_rules:
             - eq: 30
         warn:
             - lt: 30
+    mqc-generalstats-custom_content-DuplicateFraction:
+        pass:
+            - lt: 55
+            - eq: 55
+        warn:
+            - gt: 55
+        fail: 
+            - gt: 75
+
 
 table_cond_formatting_colours:
     - pass: '#5cb85c'
@@ -262,3 +277,21 @@ report_section_order:
         order: 1000
     QCStatus:
         order: 1010
+    Alfred_IZ_aware:
+        after: "Alfred_IZ_ignore"
+    Alfred_BQ_aware:
+        after: "Alfred_BQ_ignore"
+    Alfred_MQ_aware:
+        after: "Alfred_MQ_ignore"
+    Alfred_GC_aware:
+        after: "Alfred_GC_ignore"
+    Alfred_CO_aware:
+        after: "Alfred_CO_ignore"
+    Alfred_IS_aware:
+        after: "Alfred_IS_ignore"
+    Alfred_IC_aware:
+        after: "Alfred_IC_ignore"
+    Alfred_OT_aware:
+        after: "Alfred_OT_ignore"
+    Alfred_CM_aware:
+        after: "Alfred_CM_ignore"
