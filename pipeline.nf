@@ -885,7 +885,7 @@ agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; }
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA }
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -3563,7 +3563,7 @@ inputAlfredIgnoreY.join(inputAlfredIgnoreN)
 } else {
   inputAlfredIgnoreY.join(inputAlfredIgnoreN)
       .map{ cohort, alfredIgnoreYTumor,alfredIgnoreYNormal,alfredIgnoreNTumor,alfredIgnoreNNormal -> 
-        [cohort, alfredIgnoreYTumor,alfredIgnoreYNormal,alfredIgnoreNTumor,alfredIgnoreNNormal, ""]
+        [cohort, alfredIgnoreYTumor,alfredIgnoreYNormal,alfredIgnoreNTumor,alfredIgnoreNNormal, "", ""]
       }.set{inputQcBamAggregate}
 }
 
@@ -3660,7 +3660,7 @@ process CohortRunMultiQC {
   output:
     set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
 
-  when: runQC && params.assayType == "exome"
+  when: runQC 
 
   script:
   if (params.assayType == "exome") {
@@ -3700,15 +3700,15 @@ process CohortRunMultiQC {
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
-  hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
+  samplesNum=`for i in ./*contamination.txt ; do tail -n +2 \$i | cut -f 2 ; done | sort | uniq | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`
-  mqcSampleNum=\$((hsMetricsNum + fastpNum ))
+  mqcSampleNum=\$((samplesNum + fastpNum ))
   
   multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))"
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  if [ \$hsMetricsNum -gt 50 ] ; then 
+  if [ \$samplesNum -gt 50 ] ; then 
     cp genstats-QC_Status.txt QC_Status.txt
     beeswarm_config="max_table_rows: \${mqcSampleNum}"
   else
