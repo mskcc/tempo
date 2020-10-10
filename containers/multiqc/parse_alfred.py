@@ -69,6 +69,7 @@ def main():
 		result["_".join(["OT",i])] = addXCategory(result["_".join(["OT",i])])
 		result["_".join(["CM",i])] = graphParser(files[i],i,"CM","Chrom","ObsExpRatio") #scatter
 		result["_".join(["CM",i])] = addYPlotLine(addXCategory(result["_".join(["CM",i])]))
+		result["_".join(["ME",i])] = MEParser(files[i],i) # generalstats
 
 		printJSON("_".join(["IZ",i]),addTextLabels(result["_".join(["IZ",i])],i,"IZ","InDel Size","InDel Size by InDel type (INS or DEL)"))
 		printJSON("_".join(["BQ",i]),addTextLabels(result["_".join(["BQ",i])],i,"BQ","Base Quality", "Base Quality by position in each read: Read1 and Read2"))
@@ -79,6 +80,7 @@ def main():
 		printJSON("_".join(["IC",i]),addTextLabels(result["_".join(["IC",i])],i,"IC","Homopolymer distribution","Homopolymer distribution by InDel type (INS or DEL)","bargraph"))
 		printJSON("_".join(["OT",i]),addTextLabels(result["_".join(["OT",i])],i,"OT","On-Target rate","On-Target rate"))
 		printJSON("_".join(["CM",i]),addTextLabels(result["_".join(["CM",i])],i,"CM","Chromosome Mapping","Observed vs expected ratio of mapping per chromosome, with y=1 plotted as a red line. Unplaced contigs ignored"))		
+		printJSON("_".join(["ME",i]),result["_".join(["ME",i])])		
 
 
 def printJSON(label,jsonObj):
@@ -137,6 +139,9 @@ def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
 		ret_json["pconfig"]["id"] = sectionid + "_plot"
 		ret_json["plot_type"] = plot_type
 		ret_json["section_name"] = "Alfred " + title + " RG-" + RG
+		ret_json["parent_id"] = "Alfred_QC_stats"
+		ret_json["parent_name"] = 'Alfred QC'
+		ret_json["parent_description"] = "Stats produced by <a href=\"https://www.gear-genomics.com/docs/alfred/\">AlfredQC</a> "
 	except: 
 		
 		print("Something went wrong")
@@ -149,7 +154,7 @@ def readFiles(listOfFiles,prefix):
 	df = pd.DataFrame()
 	cmd = "zgrep ^{} {}".format(prefix, " ".join(listOfFiles)) + " | cut -f 2- | sed '1!{/^Sample\\t/d;}'"
 	filterFile = os.popen(cmd).read()
-	df = pd.read_table(StringIO(filterFile), sep="\t", comment="#", header=0)
+	df = pd.read_table(StringIO(filterFile), sep="\t", header=0)
 	#for i in listOfFiles:
 	#	cmd = "zgrep ^{} {} | cut -f 2- ".format(prefix, i)
 	#	filterFile = os.popen(cmd).read()
@@ -230,6 +235,23 @@ def CMParser(listOfFiles,RG,prefix,x="Chrom",y="ObsExpRatio",addIDs=None,ignoreS
 		return {"pconfig":{"xlab":xlab,"ylab":ylab,"xDecimals":False},"data":ret_json}
 	else: return None
 
+def MEParser(listOfFiles,RG,keepCols=["DuplicateFraction"]):
+	ret_json = dict()
+	try:
+		df = readFiles(listOfFiles,"ME")
+		#df = df.filter(items=["Sample"].extend(keepCols))
+		df = df.rename(columns={i:i.replace("#","Num") for i in list(df) if "#" in i})
+	except:
+		print("unable to read ME lines")
+	for index, row in df.iterrows():
+		print(row["Sample"])
+		print(row["Library"])
+		if RG == "aware": 
+			libraryID = "@".join([row["Sample"], row["Library"]])
+		else:
+			libraryID = row["Sample"]
+		ret_json[libraryID] = { i:row[i] for i in list(df) if i not in ["Sample","Library"]} 
+	return {"plot_type":"generalstats","pconfig":[{i:{"description": i + " extracted from Alfred QC", "hidden":not i in keepCols}} for i in list(df) if i not in ["Sample","Library"]],"data":ret_json}
 
 
 if __name__ == "__main__":
