@@ -187,6 +187,11 @@ else {
   }
 }
 
+if (!(params.cosmic in ['v2', 'v3'])) {
+  println "ERROR: Possible values of mutational signature reference --cosmic is 'v2', 'v3'"
+  exit 1
+}
+
 referenceMap = defineReferenceMap()
 
 /*
@@ -1536,7 +1541,7 @@ process RunMutationSignatures {
   """
   maf2cat2.R ${outputPrefix}.somatic.maf \
   ${outputPrefix}.trinucmat.txt
-  tempoSig.R --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
+  tempoSig.R --cosmic_${params.cosmic} --pvalue --nperm 10000 --seed 132 ${outputPrefix}.trinucmat.txt \
   ${outputPrefix}.mutsig.txt
   """
 }
