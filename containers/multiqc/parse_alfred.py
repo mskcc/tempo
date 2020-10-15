@@ -14,29 +14,10 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
-alfred_prefix={"Coverage":"CO",
-	       "Mapping Quality":"MQ",
-	       "Read Length":"RL",
-	       "Base Qualities":"BQ",
-	       "Base Content":"BC",
-	       "Insert Size":"IS",
-	       "InDel Context":"IC",
-	       "Chromosome GC-content":"CG",
-	       "Avg. target coverage":"TC",
-	       "On target rate":"OT",
-	       "Alignment summary metrics":"ME",
-	       "Chromosome mapping statistics":"CM",
-	       "InDel size":"IZ",
-	       "GC-content":"GC"
-}
-
-graphtype={ i:"linegraph" for i in alfred_prefix}
-graphtype["Alignment summary metrics"] = "table"
-
 upperQuantile=.999
 lowerQuantile=.001
 
-chromosomes = [str(i) for i in range(1,23)] + ["X","Y","MT"]
+#chromosomes = [str(i) for i in range(1,23)] + ["X","Y","MT"]
 chromosomes = [str(i) for i in range(1,23)] + ["X","Y"]
 
 def usage():
@@ -135,10 +116,10 @@ def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
 		if RG == "aware":
 			ret_json["description"] = ret_json["description"] + " Showing results per read-group."
 		ret_json["id"] = sectionid
-		ret_json["pconfig"]["title"] = "Alfred " + title + " Read-group-" + RG
+		ret_json["pconfig"]["title"] = title + " Read-group-" + RG
 		ret_json["pconfig"]["id"] = sectionid + "_plot"
 		ret_json["plot_type"] = plot_type
-		ret_json["section_name"] = "Alfred " + title + " RG-" + RG
+		ret_json["section_name"] = title + " read-group-" + RG
 		ret_json["parent_id"] = "Alfred_QC_stats"
 		ret_json["parent_name"] = 'Alfred QC'
 		ret_json["parent_description"] = "Stats produced by <a href=\"https://www.gear-genomics.com/docs/alfred/\">AlfredQC</a> "
@@ -155,10 +136,6 @@ def readFiles(listOfFiles,prefix):
 	cmd = "zgrep ^{} {}".format(prefix, " ".join(listOfFiles)) + " | cut -f 2- | sed '1!{/^Sample\\t/d;}'"
 	filterFile = os.popen(cmd).read()
 	df = pd.read_table(StringIO(filterFile), sep="\t", header=0)
-	#for i in listOfFiles:
-	#	cmd = "zgrep ^{} {} | cut -f 2- ".format(prefix, i)
-	#	filterFile = os.popen(cmd).read()
-	#	df = pd.concat([df,pd.read_table(StringIO(filterFile), sep="\t", comment="#", header=0)], ignore_index=True)
 	return df
 
 
