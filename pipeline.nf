@@ -2875,7 +2875,7 @@ process SomaticRunMultiQC {
   done
 
   head -1 ${facetsQCFiles} | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> ${facetsQCFiles}.qc.txt
-  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 | sed "s/TRUE/PASS/3" | sed "s/FALSE/FAIL/3" >> ${facetsQCFiles}.qc.txt
+  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 | sed "s/TRUE\$/PASS/g" | sed "s/FALSE\$/FAIL/g" >> ${facetsQCFiles}.qc.txt
 
   cp conpair.tsv conpair_genstat.tsv
   mkdir -p ignoreFolder ; mv conpair.tsv ignoreFolder
@@ -3651,7 +3651,7 @@ process CohortRunMultiQC {
 
   for i in *.facets_qc.txt ; do 
     head -1 \$i | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> \$i.qc.txt
-    tail -n +2 \$i | cut -f 1,28,97 | sed "s/TRUE/PASS/3" | sed "s/FALSE/FAIL/3" >> \$i.qc.txt
+    tail -n +2 \$i | cut -f 1,28,97 | sed "s/TRUE\$/PASS/g" | sed "s/FALSE\$/FAIL/g" >> \$i.qc.txt
   done
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml

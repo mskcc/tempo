@@ -105,7 +105,7 @@ def addYLog(jObj):
 
 def addXCategory(jObj):
 	return addPConfig(jObj,"categories",True)
-		
+
 def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
 	ret_json = base
 	try:
@@ -217,6 +217,7 @@ def MEParser(listOfFiles,RG,keepCols=["DuplicateFraction"]):
 	try:
 		df = readFiles(listOfFiles,"ME")
 		#df = df.filter(items=["Sample"].extend(keepCols))
+		colPercents = [i for i in list(df) if "Fraction" in i or "Rate" in i ]
 		df = df.rename(columns={i:i.replace("#","Num") for i in list(df) if "#" in i})
 	except:
 		print("unable to read ME lines")
@@ -227,8 +228,8 @@ def MEParser(listOfFiles,RG,keepCols=["DuplicateFraction"]):
 			libraryID = "@".join([row["Sample"], row["Library"]])
 		else:
 			libraryID = row["Sample"]
-		ret_json[libraryID] = { i:row[i] for i in list(df) if i not in ["Sample","Library"]} 
-	return {"plot_type":"generalstats","pconfig":[{i:{"description": i + " extracted from Alfred QC", "hidden":not i in keepCols}} for i in list(df) if i not in ["Sample","Library"]],"data":ret_json}
+		ret_json[libraryID] = { i:row[i]*100 if i in colPercents else row[i] for i in set(list(df)) - {"Sample","Library"} } 
+	return {"plot_type":"generalstats","pconfig":[{i:{"suffix":"%" if i in colPercents else "" , "description": i + " extracted from Alfred QC", "hidden":not i in keepCols}} for i in list(df) if i not in ["Sample","Library"]],"data":ret_json}
 
 
 if __name__ == "__main__":

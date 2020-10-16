@@ -37,18 +37,21 @@ def main():
     genStats = genStats.rename(columns=lambda x: re.sub('\w*_mqc-generalstats','mqc-generalstats',x) )
 
     simpleNames = {}
+    suffixDictionary = {}
     for i in jsonData['report_general_stats_headers']:
         for j in i:
             simpleNames[i[j]['rid']] = j
             if 'suffix' in i[j]:
+                suffixDictionary[i[j]['rid']] = i[j]['suffix']
                 if i[j]['suffix'] == "%":
                     if i[j]['rid']in list(genStats):
                         genStats[i[j]['rid']] = genStats[i[j]['rid']] * 100
+            else: suffixDictionary[i[j]['rid']] = ""
 
     print(list(genStats))
 
     print(configData["table_cond_formatting_rules"])
-    criteriaTab = genCriteriaTable(configData["table_cond_formatting_rules"])
+    criteriaTab = genCriteriaTable(configData["table_cond_formatting_rules"], suffixDictionary)
     criteriaTab = criteriaTab.filter(like="mqc-generalstats", axis = 0)
     criteriaTab = criteriaTab.filter(list(genStats), axis=0)
     criteriaTab["metric"] = [simpleNames[i] if i in simpleNames else i for i in criteriaTab.index ]
@@ -116,7 +119,7 @@ def assessDataPoint(dataPoint,PF_metrics):
             return p
     return "pass"
 
-def genCriteriaTable(criteriaJson):
+def genCriteriaTable(criteriaJson,suffixDictionary):
     tab = pd.DataFrame(columns=["pass","warn","fail"])
     for i in criteriaJson: # column name
         status = {}
@@ -134,8 +137,12 @@ def genCriteriaTable(criteriaJson):
                         exprs += ["> {}".format(k[l])]
                     else: 
                         exprs += ["< {}".format(k[l])]
+            if suffixDictionary.get(i,"")!= "":
+                exprs += [suffixDictionary[i]]
             status[j] = " or ".join(exprs)
         tab = tab.append(pd.Series(status, name=i))
+    #percentTab = pd.DataFrame({"Is_Percent":[True]}, index=percentMetrics)
+    #tab = tab.merge(percentTab,how="left",left_index=True, right_index=True).fillna(value={"Is_Percent":False})
     return tab
 
 if __name__ == "__main__":
