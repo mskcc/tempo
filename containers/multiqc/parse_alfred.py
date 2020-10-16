@@ -5,7 +5,7 @@ __contributor__  = ""
 __email__        = "noronhaa@mskcc.org"
 __version__      = "0.0.1"
 
-import json, os
+import json, os, yaml
 import pandas as pd
 from pandas.io.json import json_normalize
 import sys, argparse
@@ -65,7 +65,8 @@ def main():
 
 
 def printJSON(label,jsonObj):
-	fname = label + '_mqc.json'
+	#fname = label + '_mqc.json'
+	fname = label + '_mqc.yaml'
 	def invalidResult():
 		print("No data for label " + label)
 		if os.path.exists(fname):
@@ -73,7 +74,8 @@ def printJSON(label,jsonObj):
 	if jsonObj:
 		if len(jsonObj) > 0:
 			with open(fname, 'w') as outfile:
-				json.dump(jsonObj, outfile, indent=0)
+				#json.dump(jsonObj, outfile, indent=0)
+				yaml.dump(jsonObj, outfile, indent=0)
 			outfile.close()
 		else: invalidResult()
 	else: invalidResult()
@@ -167,52 +169,18 @@ def graphParser(listOfFiles,RG,prefix,x,y,addIDs=None,ignoreSamples=[],applyQuan
 		libraryID= "@".join(idLabels)
 		if libraryID not in ret_json:
 			ret_json[libraryID] = dict()
-		ret_json[libraryID][str(row[xlab])] = row[ylab]
+		#ret_json[libraryID][str(row[xlab])] = row[ylab]
+		ret_json[libraryID][row[xlab]] = row[ylab]
 	j = list(ret_json.keys())
 	for i in j:
 		if len(ret_json[i]) == 0 or set(ret_json[i].values()) == {0}:
 			ret_json.pop(i)
 	if (len(ret_json) > 0):
-		return {"pconfig":{"xlab":xlab,"ylab":ylab,"xDecimals":False},"data":ret_json}
-	else: return None
-
-def CMParser(listOfFiles,RG,prefix,x="Chrom",y="ObsExpRatio",addIDs=None,ignoreSamples=[],applyQuantiles=True):
-	if len(listOfFiles) < 1: return None 
-	ret_json = dict()
-	xlab = x 
-	ylab = y
-	df = readFiles(listOfFiles,prefix)
-	try:
-		df = df[~df["Sample"].isin(ignoreSamples) ]
-	except:
-		print("something went wrong while filtering sample column")
-		return None
-	try:
-		df = df[df["Chrom"].isin(chromosomes)]
-	except:
-		print("This file does not have Chrom info")
-		return None
-	if isinstance(x, list):
-		df["__".join(x)] = ["@".join(i) for i in zip(*[df[x[i]].map(str) for i in range(len(x))])]
-		xlab = "__".join(x)
-	for index, row in df.iterrows():
-		idLabels = [row["Sample"]]
-		if RG == "aware": idLabels = [row["Sample"], row["Library"]]
-		if addIDs: 
-			idLabels.extend([row[i] for i in addIDs])
-		libraryID= "@".join(idLabels)
-		if libraryID not in ret_json:
-			ret_json[libraryID] = dict()
-		ret_json[libraryID][str(row[xlab])] = row[ylab]
-	j = list(ret_json.keys())
-	for i in j:
-		if len(ret_json[i]) == 0 or set(ret_json[i].values()) == {0}:
-			ret_json.pop(i)
-	if (len(ret_json) > 0):
-		return {"pconfig":{"xlab":xlab,"ylab":ylab,"xDecimals":False},"data":ret_json}
+		return {"pconfig":{"xlab":xlab,"ylab":ylab},"data":ret_json}
 	else: return None
 
 def MEParser(listOfFiles,RG,keepCols=["DuplicateFraction"]):
+	if len(listOfFiles) < 1: return None 
 	ret_json = dict()
 	try:
 		df = readFiles(listOfFiles,"ME")
