@@ -40,7 +40,7 @@ def main():
 	for i in ["aware","ignore"]:
 		result["_".join(["IZ",i])] = graphParser(files[i],i,"IZ","Size","Count",addIDs=["InDel"])
 		result["_".join(["BQ",i])] = graphParser(files[i],i,"BQ","Position","BaseQual",addIDs=["Read"])
-		result["_".join(["MQ",i])] = graphParser(files[i],i,"MQ","MappingQuality","Count") # linegraph if multiple samples
+		result["_".join(["MQ",i])] = graphParser(files[i],i,"MQ","MappingQuality","Fraction") # linegraph if multiple samples
 		result["_".join(["GC",i])] = graphParser(files[i],i,"GC","GCcontent","fractionOfReads",ignoreSamples=["Target","Reference"])
 		result["_".join(["CO",i])] = graphParser(files[i],i,"CO","Coverage","Count") 
 		result["_".join(["IS",i])] = graphParser(files[i],i,"IS","InsertSize","Count", addIDs=["Layout"])
@@ -54,14 +54,14 @@ def main():
 
 		printJSON("_".join(["IZ",i]),addTextLabels(result["_".join(["IZ",i])],i,"IZ","InDel Size","InDel Size by InDel type (INS or DEL)"))
 		printJSON("_".join(["BQ",i]),addTextLabels(result["_".join(["BQ",i])],i,"BQ","Base Quality", "Base Quality by position in each read: Read1 and Read2"))
-		printJSON("_".join(["MQ",i]),addTextLabels(result["_".join(["MQ",i])],i,"MQ","Mapping quality","Mapping quality by read count"))
+		printJSON("_".join(["MQ",i]),addTextLabels(result["_".join(["MQ",i])],i,"MQ","Mapping quality","Mapping quality by fraction of reads"))
 		printJSON("_".join(["GC",i]),addTextLabels(result["_".join(["GC",i])],i,"GC","GC-Content","GC-Content by read count"))
 		printJSON("_".join(["CO",i]),addTextLabels(result["_".join(["CO",i])],i,"CO","Coverage","Coverage by base in the reference"))
 		printJSON("_".join(["IS",i]),addTextLabels(result["_".join(["IS",i])],i,"IS","Insert Size","Insert Size distribution"))
-		printJSON("_".join(["IC",i]),addTextLabels(result["_".join(["IC",i])],i,"IC","Homopolymer distribution","Homopolymer distribution by InDel type (INS or DEL)","bargraph"))
-		printJSON("_".join(["OT",i]),addTextLabels(result["_".join(["OT",i])],i,"OT","On-Target rate","On-Target rate"))
+		printJSON("_".join(["IC",i]),addTextLabels(result["_".join(["IC",i])],i,"IC","Homopolymer distribution","Homopolymer distribution by InDel type (INS or DEL)","table"))
+		printJSON("_".join(["OT",i]),addTextLabels(result["_".join(["OT",i])],i,"OT","On-Target rate","On-Target rate given extension lengths (bp) of each region"))
 		printJSON("_".join(["CM",i]),addTextLabels(result["_".join(["CM",i])],i,"CM","Chromosome Mapping","Observed vs expected ratio of mapping per chromosome, with y=1 plotted as a red line. Unplaced contigs ignored"))		
-		printJSON("_".join(["ME",i]),result["_".join(["ME",i])])		
+		printJSON("_".join(["ME",i]),result["_".join(["ME",i])])
 
 
 def printJSON(label,jsonObj):
@@ -87,25 +87,25 @@ def addPConfig(j,k,v):
 		print("invalid object for adding pconfig")
 	finally: return j
 
-def showCPswitch(jObj, showSwitch=False):
+def showCPswitch(jObj, showSwitch=False): #turns on the counts/percentages switch. the data should hold the counts data, percentages are calculated when generating the html. works with bargraphs, not linegraph
 	return addPConfig(jObj,"cpswitch",showSwitch)
 
-def defaultCPswitch(jObj,on_by_default=False):
-	return addPConfig(jObj,"cpswitch_c_active",on_by_default)
+def defaultCPswitch(jObj,countByDefault=False): #sets the default positing of the counts/percentages switch. countByDefault=False makes the page load that section with Percentages view on. works with bargraphs, not linegraph
+	return addPConfig(jObj,"cpswitch_c_active",countByDefault)
 
-def addXPlotLine(jObj,value=1,color='#FF0000'):
+def addXPlotLine(jObj,value=1,color='#FF0000'):  # adds line at x = value
 	return addPConfig(jObj,"xPlotLines",[{'color':color,'value':value}])
 		
-def addYPlotLine(jObj,value=1,color='#FF0000'):
+def addYPlotLine(jObj,value=1,color='#FF0000'): # adds line at y = value
 	return addPConfig(jObj,"yPlotLines",[{'color':color,'value':value}])
 	
-def addXLog(jObj):
+def addXLog(jObj): #Use log10 x axis
 	return addPConfig(jObj,"xLog",True)
 
-def addYLog(jObj):
+def addYLog(jObj): #Use log10 y axis
 	return addPConfig(jObj,"yLog",True)
 
-def addXCategory(jObj):
+def addXCategory(jObj): #Set to True to use x values as categories instead of numbers. 
 	return addPConfig(jObj,"categories",True)
 
 def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
@@ -129,7 +129,6 @@ def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
 		
 		print("Something went wrong")
 	finally: 
-		#print(ret_json)
 		return ret_json
 
 
