@@ -2673,7 +2673,12 @@ process SampleRunMultiQC {
   }
   """
   parse_alfred.py --alfredfiles *alfred*tsv.gz 
-  mkdir -p ignoreFolder ; find . -maxdepth 1 \\( -name 'CO_ignore*mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore*mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
+  mkdir -p ignoreFolder 
+  find . -maxdepth 1 \\( -name 'CO_ignore*mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore*mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
+  if [[ "${params.assayType}" == "exome" ]] ; then 
+    find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
+  fi
+
   echo -e "\\tCoverage" > coverage_split.txt
   cover=\$(grep -i "mean cover" ./${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
   echo -e "${idSample}\\t\${cover}" >> coverage_split.txt
@@ -3646,7 +3651,11 @@ process CohortRunMultiQC {
   join -1 1 -2 1 -t \$'\\t' <(cut -f 3 conpair_genstat.tsv | sort | uniq | sed "s/\$/\\t/g" ) <(cat flatCoverage | sort | uniq) >> coverage_split.txt
   
   parse_alfred.py --alfredfiles *alfred*tsv.gz
-  mkdir -p ignoreFolder ; find . -maxdepth 1 \\( -name 'CO_ignore_mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore_mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
+  mkdir -p ignoreFolder 
+  find . -maxdepth 1 \\( -name 'CO_ignore_mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore_mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
+  if [[ "${params.assayType}" == "exome" ]] ; then 
+    find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
+  fi
   mv conpair.tsv ignoreFolder
 
   for i in *.facets_qc.txt ; do 
