@@ -295,3 +295,5 @@ report_section_order:
         after: "Alfred_OT_ignore"
     Alfred_CM_aware:
         after: "Alfred_CM_ignore"
+remove_sections:
+    - fastp-filtered-reads-chart
