@@ -3804,8 +3804,7 @@ def touchInputs() {
       "touch -ca ${i}".execute()
     }
   }
-} as TimerTask, 1000, 1800000) // convert seconds to milliseconds; 30min 
-
+} as TimerTask, 1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
 }
 
 def watchMapping(tsvFile, assayType) {
