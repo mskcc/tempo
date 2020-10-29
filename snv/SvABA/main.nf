@@ -13,13 +13,12 @@ genomeIndex      = "${params.genome_base}/Sequence/WholeGenomeFasta/human_g1k_v3
 
 process run_svaba {
     // https://github.com/walaj/svaba#whole-genome-somatic-sv-and-indel-detection
-    echo true
-
     input:
     tuple path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai), path(genome_fasta), file(genome_files: "*"), file(bwa_files: "*")
 
     script:
     """
+    svaba --version
     svaba run \
     -t "${tumor_bam}" \
     -n "${normal_bam}" \
