@@ -2679,6 +2679,24 @@ process SampleRunMultiQC {
     find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
   fi
 
+  for i in *fastp.json ; do 
+    python -c "import json
+  with open('\$i', 'r') as data_file:
+    data = json.load(data_file)
+  data_file.close()
+  keys = list(data.keys()) ; print(keys)
+  for element in keys:
+    if element in ['read1_after_filtering','read2_after_filtering'] :
+      data.pop(element, None)
+  keys = list(data['summary'].keys())
+  for element in keys:
+    if element in ['after_filtering'] :
+      data['summary'].pop(element, None)
+  with open('\$i', 'w') as data_file:
+    json.dump(data, data_file)
+  data_file.close()"
+  done
+
   echo -e "\\tCoverage" > coverage_split.txt
   cover=\$(grep -i "mean cover" ./${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
   echo -e "${idSample}\\t\${cover}" >> coverage_split.txt
@@ -3641,6 +3659,25 @@ process CohortRunMultiQC {
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
   cp conpair.tsv conpair_genstat.tsv
+
+  for i in *fastp.json ; do 
+    python -c "import json
+  with open('\$i', 'r') as data_file:
+    data = json.load(data_file)
+  data_file.close()
+  keys = list(data.keys()) ; print(keys)
+  for element in keys:
+    if element in ['read1_after_filtering','read2_after_filtering'] :
+      data.pop(element, None)
+  keys = list(data['summary'].keys())
+  for element in keys:
+    if element in ['after_filtering'] :
+      data['summary'].pop(element, None)
+  with open('\$i', 'w') as data_file:
+    json.dump(data, data_file)
+  data_file.close()"
+  done
+  
   for i in ./*/genome_results.txt ; do
     sampleName=\$(dirname \$i | xargs -n 1 basename )
     cover=\$(grep -i "mean cover" \$i | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
