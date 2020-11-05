@@ -59,7 +59,7 @@ def main():
 		printJSON("_".join(["CO",i]),addTextLabels(result["_".join(["CO",i])],i,"CO","Coverage","Coverage by base in the reference"))
 		printJSON("_".join(["IS",i]),addTextLabels(result["_".join(["IS",i])],i,"IS","Insert Size","Insert Size distribution"))
 		printJSON("_".join(["IC",i]),addTextLabels(result["_".join(["IC",i])],i,"IC","Homopolymer distribution","Homopolymer distribution by InDel type (INS or DEL)","table"))
-		printJSON("_".join(["OT",i]),addTextLabels(result["_".join(["OT",i])],i,"OT","On-Target rate","On-Target rate given extension lengths (bp) of each region"))
+		printJSON("_".join(["OT",i]),addTextLabels(result["_".join(["OT",i])],i,"OT","On-Target rate","Rate of reads mapping within the target regions when each region is extended by a given extension length (bp) in either direction"))
 		printJSON("_".join(["CM",i]),addTextLabels(result["_".join(["CM",i])],i,"CM","Chromosome Mapping","Observed vs expected ratio of mapping per chromosome, with y=1 plotted as a red line. Unplaced contigs ignored"))		
 		printJSON("_".join(["ME",i]),result["_".join(["ME",i])])
 
