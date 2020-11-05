@@ -80,6 +80,9 @@ custom_data:
             id: 'qcstatus_pf'
             namespace: 'QC_status_pass_filter'
     facets_qc:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets QC'
         description: 'Results from Facets QC'
@@ -88,6 +91,9 @@ custom_data:
             id: 'facets_qc'
             namespace: 'facets_qc'
     facets_summary:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets Run Summary'
         description: 'Results from Facets'
@@ -135,7 +141,7 @@ table_cond_formatting_rules:
             - s_eq: 'warn'
         fail:
             - s_eq: 'fail'
-    mqc-genstats_paired_coverage-Tumor_Coverage:
+    mqc-generalstats-genstats_paired_coverage-Tumor_Coverage:
         pass:
             - gt: 60
             - eq: 60
@@ -143,7 +149,7 @@ table_cond_formatting_rules:
             - lt: 40
         fail:
             - lt: 40
-    mqc-genstats_paired_coverage-Normal_Coverage:
+    mqc-generalstats-genstats_paired_coverage-Normal_Coverage:
         pass:
             - gt: 30
             - eq: 30
@@ -151,7 +157,7 @@ table_cond_formatting_rules:
             - lt: 20
         fail: 
             - lt: 20
-    mqc-genstats_paired_coverage-Coverage:
+    mqc-generalstats-genstats_paired_coverage-Coverage:
         pass: 
             - gt: 30
             - eq: 30
@@ -215,6 +221,14 @@ table_cond_formatting_rules:
             - lt: 30
         fail:
             - lt: 20
+    mqc-generalstats-qualimap-percentage_aligned:
+        pass:
+            - gt: 97
+            - eq: 97
+        warn:
+            - lt: 97
+        fail:
+            - lt: 60
     FOLD_ENRICHMENT:
         pass:
             - gt: 45
@@ -254,8 +268,21 @@ picard_config:
         - 50
 table_columns_visible:
     fastp: False
+    QualiMap:
+        general_error_rate: True
+        mean_coverage: False
+        median_coverage: False
+        30_x_pc: False
+
 report_section_order:
     criteria:
         order: 1000
     QCStatus:
         order: 1010
+custom_plot_config:
+    fastp-seq-content-n-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-content-gc-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-quality-plot:
+        data_labels: [{ylab: 'R1: Sequence Quality', name: 'Read 1'}, {ylab: 'R2: Sequence Quality', name: 'Read 2'}]

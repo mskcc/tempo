@@ -297,3 +297,11 @@ report_section_order:
         after: "Alfred_CM_ignore"
 remove_sections:
     - fastp-filtered-reads-chart
+
+custom_plot_config:
+    fastp-seq-content-n-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-content-gc-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-quality-plot:
+        data_labels: [{ylab: 'R1: Sequence Quality', name: 'Read 1'}, {ylab: 'R2: Sequence Quality', name: 'Read 2'}]
