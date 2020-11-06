@@ -272,29 +272,58 @@ table_columns_visible:
         mean_coverage: False
         median_coverage: False
         30_x_pc: False
+module_order:
+    - Alfred_QC_stats
+    - qualimap
+    - picard
+    - Facets
+
 report_section_order:
     criteria:
-        order: 1000
+        order: 30000
     QCStatus:
-        order: 1010
-    Alfred_IZ_aware:
-        after: "Alfred_IZ_ignore"
-    Alfred_BQ_aware:
-        after: "Alfred_BQ_ignore"
-    Alfred_MQ_aware:
-        after: "Alfred_MQ_ignore"
+        order: 30010
+    fastp: 
+        order: 20000
+    qualimap:
+        order: 15000
+    qualimap-cumulative-genome-fraction-coverage:
+        before: "qualimap-insert-size-histogram"
+    qualimap-insert-size-histogram:
+        before: "qualimap-coverage-histogram"
+    qualimap-coverage-histogram:
+        before: "qualimap-gc-distribution"
     Alfred_GC_aware:
-        after: "Alfred_GC_ignore"
-    Alfred_CO_aware:
-        after: "Alfred_CO_ignore"
+        after: "Alfred_CO_aware"
+    Alfred_BQ_aware:
+        after: "Alfred_GC_aware"
+    Alfred_BQ_ignore:
+        after: "Alfred_BQ_aware"
+    Alfred_MQ_aware:
+        after: "Alfred_BQ_ignore"
+    Alfred_MQ_ignore:
+        after: "Alfred_MQ_aware"
     Alfred_IS_aware:
-        after: "Alfred_IS_ignore"
+        after: "Alfred_MQ_ignore"
+    Alfred_IS_ignore:
+        after: "Alfred_IS_aware"
     Alfred_IC_aware:
-        after: "Alfred_IC_ignore"
+        after: "Alfred_IS_ignore"
+    Alfred_IC_ignore:
+        after: "Alfred_IC_aware"
     Alfred_OT_aware:
+        after: "Alfred_IC_ignore"
+    Alfred_OT_ignore:
+        after: "Alfred_OT_aware"
+    Alfred_IZ_aware:
         after: "Alfred_OT_ignore"
+    Alfred_IZ_ignore:
+        after: "Alfred_IZ_aware"
     Alfred_CM_aware:
-        after: "Alfred_CM_ignore"
+        after: "Alfred_IZ_ignore"
+    Alfred_CM_ignore:
+        after: "Alfred_CM_aware"
+
 remove_sections:
     - fastp-filtered-reads-chart
 
