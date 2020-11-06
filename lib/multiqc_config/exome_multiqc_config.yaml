@@ -277,6 +277,8 @@ module_order:
     - qualimap
     - picard
     - Facets
+    - facets_summary-1
+    - facets_qc-2
 
 report_section_order:
     criteria:
@@ -284,8 +286,10 @@ report_section_order:
     QCStatus:
         order: 30010
     fastp: 
-        order: 20000
+        order: 25000
     qualimap:
+        order: 20000
+    Alfred_QC_stats: 
         order: 15000
     qualimap-cumulative-genome-fraction-coverage:
         before: "qualimap-insert-size-histogram"
@@ -323,6 +327,10 @@ report_section_order:
         after: "Alfred_IZ_ignore"
     Alfred_CM_ignore:
         after: "Alfred_CM_aware"
+    picard:
+        order: 10000
+    Facets:
+        order: 5000
 
 remove_sections:
     - fastp-filtered-reads-chart
