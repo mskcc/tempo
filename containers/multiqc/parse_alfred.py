@@ -46,6 +46,9 @@ def main():
 		result["_".join(["IS",i])] = graphParser(files[i],i,"IS","InsertSize","Count", addIDs=["Layout"])
 		result["_".join(["IC",i])] = graphParser(files[i],i,"IC",["Homopolymer","InDel"],"Count") #bargraph
 		result["_".join(["IC",i])] = defaultCPswitch(result["_".join(["IC",i])])
+		for h in getHeaders(result["_".join(["IC",i])]):
+			print("header: " + str(h))
+			result["_".join(["IC",i])] = addColumnFormat(result["_".join(["IC",i])],h)
 		result["_".join(["OT",i])] = graphParser(files[i],i,"OT","Extension","OnTarget") #linegraph
 		result["_".join(["OT",i])] = addXCategory(result["_".join(["OT",i])])
 		result["_".join(["CM",i])] = graphParser(files[i],i,"CM","Chrom","ObsExpRatio") #scatter
@@ -87,8 +90,28 @@ def addPConfig(j,k,v):
 		print("invalid object for adding pconfig")
 	finally: return j
 
+def addHeaderConfig(j,col,k,v):
+	try:
+		if "headers" not in j: 
+			j["headers"] = dict()
+		if col not in j["headers"]:
+			j["headers"][col] = dict()
+		j["headers"][col][k] = v
+	except:
+		print("invalid object for adding pconfig")
+	finally: return j
+
 def showCPswitch(jObj, showSwitch=False): #turns on the counts/percentages switch. the data should hold the counts data, percentages are calculated when generating the html. works with bargraphs, not linegraph
 	return addPConfig(jObj,"cpswitch",showSwitch)
+
+def toggle_xDecimals(jObj, xDecimal = False):
+	return addPConfig(jObj,"xDecimals",xDecimal)
+
+def toggle_yDecimals(jObj, yDecimal = False):
+	return addPConfig(jObj,"yDecimals",yDecimal)
+
+def addColumnFormat(jObj,column,format="{:,.0f}"):
+	return addHeaderConfig(jObj,column,"format",format)
 
 def defaultCPswitch(jObj,countByDefault=False): #sets the default positing of the counts/percentages switch. countByDefault=False makes the page load that section with Percentages view on. works with bargraphs, not linegraph
 	return addPConfig(jObj,"cpswitch_c_active",countByDefault)
@@ -107,6 +130,12 @@ def addYLog(jObj): #Use log10 y axis
 
 def addXCategory(jObj): #Set to True to use x values as categories instead of numbers. 
 	return addPConfig(jObj,"categories",True)
+
+def getHeaders(jObj):
+	retSet = set()
+	try:
+		retSet = set([ item for sub in [ list(jObj["data"][k].keys()) for k in jObj["data"] ] for item in sub ] )
+	finally: return retSet
 
 def addTextLabels(base, RG, prefix, title,description,plot_type="linegraph"):
 	ret_json = base
