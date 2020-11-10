@@ -27,10 +27,13 @@ custom_data:
                 hidden: False
             - Tumor_Contamination:
                 hidden: False
+                suffix: "%"
             - Normal_Contamination:
                 hidden: False
+                suffix: "%"
             - Concordance:
                 hidden: False
+                suffix: "%"
     genstats_paired_coverage:
         plot_type: 'generalstats'
         pconfig:
