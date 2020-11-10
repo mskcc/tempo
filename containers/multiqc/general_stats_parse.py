@@ -45,7 +45,7 @@ def main():
                 suffixDictionary[i[j]['rid']] = i[j]['suffix']
                 if i[j]['suffix'] == "%":
                     if i[j]['rid']in list(genStats):
-                        genStats[i[j]['rid']] = genStats[i[j]['rid']] * 100
+                        genStats[i[j]['rid']] = genStats[i[j]['rid']] 
             else: suffixDictionary[i[j]['rid']] = ""
 
     print(list(genStats))
