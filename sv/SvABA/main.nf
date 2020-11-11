@@ -17,14 +17,41 @@ process run_svaba {
     tuple path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai), path(genome_fasta), file(genome_files: "*"), file(bwa_files: "*")
 
     script:
+    dedup_tumor_bam = "${tumor_bam}.dedup.bam"
+    dedup_normal_bam = "${normal_bam}.dedup.bam"
     """
     svaba --version
+
+    # samtools 1.2
+    # Using htslib 1.2.1
+
+    echo "samtools view on "${tumor_bam}""
+    date
+    samtools view -F 1024 -b -o "${dedup_tumor_bam}" "${tumor_bam}"
+
+    echo "samtools view on "${normal_bam}""
+    date
+    samtools view -F 1024 -b -o "${dedup_normal_bam}" "${normal_bam}"
+
+    echo "samtools index on "${dedup_tumor_bam}""
+    date
+    samtools index "${dedup_tumor_bam}"
+
+    echo "samtools index on "${dedup_normal_bam}""
+    date
+    samtools index "${dedup_normal_bam}"
+
+    echo "run svaba"
+    date
     svaba run \
-    -t "${tumor_bam}" \
-    -n "${normal_bam}" \
+    -t "${dedup_tumor_bam}" \
+    -n "${dedup_normal_bam}" \
     -G "${genome_fasta}" \
     -p "${task.cpus}" \
     -z
+
+    echo "svaba done"
+    date
     """
 
     // output:
