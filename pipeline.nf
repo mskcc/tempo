@@ -1887,6 +1887,13 @@ process RunMsiSensor {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
+  samtools view -F 1024 -o normal.bam ${bamNormal} &
+  samtools view -F 1024 -o tumor.bam ${bamTumor} &
+  wait 
+  samtools index normal.bam & 
+  samtools index tumor.bam &
+  wait 
+
   msisensor msi \
     -d ${msiSensorList} \
     -t ${bamTumor} \
