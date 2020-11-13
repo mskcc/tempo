@@ -1878,30 +1878,35 @@ process RunMsiSensor {
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
       referenceMap.msiSensorList
     ])
+    val(dedup) from Channel.value(params.dedupBam4Msi)
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.msisensor.tsv") into msi4MetaDataParser
+    file("*samtools.log") optional true into observeFilterLogs
 
   when: "msisensor" in tools && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  if (params.dedupBam4Msi == true)
+  if (dedup == true)
   """
-  time -v samtools view -F 1024 -o normal.bam ${bamNormal} >& filterNormal.time.log
-  time -v samtools view -F 1024 -o tumor.bam ${bamTumor}   >& filterTumor.time.log
+  echo "Started filtering bam at: \$(date)"
+  { time samtools view -F 1024 -o normal.bam ${bamNormal} ; } 2> filterNormal.samtools.log &
+  { time samtools view -F 1024 -o tumor.bam ${bamTumor}   ; } 2> filterTumor.samtools.log  &
   wait 
   sleep 10
-  time -v samtools index normal.bam >& idxNormal.time.log
-  time -v samtools index tumor.bam  >& idxTumor.time.log
+  { time samtools index normal.bam ; } 2> idxNormal.samtools.log &
+  { time samtools index tumor.bam  ; } 2> idxTumor.samtools.log  &
   wait 
   sleep 10
+  echo "Completed filtering and indexing of bam at: \$(date)"
 
   msisensor msi \
     -d ${msiSensorList} \
     -t tumor.bam \
     -n normal.bam \
     -o ${outputPrefix}.msisensor.tsv
+  echo "Completed msisensor at: \$(date)"
   """
   else
   """
@@ -1910,6 +1915,7 @@ process RunMsiSensor {
     -t ${bamTumor} \
     -n ${bamNormal} \
     -o ${outputPrefix}.msisensor.tsv
+  echo "Completed msisensor at: \$(date)"
   """
 }
 
