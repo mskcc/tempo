@@ -1886,14 +1886,25 @@ process RunMsiSensor {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
+  if (params.dedupBam4Msi == true)
   """
-  samtools view -F 1024 -o normal.bam ${bamNormal} &
-  samtools view -F 1024 -o tumor.bam ${bamTumor} &
+  time -v samtools view -F 1024 -o normal.bam ${bamNormal} >& filterNormal.time.log
+  time -v samtools view -F 1024 -o tumor.bam ${bamTumor}   >& filterTumor.time.log
   wait 
-  samtools index normal.bam & 
-  samtools index tumor.bam &
+  sleep 10
+  time -v samtools index normal.bam >& idxNormal.time.log
+  time -v samtools index tumor.bam  >& idxTumor.time.log
   wait 
+  sleep 10
 
+  msisensor msi \
+    -d ${msiSensorList} \
+    -t tumor.bam \
+    -n normal.bam \
+    -o ${outputPrefix}.msisensor.tsv
+  """
+  else
+  """
   msisensor msi \
     -d ${msiSensorList} \
     -t ${bamTumor} \
