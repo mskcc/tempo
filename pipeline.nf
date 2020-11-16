@@ -3799,8 +3799,9 @@ def defineReferenceMap() {
 def touchInputs() {
   new Timer().schedule({
   for ( i in epochMap.keySet() ){
-    if (i.lastModified() > epochMap[i]) {
-      epochMap[i] = i.lastModified()
+    fileEpoch = file(i).lastModified()
+    if ( fileEpoch > epochMap[i]) {
+      epochMap[i] = fileEpoch
       "touch -ca ${i}".execute()
     }
   }
