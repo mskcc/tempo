@@ -2559,9 +2559,10 @@ process QcCollectHsMetrics {
 
 process QcQualimap {
   tag {idSample}
+  scratch false
   
-  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*"
-  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*/*"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*.{html,tar.gz}"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*/*"
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
@@ -2570,8 +2571,9 @@ process QcQualimap {
     ])
 
   output:
-    set idSample, file("${idSample}") into qualimap4MultiQC, qualimap4Aggregate
-    set idSample, file("${idSample}/*.{html,txt}"), file("${idSample}/css/*"), file("${idSample}/raw_data_qualimapReport/*"), file("${idSample}/images_qualimapReport/*") into qualimapOutput
+    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Aggregate
+    set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
+    file("fileslist.txt") into filesout
 
   
   when: runQC   
@@ -2588,9 +2590,22 @@ process QcQualimap {
       gffOptions = "-gff ${agilentTargets}"
     }
   } else { gffOptions = "-gd HUMAN" }
-  javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
   """
-  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} -nt ${task.cpus} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
+  qualimap bamqc \
+  -bam ${bam} \
+  -c ${gffOptions} \
+  -outdir ${idSample} \
+  -nt ${ ( task.cpus * 4 ) - 1 } \
+  -nw 300 \
+  -nr 750 \
+  --java-mem-size=${javaMem}G
+
+  mv ${idSample}/* . 
+  tar -czf ${idSample}_qualimap_rawdata.tar.gz genome_results.txt raw_data_qualimapReport/* 
+
+  find . -type f > fileslist.txt
   """
 }
 
@@ -2675,7 +2690,12 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
-
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
+  
   for i in ${idSample}.alfred.tsv.gz ; do 
     idSample=\$(basename \$i | cut -f 1 -d.)
     zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
@@ -3012,8 +3032,8 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
 		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
-      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}/")]
-      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}/")]
+      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}_qualimap_rawdata.tar.gz")]
+      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}_qualimap_rawdata.tar.gz")]
 		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
 		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
       fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
@@ -3643,6 +3663,11 @@ process CohortRunMultiQC {
     assay = 'wgs'
   }
   """
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
   echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
