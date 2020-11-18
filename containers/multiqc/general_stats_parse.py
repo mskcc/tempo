@@ -38,6 +38,7 @@ def main():
 
     simpleNames = {}
     suffixDictionary = {}
+    titleDictionary  = {}
     for i in jsonData['report_general_stats_headers']:
         for j in i:
             simpleNames[i[j]['rid']] = j
@@ -47,6 +48,8 @@ def main():
                     if i[j]['rid']in list(genStats):
                         genStats[i[j]['rid']] = genStats[i[j]['rid']] 
             else: suffixDictionary[i[j]['rid']] = ""
+            if 'title' in i[j]:
+                titleDictionary[i[j]['rid']] = i[j]['title']
 
     print(list(genStats))
 
@@ -54,7 +57,7 @@ def main():
     criteriaTab = genCriteriaTable(configData["table_cond_formatting_rules"], suffixDictionary)
     criteriaTab = criteriaTab.filter(like="mqc-generalstats", axis = 0)
     criteriaTab = criteriaTab.filter(list(genStats), axis=0)
-    criteriaTab["metric"] = [simpleNames[i] if i in simpleNames else i for i in criteriaTab.index ]
+    criteriaTab["metric"] = [titleDictionary.get(i,simpleNames.get(i,i)) for i in criteriaTab.index ]
     criteriaTab = criteriaTab.reset_index(drop=True).set_index('metric')
     
     qcStatus = pd.DataFrame(columns=["Status","Reason"])
@@ -119,7 +122,7 @@ def assessDataPoint(dataPoint,PF_metrics):
             return p
     return "pass"
 
-def genCriteriaTable(criteriaJson,suffixDictionary):
+def genCriteriaTable(criteriaJson, suffixDictionary):
     tab = pd.DataFrame(columns=["pass","warn","fail"])
     for i in criteriaJson: # column name
         status = {}
@@ -137,12 +140,10 @@ def genCriteriaTable(criteriaJson,suffixDictionary):
                         exprs += ["> {}".format(k[l])]
                     else: 
                         exprs += ["< {}".format(k[l])]
-            if suffixDictionary.get(i,"")!= "":
-                exprs += [suffixDictionary[i]]
             status[j] = " or ".join(exprs)
+            if suffixDictionary.get(i,"") != "":
+                status[j] += " {}".format(suffixDictionary[i])
         tab = tab.append(pd.Series(status, name=i))
-    #percentTab = pd.DataFrame({"Is_Percent":[True]}, index=percentMetrics)
-    #tab = tab.merge(percentTab,how="left",left_index=True, right_index=True).fillna(value={"Is_Percent":False})
     return tab
 
 if __name__ == "__main__":
