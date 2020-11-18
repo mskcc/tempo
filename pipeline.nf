@@ -2679,12 +2679,14 @@ process SampleRunMultiQC {
     find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
   fi
 
-  for i in *fastp.json ; do 
+  mkdir -p fastp_original ; mv *fastp.json fastp_original
+  for i in fastp_original/*fastp.json ; do 
+    outname=\$(basename \$i)
     python -c "import json
   with open('\$i', 'r') as data_file:
     data = json.load(data_file)
   data_file.close()
-  keys = list(data.keys()) ; print(keys)
+  keys = list(data.keys())
   for element in keys:
     if element in ['read1_after_filtering','read2_after_filtering'] :
       data.pop(element, None)
@@ -2692,7 +2694,7 @@ process SampleRunMultiQC {
   for element in keys:
     if element in ['after_filtering'] :
       data['summary'].pop(element, None)
-  with open('\$i', 'w') as data_file:
+  with open('\$outname', 'w') as data_file:
     json.dump(data, data_file)
   data_file.close()"
   done
@@ -2703,11 +2705,11 @@ process SampleRunMultiQC {
   
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
-  multiqc . -x ignoreFolder 
+  multiqc . -x ignoreFolder/ -x fastp_original/
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes FASTQ and alignment statistics for the sample ${idSample}.<br/>This report does not include QC metrics from the Tumor/Normal pair that includes ${idSample}. To review pairing QC, please refer to the multiqc_report.html from the somatic-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -t "tempo" -z -x ignoreFolder 
+  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes FASTQ and alignment statistics for the sample ${idSample}.<br/>This report does not include QC metrics from the Tumor/Normal pair that includes ${idSample}. To review pairing QC, please refer to the multiqc_report.html from the somatic-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -t "tempo" -z -x ignoreFolder/ -x fastp_original/
   mv genstats-QC_Status.txt QC_Status.txt
   """
 
@@ -3660,12 +3662,14 @@ process CohortRunMultiQC {
   done
   cp conpair.tsv conpair_genstat.tsv
 
-  for i in *fastp.json ; do 
+  mkdir -p fastp_original ; mv *fastp.json fastp_original
+  for i in fastp_original/*fastp.json ; do 
+    outname=\$(basename \$i)
     python -c "import json
   with open('\$i', 'r') as data_file:
     data = json.load(data_file)
   data_file.close()
-  keys = list(data.keys()) ; print(keys)
+  keys = list(data.keys())
   for element in keys:
     if element in ['read1_after_filtering','read2_after_filtering'] :
       data.pop(element, None)
@@ -3673,7 +3677,7 @@ process CohortRunMultiQC {
   for element in keys:
     if element in ['after_filtering'] :
       data['summary'].pop(element, None)
-  with open('\$i', 'w') as data_file:
+  with open('\$outname', 'w') as data_file:
     json.dump(data, data_file)
   data_file.close()"
   done
@@ -3706,7 +3710,7 @@ process CohortRunMultiQC {
   fastpNum=`ls ./*fastp*json | wc -l`
   mqcSampleNum=\$((hsMetricsNum + fastpNum ))
   
-  multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))" -x ignoreFolder/
+  multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))" -x ignoreFolder/ -x fastp_original/
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
@@ -3717,7 +3721,7 @@ process CohortRunMultiQC {
     beeswarm_config="max_table_rows: \$(( mqcSampleNum + 1 ))"
   fi
 
-  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" --cl_config "report_comment: \\"This report includes FASTQ and alignment for all samples in ${cohort}and Tumor/Normal pair statistics for all pairs in ${cohort}.\\"" -z -x ignoreFolder/
+  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" --cl_config "report_comment: \\"This report includes FASTQ and alignment for all samples in ${cohort}and Tumor/Normal pair statistics for all pairs in ${cohort}.\\"" -z -x ignoreFolder/ -x fastp_original/
 
   """
 }
