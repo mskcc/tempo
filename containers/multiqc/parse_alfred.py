@@ -224,8 +224,10 @@ def MEParser(listOfFiles,RG,keepCols=["DuplicateFraction"]):
 			libraryID = "@".join([row["Sample"], row["Library"]])
 		else:
 			libraryID = row["Sample"]
-		ret_json[libraryID] = { i:row[i]*100 if i in colPercents else row[i] for i in set(list(df)) - {"Sample","Library"} } 
-	return {"plot_type":"generalstats","pconfig":[{i:{"suffix":"%" if i in colPercents else "" , "description": i + " extracted from Alfred QC", "hidden":not i in keepCols}} for i in list(df) if i not in ["Sample","Library"]],"data":ret_json}
+		#ret_json[libraryID] = { i:row[i]*100 if i in colPercents else row[i] for i in set(list(df)) - {"Sample","Library"} } 
+		ret_json[libraryID] = { i:row[i]*100 if i in colPercents else row[i] for i in keepCols }
+	#return {"plot_type":"generalstats","pconfig":[{i:{"suffix":"%" if i in colPercents else "" , "description": i + " extracted from Alfred QC", "hidden":not i in keepCols}} for i in list(df) if i not in ["Sample","Library"]],"data":ret_json}
+	return {"plot_type":"generalstats","pconfig":[{i:{"suffix":"%" if i in colPercents else "" , "description": i + " extracted from Alfred QC", "hidden":False}} for i in list(df) if i in keepCols ],"data":ret_json}
 
 
 if __name__ == "__main__":
