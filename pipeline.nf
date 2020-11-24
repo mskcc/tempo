@@ -1211,7 +1211,6 @@ bamsForBRASS
 process runAscat {
   tag {idTumor + "__" + idNormal}
   label 'ascat' 
-  scratch false
   
   input: 
   set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAscatNGS
