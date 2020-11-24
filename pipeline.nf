@@ -637,7 +637,7 @@ if (params.mapping) {
       ])
 
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap, bamsBQSR4PCAP
       set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
       file("file-size.txt") into bamSize
 
@@ -705,7 +705,7 @@ if (params.mapping) {
 
 // If starting with BAM files, parse BAM pairing input
 if (params.bamMapping) {
-  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
+  inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamsBQSR4PCAP; bamPaths4MultiQC}
 
   bamPaths4MultiQC.map{idSample, target, bam, bai ->
     [ idSample,target, bam.getParent() ]
@@ -890,7 +890,7 @@ agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; }
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; bamsForAscatNGS; bamsForBRASS}
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -1178,6 +1178,226 @@ process SomaticMergeDellyAndManta {
   """
 }
 
+// --- Run BRASS
+
+if (params.assayType == "genome"){
+
+process runPCAP {
+  tag { idSample }
+  
+  input:
+  set idSample, target, file(bam), file(bai) from bamsBQSR4PCAP
+  set file(genomeFile), file(genomeIndex) from Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex])
+
+  output: 
+  set idSample, val("placeholder"), target, file("*.bas") into basFilesTumor
+  set val("placeholder"), idSample, target, file("*.bas") into basFilesNormal
+
+  when: params.assayType == "genome" && "brass" in tools
+
+  script:
+  """
+  bam_stats -i ${bam} -o ${bam}.bas -r ${genomeIndex} -@ ${ task.cpus > 1 ? task.cpus - 1 : task.cpus }
+  """
+}
+
+bamsForBRASS
+  .combine(basFilesTumor,by:[0,2]) 
+  .combine(basFilesNormal,by:[1,2]) 
+  .map{ idTumor, idNormal, target, bamTumor, baiTumor,bamNormal,baiNormal, placeholder, basTumor, placeholder2, basNormal ->
+    [idTumor, idNormal, target, bamTumor, baiTumor, basTumor, bamNormal, baiNormal, basNormal]
+  }.into{bamsForBRASSInput; bamsForBRASSCover; bamsForBRASSSV }
+
+process runAscat {
+  tag {idTumor + "__" + idNormal}
+  label 'ascat' 
+  scratch false
+  
+  input: 
+  set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAscatNGS
+  set file(genomeFile), file(genomeIndex), file(snpGcCorrections) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.snpGcCorrections)])
+
+  output:
+  set idTumor, idNormal, target, file("ascatResults/*samplestatistics.txt") into ascatOut4Brass
+  file("listoffiles") into ascatOutFiles
+
+  when: params.assayType == "genome" && "brass" in tools
+
+  script:
+  species="HUMAN"
+  assembly=37
+  """
+  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
+  mkdir -p ascatResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  ascat.pl \
+  -o ./ascatResults \
+  -t ${tumorBam} \
+  -n ${normalBam} \
+  -sg ${snpGcCorrections} \
+  -r ${genomeFile} \
+  -q 20 \
+  -g L \
+  -rs "\$SPECIES" \
+  -ra \$ASSEMBLY \
+  -pr \$PROTOCOL \
+  -pl ILLUMINA \
+  -c ${task.cpus} \
+  -force 
+
+  find . > listoffiles
+  """
+}
+
+process runBRASSInput {
+  tag { idTumor + "__" + idNormal}
+  label 'BRASS'   
+  
+  input:
+  set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSInput
+  set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
+
+  output:
+  set idTumor, idNormal, target, file("brassResults/tmpBrass/*.*"), file("brassResults/tmpBrass/progress/*.*") into BRASSInput_out
+  file("listoffiles") into BRASSOutFiles_Input
+
+  when: params.assayType == "genome" && "brass" in tools
+
+  script:
+  species="HUMAN"
+  assembly=37
+  """
+  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
+  mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
+  brass.pl -j 4 -k 4 -c ${task.cpus} \
+  -d ${brassRefDir}/HiDepth.bed.gz \
+  -f ${brassRefDir}/brass_np.groups.gz \
+  -g ${genomeFile} \
+  -s "\$SPECIES" -as \$ASSEMBLY -pr \$PROTOCOL -pl ILLUMINA \
+  -g_cache ${vagrentRefDir}/vagrent.cache.gz \
+  -vi ${brassRefDir}/viral.genomic.fa.2bit \
+  -mi ${brassRefDir}/all_ncbi_bacteria \
+  -b ${brassRefDir}/500bp_windows.gc.bed.gz \
+  -ct ${brassRefDir}/CentTelo.tsv \
+  -cb ${brassRefDir}/cytoband.txt \
+  -t $tumorBam \
+  -n $normalBam \
+  -ss samplestatistics.txt \
+  -o brassResults \
+  -p input
+
+  find . -type f -exec ls -lh \\{\\} \\; > listoffiles
+  """  
+}
+
+process runBRASSCover {
+  tag { idTumor + "__" + idNormal}
+  label 'BRASS'   
+  
+  input:
+  set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSCover
+  set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
+
+  output:
+  set idTumor, idNormal, target, file("brassResults/tmpBrass/*.*"), file("brassResults/tmpBrass/progress/*.*") into BRASSCover_out
+  file("listoffiles") into BRASSOutFiles_Cover
+
+  when: params.assayType == "genome" && "brass" in tools
+
+  script:
+  species="HUMAN"
+  assembly=37
+  """
+  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
+  mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
+  brass.pl -j 4 -k 4 -c ${task.cpus} \
+  -d ${brassRefDir}/HiDepth.bed.gz \
+  -f ${brassRefDir}/brass_np.groups.gz \
+  -g ${genomeFile} \
+  -s "\$SPECIES" -as \$ASSEMBLY -pr \$PROTOCOL -pl ILLUMINA \
+  -g_cache ${vagrentRefDir}/vagrent.cache.gz \
+  -vi ${brassRefDir}/viral.genomic.fa.2bit \
+  -mi ${brassRefDir}/all_ncbi_bacteria \
+  -b ${brassRefDir}/500bp_windows.gc.bed.gz \
+  -ct ${brassRefDir}/CentTelo.tsv \
+  -cb ${brassRefDir}/cytoband.txt \
+  -t $tumorBam \
+  -n $normalBam \
+  -ss samplestatistics.txt \
+  -o brassResults \
+  -p cover
+
+  find . -type f -exec ls -lh \\{\\} \\; > listoffiles
+  """
+}
+
+BRASSCover_out.combine(BRASSInput_out, by:[0,1,2])
+  .set{BRASSInputCover_out} // idTumor, idNormal, target, InputTmp, InputProgress, CoverTmp, CoverProgress
+
+bamsForBRASSSV.combine(BRASSInputCover_out, by:[0,1,2]) //idTumor, idNormal, target, bamTumor, baiTumor, basTumor, bamNormal, baiNormal, basNormal, InputTmp, InputProgress, CoverTmp, CoverProgress
+  .combine(ascatOut4Brass,by:[0,1,2]) //idTumor, idNormal, target, bamTumor, baiTumor, basTumor, bamNormal, baiNormal, basNormal, InputTmp, InputProgress, CoverTmp, CoverProgress, ascatSampleStatistics
+  .set{bamsForBRASSSV}
+
+process runBRASS {
+  tag { idTumor + "__" + idNormal }
+  label 'BRASS'   
+
+  input:
+  set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal), file(BrassInputTmp), file(BrassInputProgress), file(BrassCoverTmp), file(BrassCoverProgress), file(ascatSampleStatistics) from bamsForBRASSSV
+  set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
+  
+  output:
+  file("./brassResults/*.{gz,tbi,bw,bai}") into BRASSOutput
+  file("listoffiles") into BRASSOutFiles
+
+  when: params.assayType == "genome" && "brass" in tools
+
+  script:
+  species="HUMAN"
+  assembly=37
+  """
+  BrassInputResults=( ${InputResultFiles.join(" ")} )
+  BrassInputProgress=( ${InputProgressFiles.join(" ")} )
+  BrassCoverCover=( ${CoverCoverFiles.join(" ")} )
+  BrassCoverProgress=( ${CoverProgressFiles.join(" ")} )
+  
+  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
+  mkdir -p brassResults/tmpBrass/progress brassResults/tmpBrass/cover ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+
+  for i in "\${BrassCoverTmp[@]}" ; do 
+    mv \$i brassResults/tmpBrass/cover
+  done
+  for i in "\${BrassCoverProgress[@]}" ; do 
+    mv \$i brassResults/tmpBrass/progress
+  done
+  for i in "\${BrassInputTmp[@]}" ; do 
+    mv \$i brassResults/tmpBrass
+  done
+  for i in "\${BrassInputProgress[@]}" ; do 
+    mv \$i brassResults/tmpBrass/progress
+  done
+
+  brass.pl -j 4 -k 4 -c ${task.cpus} \
+  -d ${REF_BASE}/CNV_SV_ref/brass/HiDepth.bed.gz \
+  -f ${REF_BASE}/CNV_SV_ref/brass/brass_np.groups.gz \
+  -g ${REF_BASE}/core_ref_GRCh37d5/genome.fa \
+  -s "\$SPECIES" -as \$ASSEMBLY -pr \$PROTOCOL -pl ILLUMINA \
+  -g_cache ${REF_BASE}/VAGrENT_ref_GRCh37d5_ensembl_75/vagrent/vagrent.cache.gz \
+  -vi ${REF_BASE}/CNV_SV_ref/brass/viral.genomic.fa.2bit \
+  -mi ${REF_BASE}/CNV_SV_ref/brass/all_ncbi_bacteria \
+  -b ${REF_BASE}/CNV_SV_ref/brass/500bp_windows.gc.bed.gz \
+  -ct ${REF_BASE}/CNV_SV_ref/brass/CentTelo.tsv \
+  -cb ${REF_BASE}/CNV_SV_ref/brass/cytoband.txt \
+  -t $tumorBam \
+  -n $normalBam \
+  -ss samplestatistics.txt \
+  -o brassResults
+  find . -type f -exec ls -lh \\{\\} \\; > listoffiles
+  """
+  
+}
+}
 
 // --- Run Strelka2
 bams4Strelka.combine(mantaToStrelka, by: [0, 1, 2]).set{input4Strelka}
@@ -3748,7 +3968,10 @@ def defineReferenceMap() {
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     //'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
+    'snpGcCorrections' : checkParamReturnFile("snpGcCorrections"),
+    'brassRefDir' : checkParamReturnFile("brassRefDir"),
+    'vagrentRefDir' : checkParamReturnFile("vagrentRefDir")
   ]
 
   if (workflow.profile != "test") {
