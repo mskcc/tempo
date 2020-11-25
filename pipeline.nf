@@ -1190,8 +1190,7 @@ process runPCAP {
   set file(genomeFile), file(genomeIndex) from Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex])
 
   output: 
-  set idSample, val("placeholder"), target, file("*.bas") into basFilesTumor
-  set val("placeholder"), idSample, target, file("*.bas") into basFilesNormal
+  set idSample, target, file("*.bas") into basFilesTumor, basFilesNormal
 
   when: params.assayType == "genome" && "brass" in tools
 
@@ -1201,16 +1200,22 @@ process runPCAP {
   """
 }
 
-bamsForBRASS
-  .combine(basFilesTumor,by:[0,2]) 
-  .combine(basFilesNormal,by:[1,2]) 
-  .map{ idTumor, idNormal, target, bamTumor, baiTumor,bamNormal,baiNormal, placeholder, basTumor, placeholder2, basNormal ->
-    [idTumor, idNormal, target, bamTumor, baiTumor, basTumor, bamNormal, baiNormal, basNormal]
+basFilesTumor.combine(basFilesNormal)
+  .filter{ idTumor,  targetTumor, tumorBas, idNormal, targetNormal, normalBas ->
+    (idTumor != idNormal) && (targetTumor == targetNormal )
+  }.map{ idTumor,  targetTumor, tumorBas, idNormal, targetNormal, normalBas ->
+    [idTumor,idNormal,targetTumor,tumorBas,normalBas]
+  }.set{basFiles}
+
+bamsForBRASS.combine(basFiles,by:[0,1,2]) // idTumor, idNormal, target, tumorBam, tumorBai, normalBam, normalBai, tumorBas, normalBas
+  .map{ idTumor, idNormal, target, tumorBam, tumorBai, normalBam, normalBai, tumorBas, normalBas ->
+    [ idTumor, idNormal, target, tumorBam, tumorBai, tumorBas, normalBam, normalBai, normalBas ]
   }.into{bamsForBRASSInput; bamsForBRASSCover; bamsForBRASSSV }
 
 process runAscat {
   tag {idTumor + "__" + idNormal}
   label 'ascat' 
+  scratch false
   
   input: 
   set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAscatNGS
@@ -1279,8 +1284,8 @@ process runBRASSInput {
   -b ${brassRefDir}/500bp_windows.gc.bed.gz \
   -ct ${brassRefDir}/CentTelo.tsv \
   -cb ${brassRefDir}/cytoband.txt \
-  -t $tumorBam \
-  -n $normalBam \
+  -t ${bamTumor} \
+  -n ${bamNormal} \
   -ss samplestatistics.txt \
   -o brassResults \
   -p input
@@ -1321,8 +1326,8 @@ process runBRASSCover {
   -b ${brassRefDir}/500bp_windows.gc.bed.gz \
   -ct ${brassRefDir}/CentTelo.tsv \
   -cb ${brassRefDir}/cytoband.txt \
-  -t $tumorBam \
-  -n $normalBam \
+  -t ${bamTumor} \
+  -n ${bamNormal} \
   -ss samplestatistics.txt \
   -o brassResults \
   -p cover
@@ -1388,8 +1393,8 @@ process runBRASS {
   -b ${REF_BASE}/CNV_SV_ref/brass/500bp_windows.gc.bed.gz \
   -ct ${REF_BASE}/CNV_SV_ref/brass/CentTelo.tsv \
   -cb ${REF_BASE}/CNV_SV_ref/brass/cytoband.txt \
-  -t $tumorBam \
-  -n $normalBam \
+  -t ${bamTumor} \
+  -n ${bamNormal} \
   -ss samplestatistics.txt \
   -o brassResults
   find . -type f -exec ls -lh \\{\\} \\; > listoffiles
