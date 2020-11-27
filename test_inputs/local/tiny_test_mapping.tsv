@@ -1,0 +1,3 @@
+SAMPLE	ASSAY	TARGET	FASTQ_PE1	FASTQ_PE2
+DU874145-N	exome	agilent	/juno/work/taylorlab/cmopipeline/testdata/fastq/small_Variants1-N_R1_xxx.fastq.gz	/juno/work/taylorlab/cmopipeline/testdata/fastq/small_Variants1-N_R2_xxx.fastq.gz
+DU874145-T	exome	agilent	/juno/work/taylorlab/cmopipeline/testdata/fastq/small_Variants1-T_R1_xxx.fastq.gz	/juno/work/taylorlab/cmopipeline/testdata/fastq/small_Variants1-T_R2_xxx.fastq.gz
