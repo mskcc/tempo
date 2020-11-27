@@ -133,7 +133,7 @@ class Nextflow(object):
                     print(line, end = '')
         returncode = proc.returncode
 
-        return(proc_stdout, proc_stderr, returncode)
+        return(proc_stdout, proc_stderr, returncode, OUTPUT_DIR)
 
 def preserve_output(input_dir, prefix = 'output'):
     """
@@ -177,7 +177,7 @@ class TestWorkflow(unittest.TestCase):
         # NOTE: make sure that tmpdir is in a location accessible by all computer nodes if using LSF execution
         with TemporaryDirectory(dir = THIS_DIR) as tmpdir:
             nxf = Nextflow(tmpdir = tmpdir, args = args)
-            proc_stdout, proc_stderr, returncode = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
+            proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
             self.assertEqual(returncode, 0)
 
     def test_one_tool(self):
@@ -196,9 +196,29 @@ class TestWorkflow(unittest.TestCase):
 
         with TemporaryDirectory(dir = THIS_DIR) as tmpdir:
             nxf = Nextflow(tmpdir = tmpdir, args = args, configs = [LOCAL_CONFIG])
-            proc_stdout, proc_stderr, returncode = nxf.run()
+            proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
             self.assertEqual(returncode, 0)
-            # preserve_output(tmpdir, prefix = self._testMethodName + '.')
+            # TODO: more assertion criteria to check output
+
+    def test_SvABA(self):
+        """
+        Test case for running SvABA
+        """
+        args = [
+        '--mapping', os.path.join(TEST_INPUTS_DIR, 'local/tiny_test_mapping.tsv'),
+        '--pairing', os.path.join(TEST_INPUTS_DIR, 'local/small_test_pairing.tsv'),
+        '-profile', 'juno', '--somatic', '--germline', '--QC', '--aggregate',
+        '--tools', 'svaba'
+        ]
+        with TemporaryDirectory(dir = THIS_DIR) as tmpdir:
+            nxf = Nextflow(tmpdir = tmpdir, args = args, configs = [LOCAL_CONFIG])
+            proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
+            self.assertEqual(returncode, 0)
+
+            svaba_output = os.path.join(output_dir, 'svaba')
+            self.assertTrue(os.path.exists(svaba_output))
+            
+            preserve_output(tmpdir, prefix = self._testMethodName + '.')
 
 
 if __name__ == "__main__":
