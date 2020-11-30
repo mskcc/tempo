@@ -15,7 +15,7 @@ Alignment
  - AlignReads
     --- Map paired-end FASTQs with bwa mem
     --- Sort BAM with samtools sort
-    --- FASTQ QC with FastP 
+    --- FASTQ QC with FastP
  - MergeBam --- Merge BAM for the same samples from different fileID, samtools merge
  - MarkDuplicates --- Mark Duplicates with GATK4 MarkDuplicates
  - CreateRecalibrationTable --- Create Recalibration Table with GATK4 BaseRecalibrator
@@ -409,7 +409,7 @@ if (params.mapping) {
       }
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
-    
+
     // mem --- total size of the FASTQ pairs in MB (max memory `samtools sort` can take advantage of)
     // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
     // memMultiplier --- If mem_per_core is false, use 1. Else, use task.cpus
@@ -463,13 +463,13 @@ if (params.mapping) {
 
   fastPJson4MultiQC
     .groupTuple(by:[2])
-    .map{idSample, jsonFile, fileID -> 
+    .map{idSample, jsonFile, fileID ->
       def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
       [idSampleout, jsonFile]
     }.groupTuple(by: [0])
-    .map{ idSample, jsonFile -> 
+    .map{ idSample, jsonFile ->
       [idSample, jsonFile.flatten()]
-    }.into{fastPJson4cohortMultiQC; fastPJson4sampleMultiQC} 
+    }.into{fastPJson4cohortMultiQC; fastPJson4sampleMultiQC}
 
   // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
   def allReadIds = [:]
@@ -562,7 +562,7 @@ if (params.mapping) {
   }
 
 
- // GATK BaseRecalibrator , CreateRecalibrationTable 
+ // GATK BaseRecalibrator , CreateRecalibrationTable
   process CreateRecalibrationTable {
     tag {idSample}
 
@@ -575,7 +575,7 @@ if (params.mapping) {
         referenceMap.dbsnp,
         referenceMap.dbsnpIndex,
         referenceMap.knownIndels,
-        referenceMap.knownIndelsIndex 
+        referenceMap.knownIndelsIndex
       ])
 
     output:
@@ -619,7 +619,7 @@ if (params.mapping) {
       --verbosity INFO \
       --input ${bam} \
       --output ${idSample}.recal.table
-    """ 
+    """
   }
 
   mdBams4BQSR.combine(recalibrationTable, by:[0]).set{ inputsBQSR }
@@ -633,7 +633,7 @@ if (params.mapping) {
     input:
       set idSample, file(bam), file(bai), target, file(recalibrationReport) from inputsBQSR
       set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-        referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict 
+        referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
       ])
 
     output:
@@ -711,7 +711,7 @@ if (params.bamMapping) {
     [ idSample,target, bam.getParent() ]
   }.set{ locateFastP4MultiQC}
 
-locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
+locateFastP4MultiQC.map{ idSample,target, bamFolder ->
     [idSample, file(bamFolder + "/fastp/*json")]
   }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
 }
@@ -766,7 +766,7 @@ if (params.pairing) {
 			def normalBai = item[4]
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
-	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+    .into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
   bamsTumor4Combine.combine(bamsNormal4Combine, by: [0,1,2])
@@ -833,7 +833,7 @@ process CreateScatteredIntervals {
       referenceMap.idtTargets, referenceMap.agilentTargets, referenceMap.wgsTargets,
       referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex, referenceMap.wgsTargetsIndex
       ])
-  
+
   output:
     set file("agilent*.interval_list"), val("agilent"), val("agilent") into agilentIList
     set file("idt*.interval_list"), val("idt"), val("idt") into idtIList
@@ -875,7 +875,7 @@ process CreateScatteredIntervals {
     --intervals ${wgsTargets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode INTERVAL_SUBDIVISION \
-    --output wgs 
+    --output wgs
 
   for i in wgs/*.interval_list;
   do
@@ -890,7 +890,7 @@ agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; }
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; bamsForSvABA }
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -905,9 +905,9 @@ bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
     def key = idTumor+"__"+idNormal+"@"+target // adding one unique key
 
     return [ key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
-}.map{ 
-    key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> 
-    tuple ( 
+}.map{
+    key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed ->
+    tuple (
          groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
          idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed
     )
@@ -944,7 +944,7 @@ process RunMutect2 {
   tag {idTumor + "__" + idNormal + "@" + intervalBed.baseName}
 
   input:
-    set id, idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(intervalBed) from mergedChannelSomatic 
+    set id, idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(intervalBed) from mergedChannelSomatic
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -1029,7 +1029,7 @@ process SomaticDellyCall {
   tag {idTumor + "__" + idNormal + '@' + svType}
 
   publishDir "${outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
-  
+
   input:
     each svType from svTypes
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForDelly
@@ -1129,7 +1129,7 @@ process SomaticRunManta {
 
 dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(manta4Combine, by: [0,1,2]).set{ dellyMantaCombineChannel }
 
-// --- Process Delly and Manta VCFs 
+// --- Process Delly and Manta VCFs
 
 // Merge VCFs, Delly and Manta
 process SomaticMergeDellyAndManta {
@@ -1149,13 +1149,13 @@ process SomaticMergeDellyAndManta {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  """ 
+  """
   bcftools view \
     --samples ${idTumor},${idNormal} \
     --output-type z \
     --output-file ${outputPrefix}.manta.swap.vcf.gz \
-    ${outputPrefix}.manta.vcf.gz 
-    
+    ${outputPrefix}.manta.vcf.gz
+
   tabix --preset vcf ${outputPrefix}.manta.swap.vcf.gz
 
   bcftools concat \
@@ -1163,7 +1163,7 @@ process SomaticMergeDellyAndManta {
     --output-type z \
     --output ${outputPrefix}.delly.manta.unfiltered.vcf.gz \
     *.delly.vcf.gz ${outputPrefix}.manta.swap.vcf.gz
-  
+
   tabix --preset vcf ${outputPrefix}.delly.manta.unfiltered.vcf.gz
 
   bcftools filter \
@@ -1172,9 +1172,9 @@ process SomaticMergeDellyAndManta {
     ${outputPrefix}.delly.manta.unfiltered.vcf.gz | \
   bcftools sort \
     --output-type z \
-    --output-file ${outputPrefix}.delly.manta.vcf.gz 
+    --output-file ${outputPrefix}.delly.manta.vcf.gz
 
-  tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz 
+  tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz
   """
 }
 
@@ -1239,7 +1239,7 @@ process SomaticRunStrelka2 {
     Strelka_${outputPrefix}_somatic_snvs.vcf.gz.tbi
 
   echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
-  
+
   bcftools concat \
     --allow-overlaps \
     Strelka_${outputPrefix}_somatic_indels.vcf.gz Strelka_${outputPrefix}_somatic_snvs.vcf.gz | \
@@ -1286,7 +1286,7 @@ process SomaticCombineChannel {
     set idTumor, idNormal, target, file("${outputPrefix}.pass.vcf") into mutationMergedVcf
 
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
-  
+
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   isecDir = "${idTumor}.isec"
@@ -1435,8 +1435,8 @@ process SomaticCombineChannel {
     --bam ${idTumor}:${bamTumor} \
     --bam ${idNormal}:${bamNormal} \
     --vcf ${outputPrefix}.filtered.vcf \
-    --output ${outputPrefix}.genotyped.vcf 
-  
+    --output ${outputPrefix}.genotyped.vcf
+
   bgzip ${outputPrefix}.filtered.vcf
   bgzip ${outputPrefix}.genotyped.vcf
   tabix --preset vcf ${outputPrefix}.filtered.vcf.gz
@@ -1503,7 +1503,7 @@ process SomaticAnnotateMaf {
     --custom-enst ${isoforms} \
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
-    
+
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
@@ -1548,7 +1548,7 @@ process RunMutationSignatures {
 
 
 
-// --- Run FACETS 
+// --- Run FACETS
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
@@ -1603,11 +1603,11 @@ process DoFacets {
   while [ \$i -eq 1 ]
   do
   attemptNumber=\$(( attemptNumber + 1 ))
-  if [ \$attemptNumber -gt 4 ]; then 
+  if [ \$attemptNumber -gt 4 ]; then
     break
   fi
   seed=\$((seed+i))
-  
+
   Rscript /usr/bin/facets-suite/run-facets-wrapper.R \
     --cval ${params.facets.cval} \
     --snp-window-size ${params.facets.snp_nbhd} \
@@ -1642,7 +1642,7 @@ process DoFacetsPreviewQC {
 
   input:
     set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from Facets4FacetsPreview
-  
+
   output:
     set idTumor, idNormal, file("${idTumor}__${idNormal}.facets_qc.txt") into FacetsPreviewOut
 
@@ -1651,8 +1651,8 @@ process DoFacetsPreviewQC {
   script:
   tag = "${idTumor}__${idNormal}"
   """
-  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
-  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
+  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt
+  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt
   gzip manifest.txt
   mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
   R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
@@ -1671,7 +1671,7 @@ FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
 // Run Polysolver
 process RunPolysolver {
   tag {idNormal}
-  
+
   input:
   set idNormal, target, file(bamNormal), file(baiNormal) from bamsNormal4Polysolver
 
@@ -1679,15 +1679,15 @@ process RunPolysolver {
     set val("placeHolder"), idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput, hlaOutputForLOHHLA, hlaOutputForMetaDataParser
 
   when: "polysolver" in tools && runSomatic
-  
+
   script:
   outputPrefix = "${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
-  
-  sed -i "171s/TMP_DIR=.*/TMP_DIR=${tmpDir}/" shell_call_hla_type 
+
+  sed -i "171s/TMP_DIR=.*/TMP_DIR=${tmpDir}/" shell_call_hla_type
 
   bash shell_call_hla_type \
     ${bamNormal} \
@@ -1729,7 +1729,7 @@ process RunLOHHLA {
   outputPrefix = "${idTumor}__${idNormal}"
   """
   cat ${winnersHla} | tr "\t" "\n" | grep -v "HLA" > massaged.winners.hla.txt
-  
+
   PURITY=\$(grep Purity *_purity.out | grep -oP "[0-9\\.]+|NA+")
   PLOIDY=\$(grep Ploidy *_purity.out | grep -oP "[0-9\\.]+|NA+")
   cat <(echo -e "tumorPurity\ttumorPloidy") <(echo -e "${idTumor}\t\$PURITY\t\$PLOIDY") > tumor_purity_ploidy.txt
@@ -1848,7 +1848,7 @@ process SomaticFacetsAnnotation {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
+  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
     --facets-output ${purity_rdata} \
     --maf-file ${maf} \
@@ -1907,14 +1907,14 @@ facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
 // --- Generate sample-level metadata
 process MetaDataParser {
   tag {idTumor + "__" + idNormal}
- 
+
   publishDir "${outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 
   input:
     set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
     set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
       referenceMap.idtCodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
-    ]) 
+    ])
 
   output:
     file("*.sample_data.txt") into MetaDataOutput
@@ -1944,13 +1944,13 @@ process MetaDataParser {
     --polysolver_output ${polysolverFile} \
     --MAF_input ${mafFile} \
     --coding_baits_BED ${codingRegionsBed}
-  
+
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
-} else { 
+} else {
   if (params.pairing) {
-    pairing4QC.map{ idTumor, idNormal -> 
+    pairing4QC.map{ idTumor, idNormal ->
       ["placeHolder",idTumor, idNormal,"",""]
     }.set{FacetsQC4Aggregate}
   }
@@ -2043,12 +2043,12 @@ process GermlineCombineHaplotypecallerVcf {
   output:
     set val("placeHolder"), idNormal, target, file("${outfile}"), file("${outfile}.tbi") into haplotypecallerCombinedVcf4Combine, haplotypecallerCombinedVcfOutput
 
-  when: 'haplotypecaller' in tools && runGermline 
+  when: 'haplotypecaller' in tools && runGermline
 
-  script: 
+  script:
   idNormal = id.toString().split("@")[0]
   target = id.toString().split("@")[1]
-  outfile = "${idNormal}.haplotypecaller.vcf.gz"  
+  outfile = "${idNormal}.haplotypecaller.vcf.gz"
   """
   bcftools concat \
     --allow-overlaps \
@@ -2083,12 +2083,12 @@ process GermlineRunStrelka2 {
       referenceMap.idtTargets, referenceMap.agilentTargets, referenceMap.wgsTargets,
       referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex, referenceMap.wgsTargetsIndex
     ])
-    
+
   output:
     set val("placeHolder"), idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into strelka4CombineGermline, strelkaOutputGermline
 
   when: 'strelka2' in tools && runGermline
-  
+
   script:
   options = ""
   intervals = wgsIntervals
@@ -2142,7 +2142,7 @@ process GermlineCombineChannel {
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
-  script:  
+  script:
   isecDir = "${idNormal}.isec"
   gnomad = gnomadWgsVcf
   if (params.assayType == 'genome') {
@@ -2243,7 +2243,7 @@ process GermlineCombineChannel {
   bcftools filter \
     --exclude \"${params.germlineVariant.gnomadAf}\" \
     --output-type v \
-    --output ${idNormal}.union.gnomad.vcf 
+    --output ${idNormal}.union.gnomad.vcf
 
   GetBaseCountsMultiSample \
     --fasta ${genomeFile} \
@@ -2336,14 +2336,14 @@ process GermlineFacetsAnnotation {
   script:
   outputPrefix = "${idTumor}__${idNormal}.germline"
   """
-  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
+  if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
     --facets-output ${purity_rdata} \
     --maf-file ${maf} \
     --output ${outputPrefix}.facets.maf
 
   Rscript --no-init-file /usr/bin/annotate-with-zygosity-germline.R ${outputPrefix}.facets.maf ${outputPrefix}.final.maf
-  else 
+  else
     cp ${maf} ${outputPrefix}.final.maf
   fi
   """
@@ -2446,7 +2446,7 @@ process GermlineRunManta {
 
 dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5).combine(manta4CombineGermline, by: [0,1]).set{ dellyMantaChannelGermline }
 
-// --- Merge Delly and Manta VCFs 
+// --- Merge Delly and Manta VCFs
 process GermlineMergeDellyAndManta {
   tag {idNormal}
 
@@ -2466,7 +2466,7 @@ process GermlineMergeDellyAndManta {
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
   script:
-  """ 
+  """
   bcftools concat \
     --allow-overlaps \
     --output-type z \
@@ -2480,11 +2480,48 @@ process GermlineMergeDellyAndManta {
     --include 'FILTER=\"PASS\"' \
     --output-type z \
     --output ${idNormal}.delly.manta.vcf.gz \
-    ${idNormal}.delly.manta.unfiltered.vcf.gz 
-    
+    ${idNormal}.delly.manta.unfiltered.vcf.gz
+
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
 }
+}
+
+
+process SvABA {
+    publishDir "${outDir}/svaba", mode: "copy"
+
+    input:
+    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForSvABA
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(bwaIndex) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.bwaIndex
+    ])
+
+    output:
+    file("${sample_id}.log")
+    file("${sample_id}.alignments.txt.gz")
+    file("${sample_id}.bps.txt.gz")
+    file("${sample_id}.discordant.txt.gz")
+    file("${sample_id}.svaba.unfiltered.germline.indel.vcf.gz")
+    file("${sample_id}.svaba.unfiltered.somatic.indel.vcf.gz")
+    file("${sample_id}.svaba.unfiltered.germline.sv.vcf.gz")
+    file("${sample_id}.svaba.unfiltered.somatic.sv.vcf.gz")
+    file("${sample_id}.svaba.germline.indel.vcf.gz")
+    file("${sample_id}.svaba.somatic.indel.vcf.gz")
+    file("${sample_id}.svaba.germline.sv.vcf.gz")
+    file("${sample_id}.svaba.somatic.sv.vcf.gz")
+    file("${sample_id}.contigs.bam")
+
+    script:
+    sample_id = 'no_id'
+    """
+    svaba run \
+    -t "${bamTumor}" \
+    -n "${bamNormal}" \
+    -G "${genomeFile}" \
+    -p "${task.cpus}" \
+    -z
+    """
 }
 
 /*
@@ -2559,7 +2596,7 @@ process QcCollectHsMetrics {
 
 process QcQualimap {
   tag {idSample}
-  
+
   publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*"
   publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*/*"
 
@@ -2573,8 +2610,8 @@ process QcQualimap {
     set idSample, file("${idSample}") into qualimap4MultiQC, qualimap4Aggregate
     set idSample, file("${idSample}/*.{html,txt}"), file("${idSample}/css/*"), file("${idSample}/raw_data_qualimapReport/*"), file("${idSample}/images_qualimapReport/*") into qualimapOutput
 
-  
-  when: runQC   
+
+  when: runQC
 
   script:
   if (params.genome == "smallGRCh37"){
@@ -2657,8 +2694,8 @@ process SampleRunMultiQC {
   tag {idSample}
   label 'multiqc_process'
 
-  publishDir "${outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
-  
+  publishDir "${outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode
+
   input:
     set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile), file(qualimapFolder) from sampleMetrics4MultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
@@ -2667,7 +2704,7 @@ process SampleRunMultiQC {
     set idSample, file("*multiqc_report*.html"), path("*multiqc_data*.zip") into sample_multiqc_report
     set idSample, file("QC_Status.txt")
 
-  script: 
+  script:
   if (params.assayType == "exome") {
     assay = "exome"
   }
@@ -2676,7 +2713,7 @@ process SampleRunMultiQC {
   }
   """
 
-  for i in ${idSample}.alfred.tsv.gz ; do 
+  for i in ${idSample}.alfred.tsv.gz ; do
     idSample=\$(basename \$i | cut -f 1 -d.)
     zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
     echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
@@ -2691,11 +2728,11 @@ process SampleRunMultiQC {
       awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> \$idSample.rgY.MQ.alfred.tsv
     done
   done
-  
+
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
   multiqc .
-  general_stats_parse.py --print-criteria 
+  general_stats_parse.py --print-criteria
   rm -rf multiqc_report.html multiqc_data
 
   multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes FASTQ and alignment statistics for the sample ${idSample}.<br/>This report does not include QC metrics from the Tumor/Normal pair that includes ${idSample}. To review pairing QC, please refer to the multiqc_report.html from the somatic-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -t "tempo" -z
@@ -2821,7 +2858,7 @@ process QcConpair {
 
   """
   touch .Rprofile # calls to R inside the python scripts make this necessary to avoid loading user .Rprofile
-  
+
   # Make pairing file
   echo "${idNormal}\t${idTumor}" > pairing.txt
 
@@ -2848,13 +2885,13 @@ process QcConpair {
 
 if (runSomatic) {
   conpairOutput
-    .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
+    .map{ placeHolder, idTumor, idNormal, conpairFiles ->
       [idTumor, idNormal, conpairFiles]
     }.join(FacetsQC4SomaticMultiQC, by:[0,1])
     .set{ somaticMultiQCinput }
 } else {
   conpairOutput
-    .map{ placeHolder, idTumor, idNormal, conpairFiles -> 
+    .map{ placeHolder, idTumor, idNormal, conpairFiles ->
       [idTumor, idNormal, conpairFiles, "", ""]
     }.set{ somaticMultiQCinput }
 
@@ -2864,8 +2901,8 @@ process SomaticRunMultiQC {
    tag {idTumor + "__" + idNormal}
    label 'multiqc_process'
 
-  publishDir "${outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  
-  
+  publishDir "${outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode
+
   input:
     set idTumor, idNormal, file(conpairFiles), file(facetsSummaryFiles), file(facetsQCFiles) from somaticMultiQCinput
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
@@ -2873,7 +2910,7 @@ process SomaticRunMultiQC {
   output:
     set idTumor, idNormal, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into somatic_multiqc_report
 
-  script: 
+  script:
   outPrefix = "${idTumor}__${idNormal}"
   if (params.assayType == "exome") {
     assay = "exome"
@@ -2883,7 +2920,7 @@ process SomaticRunMultiQC {
   }
   """
   echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
-  for i in ./*contamination.txt ; do 
+  for i in ./*contamination.txt ; do
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
@@ -2893,9 +2930,9 @@ process SomaticRunMultiQC {
 
   cp conpair.tsv conpair_genstat.tsv
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
-  
+
   multiqc .
-  general_stats_parse.py --print-criteria 
+  general_stats_parse.py --print-criteria
   rm -rf multiqc_report.html multiqc_data
 
   multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z
@@ -2937,7 +2974,7 @@ process QcConpairAll {
 
   """
   touch .Rprofile # calls to R inside the python scripts make this necessary to avoid loading user .Rprofile
-  
+
   # Make pairing file
   echo "${idNormal}\t${idTumor}" > pairing.txt
 
@@ -3117,7 +3154,7 @@ else if(!(runAggregate == false)) {
   bamsQcStats4Aggregate.branch{ item ->
   			def idSample = item[0]
   			def alfred = item[1]
-  
+
   			ignoreY: alfred =~ /.+\.alfred\.tsv\.gz/
   			ignoreN: alfred =~ /.+\.alfred\.per_readgroup\.tsv\.gz/
   		     }
@@ -3129,7 +3166,7 @@ else if(!(runAggregate == false)) {
   		def idNormal = item[1]
   		def idSample = item[2]
   		def alfred = item[3]
-  
+
   		tumor: idSample == idTumor
   		normal: idSample == idNormal
   	    }
@@ -3144,19 +3181,19 @@ else if(!(runAggregate == false)) {
   			def idNormals = item[2].unique()
   			def fileTumor = item[3].unique()
   			def fileNormal = item[4].unique()
-  
+
 			  [cohort, fileTumor, fileNormal]
   		   }
   		   .unique()
   		   .set{alfredIgnoreY}
-  
+
   inputPairing2.combine(bamsQcStats4Aggregate.ignoreN)
   	     .branch { item ->
   		def idTumor = item[0]
   		def idNormal = item[1]
   		def idSample = item[2]
   		def alfred = item[3]
-  
+
   		tumor: idSample == idTumor
   		normal: idSample == idNormal
   	    }
@@ -3171,20 +3208,20 @@ else if(!(runAggregate == false)) {
   			def idNormals = item[2].unique()
   			def fileTumor = item[3].unique()
   			def fileNormal = item[4].unique()
-  
+
 			[cohort, fileTumor, fileNormal]
   		   }
   		   .unique()
   		   .set{alfredIgnoreN}
-  
-  
+
+
   inputPairing3.combine(collectHsMetrics4Aggregate)
   	     .branch { item ->
   		def idTumor = item[0]
   		def idNormal = item[1]
   		def idSample = item[2]
   		def hsMetrics = item[3]
-  
+
   		tumor: idSample == idTumor
   		normal: idSample == idNormal
   	    }
@@ -3199,7 +3236,7 @@ else if(!(runAggregate == false)) {
   		    def idNormals = item[2].unique()
   		    def fileTumor = item[3].unique()
   		    def fileNormal = item[4].unique()
-  		    
+
 		    [cohort, fileTumor, fileNormal]
   	       }
   	       .unique()
@@ -3210,7 +3247,7 @@ else if(!(runAggregate == false)) {
       def idNormal = item[1]
       def idSample = item[2]
       def jsonFiles = item[3]
-  
+
       tumor: idSample == idTumor
       normal: idSample == idNormal
         }
@@ -3225,7 +3262,7 @@ else if(!(runAggregate == false)) {
           def idNormals = item[2].unique()
           def fileTumor = item[3].flatten().unique()
           def fileNormal = item[4].flatten().unique()
-          
+
           [cohort, fileTumor, fileNormal]
            }
            .unique()
@@ -3284,8 +3321,8 @@ process SomaticAggregateMaf {
   ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
-  for i in mut/*.maf ; do 
-    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then 
+  for i in mut/*.maf ; do
+    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then
       cat \$i
     fi
   done | grep ^Hugo_Symbol | head -n 1 > mut_somatic.maf
@@ -3485,8 +3522,8 @@ process GermlineAggregateMaf {
   ## Collect and merge MAF files
   mkdir mut
   mv *.maf mut/
-  for i in mut/*.maf ; do 
-    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then 
+  for i in mut/*.maf ; do
+    if [ \$( cat \$i | wc -l ) -gt 1 ] ; then
       cat \$i
     fi
   done | grep ^Hugo | head -n1 > mut_germline.maf
@@ -3644,13 +3681,13 @@ process CohortRunMultiQC {
   }
   """
   echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
-  for i in ./*contamination.txt ; do 
+  for i in ./*contamination.txt ; do
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
   cp conpair.tsv conpair_genstat.tsv
-  
-  for i in *.alfred.tsv.gz ; do 
+
+  for i in *.alfred.tsv.gz ; do
     idSample=\$(basename \$i | cut -f 1 -d.)
     zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
     echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
@@ -3666,7 +3703,7 @@ process CohortRunMultiQC {
     done
   done
 
-  for i in *.facets_qc.txt ; do 
+  for i in *.facets_qc.txt ; do
     head -1 \$i | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> \$i.qc.txt
     tail -n +2 \$i | cut -f 1,28,97 >> \$i.qc.txt
   done
@@ -3676,12 +3713,12 @@ process CohortRunMultiQC {
   hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`
   mqcSampleNum=\$((hsMetricsNum + fastpNum ))
-  
+
   multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))"
-  general_stats_parse.py --print-criteria 
+  general_stats_parse.py --print-criteria
   rm -rf multiqc_report.html multiqc_data
 
-  if [ \$hsMetricsNum -gt 50 ] ; then 
+  if [ \$hsMetricsNum -gt 50 ] ; then
     cp genstats-QC_Status.txt QC_Status.txt
     beeswarm_config="max_table_rows: \${mqcSampleNum}"
   else
@@ -3727,7 +3764,7 @@ def defineReferenceMap() {
     // genome .fai file
     'genomeIndex' : checkParamReturnFile("genomeIndex"),
     // BWA index files
-    'bwaIndex' : checkParamReturnFile("bwaIndex"), 
+    'bwaIndex' : checkParamReturnFile("bwaIndex"),
     // VCFs with known indels (such as 1000 Genomes, Mill’s gold standard)
     'knownIndels' : checkParamReturnFile("knownIndels"),
     'knownIndelsIndex' : checkParamReturnFile("knownIndelsIndex"),
@@ -3739,13 +3776,13 @@ def defineReferenceMap() {
     'idtTargets' : checkParamReturnFile("idtTargets"),
     //'idtTargetsUnzipped' : checkParamReturnFile("idtTargetsUnzipped"),
     'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
-    'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
-    'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
+    'idtTargetsList' : checkParamReturnFile("idtTargetsList"),
+    'idtBaitsList' : checkParamReturnFile("idtBaitsList"),
     'agilentTargets' : checkParamReturnFile("agilentTargets"),
     //'agilentTargetsUnzipped' : checkParamReturnFile("agilentTargetsUnzipped"),
     'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
-    'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
-    'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
+    'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),
+    'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"),
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     //'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
@@ -3774,16 +3811,16 @@ def defineReferenceMap() {
     result_array << ['gnomadWesVcfIndex' : checkParamReturnFile("gnomadWesVcfIndex")]
     result_array << ['gnomadWgsVcf' : checkParamReturnFile("gnomadWgsVcf")]
     result_array << ['gnomadWgsVcfIndex' : checkParamReturnFile("gnomadWgsVcfIndex")]
-    // HLA FASTA and *dat for LOHHLA 
-    result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")] 
-    result_array << ['hlaDat' : checkParamReturnFile("hlaDat")] 
+    // HLA FASTA and *dat for LOHHLA
+    result_array << ['hlaFasta' : checkParamReturnFile("hlaFasta")]
+    result_array << ['hlaDat' : checkParamReturnFile("hlaDat")]
     // files for neoantigen & NetMHC
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
     result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
-    result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
-    result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
+    result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]
+    result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]
   }
   return result_array
 }
