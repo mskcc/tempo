@@ -1303,7 +1303,7 @@ process runBRASSCover {
   set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
   output:
-  set idTumor, idNormal, target, file("brassResults/tmpBrass/*.*"), file("brassResults/tmpBrass/progress/*.*") into BRASSCover_out
+  set idTumor, idNormal, target, file("brassResults/tmpBrass/cover/*.*"), file("brassResults/tmpBrass/progress/*.*") into BRASSCover_out
   file("listoffiles") into BRASSOutFiles_Cover
 
   when: params.assayType == "genome" && "brass" in tools
@@ -1336,7 +1336,7 @@ process runBRASSCover {
   """
 }
 
-BRASSCover_out.combine(BRASSInput_out, by:[0,1,2])
+BRASSInput_out.combine(BRASSCover_out, by:[0,1,2])
   .set{BRASSInputCover_out} // idTumor, idNormal, target, InputTmp, InputProgress, CoverTmp, CoverProgress
 
 bamsForBRASSSV.combine(BRASSInputCover_out, by:[0,1,2]) //idTumor, idNormal, target, bamTumor, baiTumor, basTumor, bamNormal, baiNormal, basNormal, InputTmp, InputProgress, CoverTmp, CoverProgress
@@ -1346,13 +1346,14 @@ bamsForBRASSSV.combine(BRASSInputCover_out, by:[0,1,2]) //idTumor, idNormal, tar
 process runBRASS {
   tag { idTumor + "__" + idNormal }
   label 'BRASS'   
+  scratch false
 
   input:
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal), file(BrassInputTmp), file(BrassInputProgress), file(BrassCoverTmp), file(BrassCoverProgress), file(ascatSampleStatistics) from bamsForBRASSSV
   set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
   
   output:
-  file("./brassResults/*.{gz,tbi,bw,bai}") into BRASSOutput
+  file("brassResults/*.{gz,tbi,bw,bai}") into BRASSOutput
   file("listoffiles") into BRASSOutFiles
 
   when: params.assayType == "genome" && "brass" in tools
@@ -1361,21 +1362,21 @@ process runBRASS {
   species="HUMAN"
   assembly=37
   """
-  BrassInputResults=( ${InputResultFiles.join(" ")} )
-  BrassInputProgress=( ${InputProgressFiles.join(" ")} )
-  BrassCoverCover=( ${CoverCoverFiles.join(" ")} )
-  BrassCoverProgress=( ${CoverProgressFiles.join(" ")} )
+  BrassInputResults=( ${BrassInputTmp.join(" ")} )
+  BrassInputProgress=( ${BrassInputProgress.join(" ")} )
+  BrassCoverCover=( ${BrassCoverTmp.join(" ")} )
+  BrassCoverProgress=( ${BrassCoverProgress.join(" ")} )
   
   SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
   mkdir -p brassResults/tmpBrass/progress brassResults/tmpBrass/cover ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
 
-  for i in "\${BrassCoverTmp[@]}" ; do 
+  for i in "\${BrassCoverCover[@]}" ; do 
     mv \$i brassResults/tmpBrass/cover
   done
   for i in "\${BrassCoverProgress[@]}" ; do 
     mv \$i brassResults/tmpBrass/progress
   done
-  for i in "\${BrassInputTmp[@]}" ; do 
+  for i in "\${BrassInputResults[@]}" ; do 
     mv \$i brassResults/tmpBrass
   done
   for i in "\${BrassInputProgress[@]}" ; do 
@@ -1383,19 +1384,19 @@ process runBRASS {
   done
 
   brass.pl -j 4 -k 4 -c ${task.cpus} \
-  -d ${REF_BASE}/CNV_SV_ref/brass/HiDepth.bed.gz \
-  -f ${REF_BASE}/CNV_SV_ref/brass/brass_np.groups.gz \
-  -g ${REF_BASE}/core_ref_GRCh37d5/genome.fa \
+  -d ${brassRefDir}/HiDepth.bed.gz \
+  -f ${brassRefDir}/brass_np.groups.gz \
+  -g ${genomeFile} \
   -s "\$SPECIES" -as \$ASSEMBLY -pr \$PROTOCOL -pl ILLUMINA \
-  -g_cache ${REF_BASE}/VAGrENT_ref_GRCh37d5_ensembl_75/vagrent/vagrent.cache.gz \
-  -vi ${REF_BASE}/CNV_SV_ref/brass/viral.genomic.fa.2bit \
-  -mi ${REF_BASE}/CNV_SV_ref/brass/all_ncbi_bacteria \
-  -b ${REF_BASE}/CNV_SV_ref/brass/500bp_windows.gc.bed.gz \
-  -ct ${REF_BASE}/CNV_SV_ref/brass/CentTelo.tsv \
-  -cb ${REF_BASE}/CNV_SV_ref/brass/cytoband.txt \
+  -g_cache ${vagrentRefDir}/vagrent.cache.gz \
+  -vi ${brassRefDir}/viral.genomic.fa.2bit \
+  -mi ${brassRefDir}/all_ncbi_bacteria \
+  -b ${brassRefDir}/500bp_windows.gc.bed.gz \
+  -ct ${brassRefDir}/CentTelo.tsv \
+  -cb ${brassRefDir}/cytoband.txt \
   -t ${bamTumor} \
   -n ${bamNormal} \
-  -ss samplestatistics.txt \
+  -ss ${ascatSampleStatistics} \
   -o brassResults
   find . -type f -exec ls -lh \\{\\} \\; > listoffiles
   """
