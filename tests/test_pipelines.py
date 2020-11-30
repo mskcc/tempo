@@ -13,7 +13,13 @@ import unittest
 import getpass
 import shutil
 import glob
+import json
 from tempfile import TemporaryDirectory, mkdtemp
+
+try:
+    from .serializeDir import DirSerializer
+except ModuleNotFoundError:
+    from serializeDir import DirSerializer
 
 username = getpass.getuser()
 
@@ -203,23 +209,82 @@ class TestWorkflow(unittest.TestCase):
     def test_SvABA(self):
         """
         Test case for running SvABA
+
+        Takes about 2 minutes to run
         """
+        self.maxDiff = None
         args = [
         '--mapping', os.path.join(TEST_INPUTS_DIR, 'local/tiny_test_mapping.tsv'),
         '--pairing', os.path.join(TEST_INPUTS_DIR, 'local/small_test_pairing.tsv'),
-        '-profile', 'juno', '--somatic', '--germline', '--QC', '--aggregate',
+        '-profile', 'juno', '--somatic', '--germline',
         '--tools', 'svaba'
         ]
         with TemporaryDirectory(dir = THIS_DIR) as tmpdir:
             nxf = Nextflow(tmpdir = tmpdir, args = args, configs = [LOCAL_CONFIG])
-            proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
+            proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
             self.assertEqual(returncode, 0)
 
             svaba_output = os.path.join(output_dir, 'svaba')
-            self.assertTrue(os.path.exists(svaba_output))
-            
-            preserve_output(tmpdir, prefix = self._testMethodName + '.')
 
+            self.assertTrue(os.path.exists(svaba_output))
+
+            output = DirSerializer(svaba_output).data
+            expected_output = {
+                "no_id.alignments.txt.gz": {
+                    "md5": "7029066c27ac6f5ef18d660d5741979a",
+                    "size": 20
+                },
+                "no_id.svaba.somatic.sv.vcf.gz": {
+                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                    "size": 2911
+                },
+                "no_id.svaba.unfiltered.germline.sv.vcf.gz": {
+                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                    "size": 2911
+                },
+                # "no_id.log": { #  this one automatically filtered out since its output is inconsistent
+                #     "md5": "470eab1c8aca3854cb78d69260cc7c22",
+                #     "size": 9026179,
+                #     "lines": 258443
+                # },
+                "no_id.discordant.txt.gz": {
+                    "md5": "d2f3b8fa4b08134a56193588a27ec3b6",
+                    "size": 100
+                },
+                "no_id.svaba.unfiltered.germline.indel.vcf.gz": {
+                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                    "size": 1914
+                },
+                "no_id.svaba.somatic.indel.vcf.gz": {
+                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                    "size": 1914
+                },
+                "no_id.svaba.germline.indel.vcf.gz": {
+                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                    "size": 1914
+                },
+                "no_id.contigs.bam": {
+                    "md5": "36564ace916e72bc258408c858bfdc83",
+                    "size": 1309
+                },
+                "no_id.svaba.unfiltered.somatic.sv.vcf.gz": {
+                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                    "size": 2911
+                },
+                "no_id.svaba.germline.sv.vcf.gz": {
+                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                    "size": 2911
+                },
+                "no_id.bps.txt.gz": {
+                    "md5": "dcd0d711b9e7dcc41eac40f3d94b6db5",
+                    "size": 224
+                },
+                "no_id.svaba.unfiltered.somatic.indel.vcf.gz": {
+                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                    "size": 1914
+                }
+            }
+            self.assertDictEqual(output, expected_output)
 
 if __name__ == "__main__":
     unittest.main()
