@@ -46,8 +46,6 @@ GENOME_CONFIG = os.path.join(CONF_DIR, "genome.config")
 SINGULARITY_CONFIG = os.path.join(CONF_DIR, "singularity.config")
 JUNO_CONFIG = os.path.join(CONF_DIR, "juno.config")
 
-
-
 defaults = {
     'PIPELINE_SCRIPT' : os.path.join(PROJECT_DIR, 'pipeline.nf'),
     'TMPDIR' : USER_SCRATCH, # tmpdir var used inside Tempo pipeline
@@ -183,6 +181,7 @@ class TestWorkflow(unittest.TestCase):
     def setUp(self):
         """make a new tmpdir for each test case"""
         self.preserve = False
+        self.preserve_rename = True
         self.tmpdir = mkdtemp(dir = THIS_DIR)
 
     def tearDown(self):
@@ -192,10 +191,11 @@ class TestWorkflow(unittest.TestCase):
         if not self.preserve:
             shutil.rmtree(self.tmpdir)
         else:
-            old_path = self.tmpdir
-            new_path = os.path.join(THIS_DIR, str(self._testMethodName) + '.' + os.path.basename(self.tmpdir))
-            print(">>> preserving tmpdir; ", old_path, ' -> ', new_path)
-            shutil.move(old_path, new_path)
+            if self.preserve_rename:
+                old_path = self.tmpdir
+                new_path = os.path.join(THIS_DIR, str(self._testMethodName) + '.' + os.path.basename(self.tmpdir))
+                print(">>> preserving tmpdir; ", old_path, ' -> ', new_path)
+                shutil.move(old_path, new_path)
 
     def dontrun_test_full_pipeline(self):
         """
@@ -249,6 +249,7 @@ class TestWorkflow(unittest.TestCase):
         args = [
         '--mapping', os.path.join(THIS_DIR, 'test_make_bam_and_qc.tsv'),
         '-profile', 'juno'
+        # '-profile', 'juno,test', '-without-docker', '--profile_check=false'
         ]
         configs = [
             INTEGRATION_TEST_CONFIG,
@@ -441,6 +442,7 @@ class TestWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(svaba_output))
 
         # serialize the dir listing
+        # dont count lines, size, md5 for some files that are subject to change with timestamps, etc..
         serializer = DirSerializer(svaba_output,
             exclude_md5s = ['.gz', '.log', '.bam'],
             exclude_sizes = ['.gz', '.log', '.bam'],
@@ -450,54 +452,52 @@ class TestWorkflow(unittest.TestCase):
         output = serializer.data
 
         expected_output = {
-            "no_id.alignments.txt.gz": {
+            "DU874145-T__DU874145-N.svaba.somatic.sv.vcf.gz": {
+                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
+                "lines": 145
+            },
+            "DU874145-T__DU874145-N.svaba.unfiltered.somatic.indel.vcf.gz": {
+                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
+                "lines": 123
+            },
+            "DU874145-T__DU874145-N.svaba.unfiltered.germline.indel.vcf.gz": {
+                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
+                "lines": 123
+            },
+            "DU874145-T__DU874145-N.svaba.unfiltered.germline.sv.vcf.gz": {
+                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
+                "lines": 145
+            },
+            "DU874145-T__DU874145-N.svaba.somatic.indel.vcf.gz": {
+                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
+                "lines": 123
+            },
+            "DU874145-T__DU874145-N.alignments.txt.gz": {
                 "md5x": "d41d8cd98f00b204e9800998ecf8427e",
                 "lines": 0
             },
-            "no_id.svaba.somatic.sv.vcf.gz": {
-                "md5x": "91b2142a3224623d3428109509eb0ec2",
+            "DU874145-T__DU874145-N.log": {},
+            "DU874145-T__DU874145-N.svaba.unfiltered.somatic.sv.vcf.gz": {
+                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
                 "lines": 145
             },
-            "no_id.svaba.unfiltered.germline.sv.vcf.gz": {
-                "md5x": "91b2142a3224623d3428109509eb0ec2",
-                "lines": 145
-            },
-            "no_id.log": {
-            },
-            "no_id.discordant.txt.gz": {
+            "DU874145-T__DU874145-N.discordant.txt.gz": {
                 "md5x": "db889d0da915dd1a8c362d6fe311d543",
                 "lines": 1
             },
-            "no_id.svaba.unfiltered.germline.indel.vcf.gz": {
-                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
+            "DU874145-T__DU874145-N.svaba.germline.indel.vcf.gz": {
+                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
                 "lines": 123
             },
-            "no_id.svaba.somatic.indel.vcf.gz": {
-                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
-                "lines": 123
-            },
-            "no_id.svaba.germline.indel.vcf.gz": {
-                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
-                "lines": 123
-            },
-            "no_id.contigs.bam": {
-            },
-            "no_id.svaba.unfiltered.somatic.sv.vcf.gz": {
-                "md5x": "91b2142a3224623d3428109509eb0ec2",
+            "DU874145-T__DU874145-N.svaba.germline.sv.vcf.gz": {
+                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
                 "lines": 145
             },
-            "no_id.svaba.germline.sv.vcf.gz": {
-                "md5x": "91b2142a3224623d3428109509eb0ec2",
-                "lines": 145
-            },
-            "no_id.bps.txt.gz": {
+            "DU874145-T__DU874145-N.bps.txt.gz": {
                 "md5x": "1d44ec335e15760826412cfafe72a5c1",
                 "lines": 1
             },
-            "no_id.svaba.unfiltered.somatic.indel.vcf.gz": {
-                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
-                "lines": 123
-            }
+            "DU874145-T__DU874145-N.contigs.bam": {}
         }
         self.assertDictEqual(output, expected_output)
 

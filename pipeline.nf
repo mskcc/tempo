@@ -2517,13 +2517,14 @@ process SvABA {
     file("${sample_id}.contigs.bam")
 
     script:
-    sample_id = 'no_id'
+    sample_id = idTumor + "__" + idNormal
     """
     svaba run \
     -t "${bamTumor}" \
     -n "${bamNormal}" \
     -G "${genomeFile}" \
     -p "${task.cpus}" \
+    --id-string "${sample_id}" \
     -z
     """
 }
