@@ -8,6 +8,7 @@ import hashlib
 import json
 import gzip
 from pathlib import Path
+import argparse
 
 class DirSerializer(object):
     """
@@ -22,6 +23,7 @@ class DirSerializer(object):
         exclude_exts = (), # ['.log'], # file types to exclude from output data
         exclude_sizes = (), # see note about needing to exclude size recording for some file types
         exclude_md5s = (),
+        exclude_lines = (),
         gz_txt_exts = ['.vcf.gz', '.txt.gz'] # recognize these text files in .gz format and count their lines
         ):
         self.root = root
@@ -30,6 +32,7 @@ class DirSerializer(object):
         self.exclude_sizes = exclude_sizes
         self.exclude_md5s = exclude_md5s
         self.gz_txt_exts = gz_txt_exts
+        self.exclude_lines = exclude_lines
 
         self.data = {}
 
@@ -77,32 +80,56 @@ class DirSerializer(object):
         else:
             self.data[key]['md5'] = self.md5sum(path)
 
+        # md5sum of the .gz eXtracted content; more consistent than md5 of the .gz itself due to archive timestamps and headers
+        if file.endswith('.gz'):
+            self.data[key]['md5x'] = self.md5sumGz(path)
+
         if self.exclude_sizes:
             if not any(file.endswith(ext) for ext in self.exclude_sizes):
                 self.data[key]['size'] = os.path.getsize(path)
         else:
             self.data[key]['size'] = os.path.getsize(path)
 
-        if self.isText(path):
-            self.data[key]['lines'] = self.numLines(path)
+        if self.exclude_lines:
+            if not any(file.endswith(ext) for ext in self.exclude_lines):
+                if self.isText(path):
+                    self.data[key]['lines'] = self.numLines(path)
+                else:
+                    if any(file.endswith(ext) for ext in self.gz_txt_exts):
+                        self.data[key]['lines'] = self.numLinesGz(path)
         else:
-            if any(file.endswith(ext) for ext in self.gz_txt_exts):
-                self.data[key]['lines'] = self.numLinesGz(path)
+            if self.isText(path):
+                self.data[key]['lines'] = self.numLines(path)
+            else:
+                if any(file.endswith(ext) for ext in self.gz_txt_exts):
+                    self.data[key]['lines'] = self.numLinesGz(path)
 
     def json(self, **kwargs):
         """
-        print(DirSerializer('/paths').json(indent = 4))
+        return json representation of the data; pass kwargs to json.dumps()
+
+        >>> print(DirSerializer('/paths').json(indent = 4))
         """
         return(json.dumps(self.data, **kwargs))
 
     def md5sum(self, filepath, chunk_num_blocks=128):
+        """get the md5 sum of a file"""
         file_hash=hashlib.md5()
         with open(filepath,'rb') as f:
             for chunk in iter(lambda: f.read(chunk_num_blocks * file_hash.block_size), b''):
                 file_hash.update(chunk)
         return(file_hash.hexdigest())
 
+    def md5sumGz(self, filepath, chunk_num_blocks=128):
+        """get the md5 hash of the extracted contents of a .gz file"""
+        file_hash=hashlib.md5()
+        with gzip.open(filepath,'rb') as f:
+            for chunk in iter(lambda: f.read(chunk_num_blocks * file_hash.block_size), b''):
+                file_hash.update(chunk)
+        return(file_hash.hexdigest())
+
     def numLines(self, filepath):
+        """get the number of lines in the file"""
         count = 0
         with open(filepath) as f:
             for i, _ in enumerate(f):
@@ -110,6 +137,7 @@ class DirSerializer(object):
         return(count)
 
     def numLinesGz(self, filepath):
+        """get the number of text lines from a .gz file"""
         count = 0
         with gzip.open(filepath, 'rb') as f:
             for i, _ in enumerate(f):
@@ -117,6 +145,7 @@ class DirSerializer(object):
         return(count)
 
     def isText(self, filepath):
+        """check if a file contains text"""
         try:
             with open(filepath, "r") as f:
                 for line in f:
@@ -131,6 +160,13 @@ if __name__ == '__main__':
     Example CLI usage
     $ serializeDir.py some_dir
     """
-    input_dir = sys.argv[1]
-    serializer = DirSerializer(input_dir) # , exclude_md5s = ['.html', '.json']
+    parser = argparse.ArgumentParser()
+    parser.add_argument(dest = 'root')
+    parser.add_argument('--exclude-exts', dest = 'exclude_exts', action='append')
+    parser.add_argument('--exclude-dirs', dest = 'exclude_dirs', action='append')
+    parser.add_argument('--exclude-sizes', dest = 'exclude_sizes', action='append')
+    parser.add_argument('--exclude-md5s', dest = 'exclude_md5s', action='append')
+    parser.add_argument('--exclude-lines', dest = 'exclude_lines', action='append')
+    args = parser.parse_args()
+    serializer = DirSerializer(**vars(args))
     print(serializer.json(indent = 4))

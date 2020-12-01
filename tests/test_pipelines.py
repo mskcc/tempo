@@ -424,7 +424,6 @@ class TestWorkflow(unittest.TestCase):
 
         Takes about 2 minutes to run
         """
-        self.preserve = True
         self.maxDiff = None
         args = [
         '--mapping', os.path.join(TEST_INPUTS_DIR, 'local/tiny_test_mapping.tsv'),
@@ -442,65 +441,62 @@ class TestWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(svaba_output))
 
         # serialize the dir listing
-        serializer = DirSerializer(svaba_output) # , exclude_md5s = ['.gz']
+        serializer = DirSerializer(svaba_output,
+            exclude_md5s = ['.gz', '.log', '.bam'],
+            exclude_sizes = ['.gz', '.log', '.bam'],
+            exclude_lines = ['.log'],
+            )
 
         output = serializer.data
 
-        print(serializer.json(indent = 4))
-
         expected_output = {
             "no_id.alignments.txt.gz": {
-                "md5": "7029066c27ac6f5ef18d660d5741979a",
-                "size": 20
+                "md5x": "d41d8cd98f00b204e9800998ecf8427e",
+                "lines": 0
             },
             "no_id.svaba.somatic.sv.vcf.gz": {
-                "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                "size": 2911
+                "md5x": "91b2142a3224623d3428109509eb0ec2",
+                "lines": 145
             },
             "no_id.svaba.unfiltered.germline.sv.vcf.gz": {
-                "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                "size": 2911
+                "md5x": "91b2142a3224623d3428109509eb0ec2",
+                "lines": 145
             },
-            "no_id.log": { #  this one automatically filtered out since its output is inconsistent
-                "md5": "470eab1c8aca3854cb78d69260cc7c22",
-                "size": 9026179,
-                "lines": 258443
+            "no_id.log": {
             },
             "no_id.discordant.txt.gz": {
-                "md5": "d2f3b8fa4b08134a56193588a27ec3b6",
-                "size": 100
+                "md5x": "db889d0da915dd1a8c362d6fe311d543",
+                "lines": 1
             },
             "no_id.svaba.unfiltered.germline.indel.vcf.gz": {
-                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                "size": 1914
+                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
+                "lines": 123
             },
             "no_id.svaba.somatic.indel.vcf.gz": {
-                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                "size": 1914
+                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
+                "lines": 123
             },
             "no_id.svaba.germline.indel.vcf.gz": {
-                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                "size": 1914
+                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
+                "lines": 123
             },
             "no_id.contigs.bam": {
-                "md5": "36564ace916e72bc258408c858bfdc83",
-                "size": 1309
             },
             "no_id.svaba.unfiltered.somatic.sv.vcf.gz": {
-                "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                "size": 2911
+                "md5x": "91b2142a3224623d3428109509eb0ec2",
+                "lines": 145
             },
             "no_id.svaba.germline.sv.vcf.gz": {
-                "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                "size": 2911
+                "md5x": "91b2142a3224623d3428109509eb0ec2",
+                "lines": 145
             },
             "no_id.bps.txt.gz": {
-                "md5": "dcd0d711b9e7dcc41eac40f3d94b6db5",
-                "size": 224
+                "md5x": "1d44ec335e15760826412cfafe72a5c1",
+                "lines": 1
             },
             "no_id.svaba.unfiltered.somatic.indel.vcf.gz": {
-                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                "size": 1914
+                "md5x": "b94b73d8c14ba4bf906f71d64ad1296e",
+                "lines": 123
             }
         }
         self.assertDictEqual(output, expected_output)
