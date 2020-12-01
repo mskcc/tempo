@@ -244,12 +244,15 @@ class TestWorkflow(unittest.TestCase):
     def test_make_bam_part(self):
         """
         Runs in about 2 minutes
+
+        TODO: gives error about ;
+        No such variable: bamsForSvABA
+        need to figure out fix for that
         """
         self.maxDiff = None
         args = [
         '--mapping', os.path.join(THIS_DIR, 'test_make_bam_and_qc.tsv'),
         '-profile', 'juno'
-        # '-profile', 'juno,test', '-without-docker', '--profile_check=false'
         ]
         configs = [
             INTEGRATION_TEST_CONFIG,
