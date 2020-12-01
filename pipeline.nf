@@ -1182,7 +1182,7 @@ process SomaticMergeDellyAndManta {
 
 if (params.assayType == "genome"){
 
-process runPCAP {
+process generateBasFile {
   tag { idSample }
   
   input:
