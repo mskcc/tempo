@@ -80,10 +80,12 @@ Cohort Aggregation
 =                           C O N F I G U R A T I O N                          =
 ================================================================================
 */
-
-if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
-  println "ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)"
-  exit 1
+profiles = workflow.profile.split(',')
+if (params.profile_check){
+    if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
+      println "ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)"
+      exit 1
+    }
 }
 
 // User-set runtime parameters
@@ -2497,6 +2499,8 @@ process SvABA {
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.bwaIndex
     ])
 
+    when: "svaba" in tools && runSomatic
+
     output:
     file("${sample_id}.log")
     file("${sample_id}.alignments.txt.gz")
@@ -3788,7 +3792,7 @@ def defineReferenceMap() {
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
-  if (workflow.profile != "test") {
+  if (! 'test' in profiles) {
     result_array << ['vepCache' : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf' : checkParamReturnFile("facetsVcf")]
@@ -3822,6 +3826,7 @@ def defineReferenceMap() {
     result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]
   }
+
   return result_array
 }
 
