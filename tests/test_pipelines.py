@@ -22,19 +22,37 @@ except ModuleNotFoundError:
     from serializeDir import DirSerializer
 
 username = getpass.getuser()
+USER_SCRATCH = os.path.join('/scratch', username)
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONF_DIR = os.path.join(PROJECT_DIR, 'conf')
+
 TEST_INPUTS_DIR = os.path.join(PROJECT_DIR, 'test_inputs')
-USER_SCRATCH = os.path.join('/scratch', username)
+TEST_DATA = os.path.join(THIS_DIR, "test-data") # needs to be downloaded; `make test-data`
+
+# # config files
+# in this dir;
 LOCAL_CONFIG = os.path.join(THIS_DIR, "local.config")
+INTEGRATION_TEST_CONFIG = os.path.join(THIS_DIR, "test.config")
+NEXTFLOW_CONFIG = os.path.join(PROJECT_DIR, "nextflow.config")
+# in the root conf dir
+TRAVIS_TEST_CONFIG = os.path.join(CONF_DIR, "test.config")
+CONTAINERS_CONFIG = os.path.join(CONF_DIR, "containers.config")
+RESOURCES_CONFIG = os.path.join(CONF_DIR, "resources.config")
+REFERENCES_CONFIG = os.path.join(CONF_DIR, "references.config")
+EXOME_CONFIG = os.path.join(CONF_DIR, "exome.config")
+GENOME_CONFIG = os.path.join(CONF_DIR, "genome.config")
+SINGULARITY_CONFIG = os.path.join(CONF_DIR, "singularity.config")
+JUNO_CONFIG = os.path.join(CONF_DIR, "juno.config")
+
+
 
 defaults = {
     'PIPELINE_SCRIPT' : os.path.join(PROJECT_DIR, 'pipeline.nf'),
     'TMPDIR' : USER_SCRATCH, # tmpdir var used inside Tempo pipeline
     'NXF_SINGULARITY_CACHEDIR' : '/juno/work/taylorlab/cmopipeline/singularity_images',
-    'NXF_ANSI_LOG' : 'false',
-    'TEST_CONFIG': os.path.join(THIS_DIR, "test.config")
+    'NXF_ANSI_LOG' : 'false'
 }
 
 class Nextflow(object):
@@ -62,14 +80,24 @@ class Nextflow(object):
 
         # collect the config files passed
         self.configs = []
-        self.configs.append(self.TEST_CONFIG)
+        # self.configs.append(self.INTEGRATION_TEST_CONFIG)
         if configs:
             for config in configs:
                 self.configs.append(config)
 
-    def run(self, print_stdout = False, print_stderr = False, print_command = False):
+    def run(self,
+        print_stdout = False,
+        print_stderr = False,
+        print_command = False,
+        validate = False, # check that a non-zero returncode was returned; requires testcase !
+        testcase = None, # the unittest.TestCase instance to use for assertions
+        ):
         """
         Run the Nextflow pipeline via subprocess
+
+        >>> proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
+        >>> proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
+
         """
         # locations for Nextflow output items to write to tmpdir
         NXF_LOG = os.path.join(self.tmpdir, "nextflow.log")
@@ -139,28 +167,37 @@ class Nextflow(object):
                     print(line, end = '')
         returncode = proc.returncode
 
+        if validate:
+            if returncode != 0:
+                print(''.join(proc_stdout))
+                print(''.join(proc_stderr))
+            testcase.assertEqual(returncode, 0)
+
         return(proc_stdout, proc_stderr, returncode, OUTPUT_DIR)
-
-def preserve_output(input_dir, prefix = 'output'):
-    """
-    Helper function to copy contents of a dir to another dir
-    use during test dev to keep TemporaryDirectory contents from being deleted
-
-    >>> preserve_output(tmpdir, prefix = self._testMethodName + '.')
-    """
-    output_dir = mkdtemp(prefix = prefix, dir = '.')
-    print(">>> copying output to: ", output_dir)
-    pattern = os.path.join(input_dir, '*')
-    for old_path in glob.glob(pattern):
-        new_path = os.path.join(output_dir, os.path.basename(old_path))
-        shutil.move(old_path, new_path)
 
 
 class TestWorkflow(unittest.TestCase):
     """
     Test cases for running Tempo pipeline
     """
-    def _0_test_full_pipeline(self):
+    def setUp(self):
+        """make a new tmpdir for each test case"""
+        self.preserve = False
+        self.tmpdir = mkdtemp(dir = THIS_DIR)
+
+    def tearDown(self):
+        """
+        remove the tmpdir after each test case unless it was preserved
+        """
+        if not self.preserve:
+            shutil.rmtree(self.tmpdir)
+        else:
+            old_path = self.tmpdir
+            new_path = os.path.join(THIS_DIR, str(self._testMethodName) + '.' + os.path.basename(self.tmpdir))
+            print(">>> preserving tmpdir; ", old_path, ' -> ', new_path)
+            shutil.move(old_path, new_path)
+
+    def dontrun_test_full_pipeline(self):
         """
         Full pipeline test case
 
@@ -181,10 +218,9 @@ class TestWorkflow(unittest.TestCase):
         ]
 
         # NOTE: make sure that tmpdir is in a location accessible by all computer nodes if using LSF execution
-        with TemporaryDirectory(dir = THIS_DIR) as tmpdir:
-            nxf = Nextflow(tmpdir = tmpdir, args = args)
-            proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
-            self.assertEqual(returncode, 0)
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = [INTEGRATION_TEST_CONFIG, LOCAL_CONFIG])
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
+        self.assertEqual(returncode, 0)
 
     def test_one_tool(self):
         """
@@ -200,11 +236,187 @@ class TestWorkflow(unittest.TestCase):
         '--tools', 'mutect2'
         ]
 
-        with TemporaryDirectory(dir = THIS_DIR) as tmpdir:
-            nxf = Nextflow(tmpdir = tmpdir, args = args, configs = [LOCAL_CONFIG])
-            proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
-            self.assertEqual(returncode, 0)
-            # TODO: more assertion criteria to check output
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = [INTEGRATION_TEST_CONFIG, LOCAL_CONFIG])
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
+        self.assertEqual(returncode, 0)
+        # TODO: more assertion criteria to check output
+
+    def test_make_bam_part(self):
+        """
+        Runs in about 2 minutes
+        """
+        self.maxDiff = None
+        args = [
+        '--mapping', os.path.join(THIS_DIR, 'test_make_bam_and_qc.tsv'),
+        '-profile', 'juno'
+        ]
+        configs = [
+            INTEGRATION_TEST_CONFIG,
+            LOCAL_CONFIG,
+            ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
+
+        # make sure bam dir was created
+        bam_dir = os.path.join(output_dir, "bams")
+        self.assertTrue(os.path.exists(bam_dir))
+
+        # check the bam dir contents
+        # the .bam and .bai do not have consistent exact sizes due to random alignment discrepancies so cannot include their size & md5 in the output data
+        serializer = DirSerializer(bam_dir,
+            exclude_dirs = ['fastp'],
+            exclude_sizes = ['.bai', '.bam'],
+            exclude_md5s = ['.bai', '.bam']
+            )
+
+        output = serializer.data
+        expected_output = {
+            "1234N/1234N.bam": {},
+            "1234N/1234N.bam.bai": {},
+            "1234T/1234T.bam": {},
+            "1234T/1234T.bam.bai": {}
+        }
+        self.assertDictEqual(output, expected_output)
+
+        # check num lines on bam mapping; file contains full paths which will not be consistent due to tmpdirs
+        bamMapping = os.path.join(self.tmpdir, 'bamMapping.tsv')
+        self.assertTrue(os.path.exists(bamMapping))
+        serializer = DirSerializer(bamMapping, exclude_sizes = ['bamMapping.tsv'], exclude_md5s = ['bamMapping.tsv'])
+        output = serializer.data
+        expected_output = {
+            bamMapping : {
+            "lines": 3
+            }
+        }
+        self.assertDictEqual(output, expected_output)
+
+    def test_manta_strelka(self):
+        """
+        """
+        args = [
+        '--bamMapping', os.path.join(THIS_DIR, 'test_somatic.tsv'),
+        '--pairing', os.path.join(THIS_DIR, 'test_make_bam_and_qc_pairing.tsv'),
+        "--tools", "manta,strelka2",
+        "--somatic", "--germline",
+        '-profile', 'juno,test,singularity',
+        '-without-docker',
+        '--profile_check=false',
+        '--genome', "smallGRCh37",
+        "--reference_base", "test-data/reference",
+        '--genome_base', "test-data/reference"
+        ]
+        configs = [
+            INTEGRATION_TEST_CONFIG,
+            LOCAL_CONFIG,
+            REFERENCES_CONFIG
+            ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
+
+
+    def test_sv(self):
+        """
+        """
+        args = [
+        '--bamMapping', os.path.join(THIS_DIR, 'test_somatic.tsv'),
+        '--pairing', os.path.join(THIS_DIR, 'test_make_bam_and_qc_pairing.tsv'),
+        "--tools", "delly,manta",
+        "--somatic", "--germline", "--aggregate",
+        '-profile', 'juno,test,singularity',
+        '-without-docker',
+        '--profile_check=false',
+        '--genome', "smallGRCh37",
+        "--reference_base", "test-data/reference",
+        '--genome_base', "test-data/reference"
+        ]
+        configs = [
+            INTEGRATION_TEST_CONFIG,
+            LOCAL_CONFIG,
+            REFERENCES_CONFIG
+            ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
+
+    def test_msisensor(self):
+        """
+        """
+        args = [
+        '--bamMapping', os.path.join(THIS_DIR, 'test_somatic.tsv'),
+        '--pairing', os.path.join(THIS_DIR, 'test_make_bam_and_qc_pairing.tsv'),
+        "--tools", "msisensor",
+        "--somatic",
+        '-profile', 'juno,test,singularity',
+        '-without-docker',
+        '--profile_check=false',
+        '--genome', "smallGRCh37",
+        "--reference_base", "test-data/reference",
+        '--genome_base', "test-data/reference"
+        ]
+        configs = [
+            INTEGRATION_TEST_CONFIG,
+            LOCAL_CONFIG,
+            REFERENCES_CONFIG
+            ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
+
+
+    def test_pairing_file_validation_pipeline(self):
+        """
+        Should give an error;
+
+        ERROR: Duplicatd inputs found in tests/test_pairing_duplicate.tsv
+
+        [NORMAL_ID:1234N, TUMOR_ID:1234T]
+        [NORMAL_ID:1234N, TUMOR_ID:1234T]
+        """
+        args = [
+        "--mapping", os.path.join(THIS_DIR, "test_make_bam_and_qc.tsv"),
+        '--pairing', os.path.join(THIS_DIR, 'test_pairing_duplicate.tsv'),
+        "--somatic",
+        '-profile', 'juno,test,singularity',
+        '-without-docker',
+        '--profile_check=false',
+        '--genome', "smallGRCh37",
+        "--reference_base", "test-data/reference",
+        '--genome_base', "test-data/reference"
+        ]
+        configs = [
+            INTEGRATION_TEST_CONFIG,
+            LOCAL_CONFIG,
+            REFERENCES_CONFIG
+            ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
+        self.assertEqual(returncode, 1)
+
+    def test_nonUnique_sampleLane_validation_pipeline(self):
+        """
+        Should give an error
+
+        ERROR: Duplicatd inputs found in duplicate_samplelane_makebamqc.tsv
+
+        1234N   test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz
+        1235N   test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz
+        """
+        args = [
+        "--mapping", os.path.join(THIS_DIR, "duplicate_samplelane_makebamqc.tsv"),
+        '-profile', 'juno,test,singularity',
+        '-without-docker',
+        '--profile_check=false',
+        '--genome', "smallGRCh37",
+        "--reference_base", "test-data/reference",
+        '--genome_base', "test-data/reference"
+        ]
+        configs = [
+            INTEGRATION_TEST_CONFIG,
+            LOCAL_CONFIG,
+            REFERENCES_CONFIG
+            ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
+        self.assertEqual(returncode, 1)
+
 
     def test_SvABA(self):
         """
@@ -212,6 +424,7 @@ class TestWorkflow(unittest.TestCase):
 
         Takes about 2 minutes to run
         """
+        self.preserve = True
         self.maxDiff = None
         args = [
         '--mapping', os.path.join(TEST_INPUTS_DIR, 'local/tiny_test_mapping.tsv'),
@@ -219,72 +432,78 @@ class TestWorkflow(unittest.TestCase):
         '-profile', 'juno', '--somatic', '--germline',
         '--tools', 'svaba'
         ]
-        with TemporaryDirectory(dir = THIS_DIR) as tmpdir:
-            nxf = Nextflow(tmpdir = tmpdir, args = args, configs = [LOCAL_CONFIG])
-            proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
-            self.assertEqual(returncode, 0)
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = [INTEGRATION_TEST_CONFIG, LOCAL_CONFIG])
+        proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
+        self.assertEqual(returncode, 0)
 
-            svaba_output = os.path.join(output_dir, 'svaba')
+        # path to output dir for SvABA
+        svaba_output = os.path.join(output_dir, 'svaba')
 
-            self.assertTrue(os.path.exists(svaba_output))
+        self.assertTrue(os.path.exists(svaba_output))
 
-            output = DirSerializer(svaba_output).data
-            expected_output = {
-                "no_id.alignments.txt.gz": {
-                    "md5": "7029066c27ac6f5ef18d660d5741979a",
-                    "size": 20
-                },
-                "no_id.svaba.somatic.sv.vcf.gz": {
-                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                    "size": 2911
-                },
-                "no_id.svaba.unfiltered.germline.sv.vcf.gz": {
-                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                    "size": 2911
-                },
-                # "no_id.log": { #  this one automatically filtered out since its output is inconsistent
-                #     "md5": "470eab1c8aca3854cb78d69260cc7c22",
-                #     "size": 9026179,
-                #     "lines": 258443
-                # },
-                "no_id.discordant.txt.gz": {
-                    "md5": "d2f3b8fa4b08134a56193588a27ec3b6",
-                    "size": 100
-                },
-                "no_id.svaba.unfiltered.germline.indel.vcf.gz": {
-                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                    "size": 1914
-                },
-                "no_id.svaba.somatic.indel.vcf.gz": {
-                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                    "size": 1914
-                },
-                "no_id.svaba.germline.indel.vcf.gz": {
-                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                    "size": 1914
-                },
-                "no_id.contigs.bam": {
-                    "md5": "36564ace916e72bc258408c858bfdc83",
-                    "size": 1309
-                },
-                "no_id.svaba.unfiltered.somatic.sv.vcf.gz": {
-                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                    "size": 2911
-                },
-                "no_id.svaba.germline.sv.vcf.gz": {
-                    "md5": "3222f8c49d95556fa75de6e1b2a48090",
-                    "size": 2911
-                },
-                "no_id.bps.txt.gz": {
-                    "md5": "dcd0d711b9e7dcc41eac40f3d94b6db5",
-                    "size": 224
-                },
-                "no_id.svaba.unfiltered.somatic.indel.vcf.gz": {
-                    "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
-                    "size": 1914
-                }
+        # serialize the dir listing
+        serializer = DirSerializer(svaba_output) # , exclude_md5s = ['.gz']
+
+        output = serializer.data
+
+        print(serializer.json(indent = 4))
+
+        expected_output = {
+            "no_id.alignments.txt.gz": {
+                "md5": "7029066c27ac6f5ef18d660d5741979a",
+                "size": 20
+            },
+            "no_id.svaba.somatic.sv.vcf.gz": {
+                "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                "size": 2911
+            },
+            "no_id.svaba.unfiltered.germline.sv.vcf.gz": {
+                "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                "size": 2911
+            },
+            "no_id.log": { #  this one automatically filtered out since its output is inconsistent
+                "md5": "470eab1c8aca3854cb78d69260cc7c22",
+                "size": 9026179,
+                "lines": 258443
+            },
+            "no_id.discordant.txt.gz": {
+                "md5": "d2f3b8fa4b08134a56193588a27ec3b6",
+                "size": 100
+            },
+            "no_id.svaba.unfiltered.germline.indel.vcf.gz": {
+                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                "size": 1914
+            },
+            "no_id.svaba.somatic.indel.vcf.gz": {
+                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                "size": 1914
+            },
+            "no_id.svaba.germline.indel.vcf.gz": {
+                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                "size": 1914
+            },
+            "no_id.contigs.bam": {
+                "md5": "36564ace916e72bc258408c858bfdc83",
+                "size": 1309
+            },
+            "no_id.svaba.unfiltered.somatic.sv.vcf.gz": {
+                "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                "size": 2911
+            },
+            "no_id.svaba.germline.sv.vcf.gz": {
+                "md5": "3222f8c49d95556fa75de6e1b2a48090",
+                "size": 2911
+            },
+            "no_id.bps.txt.gz": {
+                "md5": "dcd0d711b9e7dcc41eac40f3d94b6db5",
+                "size": 224
+            },
+            "no_id.svaba.unfiltered.somatic.indel.vcf.gz": {
+                "md5": "621a06440c5a4bc3bc79ece2ebbdf260",
+                "size": 1914
             }
-            self.assertDictEqual(output, expected_output)
+        }
+        self.assertDictEqual(output, expected_output)
 
 if __name__ == "__main__":
     unittest.main()
