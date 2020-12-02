@@ -1266,7 +1266,7 @@ process runBRASSInput {
   set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
   output:
-  set idTumor, idNormal, target, file("brassResults/tmpBrass/*.*"), file("brassResults/tmpBrass/progress/*.*") into BRASSInput_out
+  set idTumor, idNormal, target, file("brass/tmpBrass/*.*"), file("brass/tmpBrass/progress/*.*") into BRASSInput_out
   file("listoffiles") into BRASSOutFiles_Input
 
   when: params.assayType == "genome" && "brass" in tools
@@ -1284,7 +1284,7 @@ process runBRASSInput {
     assembly = params.genome
   }
   """
-  mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  mkdir -p brass ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
   brass.pl -j 4 -k 4 -c ${task.cpus} \
   -d ${brassRefDir}/HiDepth.bed.gz \
@@ -1300,7 +1300,7 @@ process runBRASSInput {
   -t ${bamTumor} \
   -n ${bamNormal} \
   -ss samplestatistics.txt \
-  -o brassResults \
+  -o brass \
   -p input
   """  
 }
@@ -1314,7 +1314,7 @@ process runBRASSCover {
   set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
   output:
-  set idTumor, idNormal, target, file("brassResults/tmpBrass/cover/*.*"), file("brassResults/tmpBrass/progress/*.*") into BRASSCover_out
+  set idTumor, idNormal, target, file("brass/tmpBrass/cover/*.*"), file("brass/tmpBrass/progress/*.*") into BRASSCover_out
   file("listoffiles") into BRASSOutFiles_Cover
 
   when: params.assayType == "genome" && "brass" in tools
@@ -1332,7 +1332,7 @@ process runBRASSCover {
     assembly = params.genome
   }
   """
-  mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  mkdir -p brass ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
   brass.pl -j 4 -k 4 -c ${task.cpus} \
   -d ${brassRefDir}/HiDepth.bed.gz \
@@ -1348,7 +1348,7 @@ process runBRASSCover {
   -t ${bamTumor} \
   -n ${bamNormal} \
   -ss samplestatistics.txt \
-  -o brassResults \
+  -o brass \
   -p cover
   """
 }
@@ -1362,19 +1362,22 @@ bamsForBRASSSV.combine(BRASSInputCover_out, by:[0,1,2]) //idTumor, idNormal, tar
 
 process runBRASS {
   tag { idTumor + "__" + idNormal }
-  label 'BRASS'   
+  label 'BRASS'
+
+  publishDir "${outDir}/somatic/${outputPrefix}/", mode: params.publishDirMode, pattern: "brass/*.{gz,tbi,bw,bai}"
 
   input:
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal), file(BrassInputTmp), file(BrassInputProgress), file(BrassCoverTmp), file(BrassCoverProgress), file(ascatSampleStatistics) from bamsForBRASSSV
   set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
   
   output:
-  file("brassResults/*.{gz,tbi,bw,bai}") into BRASSOutput
+  set idTumor, idNormal, target, file("brass/*.{gz,tbi,bw,bai}") into BRASSOutput
   file("listoffiles") into BRASSOutFiles
 
   when: params.assayType == "genome" && "brass" in tools
 
   script:
+  outputPrefix = "${idTumor}__${idNormal}"
   if (params.genome in ["GRCh37","smallGRCh37"]){
     species = "HUMAN"
     assembly = 37   
@@ -1392,19 +1395,19 @@ process runBRASS {
   BrassCoverCover=( ${BrassCoverTmp.join(" ")} )
   BrassCoverProgress=( ${BrassCoverProgress.join(" ")} )
   
-  mkdir -p brassResults/tmpBrass/progress brassResults/tmpBrass/cover ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  mkdir -p brass/tmpBrass/progress brass/tmpBrass/cover ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
 
   for i in "\${BrassCoverCover[@]}" ; do 
-    mv \$i brassResults/tmpBrass/cover
+    mv \$i brass/tmpBrass/cover
   done
   for i in "\${BrassCoverProgress[@]}" ; do 
-    mv \$i brassResults/tmpBrass/progress
+    mv \$i brass/tmpBrass/progress
   done
   for i in "\${BrassInputResults[@]}" ; do 
-    mv \$i brassResults/tmpBrass
+    mv \$i brass/tmpBrass
   done
   for i in "\${BrassInputProgress[@]}" ; do 
-    mv \$i brassResults/tmpBrass/progress
+    mv \$i brass/tmpBrass/progress
   done
 
   brass.pl -j 4 -k 4 -c ${task.cpus} \
@@ -1421,7 +1424,7 @@ process runBRASS {
   -t ${bamTumor} \
   -n ${bamNormal} \
   -ss ${ascatSampleStatistics} \
-  -o brassResults
+  -o brass
   """
   
 }
