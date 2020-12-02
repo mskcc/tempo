@@ -23,3 +23,6 @@ Result/
 *.tsv
 docs/node_modules
 tests/nextflow
+tests/._test-data
+tests/__pycache__/
+tests/test-data/
