@@ -3,10 +3,15 @@
 """
 Integration tests for running Tempo pipeline with different configurations
 
+Python unittest docs:
+https://docs.python.org/3.7/library/unittest.html
+
+Tempo & Nextflow docs:
 https://ccstempo.netlify.app/juno-setup.html#test-your-environment
 https://github.com/mskcc/cas-ops/blob/master/tempo/Makefile
 https://www.nextflow.io/docs/latest/config.html#environment-variables
 """
+import sys
 import os
 import subprocess
 import unittest
@@ -15,174 +20,21 @@ import shutil
 import glob
 import json
 from tempfile import TemporaryDirectory, mkdtemp
-
-try:
-    from .serializeDir import DirSerializer
-except ModuleNotFoundError:
-    from serializeDir import DirSerializer
-
-username = getpass.getuser()
-USER_SCRATCH = os.path.join('/scratch', username)
-
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONF_DIR = os.path.join(PROJECT_DIR, 'conf')
-
-TEST_INPUTS_DIR = os.path.join(PROJECT_DIR, 'test_inputs')
-TEST_DATA = os.path.join(THIS_DIR, "test-data") # needs to be downloaded; `make test-data`
-
-# # config files
-# in this dir;
-LOCAL_CONFIG = os.path.join(THIS_DIR, "local.config")
-INTEGRATION_TEST_CONFIG = os.path.join(THIS_DIR, "test.config")
-NEXTFLOW_CONFIG = os.path.join(PROJECT_DIR, "nextflow.config")
-# in the root conf dir
-TRAVIS_TEST_CONFIG = os.path.join(CONF_DIR, "test.config")
-CONTAINERS_CONFIG = os.path.join(CONF_DIR, "containers.config")
-RESOURCES_CONFIG = os.path.join(CONF_DIR, "resources.config")
-REFERENCES_CONFIG = os.path.join(CONF_DIR, "references.config")
-EXOME_CONFIG = os.path.join(CONF_DIR, "exome.config")
-GENOME_CONFIG = os.path.join(CONF_DIR, "genome.config")
-SINGULARITY_CONFIG = os.path.join(CONF_DIR, "singularity.config")
-JUNO_CONFIG = os.path.join(CONF_DIR, "juno.config")
-
-defaults = {
-    'PIPELINE_SCRIPT' : os.path.join(PROJECT_DIR, 'pipeline.nf'),
-    'TMPDIR' : USER_SCRATCH, # tmpdir var used inside Tempo pipeline
-    'NXF_SINGULARITY_CACHEDIR' : '/juno/work/taylorlab/cmopipeline/singularity_images',
-    'NXF_ANSI_LOG' : 'false'
-}
-
-class Nextflow(object):
-    """
-    Class to run a Nextflow pipeline in a temp dir for testing
-    """
-    def __init__(self,
-        tmpdir, # TemporaryDirectory path to run in
-        args = (), # CLI args to pass to `nextflow run`
-        configs = (), # extra config files to use
-        defaults = defaults, # default attributes to apply to this instance
-        **kwargs # pass extra keyword args to override the defaults if needed
-        ):
-        self.tmpdir = tmpdir
-        self.args = args
-
-        # set all the default args
-        for key, value in defaults.items():
-            setattr(self, key, value)
-
-        # overwrite with any key word args that were passed
-        for key, value in kwargs.items():
-            if key in defaults:
-                setattr(self, key, value)
-
-        # collect the config files passed
-        self.configs = []
-        # self.configs.append(self.INTEGRATION_TEST_CONFIG)
-        if configs:
-            for config in configs:
-                self.configs.append(config)
-
-    def run(self,
-        print_stdout = False,
-        print_stderr = False,
-        print_command = False,
-        validate = False, # check that a non-zero returncode was returned; requires testcase !
-        testcase = None, # the unittest.TestCase instance to use for assertions
-        ):
-        """
-        Run the Nextflow pipeline via subprocess
-
-        >>> proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
-        >>> proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
-
-        """
-        # locations for Nextflow output items to write to tmpdir
-        NXF_LOG = os.path.join(self.tmpdir, "nextflow.log")
-        STDOUT_LOG = os.path.join(self.tmpdir, "stdout.log")
-        STDERR_LOG = os.path.join(self.tmpdir, "stderr.log")
-        NXF_WORK = os.path.join(self.tmpdir, "work")
-        OUTPUT_DIR = os.path.join(self.tmpdir, "output")
-        NXF_REPORT = os.path.join(self.tmpdir, "nextflow.html")
-        NXF_TIMELINE = os.path.join(self.tmpdir, "timeline.html")
-        NXF_TRACE = os.path.join(self.tmpdir, "trace.txt")
-        BamMapping = os.path.join(self.tmpdir, "bamMapping.tsv") # bamMapping.tsv # params.outname
-        FileTracking = os.path.join(self.tmpdir, "fileTracking.tsv") # fileTracking.tsv # params.fileTracking
-
-        # add the extra items to the CLI args
-        args = list(self.args)
-        args += [
-            '-with-report', NXF_REPORT,
-            '-with-timeline', NXF_TIMELINE,
-            '-with-trace', NXF_TRACE,
-            '--outDir', OUTPUT_DIR,
-            '--outname', BamMapping,
-            '--fileTracking', FileTracking,
-            ]
-
-        # build args to use extra config files
-        config_args = []
-        for config in self.configs:
-            config_args.append('-c')
-            config_args.append(config)
-
-        # build the full list of args for the command to run
-        command = [
-        'nextflow',
-        '-log', NXF_LOG,
-        *config_args,
-        'run', self.PIPELINE_SCRIPT,
-        *args
-        ]
-
-        # set up a dict of extra environment variables that we need to have set
-        env = dict(
-            os.environ,
-            NXF_ANSI_LOG = self.NXF_ANSI_LOG,
-            NXF_WORK = NXF_WORK,
-            TMPDIR = self.TMPDIR,
-            NXF_SINGULARITY_CACHEDIR = self.NXF_SINGULARITY_CACHEDIR
-            )
-
-        if print_command:
-            print(' '.join(command))
-
-        # need to run the command and 'tee' the stdout & stderr to file in the tmpdir but also print it to console and also return it
-        proc_stdout = []
-        proc_stderr = []
-        with subprocess.Popen(command, env = env, stdout=subprocess.PIPE, stderr = subprocess.PIPE, bufsize=1, universal_newlines=True) as proc, open(STDOUT_LOG, 'w') as stdout, open(STDERR_LOG, 'w') as stderr:
-            for line in proc.stdout:
-                proc_stdout.append(line)
-                stdout.write(line)
-                stdout.flush()
-                if print_stdout:
-                    print(line, end = '')
-            for line in proc.stderr:
-                proc_stderr.append(line)
-                stderr.write(line)
-                stderr.flush()
-                if print_stderr:
-                    print(line, end = '')
-        returncode = proc.returncode
-
-        if validate:
-            if returncode != 0:
-                print(''.join(proc_stdout))
-                print(''.join(proc_stderr))
-            testcase.assertEqual(returncode, 0)
-
-        return(proc_stdout, proc_stderr, returncode, OUTPUT_DIR)
-
+from serializeDir import DirSerializer
+from settings import settings, test_files
+from nextflow import Nextflow
 
 class TestWorkflow(unittest.TestCase):
     """
     Test cases for running Tempo pipeline
     """
+    THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
     def setUp(self):
         """make a new tmpdir for each test case"""
         self.preserve = False
         self.preserve_rename = True
-        self.tmpdir = mkdtemp(dir = THIS_DIR)
+        self.tmpdir = mkdtemp(dir = self.THIS_DIR)
 
     def tearDown(self):
         """
@@ -193,7 +45,7 @@ class TestWorkflow(unittest.TestCase):
         else:
             if self.preserve_rename:
                 old_path = self.tmpdir
-                new_path = os.path.join(THIS_DIR, str(self._testMethodName) + '.' + os.path.basename(self.tmpdir))
+                new_path = os.path.join(self.THIS_DIR, str(self._testMethodName) + '.' + os.path.basename(self.tmpdir))
                 print(">>> preserving tmpdir; ", old_path, ' -> ', new_path)
                 shutil.move(old_path, new_path)
 
@@ -217,8 +69,8 @@ class TestWorkflow(unittest.TestCase):
         '-profile', 'juno', '--somatic', '--germline', '--QC', '--aggregate'
         ]
 
-        # NOTE: make sure that tmpdir is in a location accessible by all computer nodes if using LSF execution
-        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = [INTEGRATION_TEST_CONFIG, LOCAL_CONFIG])
+        # NOTE: make sure that tmpdir is in a location accessible by all compute nodes if using LSF execution
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = [settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG']])
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run(print_stdout = True, print_stderr = True, print_command = True)
         self.assertEqual(returncode, 0)
 
@@ -230,13 +82,13 @@ class TestWorkflow(unittest.TestCase):
         takes about 3 minutes to complete
         """
         args = [
-        '--mapping', os.path.join(TEST_INPUTS_DIR, 'local/tiny_test_mapping.tsv'),
-        '--pairing', os.path.join(TEST_INPUTS_DIR, 'local/small_test_pairing.tsv'),
+        '--mapping', test_files['tiny_test_mapping'],
+        '--pairing', test_files['small_test_pairing'],
         '-profile', 'juno', '--somatic',
         '--tools', 'mutect2'
         ]
-
-        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = [INTEGRATION_TEST_CONFIG, LOCAL_CONFIG])
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'] ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
         self.assertEqual(returncode, 0)
         # TODO: more assertion criteria to check output
@@ -251,13 +103,10 @@ class TestWorkflow(unittest.TestCase):
         """
         self.maxDiff = None
         args = [
-        '--mapping', os.path.join(THIS_DIR, 'test_make_bam_and_qc.tsv'),
+        '--mapping', test_files['test_make_bam_and_qc'],
         '-profile', 'juno'
         ]
-        configs = [
-            INTEGRATION_TEST_CONFIG,
-            LOCAL_CONFIG,
-            ]
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'] ]
         nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
 
@@ -298,8 +147,8 @@ class TestWorkflow(unittest.TestCase):
         """
         """
         args = [
-        '--bamMapping', os.path.join(THIS_DIR, 'test_somatic.tsv'),
-        '--pairing', os.path.join(THIS_DIR, 'test_make_bam_and_qc_pairing.tsv'),
+        '--bamMapping', test_files['test_somatic'],
+        '--pairing', test_files['test_make_bam_and_qc_pairing'],
         "--tools", "manta,strelka2",
         "--somatic", "--germline",
         '-profile', 'juno,test,singularity',
@@ -309,11 +158,7 @@ class TestWorkflow(unittest.TestCase):
         "--reference_base", "test-data/reference",
         '--genome_base', "test-data/reference"
         ]
-        configs = [
-            INTEGRATION_TEST_CONFIG,
-            LOCAL_CONFIG,
-            REFERENCES_CONFIG
-            ]
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'], settings['REFERENCES_CONFIG'] ]
         nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
 
@@ -322,8 +167,8 @@ class TestWorkflow(unittest.TestCase):
         """
         """
         args = [
-        '--bamMapping', os.path.join(THIS_DIR, 'test_somatic.tsv'),
-        '--pairing', os.path.join(THIS_DIR, 'test_make_bam_and_qc_pairing.tsv'),
+        '--bamMapping', test_files['test_somatic'],
+        '--pairing', test_files['test_make_bam_and_qc_pairing'],
         "--tools", "delly,manta",
         "--somatic", "--germline", "--aggregate",
         '-profile', 'juno,test,singularity',
@@ -333,11 +178,7 @@ class TestWorkflow(unittest.TestCase):
         "--reference_base", "test-data/reference",
         '--genome_base', "test-data/reference"
         ]
-        configs = [
-            INTEGRATION_TEST_CONFIG,
-            LOCAL_CONFIG,
-            REFERENCES_CONFIG
-            ]
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'], settings['REFERENCES_CONFIG'] ]
         nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
 
@@ -345,8 +186,8 @@ class TestWorkflow(unittest.TestCase):
         """
         """
         args = [
-        '--bamMapping', os.path.join(THIS_DIR, 'test_somatic.tsv'),
-        '--pairing', os.path.join(THIS_DIR, 'test_make_bam_and_qc_pairing.tsv'),
+        '--bamMapping', test_files['test_somatic'],
+        '--pairing', test_files['test_make_bam_and_qc_pairing'],
         "--tools", "msisensor",
         "--somatic",
         '-profile', 'juno,test,singularity',
@@ -356,11 +197,7 @@ class TestWorkflow(unittest.TestCase):
         "--reference_base", "test-data/reference",
         '--genome_base', "test-data/reference"
         ]
-        configs = [
-            INTEGRATION_TEST_CONFIG,
-            LOCAL_CONFIG,
-            REFERENCES_CONFIG
-            ]
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'], settings['REFERENCES_CONFIG'] ]
         nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run(validate = True, testcase = self)
 
@@ -375,8 +212,8 @@ class TestWorkflow(unittest.TestCase):
         [NORMAL_ID:1234N, TUMOR_ID:1234T]
         """
         args = [
-        "--mapping", os.path.join(THIS_DIR, "test_make_bam_and_qc.tsv"),
-        '--pairing', os.path.join(THIS_DIR, 'test_pairing_duplicate.tsv'),
+        "--mapping", test_files['test_make_bam_and_qc'],
+        '--pairing', test_files['test_pairing_duplicate'],
         "--somatic",
         '-profile', 'juno,test,singularity',
         '-without-docker',
@@ -385,11 +222,7 @@ class TestWorkflow(unittest.TestCase):
         "--reference_base", "test-data/reference",
         '--genome_base', "test-data/reference"
         ]
-        configs = [
-            INTEGRATION_TEST_CONFIG,
-            LOCAL_CONFIG,
-            REFERENCES_CONFIG
-            ]
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'], settings['REFERENCES_CONFIG'] ]
         nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
         self.assertEqual(returncode, 1)
@@ -404,7 +237,7 @@ class TestWorkflow(unittest.TestCase):
         1235N   test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz
         """
         args = [
-        "--mapping", os.path.join(THIS_DIR, "duplicate_samplelane_makebamqc.tsv"),
+        "--mapping", test_files['duplicate_samplelane_makebamqc'],
         '-profile', 'juno,test,singularity',
         '-without-docker',
         '--profile_check=false',
@@ -412,11 +245,7 @@ class TestWorkflow(unittest.TestCase):
         "--reference_base", "test-data/reference",
         '--genome_base', "test-data/reference"
         ]
-        configs = [
-            INTEGRATION_TEST_CONFIG,
-            LOCAL_CONFIG,
-            REFERENCES_CONFIG
-            ]
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'], settings['REFERENCES_CONFIG'] ]
         nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
         self.assertEqual(returncode, 1)
@@ -430,19 +259,20 @@ class TestWorkflow(unittest.TestCase):
         """
         self.maxDiff = None
         args = [
-        '--mapping', os.path.join(TEST_INPUTS_DIR, 'local/tiny_test_mapping.tsv'),
-        '--pairing', os.path.join(TEST_INPUTS_DIR, 'local/small_test_pairing.tsv'),
+        '--mapping', test_files['tiny_test_mapping'],
+        '--pairing', test_files['small_test_pairing'],
         '-profile', 'juno', '--somatic', '--germline',
         '--tools', 'svaba'
         ]
-        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = [INTEGRATION_TEST_CONFIG, LOCAL_CONFIG])
+        configs = [ settings['INTEGRATION_TEST_CONFIG'], settings['LOCAL_CONFIG'] ]
+        nxf = Nextflow(tmpdir = self.tmpdir, args = args, configs = configs)
         proc_stdout, proc_stderr, returncode, output_dir = nxf.run()
         self.assertEqual(returncode, 0)
 
         # path to output dir for SvABA
         svaba_output = os.path.join(output_dir, 'svaba')
 
-        self.assertTrue(os.path.exists(svaba_output))
+        self.assertTrue(os.path.exists(svaba_output), "SvABA output dir does not exist")
 
         # serialize the dir listing
         # dont count lines, size, md5 for some files that are subject to change with timestamps, etc..
