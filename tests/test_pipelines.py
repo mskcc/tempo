@@ -257,6 +257,7 @@ class TestWorkflow(unittest.TestCase):
 
         Takes about 2 minutes to run
         """
+        self.preserve = True
         self.maxDiff = None
         args = [
         '--mapping', test_files['tiny_test_mapping'],
@@ -277,32 +278,28 @@ class TestWorkflow(unittest.TestCase):
         # serialize the dir listing
         # dont count lines, size, md5 for some files that are subject to change with timestamps, etc..
         serializer = DirSerializer(svaba_output,
-            exclude_md5s = ['.gz', '.log', '.bam'],
-            exclude_sizes = ['.gz', '.log', '.bam'],
-            exclude_lines = ['.log'],
+            exclude_md5s = ['.gz', '.log', '.bam', '.vcf.gz'],
+            exclude_md5xs = ['.vcf.gz'],
+            exclude_sizes = ['.gz', '.log', '.bam', '.vcf.gz'],
+            exclude_lines = ['.log']
             )
 
         output = serializer.data
 
         expected_output = {
             "DU874145-T__DU874145-N.svaba.somatic.sv.vcf.gz": {
-                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
                 "lines": 145
             },
             "DU874145-T__DU874145-N.svaba.unfiltered.somatic.indel.vcf.gz": {
-                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
                 "lines": 123
             },
             "DU874145-T__DU874145-N.svaba.unfiltered.germline.indel.vcf.gz": {
-                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
                 "lines": 123
             },
             "DU874145-T__DU874145-N.svaba.unfiltered.germline.sv.vcf.gz": {
-                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
                 "lines": 145
             },
             "DU874145-T__DU874145-N.svaba.somatic.indel.vcf.gz": {
-                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
                 "lines": 123
             },
             "DU874145-T__DU874145-N.alignments.txt.gz": {
@@ -311,7 +308,6 @@ class TestWorkflow(unittest.TestCase):
             },
             "DU874145-T__DU874145-N.log": {},
             "DU874145-T__DU874145-N.svaba.unfiltered.somatic.sv.vcf.gz": {
-                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
                 "lines": 145
             },
             "DU874145-T__DU874145-N.discordant.txt.gz": {
@@ -319,11 +315,9 @@ class TestWorkflow(unittest.TestCase):
                 "lines": 1
             },
             "DU874145-T__DU874145-N.svaba.germline.indel.vcf.gz": {
-                "md5x": "794426b6f9ad14c7e40d8f06b4fd70a6",
                 "lines": 123
             },
             "DU874145-T__DU874145-N.svaba.germline.sv.vcf.gz": {
-                "md5x": "f50e45832f2ca18bf5c3dea3e256f5bc",
                 "lines": 145
             },
             "DU874145-T__DU874145-N.bps.txt.gz": {

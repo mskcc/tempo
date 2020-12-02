@@ -23,6 +23,7 @@ class DirSerializer(object):
         exclude_exts = (), # ['.log'], # file types to exclude from output data
         exclude_sizes = (), # see note about needing to exclude size recording for some file types
         exclude_md5s = (),
+        exclude_md5xs = (),
         exclude_lines = (),
         gz_txt_exts = ['.vcf.gz', '.txt.gz'] # recognize these text files in .gz format and count their lines
         ):
@@ -33,6 +34,7 @@ class DirSerializer(object):
         self.exclude_md5s = exclude_md5s
         self.gz_txt_exts = gz_txt_exts
         self.exclude_lines = exclude_lines
+        self.exclude_md5xs = exclude_md5xs
 
         self.data = {}
 
@@ -82,7 +84,11 @@ class DirSerializer(object):
 
         # md5sum of the .gz eXtracted content; more consistent than md5 of the .gz itself due to archive timestamps and headers
         if file.endswith('.gz'):
-            self.data[key]['md5x'] = self.md5sumGz(path)
+            if self.exclude_md5xs:
+                if not any(file.endswith(ext) for ext in self.exclude_md5xs):
+                    self.data[key]['md5x'] = self.md5sumGz(path)
+            else:
+                self.data[key]['md5x'] = self.md5sumGz(path)
 
         if self.exclude_sizes:
             if not any(file.endswith(ext) for ext in self.exclude_sizes):
