@@ -1227,8 +1227,17 @@ process runAscat {
   when: params.assayType == "genome" && "brass" in tools
 
   script:
-  species="HUMAN"
-  assembly=37
+  if (params.genome in ["GRCh37","smallGRCh37"]){
+    species = "HUMAN"
+    assembly = 37   
+  }
+  else if (params.genome in ["GRCh38"]) {
+    species = "HUMAN"
+    assembly = 38
+  } else { // not sure if run will complete with these params. 
+    species = params.genome 
+    assembly = params.genome
+  }
   """
   mkdir -p ascatResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   ascat.pl \
@@ -1263,8 +1272,17 @@ process runBRASSInput {
   when: params.assayType == "genome" && "brass" in tools
 
   script:
-  species="HUMAN"
-  assembly=37
+  if (params.genome in ["GRCh37","smallGRCh37"]){
+    species = "HUMAN"
+    assembly = 37   
+  }
+  else if (params.genome in ["GRCh38"]) {
+    species = "HUMAN"
+    assembly = 38
+  } else { // not sure if run will complete with these params. 
+    species = params.genome 
+    assembly = params.genome
+  }
   """
   mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
@@ -1302,8 +1320,17 @@ process runBRASSCover {
   when: params.assayType == "genome" && "brass" in tools
 
   script:
-  species="HUMAN"
-  assembly=37
+  if (params.genome in ["GRCh37","smallGRCh37"]){
+    species = "HUMAN"
+    assembly = 37   
+  }
+  else if (params.genome in ["GRCh38"]) {
+    species = "HUMAN"
+    assembly = 38
+  } else { // not sure if run will complete with these params. 
+    species = params.genome 
+    assembly = params.genome
+  }
   """
   mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
@@ -1348,8 +1375,17 @@ process runBRASS {
   when: params.assayType == "genome" && "brass" in tools
 
   script:
-  species="HUMAN"
-  assembly=37
+  if (params.genome in ["GRCh37","smallGRCh37"]){
+    species = "HUMAN"
+    assembly = 37   
+  }
+  else if (params.genome in ["GRCh38"]) {
+    species = "HUMAN"
+    assembly = 38
+  } else { // not sure if run will complete with these params. 
+    species = params.genome 
+    assembly = params.genome
+  }
   """
   BrassInputResults=( ${BrassInputTmp.join(" ")} )
   BrassInputProgress=( ${BrassInputProgress.join(" ")} )
