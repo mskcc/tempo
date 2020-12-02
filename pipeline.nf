@@ -2502,29 +2502,15 @@ process SvABA {
     when: "svaba" in tools && runSomatic
 
     output:
-    file("${sample_id}.log")
-    file("${sample_id}.alignments.txt.gz")
-    file("${sample_id}.bps.txt.gz")
-    file("${sample_id}.discordant.txt.gz")
-    file("${sample_id}.svaba.unfiltered.germline.indel.vcf.gz")
-    file("${sample_id}.svaba.unfiltered.somatic.indel.vcf.gz")
-    file("${sample_id}.svaba.unfiltered.germline.sv.vcf.gz")
-    file("${sample_id}.svaba.unfiltered.somatic.sv.vcf.gz")
-    file("${sample_id}.svaba.germline.indel.vcf.gz")
-    file("${sample_id}.svaba.somatic.indel.vcf.gz")
-    file("${sample_id}.svaba.germline.sv.vcf.gz")
-    file("${sample_id}.svaba.somatic.sv.vcf.gz")
-    file("${sample_id}.contigs.bam")
+    file("*") into svaba_output
 
     script:
-    sample_id = idTumor + "__" + idNormal
     """
     svaba run \
     -t "${bamTumor}" \
-    -n "${bamNormal}" \
     -G "${genomeFile}" \
     -p "${task.cpus}" \
-    --id-string "${sample_id}" \
+    --id-string "${idTumor}" \
     -z
     """
 }
