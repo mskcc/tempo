@@ -1215,7 +1215,6 @@ bamsForBRASS.combine(basFiles,by:[0,1,2]) // idTumor, idNormal, target, tumorBam
 process runAscat {
   tag {idTumor + "__" + idNormal}
   label 'ascat' 
-  scratch false
   
   input: 
   set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAscatNGS
@@ -1231,7 +1230,6 @@ process runAscat {
   species="HUMAN"
   assembly=37
   """
-  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
   mkdir -p ascatResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   ascat.pl \
   -o ./ascatResults \
@@ -1241,14 +1239,12 @@ process runAscat {
   -r ${genomeFile} \
   -q 20 \
   -g L \
-  -rs "\$SPECIES" \
-  -ra \$ASSEMBLY \
-  -pr \$PROTOCOL \
+  -rs "${species}" \
+  -ra "${assembly}" \
+  -pr "WGS" \
   -pl ILLUMINA \
   -c ${task.cpus} \
   -force 
-
-  find . > listoffiles
   """
 }
 
@@ -1270,14 +1266,13 @@ process runBRASSInput {
   species="HUMAN"
   assembly=37
   """
-  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
   mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
   brass.pl -j 4 -k 4 -c ${task.cpus} \
   -d ${brassRefDir}/HiDepth.bed.gz \
   -f ${brassRefDir}/brass_np.groups.gz \
   -g ${genomeFile} \
-  -s "\$SPECIES" -as \$ASSEMBLY -pr \$PROTOCOL -pl ILLUMINA \
+  -s "${species}" -as "${assembly}" -pr "WGS" -pl ILLUMINA \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
   -vi ${brassRefDir}/viral.genomic.fa.2bit \
   -mi ${brassRefDir}/all_ncbi_bacteria \
@@ -1289,8 +1284,6 @@ process runBRASSInput {
   -ss samplestatistics.txt \
   -o brassResults \
   -p input
-
-  find . -type f -exec ls -lh \\{\\} \\; > listoffiles
   """  
 }
 
@@ -1312,14 +1305,13 @@ process runBRASSCover {
   species="HUMAN"
   assembly=37
   """
-  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
   mkdir -p brassResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
   brass.pl -j 4 -k 4 -c ${task.cpus} \
   -d ${brassRefDir}/HiDepth.bed.gz \
   -f ${brassRefDir}/brass_np.groups.gz \
   -g ${genomeFile} \
-  -s "\$SPECIES" -as \$ASSEMBLY -pr \$PROTOCOL -pl ILLUMINA \
+  -s "${species}" -as "${assembly}" -pr "WGS" -pl ILLUMINA \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
   -vi ${brassRefDir}/viral.genomic.fa.2bit \
   -mi ${brassRefDir}/all_ncbi_bacteria \
@@ -1331,8 +1323,6 @@ process runBRASSCover {
   -ss samplestatistics.txt \
   -o brassResults \
   -p cover
-
-  find . -type f -exec ls -lh \\{\\} \\; > listoffiles
   """
 }
 
@@ -1346,7 +1336,6 @@ bamsForBRASSSV.combine(BRASSInputCover_out, by:[0,1,2]) //idTumor, idNormal, tar
 process runBRASS {
   tag { idTumor + "__" + idNormal }
   label 'BRASS'   
-  scratch false
 
   input:
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal), file(BrassInputTmp), file(BrassInputProgress), file(BrassCoverTmp), file(BrassCoverProgress), file(ascatSampleStatistics) from bamsForBRASSSV
@@ -1367,7 +1356,6 @@ process runBRASS {
   BrassCoverCover=( ${BrassCoverTmp.join(" ")} )
   BrassCoverProgress=( ${BrassCoverProgress.join(" ")} )
   
-  SPECIES="${species}" ; ASSEMBLY=${assembly} ; PROTOCOL="WGS"
   mkdir -p brassResults/tmpBrass/progress brassResults/tmpBrass/cover ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
 
   for i in "\${BrassCoverCover[@]}" ; do 
@@ -1387,7 +1375,7 @@ process runBRASS {
   -d ${brassRefDir}/HiDepth.bed.gz \
   -f ${brassRefDir}/brass_np.groups.gz \
   -g ${genomeFile} \
-  -s "\$SPECIES" -as \$ASSEMBLY -pr \$PROTOCOL -pl ILLUMINA \
+  -s "${species}" -as "${assembly}" -pr "WGS" -pl ILLUMINA \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
   -vi ${brassRefDir}/viral.genomic.fa.2bit \
   -mi ${brassRefDir}/all_ncbi_bacteria \
@@ -1398,7 +1386,6 @@ process runBRASS {
   -n ${bamNormal} \
   -ss ${ascatSampleStatistics} \
   -o brassResults
-  find . -type f -exec ls -lh \\{\\} \\; > listoffiles
   """
   
 }
