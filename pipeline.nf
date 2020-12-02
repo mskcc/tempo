@@ -1656,7 +1656,7 @@ process DoFacetsPreviewQC {
   mkdir -p ${facetsOutputDir} 
   facetsFitFiles=( ${facetsOutputFolderFiles.join(" ")} )
   for i in "\${facetsFitFiles[@]}" ; do 
-    mv \$i ${facetsOutputDir} 
+    cp \$i ${facetsOutputDir}/\$i
   done
   echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
   echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
@@ -1664,7 +1664,7 @@ process DoFacetsPreviewQC {
   mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
   R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
   cp facets_qc.txt ${idTumor}__${idNormal}.facets_qc.txt
-
+  rm ${facetsOutputDir}/*
   """
 
 }
