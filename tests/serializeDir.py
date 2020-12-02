@@ -9,6 +9,7 @@ import json
 import gzip
 from pathlib import Path
 import argparse
+from pysam import VariantFile, AlignmentFile
 
 class DirSerializer(object):
     """
@@ -25,7 +26,9 @@ class DirSerializer(object):
         exclude_md5s = (),
         exclude_md5xs = (),
         exclude_lines = (),
-        gz_txt_exts = ['.vcf.gz', '.txt.gz'] # recognize these text files in .gz format and count their lines
+        gz_txt_exts = ['.vcf.gz', '.txt.gz'], # recognize these text files in .gz format and count their lines
+        variantFile_exts = ['.vcf.gz', '.vcf'],
+        alignmentFile_exts = ['.bam']
         ):
         self.root = root
         self.exclude_dirs = exclude_dirs
@@ -35,6 +38,8 @@ class DirSerializer(object):
         self.gz_txt_exts = gz_txt_exts
         self.exclude_lines = exclude_lines
         self.exclude_md5xs = exclude_md5xs
+        self.variantFile_exts = variantFile_exts
+        self.alignmentFile_exts = alignmentFile_exts
 
         self.data = {}
 
@@ -110,6 +115,12 @@ class DirSerializer(object):
                 if any(file.endswith(ext) for ext in self.gz_txt_exts):
                     self.data[key]['lines'] = self.numLinesGz(path)
 
+        if any(file.endswith(ext) for ext in self.variantFile_exts):
+            self.data[key]['variants'] = self.numVariants(path)
+
+        if any(file.endswith(ext) for ext in self.alignmentFile_exts):
+            self.data[key]['alignments'] = self.numAlignments(path)
+
     def json(self, **kwargs):
         """
         return json representation of the data; pass kwargs to json.dumps()
@@ -117,6 +128,20 @@ class DirSerializer(object):
         >>> print(DirSerializer('/paths').json(indent = 4))
         """
         return(json.dumps(self.data, **kwargs))
+
+    def numVariants(self, file):
+        vcf = VariantFile(file)
+        count = 0
+        for var in vcf.fetch():
+            count += 1
+        vcf.close()
+        return(count)
+
+    def numAlignments(self, file):
+        bam = AlignmentFile(file)
+        count = bam.count(until_eof = True)
+        bam.close()
+        return(count)
 
     def md5sum(self, filepath, chunk_num_blocks=128):
         """get the md5 sum of a file"""

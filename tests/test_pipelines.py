@@ -285,46 +285,57 @@ class TestWorkflow(unittest.TestCase):
             )
 
         output = serializer.data
+        # print(serializer.json(indent = 4))
 
         expected_output = {
-            "DU874145-T__DU874145-N.svaba.somatic.sv.vcf.gz": {
-                "lines": 145
+            "DU874145-T.contigs.bam": {
+                "alignments": 0
             },
-            "DU874145-T__DU874145-N.svaba.unfiltered.somatic.indel.vcf.gz": {
-                "lines": 123
-            },
-            "DU874145-T__DU874145-N.svaba.unfiltered.germline.indel.vcf.gz": {
-                "lines": 123
-            },
-            "DU874145-T__DU874145-N.svaba.unfiltered.germline.sv.vcf.gz": {
-                "lines": 145
-            },
-            "DU874145-T__DU874145-N.svaba.somatic.indel.vcf.gz": {
-                "lines": 123
-            },
-            "DU874145-T__DU874145-N.alignments.txt.gz": {
+            "DU874145-T.alignments.txt.gz": {
                 "md5x": "d41d8cd98f00b204e9800998ecf8427e",
                 "lines": 0
             },
-            "DU874145-T__DU874145-N.log": {},
-            "DU874145-T__DU874145-N.svaba.unfiltered.somatic.sv.vcf.gz": {
-                "lines": 145
+            "DU874145-T.svaba.unfiltered.sv.vcf.gz.tbi": {
+                "md5": "4cb176febbc8c26d717a6c6e67b9c905",
+                "size": 72
             },
-            "DU874145-T__DU874145-N.discordant.txt.gz": {
+            "DU874145-T.bps.txt.gz": {
+                "md5x": "56fb97fe7eb2ab5ac551f60397ec5003",
+                "lines": 1
+            },
+            "DU874145-T.svaba.unfiltered.indel.vcf.gz": {
+                "lines": 122,
+                "variants": 0
+            },
+            "DU874145-T.svaba.sv.vcf.gz": {
+                "lines": 144,
+                "variants": 0
+            },
+            "DU874145-T.svaba.unfiltered.indel.vcf.gz.tbi": {
+                "md5": "4cb176febbc8c26d717a6c6e67b9c905",
+                "size": 72
+            },
+            "DU874145-T.svaba.sv.vcf.gz.tbi": {
+                "md5": "4cb176febbc8c26d717a6c6e67b9c905",
+                "size": 72
+            },
+            "DU874145-T.svaba.indel.vcf.gz": {
+                "lines": 122,
+                "variants": 0
+            },
+            "DU874145-T.svaba.unfiltered.sv.vcf.gz": {
+                "lines": 144,
+                "variants": 0
+            },
+            "DU874145-T.svaba.indel.vcf.gz.tbi": {
+                "md5": "4cb176febbc8c26d717a6c6e67b9c905",
+                "size": 72
+            },
+            "DU874145-T.log": {},
+            "DU874145-T.discordant.txt.gz": {
                 "md5x": "db889d0da915dd1a8c362d6fe311d543",
                 "lines": 1
-            },
-            "DU874145-T__DU874145-N.svaba.germline.indel.vcf.gz": {
-                "lines": 123
-            },
-            "DU874145-T__DU874145-N.svaba.germline.sv.vcf.gz": {
-                "lines": 145
-            },
-            "DU874145-T__DU874145-N.bps.txt.gz": {
-                "md5x": "1d44ec335e15760826412cfafe72a5c1",
-                "lines": 1
-            },
-            "DU874145-T__DU874145-N.contigs.bam": {}
+            }
         }
         self.assertDictEqual(output, expected_output)
 

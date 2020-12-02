@@ -26,3 +26,4 @@ tests/nextflow
 tests/._test-data
 tests/__pycache__/
 tests/test-data/
+tests/conda/
