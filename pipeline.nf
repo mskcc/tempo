@@ -267,9 +267,8 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1").reverse()[0]
-    filePrefix = fastqFile1.getSimpleName().split("_R1")
-    filePrefix = filePrefix[0..filePrefix.size()-2].join("_R1")
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
+    filePrefix = fastqFile1.getSimpleName().split("_R1")[0..-2].join("_R1")
     """
       fcid=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
@@ -305,9 +304,8 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile2.getSimpleName().split("_R2").reverse()[0]
-    filePrefix = fastqFile2.getSimpleName().split("_R2")
-    filePrefix = filePrefix[0..filePrefix.size()-2].join("_R2")
+    filePartNo = fastqFile2.getSimpleName().split("_R2")[-1]
+    filePrefix = fastqFile2.getSimpleName().split("_R2")[0..-2].join("_R2")
     """
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
@@ -444,7 +442,7 @@ if (params.mapping) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1").reverse()[0]
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
     """
     rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
     readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
