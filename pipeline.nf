@@ -1251,7 +1251,6 @@ process runAscat {
   -rs "${species}" \
   -ra "${assembly}" \
   -pr "WGS" \
-  -pl ILLUMINA \
   -c ${task.cpus} \
   -force 
   """
@@ -1290,7 +1289,7 @@ process runBRASSInput {
   -d ${brassRefDir}/HiDepth.bed.gz \
   -f ${brassRefDir}/brass_np.groups.gz \
   -g ${genomeFile} \
-  -s "${species}" -as "${assembly}" -pr "WGS" -pl ILLUMINA \
+  -s "${species}" -as "${assembly}" -pr "WGS" \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
   -vi ${brassRefDir}/viral.genomic.fa.2bit \
   -mi ${brassRefDir}/all_ncbi_bacteria \
@@ -1338,7 +1337,7 @@ process runBRASSCover {
   -d ${brassRefDir}/HiDepth.bed.gz \
   -f ${brassRefDir}/brass_np.groups.gz \
   -g ${genomeFile} \
-  -s "${species}" -as "${assembly}" -pr "WGS" -pl ILLUMINA \
+  -s "${species}" -as "${assembly}" -pr "WGS" \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
   -vi ${brassRefDir}/viral.genomic.fa.2bit \
   -mi ${brassRefDir}/all_ncbi_bacteria \
@@ -1414,7 +1413,7 @@ process runBRASS {
   -d ${brassRefDir}/HiDepth.bed.gz \
   -f ${brassRefDir}/brass_np.groups.gz \
   -g ${genomeFile} \
-  -s "${species}" -as "${assembly}" -pr "WGS" -pl ILLUMINA \
+  -s "${species}" -as "${assembly}" -pr "WGS" \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
   -vi ${brassRefDir}/viral.genomic.fa.2bit \
   -mi ${brassRefDir}/all_ncbi_bacteria \
