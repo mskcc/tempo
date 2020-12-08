@@ -1222,7 +1222,6 @@ process runAscat {
 
   output:
   set idTumor, idNormal, target, file("ascatResults/*samplestatistics.txt") into ascatOut4Brass
-  file("listoffiles") into ascatOutFiles
 
   when: params.assayType == "genome" && "brass" in tools
 
@@ -1262,11 +1261,10 @@ process runBRASSInput {
   
   input:
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSInput
-  set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
+  set file(genomeFile), file(genomeIndex), file("brassRefDir"), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
   output:
   set idTumor, idNormal, target, file("brass/tmpBrass/*.*"), file("brass/tmpBrass/progress/*.*") into BRASSInput_out
-  file("listoffiles") into BRASSOutFiles_Input
 
   when: params.assayType == "genome" && "brass" in tools
 
@@ -1283,19 +1281,19 @@ process runBRASSInput {
     assembly = params.genome
   }
   """
-  mkdir -p brass ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  export TMPDIR=\$(pwd)/tmp ; mkdir -p \$TMPDIR brass
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
   brass.pl -j 4 -k 4 -c ${task.cpus} \
-  -d ${brassRefDir}/HiDepth.bed.gz \
-  -f ${brassRefDir}/brass_np.groups.gz \
+  -d brassRefDir/HiDepth.bed.gz \
+  -f brassRefDir/brass_np.groups.gz \
   -g ${genomeFile} \
   -s "${species}" -as "${assembly}" -pr "WGS" \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
-  -vi ${brassRefDir}/viral.genomic.fa.2bit \
-  -mi ${brassRefDir}/all_ncbi_bacteria \
-  -b ${brassRefDir}/500bp_windows.gc.bed.gz \
-  -ct ${brassRefDir}/CentTelo.tsv \
-  -cb ${brassRefDir}/cytoband.txt \
+  -vi brassRefDir/viral.genomic.fa.2bit \
+  -mi brassRefDir/all_ncbi_bacteria \
+  -b brassRefDir/500bp_windows.gc.bed.gz \
+  -ct brassRefDir/CentTelo.tsv \
+  -cb brassRefDir/cytoband.txt \
   -t ${bamTumor} \
   -n ${bamNormal} \
   -ss samplestatistics.txt \
@@ -1310,11 +1308,10 @@ process runBRASSCover {
   
   input:
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSCover
-  set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
+  set file(genomeFile), file(genomeIndex), file("brassRefDir"), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
   output:
   set idTumor, idNormal, target, file("brass/tmpBrass/cover/*.*"), file("brass/tmpBrass/progress/*.*") into BRASSCover_out
-  file("listoffiles") into BRASSOutFiles_Cover
 
   when: params.assayType == "genome" && "brass" in tools
 
@@ -1331,19 +1328,19 @@ process runBRASSCover {
     assembly = params.genome
   }
   """
-  mkdir -p brass ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  export TMPDIR=\$(pwd)/tmp ; mkdir -p \$TMPDIR brass
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
   brass.pl -j 4 -k 4 -c ${task.cpus} \
-  -d ${brassRefDir}/HiDepth.bed.gz \
-  -f ${brassRefDir}/brass_np.groups.gz \
+  -d brassRefDir/HiDepth.bed.gz \
+  -f brassRefDir/brass_np.groups.gz \
   -g ${genomeFile} \
   -s "${species}" -as "${assembly}" -pr "WGS" \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
-  -vi ${brassRefDir}/viral.genomic.fa.2bit \
-  -mi ${brassRefDir}/all_ncbi_bacteria \
-  -b ${brassRefDir}/500bp_windows.gc.bed.gz \
-  -ct ${brassRefDir}/CentTelo.tsv \
-  -cb ${brassRefDir}/cytoband.txt \
+  -vi brassRefDir/viral.genomic.fa.2bit \
+  -mi brassRefDir/all_ncbi_bacteria \
+  -b brassRefDir/500bp_windows.gc.bed.gz \
+  -ct brassRefDir/CentTelo.tsv \
+  -cb brassRefDir/cytoband.txt \
   -t ${bamTumor} \
   -n ${bamNormal} \
   -ss samplestatistics.txt \
@@ -1367,11 +1364,10 @@ process runBRASS {
 
   input:
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal), file(BrassInputTmp), file(BrassInputProgress), file(BrassCoverTmp), file(BrassCoverProgress), file(ascatSampleStatistics) from bamsForBRASSSV
-  set file(genomeFile), file(genomeIndex), file(brassRefDir), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
+  set file(genomeFile), file(genomeIndex), file("brassRefDir"), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
   
   output:
   set idTumor, idNormal, target, file("brass/*.{gz,tbi,bw,bai}") into BRASSOutput
-  file("listoffiles") into BRASSOutFiles
 
   when: params.assayType == "genome" && "brass" in tools
 
@@ -1394,7 +1390,7 @@ process runBRASS {
   BrassCoverCover=( ${BrassCoverTmp.join(" ")} )
   BrassCoverProgress=( ${BrassCoverProgress.join(" ")} )
   
-  mkdir -p brass/tmpBrass/progress brass/tmpBrass/cover ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  export TMPDIR=\$(pwd)/tmp ; mkdir -p \$TMPDIR brass/tmpBrass/progress brass/tmpBrass/cover 
 
   for i in "\${BrassCoverCover[@]}" ; do 
     mv \$i brass/tmpBrass/cover
@@ -1410,16 +1406,16 @@ process runBRASS {
   done
 
   brass.pl -j 4 -k 4 -c ${task.cpus} \
-  -d ${brassRefDir}/HiDepth.bed.gz \
-  -f ${brassRefDir}/brass_np.groups.gz \
+  -d brassRefDir/HiDepth.bed.gz \
+  -f brassRefDir/brass_np.groups.gz \
   -g ${genomeFile} \
   -s "${species}" -as "${assembly}" -pr "WGS" \
   -g_cache ${vagrentRefDir}/vagrent.cache.gz \
-  -vi ${brassRefDir}/viral.genomic.fa.2bit \
-  -mi ${brassRefDir}/all_ncbi_bacteria \
-  -b ${brassRefDir}/500bp_windows.gc.bed.gz \
-  -ct ${brassRefDir}/CentTelo.tsv \
-  -cb ${brassRefDir}/cytoband.txt \
+  -vi brassRefDir/viral.genomic.fa.2bit \
+  -mi brassRefDir/all_ncbi_bacteria \
+  -b brassRefDir/500bp_windows.gc.bed.gz \
+  -ct brassRefDir/CentTelo.tsv \
+  -cb brassRefDir/cytoband.txt \
   -t ${bamTumor} \
   -n ${bamNormal} \
   -ss ${ascatSampleStatistics} \
