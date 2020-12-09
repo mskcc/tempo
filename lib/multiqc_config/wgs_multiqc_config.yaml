@@ -31,6 +31,18 @@ custom_data:
                 hidden: False
             - Concordance:
                 hidden: False
+    genstats_paired_coverage:
+        plot_type: 'generalstats'
+        pconfig:
+            - Tumor_Coverage:
+                    description: "Coverage extracted from Qualimap for paired view"
+                    hidden: False
+            - Normal_Coverage:
+                    description: "Coverage extracted from Qualimap for paired view"
+                    hidden: False
+            - Coverage:
+                    description: "Coverage extracted from Qualimap"
+                    hidden: False
     mskcc_conpair:
         file_format: 'tsv'
         section_name: 'Conpair'
@@ -68,6 +80,9 @@ custom_data:
             id: 'qcstatus_pf'
             namespace: 'QC_status_pass_filter'
     facets_qc:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets QC'
         description: 'Results from Facets QC'
@@ -76,6 +91,9 @@ custom_data:
             id: 'facets_qc'
             namespace: 'facets_qc'
     facets_summary:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets Run Summary'
         description: 'Results from Facets'
@@ -94,6 +112,8 @@ custom_data:
 sp:
     genstats_mskcc_conpair:
         fn: 'conpair_genstat.tsv'
+    genstats_paired_coverage:
+        fn: 'coverage_split.txt'
     mskcc_conpair:
         fn: 'conpair.tsv'
     alfredrg:
@@ -106,7 +126,7 @@ sp:
         fn: "QC_Status.txt"
     facets_qc:
         fn: "*.qc.txt"
-        contents: "mafr_median_clonal"
+        contents: "facets_qc"
     facets_summary:
         fn: "*_OUT.txt"
         contents: "purity_cval"
@@ -121,6 +141,30 @@ table_cond_formatting_rules:
             - s_eq: 'warn'
         fail:
             - s_eq: 'fail'
+    mqc-generalstats-genstats_paired_coverage-Tumor_Coverage:
+        pass:
+            - gt: 60
+            - eq: 60
+        warn:
+            - lt: 40
+        fail:
+            - lt: 40
+    mqc-generalstats-genstats_paired_coverage-Normal_Coverage:
+        pass:
+            - gt: 30
+            - eq: 30
+        warn:
+            - lt: 20
+        fail: 
+            - lt: 20
+    mqc-generalstats-genstats_paired_coverage-Coverage:
+        pass: 
+            - gt: 30
+            - eq: 30
+        warn:
+            - lt: 20
+        fail:
+            - lt: 20
     mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
         pass:
             - lt: 1
@@ -177,6 +221,14 @@ table_cond_formatting_rules:
             - lt: 30
         fail:
             - lt: 20
+    mqc-generalstats-qualimap-percentage_aligned:
+        pass:
+            - gt: 97
+            - eq: 97
+        warn:
+            - lt: 97
+        fail:
+            - lt: 60
     FOLD_ENRICHMENT:
         pass:
             - gt: 45
@@ -216,8 +268,21 @@ picard_config:
         - 50
 table_columns_visible:
     fastp: False
+    QualiMap:
+        general_error_rate: True
+        mean_coverage: False
+        median_coverage: False
+        30_x_pc: False
+
 report_section_order:
     criteria:
         order: 1000
     QCStatus:
         order: 1010
+custom_plot_config:
+    fastp-seq-content-n-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-content-gc-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-quality-plot:
+        data_labels: [{ylab: 'R1: Sequence Quality', name: 'Read 1'}, {ylab: 'R2: Sequence Quality', name: 'Read 2'}]
