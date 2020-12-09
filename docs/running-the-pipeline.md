@@ -39,6 +39,9 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `--splitLanes` indicates that the provided FASTQ files will be scanned for all unique sequencing lanes and demultiplexed accordingly. This is recommended for some steps of the alignment pipeline. See more under [The Mapping File](running-the-pipeline.md#input-files) (default: `true`).
 * `-with-timeline` and `-with-report` are enabled by default and results in the generation of a timeline and resource usage report for the pipeline run. These are boolean but can also be fed output names for the respective file.
 * `--genome` is the version of reference files for your analysis. Currently only `GRCh37` is supported. We will add support for `GRCh38` later. (default: `GRCh37`)
+* `--cosmic` is the version of reference for mutational signature analysis. Two options are `v2` 
+([COSMIC v2 30 signatures](https://cancer.sanger.ac.uk/cosmic/signatures_v2)), which is the default, and `v3` 
+([COSMIC v3 60 signatures](https://cancer.sanger.ac.uk/cosmic/signatures/SBS)).
 
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
