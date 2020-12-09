@@ -256,6 +256,10 @@ class TestWorkflow(unittest.TestCase):
         Test case for running SvABA
 
         Takes about 2 minutes to run
+
+        Run this against a pipeline script in a different directory with;
+
+        $ ( PIPELINE_SCRIPT=../../tempo-dev-svaba1/pipeline.nf python3 test_pipelines.py TestWorkflow.test_SvABA )
         """
         self.preserve = True
         self.maxDiff = None
