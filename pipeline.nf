@@ -2508,10 +2508,12 @@ process SvABA {
     """
     svaba run \
     -t "${bamTumor}" \
+    -n "${bamNormal}" \
     -G "${genomeFile}" \
     -p "${task.cpus}" \
     --id-string "${idTumor}" \
     -z
+    rm -f *germline*
     """
 }
 
