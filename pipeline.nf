@@ -2503,6 +2503,7 @@ process SvABA {
 
     output:
     file("*") into svaba_output
+    // TODO: where should the output channels go to?
 
     script:
     """
