@@ -2490,6 +2490,7 @@ process GermlineMergeDellyAndManta {
 
 if (runQC) {
 // GATK CollectHsMetrics, WES only
+bamsBQSR4CollectHsMetrics.into{bamsBQSR4CollectHsMetrics; bamsBQSRSkipCollectHsMetrics}
 process QcCollectHsMetrics {
   tag {idSample}
 
@@ -2506,8 +2507,7 @@ process QcCollectHsMetrics {
     ])
 
   output:
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
+    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput, collectHsMetrics4Aggregate
 
   when: params.assayType == "exome" && runQC
 
@@ -2548,6 +2548,13 @@ process QcCollectHsMetrics {
     --BAIT_INTERVALS ${baitIntervals} \
     --TARGET_INTERVALS ${targetIntervals}
   """
+}
+
+if (runQC && params.assayType != "exome"){
+  bamsBQSRSkipCollectHsMetrics.map{ idSample, target, bam, bai ->
+    [idSample, ""]
+  }.into{collectHsMetricsOutput; collectHsMetrics4Aggregate}
+  
 }
 
 // Alfred, BAM QC
@@ -2645,18 +2652,8 @@ alfredOutput
   .groupTuple(size:2, by:0)
   .join(fastPJson4sampleMultiQC, by:0)
   .join(qualimap4MultiQC, by:0)
+  .join(collectHsMetricsOutput, by:0)
   .set{sampleMetrics4MultiQC}
-
-if (params.assayType == "exome" ){
-  sampleMetrics4MultiQC
-    .join(collectHsMetricsOutput, by:0)
-    .set{sampleMetrics4MultiQC}
-} else {
-  sampleMetrics4MultiQC
-    .map{ idSample, alfredRGN, alfredRGY, fastpJson, qualimap -> 
-      [idSample, alfredRGN, alfredRGY, fastpJson, qualimap, ""]
-    }.set{sampleMetrics4MultiQC}
-}
 
 process SampleRunMultiQC {
   tag {idSample}
@@ -3044,9 +3041,7 @@ if ( !params.mapping && !params.bamMapping ){
   inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   inputQualimap4CohortMultiQC = aggregateList.qualimapTumor.unique().combine(aggregateList.qualimapNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
-  if (params.assayType == "exome"){
-    inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
-  }
+  inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
   aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
   aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairContami4Aggregate; inputConpairContami4MultiQC}
   aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
@@ -3184,8 +3179,6 @@ else if(!(runAggregate == false)) {
   		   .unique()
   		   .set{alfredIgnoreN}
   
-  
-  if (params.assayType == "exome") {
   inputPairing3.combine(collectHsMetrics4Aggregate)
   	     .branch { item ->
   		def idTumor = item[0]
@@ -3213,7 +3206,6 @@ else if(!(runAggregate == false)) {
   	       .unique()
   	       .set{hsMetrics}
   inputHsMetrics = hsMetrics
-  }
   inputPairing4.combine(fastPJson4cohortMultiQC)
          .branch { item ->
       def idTumor = item[0]
@@ -3555,17 +3547,10 @@ if (runAggregate && runQC) {
 inputAlfredIgnoreY.into{inputAlfredIgnoreY; inputAlfredIgnoreY4MultiQC }
 inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
 
-if (params.assayType == "exome"){
 inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
 inputAlfredIgnoreY.join(inputAlfredIgnoreN)
 		  .join(inputHsMetrics)
 		  .set{inputQcBamAggregate}
-} else {
-  inputAlfredIgnoreY.join(inputAlfredIgnoreN)
-      .map{ cohort, alfredIgnoreYTumor,alfredIgnoreYNormal,alfredIgnoreNTumor,alfredIgnoreNNormal -> 
-        [cohort, alfredIgnoreYTumor,alfredIgnoreYNormal,alfredIgnoreNTumor,alfredIgnoreNNormal, "", ""]
-      }.set{inputQcBamAggregate}
-}
 
 process QcBamAggregate {
 
@@ -3633,19 +3618,8 @@ inputFastP4MultiQC
   .join(inputConpairContami4MultiQC,by:0)
   .join(inputFacetsQC4CohortMultiQC,by:0)
   .join(inputQualimap4CohortMultiQC,by:0)
+  .join(inputHsMetrics4MultiQC, by:0)
   .set{inputCohortRunMultiQC}
-
-if (params.assayType == "exome" ){
-  inputCohortRunMultiQC
-    .join(inputHsMetrics4MultiQC, by:0)
-    .set{inputCohortRunMultiQC}
-} else {
-  inputCohortRunMultiQC
-    .map{ cohort, fastpTumor, fastpNormal, alfredIgnoreYTumor, alfredIgnoreYNormal, alfredIgnoreNTumor, alfredIgnoreNNormal, conpairConcord, conpairContam, FacetsSummaryFile, FacetsQCFile, qualimapTumor,qualimapNormal -> 
-      [cohort, fastpTumor, fastpNormal, alfredIgnoreYTumor, alfredIgnoreYNormal, alfredIgnoreNTumor, alfredIgnoreNNormal, conpairConcord, conpairContam, FacetsSummaryFile, FacetsQCFile, qualimapTumor,qualimapNormal, "", ""]
-    }.set{inputCohortRunMultiQC}
-}
-
 
 process CohortRunMultiQC {
   tag {cohort}
