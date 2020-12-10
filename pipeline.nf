@@ -1256,10 +1256,11 @@ process runAscat {
 }
 
 process runBRASSInput {
-  tag { idTumor + "__" + idNormal}
+  tag { idTumor + "__" + idNormal + "@" + inputIndex }
   label 'BRASS'   
   
   input:
+  each inputIndex from Channel.from(1,2)
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSInput
   set file(genomeFile), file(genomeIndex), file("brassRefDir"), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
@@ -1298,15 +1299,29 @@ process runBRASSInput {
   -n ${bamNormal} \
   -ss samplestatistics.txt \
   -o brass \
-  -p input
+  -p input \
+  -i ${inputIndex} -l 2
   """  
 }
 
+BRASSInput_out.groupTuple(by:[0,1,2],size:2)
+  .view()
+  .map{idTumor, idNormal, target, InputTmp, InputProgress ->
+    [idTumor, idNormal, target, InputTmp.flatten(), InputProgress.flatten() ]
+  }.set{BRASSInput_out_Tuple}
+
+if (params.genome in ["GRCh37","smallGRCh37","GRCh37"]){
+  brassCoverLimit = 24
+} else {
+  brassCoverLimit = 1
+}
+
 process runBRASSCover {
-  tag { idTumor + "__" + idNormal}
+  tag { idTumor + "__" + idNormal + "@" + coverIndex }
   label 'BRASS'   
   
   input:
+  each coverIndex from Channel.value(1..brassCoverLimit)
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSCover
   set file(genomeFile), file(genomeIndex), file("brassRefDir"), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
@@ -1327,6 +1342,11 @@ process runBRASSCover {
     species = params.genome 
     assembly = params.genome
   }
+  if (brassCoverLimit == 1 ) { 
+    indexParam = ""
+  } else {
+    indexParam = "-i ${coverIndex}"
+  }
   """
   export TMPDIR=\$(pwd)/tmp ; mkdir -p \$TMPDIR brass
   for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
@@ -1345,11 +1365,18 @@ process runBRASSCover {
   -n ${bamNormal} \
   -ss samplestatistics.txt \
   -o brass \
-  -p cover
+  -p cover \
+  ${indexParam} -l ${brassCoverLimit}
   """
 }
 
-BRASSInput_out.combine(BRASSCover_out, by:[0,1,2])
+BRASSCover_out.groupTuple(by:[0,1,2],size:brassCoverLimit)
+  .view()
+  .map{idTumor, idNormal, target, CoverTmp, CoverProgress ->
+    [idTumor, idNormal, target, CoverTmp.flatten(), CoverProgress.flatten() ]
+  }.set{BRASSCover_out_Tuple}
+
+BRASSInput_out_Tuple.combine(BRASSCover_out_Tuple, by:[0,1,2])
   .set{BRASSInputCover_out} // idTumor, idNormal, target, InputTmp, InputProgress, CoverTmp, CoverProgress
 
 bamsForBRASSSV.combine(BRASSInputCover_out, by:[0,1,2]) //idTumor, idNormal, target, bamTumor, baiTumor, basTumor, bamNormal, baiNormal, basNormal, InputTmp, InputProgress, CoverTmp, CoverProgress
