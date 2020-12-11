@@ -890,7 +890,7 @@ agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; bamsForAscatNGS; bamsForBRASS}
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; bamsForAlleleCountAscatNGS; bamsForAscatNGS; bamsForBRASS}
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -1212,12 +1212,80 @@ bamsForBRASS.combine(basFiles,by:[0,1,2]) // idTumor, idNormal, target, tumorBam
     [ idTumor, idNormal, target, tumorBam, tumorBai, tumorBas, normalBam, normalBai, normalBas ]
   }.into{bamsForBRASSInput; bamsForBRASSCover; bamsForBRASSSV }
 
+if (params.genome in ["GRCh37","smallGRCh37","GRCh37"]){
+  ascatAlleleCountLimit = 48
+} else {
+  ascatAlleleCountLimit = 1
+}
+
+Channel.from(1..ascatAlleleCountLimit).set{ ascatAlleleCountSegments }
+
+process runAscatAlleleCount {
+  tag {idTumor + "__" + idNormal + "@" + ascatIndex }
+  label 'ascat' 
+  
+  input: 
+  each ascatIndex from ascatAlleleCountSegments
+  set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAlleleCountAscatNGS
+  set file(genomeFile), file(genomeIndex), file(snpGcCorrections) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.snpGcCorrections)])
+
+  output:
+  set idTumor, idNormal, target, file("ascat_alleleCount_${ascatIndex}.tar.gz") into ascatAlleleCount4Ascat
+  file("listoffiles") into runAscatAlleleCountLoF
+
+  when: params.assayType == "genome" && "brass" in tools
+
+  script:
+  if (params.genome in ["GRCh37","smallGRCh37"]){
+    species = "HUMAN"
+    assembly = 37   
+  }
+  else if (params.genome in ["GRCh38"]) {
+    species = "HUMAN"
+    assembly = 38
+  } else { // not sure if run will complete with these params. 
+    species = params.genome 
+    assembly = params.genome
+  }
+  if (ascatAlleleCountLimit == 1 ) { 
+    indexParam = ""
+  } else {
+    indexParam = "-i ${ascatIndex} -x ${ascatAlleleCountLimit}"
+  }
+  """
+  mkdir -p ascatResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  ascat.pl \
+  -o ./ascatResults \
+  -t ${tumorBam} \
+  -n ${normalBam} \
+  -sg ${snpGcCorrections} \
+  -r ${genomeFile} \
+  -q 20 \
+  -g L \
+  -rs "${species}" \
+  -ra "${assembly}" \
+  -pr "WGS" \
+  -c ${task.cpus} \
+  -force \
+  -p allele_count ${indexParam}
+
+  find . -type f > listoffiles
+  tar -czf ascat_alleleCount_${ascatIndex}.tar.gz ascatResults/
+  """
+}
+
+ascatAlleleCount4Ascat.groupTuple(by:[0,1,2],size:ascatAlleleCountLimit)
+  .map{idTumor, idNormal, target, ascatTar ->
+    [idTumor, idNormal, target, ascatTar.flatten() ]
+  }.combine(bamsForAscatNGS, by:[0,1,2])
+  .set{ascatAlleleCount4Ascat_Tuple}
+
 process runAscat {
   tag {idTumor + "__" + idNormal}
   label 'ascat' 
   
   input: 
-  set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAscatNGS
+  set idTumor, idNormal, target, file(ascatTar), file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from ascatAlleleCount4Ascat_Tuple
   set file(genomeFile), file(genomeIndex), file(snpGcCorrections) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.snpGcCorrections)])
 
   output:
@@ -1238,7 +1306,11 @@ process runAscat {
     assembly = params.genome
   }
   """
-  mkdir -p ascatResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  for i in ascat_alleleCount_*.tar.gz ;do
+    tar -xzf \$i 
+  done
+
   ascat.pl \
   -o ./ascatResults \
   -t ${tumorBam} \
@@ -1255,12 +1327,14 @@ process runAscat {
   """
 }
 
+Channel.from(1..2).set{ BRASSInputSegments }
+
 process runBRASSInput {
   tag { idTumor + "__" + idNormal + "@" + inputIndex }
   label 'BRASS'   
   
   input:
-  each inputIndex from Channel.from(1,2)
+  each inputIndex from BRASSInputSegments
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSInput
   set file(genomeFile), file(genomeIndex), file("brassRefDir"), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
@@ -1305,7 +1379,6 @@ process runBRASSInput {
 }
 
 BRASSInput_out.groupTuple(by:[0,1,2],size:2)
-  .view()
   .map{idTumor, idNormal, target, InputTmp, InputProgress ->
     [idTumor, idNormal, target, InputTmp.flatten(), InputProgress.flatten() ]
   }.set{BRASSInput_out_Tuple}
@@ -1316,12 +1389,14 @@ if (params.genome in ["GRCh37","smallGRCh37","GRCh37"]){
   brassCoverLimit = 1
 }
 
+Channel.from(1..brassCoverLimit).set{ BRASSCoverSegments }
+
 process runBRASSCover {
   tag { idTumor + "__" + idNormal + "@" + coverIndex }
   label 'BRASS'   
   
   input:
-  each coverIndex from Channel.value(1..brassCoverLimit)
+  each coverIndex from BRASSCoverSegments
   set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(basTumor), file(bamNormal), file(baiNormal), file(basNormal) from bamsForBRASSCover
   set file(genomeFile), file(genomeIndex), file("brassRefDir"), file(vagrentRefDir) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.brassRefDir), file(referenceMap.vagrentRefDir)])
 
@@ -1345,7 +1420,7 @@ process runBRASSCover {
   if (brassCoverLimit == 1 ) { 
     indexParam = ""
   } else {
-    indexParam = "-i ${coverIndex}"
+    indexParam = "-i ${coverIndex} -l ${brassCoverLimit}"
   }
   """
   export TMPDIR=\$(pwd)/tmp ; mkdir -p \$TMPDIR brass
@@ -1365,13 +1440,11 @@ process runBRASSCover {
   -n ${bamNormal} \
   -ss samplestatistics.txt \
   -o brass \
-  -p cover \
-  ${indexParam} -l ${brassCoverLimit}
+  -p cover ${indexParam}
   """
 }
 
 BRASSCover_out.groupTuple(by:[0,1,2],size:brassCoverLimit)
-  .view()
   .map{idTumor, idNormal, target, CoverTmp, CoverProgress ->
     [idTumor, idNormal, target, CoverTmp.flatten(), CoverProgress.flatten() ]
   }.set{BRASSCover_out_Tuple}
