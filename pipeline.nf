@@ -1570,7 +1570,7 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*_hisens.seg") into FacetsHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
-    set idTumor, idNormal, target, file("${outputDir}/"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into Facets4FacetsPreview
+    set idTumor, idNormal, target, file("${outputDir}/*.{Rdata,png,out,seg,txt}"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into Facets4FacetsPreview
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
@@ -1643,7 +1643,7 @@ process DoFacetsPreviewQC {
   publishDir "${outDir}/somatic/${tag}/facets/${tag}/", mode: params.publishDirMode, pattern: "${idTumor}__${idNormal}.facets_qc.txt"
 
   input:
-    set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from Facets4FacetsPreview
+    set idTumor, idNormal, target, file(facetsOutputFolderFiles), file(countsFile), facetsOutputDir from Facets4FacetsPreview
   
   output:
     set idTumor, idNormal, file("${idTumor}__${idNormal}.facets_qc.txt") into FacetsPreviewOut
@@ -1653,13 +1653,18 @@ process DoFacetsPreviewQC {
   script:
   tag = "${idTumor}__${idNormal}"
   """
+  mkdir -p ${facetsOutputDir} 
+  facetsFitFiles=( ${facetsOutputFolderFiles.join(" ")} )
+  for i in "\${facetsFitFiles[@]}" ; do 
+    cp \$i ${facetsOutputDir}/\$i
+  done
   echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
   echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
   gzip manifest.txt
   mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
   R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
   cp facets_qc.txt ${idTumor}__${idNormal}.facets_qc.txt
-
+  rm ${facetsOutputDir}/*
   """
 
 }
@@ -2569,8 +2574,8 @@ if (runQC && params.assayType != "exome"){
 process QcQualimap {
   tag {idSample}
   
-  publishDir "${outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*"
-  publishDir "${outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*/*"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*.{html,tar.gz}"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*/*"
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
@@ -2579,9 +2584,8 @@ process QcQualimap {
     ])
 
   output:
-    set idSample, file("${idSample}") into qualimap4MultiQC, qualimap4Aggregate
-    set idSample, file("${idSample}/*.{html,txt}"), file("${idSample}/css/*"), file("${idSample}/raw_data_qualimapReport/*"), file("${idSample}/images_qualimapReport/*") into qualimapOutput
-
+    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Aggregate
+    set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
   
   when: runQC   
 
@@ -2597,9 +2601,32 @@ process QcQualimap {
       gffOptions = "-gff ${agilentTargets}"
     }
   } else { gffOptions = "-gd HUMAN" }
-  javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  if (workflow.profile == "juno") {
+    if (bam.size() > 200.GB) {
+      task.time = { params.maxWallTime }
+    }
+    else if (bam.size() < 100.GB) {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+    }
+    else {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+    }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+  }
   """
-  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} -nt ${task.cpus} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
+  qualimap bamqc \
+  -bam ${bam} \
+  -c ${gffOptions} \
+  -outdir ${idSample} \
+  -nt ${ ( task.cpus * 4 ) - 1 } \
+  -nw 300 \
+  -nr 750 \
+  --java-mem-size=${javaMem}G
+
+  mv ${idSample}/* . 
+  tar -czf ${idSample}_qualimap_rawdata.tar.gz genome_results.txt raw_data_qualimapReport/* 
   """
 }
 
@@ -2684,6 +2711,12 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
+  
   parse_alfred.py --alfredfiles *alfred*tsv.gz 
   mkdir -p ignoreFolder 
   find . -maxdepth 1 \\( -name 'CO_ignore*mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore*mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
@@ -3036,8 +3069,8 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
 		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
-      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}/")]
-      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}/")]
+      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}_qualimap_rawdata.tar.gz")]
+      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}_qualimap_rawdata.tar.gz")]
 		  hsMetricsTumor: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
 		  hsMetricsNormal: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
       fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
@@ -3666,6 +3699,11 @@ process CohortRunMultiQC {
     assay = 'wgs'
   }
   """
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
   echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
