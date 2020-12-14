@@ -2598,6 +2598,18 @@ process QcQualimap {
   } else { gffOptions = "-gd HUMAN" }
   availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
   javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  if (workflow.profile == "juno") {
+    if (bam.size() > 200.GB) {
+      task.time = { params.maxWallTime }
+    }
+    else if (bam.size() < 100.GB) {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+    }
+    else {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+    }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+  }
   """
   qualimap bamqc \
   -bam ${bam} \
@@ -2610,8 +2622,6 @@ process QcQualimap {
 
   mv ${idSample}/* . 
   tar -czf ${idSample}_qualimap_rawdata.tar.gz genome_results.txt raw_data_qualimapReport/* 
-
-  find . -type f > fileslist.txt
   """
 }
 
