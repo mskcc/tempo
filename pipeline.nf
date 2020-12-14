@@ -2586,8 +2586,6 @@ process QcQualimap {
   output:
     set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Aggregate
     set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
-    file("fileslist.txt") into filesout
-
   
   when: runQC   
 
