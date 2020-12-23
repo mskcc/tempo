@@ -2493,6 +2493,7 @@ process GermlineMergeDellyAndManta {
 
 
 process SvABA {
+    tag { idTumor + "__" + idNormal }
     publishDir "${outDir}/svaba", mode: "copy"
 
     input:
