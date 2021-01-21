@@ -2494,7 +2494,7 @@ process GermlineMergeDellyAndManta {
 
 process SvABA {
     tag { idTumor + "__" + idNormal }
-    publishDir "${outDir}/svaba", mode: "copy"
+    publishDir "${outDir}/somatic/${idTumor}__${idNormal}/svaba", mode: params.publishDirMode
 
     input:
     set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForSvABA
@@ -3821,7 +3821,7 @@ def defineReferenceMap() {
     'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
-  if (! 'test' in profiles) {
+  if (! profiles.contains('test')) {
     result_array << ['vepCache' : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf' : checkParamReturnFile("facetsVcf")]
