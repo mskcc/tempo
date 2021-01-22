@@ -2502,7 +2502,7 @@ process SvABA {
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.bwaIndex
     ])
 
-    when: "svaba" in tools && runSomatic
+    when: "svaba" in tools && runSomatic && params.assayType == "genome"
 
     output:
     file("*") into svaba_output
