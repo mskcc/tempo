@@ -90,7 +90,10 @@ if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_si
 publishAll = params.publishAll
 outDir     = file(params.outDir).toAbsolutePath()
 outname = params.outname
-runGermline = params.germline
+runGermline = params.germline != false ? true : params.germline
+runGermlineFile = params.germline 
+//TempoUtils.extractGermlineSamples(runGermlineFile).view()
+//exit 1
 runSomatic = params.somatic
 runQC = params.QC
 runAggregate = params.aggregate
@@ -768,7 +771,17 @@ if (params.pairing) {
 			def normalBai = item[4]
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
-	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+	//.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+  .into{bamsNormal4Polysolver; bams4GermlineAnalysis}
+
+  if (runGermline != false && file(runGermlineFile.toString()).exists() ){
+    if (watch == false) {
+      bams4GermlineAnalysis.combine(TempoUtils.extractGermlineSamples(file(runGermlineFile)), by:[0]).set{bams4GermlineAnalysis}
+    } else {
+      bams4GermlineAnalysis.combine(watchGermline(file(runGermlineFile)), by:[0]).set{bams4GermlineAnalysis}
+    }
+  }
+  bams4GermlineAnalysis.into{bams4Haplotypecaller; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
   bamsTumor4Combine.combine(bamsNormal4Combine, by: [0,1,2])
@@ -3966,4 +3979,16 @@ def watchAggregate(tsvFile) {
          }
          .transpose()
 	 .unique()
+}
+
+def watchGermline(tsvFile) {
+  Channel.watchPath(file(tsvFile), 'create, modify')
+         .splitCsv(sep: '\t', header: true)
+         .unique()
+         .map{ row ->
+              def idNormal = row.NORMAL_ID
+              if(!TempoUtils.checkNumberOfItem(row, 1, file(tsvFile))){}
+              idNormal
+         }
+         .unique()
 }
