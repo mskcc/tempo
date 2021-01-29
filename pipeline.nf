@@ -770,19 +770,15 @@ if (params.pairing) {
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
 	//.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
-  .into{bamsNormal4Polysolver; bams4GermlineAnalysis; bams4GermlineAnalysisSkip}
+  .into{bamsNormal4Polysolver; bams4GermlineAnalysis}
 
   if (runGermline != false && file(runGermlineFile.toString()).exists() ){
     if (params.watch == false) {
-      TempoUtils.extractGermlineSamples(file(runGermlineFile)).into{ germlineFilter; germlineFilter4Cohorts }
+      TempoUtils.extractGermlineSamples(file(runGermlineFile)).set{ germlineFilter }
     } else {
-      watchGermline(file(runGermlineFile)).into{ germlineFilter; germlineFilter4Cohorts }
+      watchGermline(file(runGermlineFile)).set{ germlineFilter }
     }
     bams4GermlineAnalysis.combine(germlineFilter, by:[0]).set{bams4GermlineAnalysis}
-    germlineFilter4Cohorts
-      .map{ normal -> 
-        ["placeholder","placeholder",normal]
-      }.set{germlineFilter4Cohorts}
   }
   bams4GermlineAnalysis.into{bams4Haplotypecaller; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
