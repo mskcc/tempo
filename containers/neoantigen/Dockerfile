@@ -1,14 +1,14 @@
 FROM ubuntu:18.04
 
 LABEL maintainer="Allan Bolipata <bolipatc@mskcc.org>, Evan Biederstedt <evan.biederstedt@gmail.com>, Yixiao Gong <gongy@mskcc.org>" \
-    version.image="0.3.2" \
-    version.neoantigen-dev="0.3.2" \
+    version.image="0.3.2-hotfix" \
+    version.neoantigen-dev="0.3.2-hotfix" \
     version.netMHC="4.0a" \
     version.netMHCpan="4.0a" \
     version.python="2.7.15rc1"
 
 ENV TMPDIR="/tmp"
-ENV NEOANTIGEN_VERSION 0.3.2
+ENV NEOANTIGEN_VERSION 0.3.2-hotfix
 
 RUN apt-get update && apt-get install -y \
     tcsh \

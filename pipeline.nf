@@ -713,13 +713,15 @@ if (params.mapping) {
 if (params.bamMapping) {
   inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
 
-  bamPaths4MultiQC.map{idSample, target, bam, bai ->
-    [ idSample,target, bam.getParent() ]
-  }.set{ locateFastP4MultiQC}
+  if (runQC){
+    bamPaths4MultiQC.map{idSample, target, bam, bai ->
+      [ idSample,target, bam.getParent() ]
+    }.set{ locateFastP4MultiQC}
 
-locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
-    [idSample, file(bamFolder + "/fastp/*json")]
-  }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
+    locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
+      [idSample, file(bamFolder + "/fastp/*json")]
+    }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
+  } 
 }
 
 if (params.pairing) {
@@ -896,7 +898,7 @@ agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; }
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA }
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -1574,7 +1576,7 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*_hisens.seg") into FacetsHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
-    set idTumor, idNormal, target, file("${outputDir}/"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into Facets4FacetsPreview
+    set idTumor, idNormal, target, file("${outputDir}/*.{Rdata,png,out,seg,txt}"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into Facets4FacetsPreview
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
@@ -1647,7 +1649,7 @@ process DoFacetsPreviewQC {
   publishDir "${outDir}/somatic/${tag}/facets/${tag}/", mode: params.publishDirMode, pattern: "${idTumor}__${idNormal}.facets_qc.txt"
 
   input:
-    set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from Facets4FacetsPreview
+    set idTumor, idNormal, target, file(facetsOutputFolderFiles), file(countsFile), facetsOutputDir from Facets4FacetsPreview
   
   output:
     set idTumor, idNormal, file("${idTumor}__${idNormal}.facets_qc.txt") into FacetsPreviewOut
@@ -1657,13 +1659,18 @@ process DoFacetsPreviewQC {
   script:
   tag = "${idTumor}__${idNormal}"
   """
+  mkdir -p ${facetsOutputDir} 
+  facetsFitFiles=( ${facetsOutputFolderFiles.join(" ")} )
+  for i in "\${facetsFitFiles[@]}" ; do 
+    cp \$i ${facetsOutputDir}/\$i
+  done
   echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
   echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
   gzip manifest.txt
   mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
   R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
   cp facets_qc.txt ${idTumor}__${idNormal}.facets_qc.txt
-
+  rm ${facetsOutputDir}/*
   """
 
 }
@@ -2501,6 +2508,7 @@ process GermlineMergeDellyAndManta {
 
 if (runQC) {
 // GATK CollectHsMetrics, WES only
+bamsBQSR4CollectHsMetrics.into{bamsBQSR4CollectHsMetrics; bamsBQSRSkipCollectHsMetrics}
 process QcCollectHsMetrics {
   tag {idSample}
 
@@ -2517,8 +2525,7 @@ process QcCollectHsMetrics {
     ])
 
   output:
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
+    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput, collectHsMetrics4Aggregate
 
   when: params.assayType == "exome" && runQC
 
@@ -2561,13 +2568,20 @@ process QcCollectHsMetrics {
   """
 }
 
+if (runQC && params.assayType != "exome"){
+  bamsBQSRSkipCollectHsMetrics.map{ idSample, target, bam, bai ->
+    [idSample, ""]
+  }.into{collectHsMetricsOutput; collectHsMetrics4Aggregate}
+  
+}
+
 // Alfred, BAM QC
 
 process QcQualimap {
   tag {idSample}
   
-  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*"
-  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*/*"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*.{html,tar.gz}"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*/*"
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
@@ -2576,9 +2590,8 @@ process QcQualimap {
     ])
 
   output:
-    set idSample, file("${idSample}") into qualimap4MultiQC, qualimap4Aggregate
-    set idSample, file("${idSample}/*.{html,txt}"), file("${idSample}/css/*"), file("${idSample}/raw_data_qualimapReport/*"), file("${idSample}/images_qualimapReport/*") into qualimapOutput
-
+    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Aggregate
+    set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
   
   when: runQC   
 
@@ -2594,9 +2607,32 @@ process QcQualimap {
       gffOptions = "-gff ${agilentTargets}"
     }
   } else { gffOptions = "-gd HUMAN" }
-  javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  if (workflow.profile == "juno") {
+    if (bam.size() > 200.GB) {
+      task.time = { params.maxWallTime }
+    }
+    else if (bam.size() < 100.GB) {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+    }
+    else {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+    }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+  }
   """
-  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} -nt ${task.cpus} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
+  qualimap bamqc \
+  -bam ${bam} \
+  -c ${gffOptions} \
+  -outdir ${idSample} \
+  -nt ${ ( task.cpus * 4 ) - 1 } \
+  -nw 300 \
+  -nr 750 \
+  --java-mem-size=${javaMem}G
+
+  mv ${idSample}/* . 
+  tar -czf ${idSample}_qualimap_rawdata.tar.gz genome_results.txt raw_data_qualimapReport/* 
   """
 }
 
@@ -2655,8 +2691,8 @@ process QcAlfred {
 alfredOutput
   .groupTuple(size:2, by:0)
   .join(fastPJson4sampleMultiQC, by:0)
-  .join(collectHsMetricsOutput, by:0)
   .join(qualimap4MultiQC, by:0)
+  .join(collectHsMetricsOutput, by:0)
   .set{sampleMetrics4MultiQC}
 
 process SampleRunMultiQC {
@@ -2666,7 +2702,7 @@ process SampleRunMultiQC {
   publishDir "${outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile), file(qualimapFolder) from sampleMetrics4MultiQC
+    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(qualimapFolder), file(hsmetricsFile) from sampleMetrics4MultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -2681,30 +2717,50 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
+  
+  parse_alfred.py --alfredfiles *alfred*tsv.gz 
+  mkdir -p ignoreFolder 
+  find . -maxdepth 1 \\( -name 'CO_ignore*mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore*mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
+  if [[ "${params.assayType}" == "exome" ]] ; then 
+    find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
+  fi
 
-  for i in ${idSample}.alfred.tsv.gz ; do 
-    idSample=\$(basename \$i | cut -f 1 -d.)
-    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
-    echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
-    cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
+  mkdir -p fastp_original ; mv *fastp.json fastp_original
+  for i in fastp_original/*fastp.json ; do 
+    outname=\$(basename \$i)
+    python -c "import json
+  with open('\$i', 'r') as data_file:
+    data = json.load(data_file)
+  data_file.close()
+  keys = list(data.keys())
+  for element in keys:
+    if element in ['read1_after_filtering','read2_after_filtering'] :
+      data.pop(element, None)
+  keys = list(data['summary'].keys())
+  for element in keys:
+    if element in ['after_filtering'] :
+      data['summary'].pop(element, None)
+  with open('\$outname', 'w') as data_file:
+    json.dump(data, data_file)
+  data_file.close()"
   done
 
-  for i in ${idSample}.alfred.per_readgroup.tsv.gz ; do
-    idSample=\$(basename \$i | cut -f 1 -d.)
-    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
-    for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
-      echo -ne "\${idSample}@\$j\\t" >> \$idSample.rgY.MQ.alfred.tsv
-      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> \$idSample.rgY.MQ.alfred.tsv
-    done
-  done
+  echo -e "\\tCoverage" > coverage_split.txt
+  cover=\$(grep -i "mean cover" ./${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
+  echo -e "${idSample}\\t\${cover}" >> coverage_split.txt
   
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
-  multiqc .
+  multiqc . -x ignoreFolder/ -x fastp_original/
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes FASTQ and alignment statistics for the sample ${idSample}.<br/>This report does not include QC metrics from the Tumor/Normal pair that includes ${idSample}. To review pairing QC, please refer to the multiqc_report.html from the somatic-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -t "tempo" -z
+  multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes FASTQ and alignment statistics for the sample ${idSample}.<br/>This report does not include QC metrics from the Tumor/Normal pair that includes ${idSample}. To review pairing QC, please refer to the multiqc_report.html from the somatic-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -t "tempo" -z -x ignoreFolder/ -x fastp_original/
   mv genstats-QC_Status.txt QC_Status.txt
   """
 
@@ -2895,16 +2951,17 @@ process SomaticRunMultiQC {
   done
 
   head -1 ${facetsQCFiles} | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> ${facetsQCFiles}.qc.txt
-  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 >> ${facetsQCFiles}.qc.txt
+  tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 | sed "s/TRUE\$/PASS/g" | sed "s/FALSE\$/FAIL/g" >> ${facetsQCFiles}.qc.txt
 
   cp conpair.tsv conpair_genstat.tsv
+  mkdir -p ignoreFolder ; mv conpair.tsv ignoreFolder
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
   
-  multiqc .
+  multiqc . -x ignoreFolder
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z
+  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z -x ignoreFolder
 
   """
 
@@ -3018,10 +3075,10 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
 		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
-      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}/")]
-      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}/")]
-		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
-		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
+      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}_qualimap_rawdata.tar.gz")]
+      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}_qualimap_rawdata.tar.gz")]
+		  hsMetricsTumor: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
+		  hsMetricsNormal: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
       fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
       fastpNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.fastp.json")]
                 }
@@ -3183,7 +3240,6 @@ else if(!(runAggregate == false)) {
   		   .unique()
   		   .set{alfredIgnoreN}
   
-  
   inputPairing3.combine(collectHsMetrics4Aggregate)
   	     .branch { item ->
   		def idTumor = item[0]
@@ -3210,6 +3266,7 @@ else if(!(runAggregate == false)) {
   	       }
   	       .unique()
   	       .set{hsMetrics}
+  inputHsMetrics = hsMetrics
   inputPairing4.combine(fastPJson4cohortMultiQC)
          .branch { item ->
       def idTumor = item[0]
@@ -3255,7 +3312,6 @@ else if(!(runAggregate == false)) {
 
   inputAlfredIgnoreY = alfredIgnoreY
   inputAlfredIgnoreN = alfredIgnoreN
-  inputHsMetrics = hsMetrics
   inputFastP4MultiQC = fastPMetrics
   if (pairingQc){
   cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
@@ -3549,10 +3605,10 @@ process GermlineAggregateSv {
 
 if (runAggregate && runQC) {
 
-inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
 inputAlfredIgnoreY.into{inputAlfredIgnoreY; inputAlfredIgnoreY4MultiQC }
 inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
 
+inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
 inputAlfredIgnoreY.join(inputAlfredIgnoreN)
 		  .join(inputHsMetrics)
 		  .set{inputQcBamAggregate}
@@ -3564,7 +3620,7 @@ process QcBamAggregate {
   publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNoraml), file(alfredIgnoreNTumor), file(alfredIgnoreNNoraml), file(hsMetricsTumor), file(hsMetricsNoraml) from inputQcBamAggregate
+    set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(hsMetricsTumor), file(hsMetricsNormal) from inputQcBamAggregate
 
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
@@ -3616,14 +3672,14 @@ process QcConpairAggregate {
   """
 }
 
-inputHsMetrics4MultiQC
-  .join(inputFastP4MultiQC,by:0)
+inputFastP4MultiQC
   .join(inputAlfredIgnoreY4MultiQC,by:0)
   .join(inputAlfredIgnoreN4MultiQC,by:0)
   .join(inputConpairConcord4MultiQC,by:0)
   .join(inputConpairContami4MultiQC,by:0)
   .join(inputFacetsQC4CohortMultiQC,by:0)
   .join(inputQualimap4CohortMultiQC,by:0)
+  .join(inputHsMetrics4MultiQC, by:0)
   .set{inputCohortRunMultiQC}
 
 process CohortRunMultiQC {
@@ -3633,13 +3689,13 @@ process CohortRunMultiQC {
   publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal) from inputCohortRunMultiQC
+    set cohort, file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal), file(hsMetricsTumor), file(hsMetricsNormal) from inputCohortRunMultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
     set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
 
-  when: runQC && params.assayType == "exome"
+  when: runQC 
 
   script:
   if (params.assayType == "exome") {
@@ -3649,52 +3705,78 @@ process CohortRunMultiQC {
     assay = 'wgs'
   }
   """
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
   echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do 
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
      echo -e "\$(tail -n +2 \$i | sort -r | cut -f 2| head -1)\\t\$(tail -n +2 \$i | sort -r | cut -f 2| paste -sd"\\t")\\t\$(tail -n +2 \$i | sort -r | cut -f 3| paste -sd"\\t")\\t\$(tail -1 \$j | cut -f 2 )" >> conpair.tsv
   done
   cp conpair.tsv conpair_genstat.tsv
-  
-  for i in *.alfred.tsv.gz ; do 
-    idSample=\$(basename \$i | cut -f 1 -d.)
-    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfred.tsv
-    echo -ne "\${idSample}\\t" >> allSamples.rgN.MQ.alfred.tsv
-    cat  \$idSample.MQ.alfred.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g" >> allSamples.rgN.MQ.alfred.tsv
-  done
 
-  for i in *.alfred.per_readgroup.tsv.gz ; do
-    idSample=\$(basename \$i | cut -f 1 -d.)
-    zcat \$i | grep ^MQ | cut -f 3,5-6 | tail -n +2 > \$idSample.MQ.alfredY.tsv
-    for j in \$(cut -f 3 \$idSample.MQ.alfredY.tsv | sort | uniq) ; do
-      echo -ne "\${idSample}@\$j\\t" >> ${cohort}.rgY.MQ.alfred.tsv
-      awk -F"\\t" -v rg="\$j" '{if (\$3 == rg) print \$0 }'  \$idSample.MQ.alfredY.tsv | cut -f 2 | tr "\\n" "\\t" | sed "s/\\t\$/\\n/g">>${cohort}.rgY.MQ.alfred.tsv
-    done
+  mkdir -p fastp_original ; mv *fastp.json fastp_original
+  for i in fastp_original/*fastp.json ; do 
+    outname=\$(basename \$i)
+    python -c "import json
+  with open('\$i', 'r') as data_file:
+    data = json.load(data_file)
+  data_file.close()
+  keys = list(data.keys())
+  for element in keys:
+    if element in ['read1_after_filtering','read2_after_filtering'] :
+      data.pop(element, None)
+  keys = list(data['summary'].keys())
+  for element in keys:
+    if element in ['after_filtering'] :
+      data['summary'].pop(element, None)
+  with open('\$outname', 'w') as data_file:
+    json.dump(data, data_file)
+  data_file.close()"
   done
+  
+  for i in ./*/genome_results.txt ; do
+    sampleName=\$(dirname \$i | xargs -n 1 basename )
+    cover=\$(grep -i "mean cover" \$i | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
+    echo -e "\${sampleName}\\t\${cover}"
+  done > flatCoverage
+  echo -e "\\tTumor_Coverage\\tNormal_Coverage" > coverage_split.txt
+  join -1 2 -2 1 -o 1.1,1.2,1.3,2.2 -t \$'\\t' <(join -1 1 -2 1 -t \$'\\t' <(cut -f2,3 conpair_genstat.tsv | tail -n +2 | sort | uniq) <(cat flatCoverage | sort | uniq)) <(cat flatCoverage | sort | uniq) | cut -f 1,3,4 >> coverage_split.txt
+  join -1 1 -2 1 -t \$'\\t' <(cut -f 3 conpair_genstat.tsv | sort | uniq | sed "s/\$/\\t/g" ) <(cat flatCoverage | sort | uniq) >> coverage_split.txt
+  
+  parse_alfred.py --alfredfiles *alfred*tsv.gz
+  mkdir -p ignoreFolder 
+  find . -maxdepth 1 \\( -name 'CO_ignore_mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore_mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
+  if [[ "${params.assayType}" == "exome" ]] ; then 
+    find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
+  fi
+  mv conpair.tsv ignoreFolder
 
   for i in *.facets_qc.txt ; do 
     head -1 \$i | cut -f 1,28,97  | sed "s/^tumor_sample_id//g"> \$i.qc.txt
-    tail -n +2 \$i | cut -f 1,28,97 >> \$i.qc.txt
+    tail -n +2 \$i | cut -f 1,28,97 | sed "s/TRUE\$/PASS/g" | sed "s/FALSE\$/FAIL/g" >> \$i.qc.txt
   done
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
-  hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
+  samplesNum=`for i in ./*contamination.txt ; do tail -n +2 \$i | cut -f 2 ; done | sort | uniq | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`
-  mqcSampleNum=\$((hsMetricsNum + fastpNum ))
+  mqcSampleNum=\$((samplesNum + fastpNum ))
   
-  multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))"
+  multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))" -x ignoreFolder/ -x fastp_original/
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  if [ \$hsMetricsNum -gt 50 ] ; then 
+  if [ \$samplesNum -gt 50 ] ; then 
     cp genstats-QC_Status.txt QC_Status.txt
     beeswarm_config="max_table_rows: \${mqcSampleNum}"
   else
     beeswarm_config="max_table_rows: \$(( mqcSampleNum + 1 ))"
   fi
 
-  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" --cl_config "report_comment: \\"This report includes FASTQ and alignment for all samples in ${cohort}and Tumor/Normal pair statistics for all pairs in ${cohort}.\\"" -z
+  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" --cl_config "report_comment: \\"This report includes FASTQ and alignment for all samples in ${cohort}and Tumor/Normal pair statistics for all pairs in ${cohort}.\\"" -z -x ignoreFolder/ -x fastp_original/
 
   """
 }
