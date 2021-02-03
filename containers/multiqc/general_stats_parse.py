@@ -1,9 +1,9 @@
-#!/opt/conda/envs/multiqc/bin/python3.8
+#!/opt/conda/envs/multiqc/bin/python3.9
 
 __author__       = "Anne Marie Noronha"
 __contributor__  = ""
 __email__        = "noronhaa@mskcc.org"
-__version__      = "0.0.3"
+__version__      = "0.0.4"
 
 import pandas as pd
 import os, sys, re, json
@@ -37,21 +37,27 @@ def main():
     genStats = genStats.rename(columns=lambda x: re.sub('\w*_mqc-generalstats','mqc-generalstats',x) )
 
     simpleNames = {}
+    suffixDictionary = {}
+    titleDictionary  = {}
     for i in jsonData['report_general_stats_headers']:
         for j in i:
             simpleNames[i[j]['rid']] = j
             if 'suffix' in i[j]:
+                suffixDictionary[i[j]['rid']] = i[j]['suffix']
                 if i[j]['suffix'] == "%":
                     if i[j]['rid']in list(genStats):
-                        genStats[i[j]['rid']] = genStats[i[j]['rid']] * 100
+                        genStats[i[j]['rid']] = genStats[i[j]['rid']] 
+            else: suffixDictionary[i[j]['rid']] = ""
+            if 'title' in i[j]:
+                titleDictionary[i[j]['rid']] = i[j]['title']
 
     print(list(genStats))
 
     print(configData["table_cond_formatting_rules"])
-    criteriaTab = genCriteriaTable(configData["table_cond_formatting_rules"])
+    criteriaTab = genCriteriaTable(configData["table_cond_formatting_rules"], suffixDictionary)
     criteriaTab = criteriaTab.filter(like="mqc-generalstats", axis = 0)
     criteriaTab = criteriaTab.filter(list(genStats), axis=0)
-    criteriaTab["metric"] = [simpleNames[i] if i in simpleNames else i for i in criteriaTab.index ]
+    criteriaTab["metric"] = [titleDictionary.get(i,simpleNames.get(i,i)) for i in criteriaTab.index ]
     criteriaTab = criteriaTab.reset_index(drop=True).set_index('metric')
     
     qcStatus = pd.DataFrame(columns=["Status","Reason"])
@@ -116,7 +122,7 @@ def assessDataPoint(dataPoint,PF_metrics):
             return p
     return "pass"
 
-def genCriteriaTable(criteriaJson):
+def genCriteriaTable(criteriaJson, suffixDictionary):
     tab = pd.DataFrame(columns=["pass","warn","fail"])
     for i in criteriaJson: # column name
         status = {}
@@ -135,6 +141,8 @@ def genCriteriaTable(criteriaJson):
                     else: 
                         exprs += ["< {}".format(k[l])]
             status[j] = " or ".join(exprs)
+            if suffixDictionary.get(i,"") != "":
+                status[j] += " {}".format(suffixDictionary[i])
         tab = tab.append(pd.Series(status, name=i))
     return tab
 
