@@ -2600,9 +2600,16 @@ process QcQualimap {
     } else {
       gffOptions = "-gff ${agilentTargets}"
     }
-  } else { gffOptions = "-gd HUMAN" }
+    nr = 750
+    nw = 300
+  } else { 
+    gffOptions = "-gd HUMAN" 
+    nr = 500
+    nw = 300
+  }
   availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
-  javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  // javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  javaMem = availMem > 20 ? (availMem * 0.75).round() : ( availMem > 1 ? availMem - 1 : 1 )
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
       task.time = { params.maxWallTime }
@@ -2618,11 +2625,11 @@ process QcQualimap {
   """
   qualimap bamqc \
   -bam ${bam} \
-  -c ${gffOptions} \
+  ${gffOptions} \
   -outdir ${idSample} \
-  -nt ${ ( task.cpus * 4 ) - 1 } \
-  -nw 300 \
-  -nr 750 \
+  -nt ${ task.cpus * 2 } \
+  -nw ${nw} \
+  -nr ${nr} \
   --java-mem-size=${javaMem}G
 
   mv ${idSample}/* . 
