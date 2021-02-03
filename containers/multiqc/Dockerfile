@@ -2,9 +2,9 @@ FROM continuumio/miniconda3:4.8.2
 
 LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
     version.base="4.8.2" \
-    version.image="0.1.1" \
-    version.general_stats_parse="0.0.3" \
-    version.parse_alfred="0.0.1"
+    version.image="0.1.2" \
+    version.general_stats_parse="0.0.4" \
+    version.parse_alfred="0.0.2"
 
 ENV envName "multiqc"
 
