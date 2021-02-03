@@ -27,10 +27,25 @@ custom_data:
                 hidden: False
             - Tumor_Contamination:
                 hidden: False
+                suffix: "%"
             - Normal_Contamination:
                 hidden: False
+                suffix: "%"
             - Concordance:
                 hidden: False
+                suffix: "%"
+    genstats_paired_coverage:
+        plot_type: 'generalstats'
+        pconfig:
+            - Tumor_Coverage:
+                    description: "Coverage extracted from Qualimap for paired view"
+                    hidden: False
+            - Normal_Coverage:
+                    description: "Coverage extracted from Qualimap for paired view"
+                    hidden: False
+            - Coverage:
+                    description: "Coverage extracted from Qualimap"
+                    hidden: False
     mskcc_conpair:
         file_format: 'tsv'
         section_name: 'Conpair'
@@ -68,6 +83,9 @@ custom_data:
             id: 'qcstatus_pf'
             namespace: 'QC_status_pass_filter'
     facets_qc:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets QC'
         description: 'Results from Facets QC'
@@ -76,6 +94,9 @@ custom_data:
             id: 'facets_qc'
             namespace: 'facets_qc'
     facets_summary:
+        parent_id: "Facets"
+        parent_name: "Facets Results"
+        parent_description: "QC and Summary outputs from Facets"
         file_format: 'tsv'
         section_name: 'Facets Run Summary'
         description: 'Results from Facets'
@@ -94,6 +115,8 @@ custom_data:
 sp:
     genstats_mskcc_conpair:
         fn: 'conpair_genstat.tsv'
+    genstats_paired_coverage:
+        fn: 'coverage_split.txt'
     mskcc_conpair:
         fn: 'conpair.tsv'
     alfredrg:
@@ -121,22 +144,46 @@ table_cond_formatting_rules:
             - s_eq: 'warn'
         fail:
             - s_eq: 'fail'
+    mqc-generalstats-genstats_paired_coverage-Tumor_Coverage:
+        pass:
+            - gt: 60
+            - eq: 60
+        warn:
+            - lt: 60
+        fail:
+            - lt: 40
+    mqc-generalstats-genstats_paired_coverage-Normal_Coverage:
+        pass:
+            - gt: 30
+            - eq: 30
+        warn:
+            - lt: 30
+        fail: 
+            - lt: 20
+    mqc-generalstats-genstats_paired_coverage-Coverage:
+        pass: 
+            - gt: 30
+            - eq: 30
+        warn:
+            - lt: 30
+        fail:
+            - lt: 20
     mqc-generalstats-genstats_mskcc_conpair-Tumor_Contamination: 
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 2
+            - eq: 2
         warn:
-            - gt: 1
+            - gt: 2
         fail:
             - gt: 5
     mqc-generalstats-genstats_mskcc_conpair-Normal_Contamination:
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 15
+            - eq: 15
         warn:
-            - gt: 1
+            - gt: 15
         fail:
-            - gt: 5
+            - gt: 20
     mqc-generalstats-genstats_mskcc_conpair-Concordance:
         pass:
             - gt: 90
@@ -144,23 +191,23 @@ table_cond_formatting_rules:
         warn:
             - lt: 90
         fail:
-            - lt: 75  
+            - lt: 50  
     Tumor_Contamination: 
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 2
+            - eq: 2
         warn:
-            - gt: 1
+            - gt: 2
         fail:
             - gt: 5
     Normal_Contamination:
         pass:
-            - lt: 1
-            - eq: 1
+            - lt: 15
+            - eq: 15
         warn:
-            - gt: 1
+            - gt: 15
         fail:
-            - gt: 5
+            - gt: 20
     Concordance:
         pass:
             - gt: 90
@@ -168,29 +215,36 @@ table_cond_formatting_rules:
         warn:
             - lt: 90
         fail:
-            - lt: 75  
+            - lt: 50  
     mqc-generalstats-picard-FOLD_ENRICHMENT:
         pass:
             - gt: 30
             - eq: 30
         warn:
             - lt: 30
+    mqc-generalstats-qualimap-percentage_aligned:
+        pass:
+            - gt: 97
+            - eq: 97
+        warn:
+            - lt: 97
         fail:
-            - lt: 20
+            - lt: 60
     FOLD_ENRICHMENT:
         pass:
-            - gt: 45
-            - eq: 45
+            - gt: 30
+            - eq: 30
         warn:
-            - lt: 45
-        fail:
             - lt: 30
-    mqc-generalstats-picard-PCT_TARGET_BASES_50X:
+    mqc-generalstats-custom_content-DuplicateFraction:
         pass:
-            - gt: 75
-            - eq: 75
+            - lt: 55
+            - eq: 55
         warn:
-            - lt: 75
+            - gt: 55
+        fail: 
+            - gt: 75
+
 
 table_cond_formatting_colours:
     - pass: '#5cb85c'
@@ -216,8 +270,78 @@ picard_config:
         - 50
 table_columns_visible:
     fastp: False
+    QualiMap:
+        general_error_rate: True
+        mean_coverage: False
+        median_coverage: False
+        30_x_pc: False
+module_order:
+    - Alfred_QC_stats
+    - qualimap
+    - picard
+    - Facets
+    - facets_summary-1
+    - facets_qc-2
+
 report_section_order:
     criteria:
-        order: 1000
+        order: 30000
     QCStatus:
-        order: 1010
+        order: 30010
+    fastp: 
+        order: 25000
+    qualimap:
+        order: 20000
+    Alfred_QC_stats: 
+        order: 15000
+    qualimap-cumulative-genome-fraction-coverage:
+        before: "qualimap-insert-size-histogram"
+    qualimap-insert-size-histogram:
+        before: "qualimap-coverage-histogram"
+    qualimap-coverage-histogram:
+        before: "qualimap-gc-distribution"
+    Alfred_GC_aware:
+        after: "Alfred_CO_aware"
+    Alfred_BQ_aware:
+        after: "Alfred_GC_aware"
+    Alfred_BQ_ignore:
+        after: "Alfred_BQ_aware"
+    Alfred_MQ_aware:
+        after: "Alfred_BQ_ignore"
+    Alfred_MQ_ignore:
+        after: "Alfred_MQ_aware"
+    Alfred_IS_aware:
+        after: "Alfred_MQ_ignore"
+    Alfred_IS_ignore:
+        after: "Alfred_IS_aware"
+    Alfred_IC_aware:
+        after: "Alfred_IS_ignore"
+    Alfred_IC_ignore:
+        after: "Alfred_IC_aware"
+    Alfred_OT_aware:
+        after: "Alfred_IC_ignore"
+    Alfred_OT_ignore:
+        after: "Alfred_OT_aware"
+    Alfred_IZ_aware:
+        after: "Alfred_OT_ignore"
+    Alfred_IZ_ignore:
+        after: "Alfred_IZ_aware"
+    Alfred_CM_aware:
+        after: "Alfred_IZ_ignore"
+    Alfred_CM_ignore:
+        after: "Alfred_CM_aware"
+    picard:
+        order: 10000
+    Facets:
+        order: 5000
+
+remove_sections:
+    - fastp-filtered-reads-chart
+
+custom_plot_config:
+    fastp-seq-content-n-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-content-gc-plot:
+        data_labels: [{ylab: 'R1: Base Content Percent', name: 'Read 1'}, {ylab: 'R2: Base Content Percent', name: 'Read 2'}]
+    fastp-seq-quality-plot:
+        data_labels: [{ylab: 'R1: Sequence Quality', name: 'Read 1'}, {ylab: 'R2: Sequence Quality', name: 'Read 2'}]
