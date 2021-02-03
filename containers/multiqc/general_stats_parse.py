@@ -1,9 +1,9 @@
-#!/opt/conda/envs/multiqc/bin/python3.8
+#!/opt/conda/envs/multiqc/bin/python3.9
 
 __author__       = "Anne Marie Noronha"
 __contributor__  = ""
 __email__        = "noronhaa@mskcc.org"
-__version__      = "0.0.3"
+__version__      = "0.0.4"
 
 import pandas as pd
 import os, sys, re, json

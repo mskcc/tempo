@@ -268,12 +268,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
+    filePrefix = fastqFile1.getSimpleName().split("_R1")[0..-2].join("_R1")
     """
       fcid=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
-      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
+      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *R1*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
@@ -304,12 +305,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile2.getSimpleName().split("_R2")[1]
+    filePartNo = fastqFile2.getSimpleName().split("_R2")[-1]
+    filePrefix = fastqFile2.getSimpleName().split("_R2")[0..-2].join("_R2")
     """
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
-      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
+      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *_R2*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
@@ -361,8 +363,12 @@ if (params.mapping) {
         .map{ item ->
                 def idSample = item[0]
                 def target = item[1]
-                def fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
-                def fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
+                def fastqPair1 = item[2]
+                def fastqPair2 = item[3]
+                if (item[2].toString().split("_R1").size() < item[3].toString().split("_R1").size()) {
+                  fastqPair1 = item[3]
+                  fastqPair2 = item[2]
+                }
                 def fileID = item[4]
                 def lane = item[5]
 
@@ -437,7 +443,7 @@ if (params.mapping) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
     """
     rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
     readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
@@ -2612,9 +2618,16 @@ process QcQualimap {
     } else {
       gffOptions = "-gff ${agilentTargets}"
     }
-  } else { gffOptions = "-gd HUMAN" }
+    nr = 750
+    nw = 300
+  } else { 
+    gffOptions = "-gd HUMAN" 
+    nr = 500
+    nw = 300
+  }
   availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
-  javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  // javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  javaMem = availMem > 20 ? (availMem * 0.75).round() : ( availMem > 1 ? availMem - 1 : 1 )
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
       task.time = { params.maxWallTime }
@@ -2630,11 +2643,11 @@ process QcQualimap {
   """
   qualimap bamqc \
   -bam ${bam} \
-  -c ${gffOptions} \
+  ${gffOptions} \
   -outdir ${idSample} \
-  -nt ${ ( task.cpus * 4 ) - 1 } \
-  -nw 300 \
-  -nr 750 \
+  -nt ${ task.cpus * 2 } \
+  -nw ${nw} \
+  -nr ${nr} \
   --java-mem-size=${javaMem}G
 
   mv ${idSample}/* . 
