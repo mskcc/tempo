@@ -1766,6 +1766,14 @@ process RunLOHHLA {
     rm -rf *.DNA.HLAlossPrediction_CI.txt
   fi
 
+  if [[ -f ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt ]]
+  then
+    sed -i "s/^/${outputPrefix}\t/g" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
+    sed -i "0,/^${outputPrefix}\t/s//sample\t/" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
+  else
+    rm -rf *.DNA.IntegerCPN_CI.txt
+  fi
+
   touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
   touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
 
