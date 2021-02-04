@@ -99,6 +99,10 @@ wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').
 multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_config.yaml"
 multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
 multiqcTempoLogo = workflow.projectDir + "/docs/tempoLogo.png"
+epochMap = [:]
+if (params.watch == true){
+  touchInputs()
+}
 
 println ""
 
@@ -113,6 +117,7 @@ if (params.mapping || params.bamMapping) {
   else if (params.watch == true) {
     mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
     (checkMapping1, checkMapping2, inputMapping) = params.mapping ? watchMapping(mappingFile, params.assayType).into(3) : watchBamMapping(mappingFile, params.assayType).into(3)
+    epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
   }
   else{}
   if(params.pairing){
@@ -128,6 +133,7 @@ if (params.mapping || params.bamMapping) {
     else if (params.watch == true) {
       pairingFile = file(params.pairing, checkIfExists: false)
       (checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
+      epochMap[params.pairing] = 0 
     }
     else{}
     if (!runSomatic && !runGermline && !runQC){
@@ -3058,6 +3064,7 @@ if ( !params.mapping && !params.bamMapping ){
   else{
     watchAggregateWithPath(file(runAggregate, checkIfExists: true))
 	   .set{inputAggregate}
+    epochMap[runAggregate] = 0
   }
   inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->
 		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
@@ -3129,6 +3136,7 @@ else if(!(runAggregate == false)) {
     else{
       watchAggregate(file(runAggregate, checkIfExists: false))
 	     .set{inputAggregate}
+      epochMap[runAggregate] = 0
     }
   }
   else if(runAggregate == true){
@@ -3881,6 +3889,18 @@ def defineReferenceMap() {
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
+}
+
+def touchInputs() {
+  new Timer().schedule({
+  for ( i in epochMap.keySet() ){
+    fileEpoch = file(i).lastModified()
+    if ( fileEpoch > epochMap[i]) {
+      epochMap[i] = fileEpoch
+      "touch -ca ${i}".execute()
+    }
+  }
+} as TimerTask, 1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
 }
 
 def watchMapping(tsvFile, assayType) {
