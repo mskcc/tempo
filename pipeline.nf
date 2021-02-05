@@ -545,7 +545,7 @@ if (params.mapping) {
     """
     samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
     gatk MarkDuplicates \
-      ${javaOptionsDup} \
+      ${javaOptions} \
       --TMP_DIR ./ \
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
