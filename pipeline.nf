@@ -510,34 +510,16 @@ if (params.mapping) {
 	   }
 	   .set{ groupedBam }
 
-  // MergeBams
-  process MergeBams {
+  // MergeBams and MarkDuplicates
+  process MergeBamsAndMarkDuplicates {
     tag {idSample}
 
     input:
       set idSample, file(bam), target from groupedBam
 
     output:
-      set idSample, file("${idSample}.merged.bam"), target into mergedBam
-      file("size.txt") into sizeOutput
-
-    script:
-    """
-    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
-    echo -e "${idSample}\t`du -hs ${idSample}.merged.bam`" > size.txt
-    """
-  }
-
-
-// GATK MarkDuplicates
-  process MarkDuplicates {
-    tag {idSample}
-
-    input:
-      set idSample, file(bam), target from mergedBam
-
-    output:
       set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
+      file("size.txt") into sizeOutput
 
     script:
     if (workflow.profile == "juno") {
@@ -561,8 +543,9 @@ if (params.mapping) {
     maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
+    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
     gatk MarkDuplicates \
-      ${javaOptions} \
+      ${javaOptionsDup} \
       --TMP_DIR ./ \
       --MAX_RECORDS_IN_RAM 50000 \
       --INPUT ${idSample}.merged.bam \
@@ -570,6 +553,8 @@ if (params.mapping) {
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
       --OUTPUT ${idSample}.md.bam
+
+    echo -e "${idSample}\t`du -hs ${idSample}.md.bam`" > size.txt
     """
   }
 
