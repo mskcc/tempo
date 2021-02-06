@@ -523,10 +523,10 @@ if (params.mapping) {
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 120.GB) {
+      if(bam.size() > 100.GB) {
         task.time = { params.maxWallTime }
       }
-      else if (bam.size() < 100.GB) {
+      else if (bam.size() < 80.GB) {
         task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
