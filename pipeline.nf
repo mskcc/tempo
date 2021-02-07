@@ -562,6 +562,8 @@ if (params.mapping) {
  // GATK BaseRecalibrator , ApplyBQSR 
   process RunBQSR {
     tag {idSample}
+    
+    publishDir "${outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
 
     input:
       set idSample, file(bam), file(bai), target from mdBams
