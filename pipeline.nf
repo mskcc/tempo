@@ -610,7 +610,7 @@ if (params.mapping) {
     maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions    = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
-    if ( (params.GatkMode == "BQSRPipelineSpark") && ( task.attempt < 3 ) )
+    if ( task.attempt < 3 )
     """
     gatk \
       BQSRPipeline${sparkConf} \
