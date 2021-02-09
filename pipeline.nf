@@ -582,10 +582,10 @@ if (params.mapping) {
       file("file-size.txt") into bamSize
     script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 60.GB) {
+      if(bam.size() > 200.GB) {
         task.time = { params.maxWallTime }
       }
-      else if (bam.size() < 50.GB) {
+      else if (bam.size() < 100.GB) {
         task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
