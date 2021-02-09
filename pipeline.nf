@@ -510,41 +510,23 @@ if (params.mapping) {
 	   }
 	   .set{ groupedBam }
 
-  // MergeBams
-  process MergeBams {
+  // MergeBams and MarkDuplicates
+  process MergeBamsAndMarkDuplicates {
     tag {idSample}
 
     input:
       set idSample, file(bam), target from groupedBam
 
     output:
-      set idSample, file("${idSample}.merged.bam"), target into mergedBam
+      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
       file("size.txt") into sizeOutput
 
     script:
-    """
-    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
-    echo -e "${idSample}\t`du -hs ${idSample}.merged.bam`" > size.txt
-    """
-  }
-
-
-// GATK MarkDuplicates
-  process MarkDuplicates {
-    tag {idSample}
-
-    input:
-      set idSample, file(bam), target from mergedBam
-
-    output:
-      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
-
-    script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 120.GB) {
+      if(bam.size() > 100.GB) {
         task.time = { params.maxWallTime }
       }
-      else if (bam.size() < 100.GB) {
+      else if (bam.size() < 80.GB) {
         task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
@@ -561,6 +543,7 @@ if (params.mapping) {
     maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
+    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
     gatk MarkDuplicates \
       ${javaOptions} \
       --TMP_DIR ./ \
@@ -570,6 +553,8 @@ if (params.mapping) {
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
       --OUTPUT ${idSample}.md.bam
+
+    echo -e "${idSample}\t`du -hs ${idSample}.md.bam`" > size.txt
     """
   }
 
