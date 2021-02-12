@@ -99,6 +99,10 @@ wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').
 multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_config.yaml"
 multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
 multiqcTempoLogo = workflow.projectDir + "/docs/tempoLogo.png"
+epochMap = [:]
+if (params.watch == true){
+  touchInputs()
+}
 
 println ""
 
@@ -113,6 +117,7 @@ if (params.mapping || params.bamMapping) {
   else if (params.watch == true) {
     mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
     (checkMapping1, checkMapping2, inputMapping) = params.mapping ? watchMapping(mappingFile, params.assayType).into(3) : watchBamMapping(mappingFile, params.assayType).into(3)
+    epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
   }
   else{}
   if(params.pairing){
@@ -128,6 +133,7 @@ if (params.mapping || params.bamMapping) {
     else if (params.watch == true) {
       pairingFile = file(params.pairing, checkIfExists: false)
       (checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
+      epochMap[params.pairing] = 0 
     }
     else{}
     if (!runSomatic && !runGermline && !runQC){
@@ -180,8 +186,8 @@ else if (runAggregate == true){
 
 }
 else {
-  if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping && params.watch){
-    println "ERROR: Conflict input! When running --watch --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!"
+  if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping){
+    println "ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!"
     println "       If you want to run aggregate somatic/germline/qc, just include an additianl colum PATH in the [tsv] and no need to use --QC/--somatic/--germline flag, since it's auto detected. See manual"
     exit 1
   }
@@ -267,12 +273,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
+    filePrefix = fastqFile1.getSimpleName().split("_R1")[0..-2].join("_R1")
     """
       fcid=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
-      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
+      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *R1*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
@@ -303,12 +310,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile2.getSimpleName().split("_R2")[1]
+    filePartNo = fastqFile2.getSimpleName().split("_R2")[-1]
+    filePrefix = fastqFile2.getSimpleName().split("_R2")[0..-2].join("_R2")
     """
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
-      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
+      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *_R2*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
@@ -360,8 +368,12 @@ if (params.mapping) {
         .map{ item ->
                 def idSample = item[0]
                 def target = item[1]
-                def fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
-                def fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
+                def fastqPair1 = item[2]
+                def fastqPair2 = item[3]
+                if (item[2].toString().split("_R1").size() < item[3].toString().split("_R1").size()) {
+                  fastqPair1 = item[3]
+                  fastqPair2 = item[2]
+                }
                 def fileID = item[4]
                 def lane = item[5]
 
@@ -436,7 +448,7 @@ if (params.mapping) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
     """
     rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
     readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
@@ -498,41 +510,23 @@ if (params.mapping) {
 	   }
 	   .set{ groupedBam }
 
-  // MergeBams
-  process MergeBams {
+  // MergeBams and MarkDuplicates
+  process MergeBamsAndMarkDuplicates {
     tag {idSample}
 
     input:
       set idSample, file(bam), target from groupedBam
 
     output:
-      set idSample, file("${idSample}.merged.bam"), target into mergedBam
+      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
       file("size.txt") into sizeOutput
 
     script:
-    """
-    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
-    echo -e "${idSample}\t`du -hs ${idSample}.merged.bam`" > size.txt
-    """
-  }
-
-
-// GATK MarkDuplicates
-  process MarkDuplicates {
-    tag {idSample}
-
-    input:
-      set idSample, file(bam), target from mergedBam
-
-    output:
-      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
-
-    script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 120.GB) {
+      if(bam.size() > 100.GB) {
         task.time = { params.maxWallTime }
       }
-      else if (bam.size() < 100.GB) {
+      else if (bam.size() < 80.GB) {
         task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
@@ -549,6 +543,7 @@ if (params.mapping) {
     maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
+    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
     gatk MarkDuplicates \
       ${javaOptions} \
       --TMP_DIR ./ \
@@ -558,6 +553,8 @@ if (params.mapping) {
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
       --OUTPUT ${idSample}.md.bam
+
+    echo -e "${idSample}\t`du -hs ${idSample}.md.bam`" > size.txt
     """
   }
 
@@ -2106,6 +2103,14 @@ process RunLOHHLA {
     rm -rf *.DNA.HLAlossPrediction_CI.txt
   fi
 
+  if [[ -f ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt ]]
+  then
+    sed -i "s/^/${outputPrefix}\t/g" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
+    sed -i "0,/^${outputPrefix}\t/s//sample\t/" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
+  else
+    rm -rf *.DNA.IntegerCPN_CI.txt
+  fi
+
   touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
   touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
 
@@ -2946,9 +2951,16 @@ process QcQualimap {
     } else {
       gffOptions = "-gff ${agilentTargets}"
     }
-  } else { gffOptions = "-gd HUMAN" }
+    nr = 750
+    nw = 300
+  } else { 
+    gffOptions = "-gd HUMAN" 
+    nr = 500
+    nw = 300
+  }
   availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
-  javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  // javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  javaMem = availMem > 20 ? (availMem * 0.75).round() : ( availMem > 1 ? availMem - 1 : 1 )
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
       task.time = { params.maxWallTime }
@@ -2964,11 +2976,11 @@ process QcQualimap {
   """
   qualimap bamqc \
   -bam ${bam} \
-  -c ${gffOptions} \
+  ${gffOptions} \
   -outdir ${idSample} \
-  -nt ${ ( task.cpus * 4 ) - 1 } \
-  -nw 300 \
-  -nr 750 \
+  -nt ${ task.cpus * 2 } \
+  -nw ${nw} \
+  -nr ${nr} \
   --java-mem-size=${javaMem}G
 
   mv ${idSample}/* . 
@@ -3391,6 +3403,7 @@ if ( !params.mapping && !params.bamMapping ){
   else{
     watchAggregateWithPath(file(runAggregate, checkIfExists: true))
 	   .set{inputAggregate}
+    epochMap[runAggregate] = 0
   }
   inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->
 		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
@@ -3462,6 +3475,7 @@ else if(!(runAggregate == false)) {
     else{
       watchAggregate(file(runAggregate, checkIfExists: false))
 	     .set{inputAggregate}
+      epochMap[runAggregate] = 0
     }
   }
   else if(runAggregate == true){
@@ -4140,6 +4154,7 @@ workflow.onComplete {
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
   if(params."${item}" == null){println "${item} is not found in reference map"; exit 1}
+  if(file(params."${item}", checkIfExists: false) == []){println "${item} is not found; glob pattern produces empty list"; exit 1}
   return file(params."${item}", checkIfExists: true)
 }
 
@@ -4217,6 +4232,18 @@ def defineReferenceMap() {
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
+}
+
+def touchInputs() {
+  new Timer().schedule({
+  for ( i in epochMap.keySet() ){
+    fileEpoch = file(i).lastModified()
+    if ( fileEpoch > epochMap[i]) {
+      epochMap[i] = fileEpoch
+      "touch -ca ${i}".execute()
+    }
+  }
+} as TimerTask, 1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
 }
 
 def watchMapping(tsvFile, assayType) {

@@ -1,9 +1,9 @@
-#!/opt/conda/envs/multiqc/bin/python3.8
+#!/opt/conda/envs/multiqc/bin/python3.9
 
 __author__       = "Anne Marie Noronha"
 __contributor__  = ""
 __email__        = "noronhaa@mskcc.org"
-__version__      = "0.0.1"
+__version__      = "0.0.2"
 
 import json, os, yaml
 import pandas as pd
@@ -165,8 +165,12 @@ def readFiles(listOfFiles,prefix):
 	df = pd.DataFrame()
 	cmd = "zgrep ^{} {}".format(prefix, " ".join(listOfFiles)) + " | cut -f 2- | sed '1!{/^Sample\\t/d;}'"
 	filterFile = os.popen(cmd).read()
-	df = pd.read_table(StringIO(filterFile), sep="\t", header=0)
-	return df
+	try:
+		df = pd.read_table(StringIO(filterFile), sep="\t", header=0)
+	except:
+		return None
+	else:
+		return df
 
 
 def graphParser(listOfFiles,RG,prefix,x,y,addIDs=None,ignoreSamples=[],applyQuantiles=True):
@@ -175,11 +179,11 @@ def graphParser(listOfFiles,RG,prefix,x,y,addIDs=None,ignoreSamples=[],applyQuan
 	xlab = x 
 	ylab = y
 	quantileCol = x	
-	df = readFiles(listOfFiles,prefix)
 	try:
+		df = readFiles(listOfFiles,prefix)
 		df = df[~df["Sample"].isin(ignoreSamples) ]
 	except:
-		print("something went wrong while filtering sample column")
+		print("something went wrong while filtering sample column (prefix {})".format(prefix))
 		return None
 	if isinstance(x, list):
 		df["__".join(x)] = ["@".join(i) for i in zip(*[df[x[i]].map(str) for i in range(len(x))])]
