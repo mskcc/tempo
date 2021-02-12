@@ -101,6 +101,10 @@ wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').
 multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_config.yaml"
 multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
 multiqcTempoLogo = workflow.projectDir + "/docs/tempoLogo.png"
+epochMap = [:]
+if (params.watch == true){
+  touchInputs()
+}
 
 println ""
 
@@ -115,6 +119,7 @@ if (params.mapping || params.bamMapping) {
   else if (params.watch == true) {
     mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
     (checkMapping1, checkMapping2, inputMapping) = params.mapping ? watchMapping(mappingFile, params.assayType).into(3) : watchBamMapping(mappingFile, params.assayType).into(3)
+    epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
   }
   else{}
   if(params.pairing){
@@ -130,6 +135,7 @@ if (params.mapping || params.bamMapping) {
     else if (params.watch == true) {
       pairingFile = file(params.pairing, checkIfExists: false)
       (checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
+      epochMap[params.pairing] = 0 
     }
     else{}
     if (!runSomatic && !runGermline && !runQC){
@@ -182,8 +188,8 @@ else if (runAggregate == true){
 
 }
 else {
-  if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping && params.watch){
-    println "ERROR: Conflict input! When running --watch --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!"
+  if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping){
+    println "ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!"
     println "       If you want to run aggregate somatic/germline/qc, just include an additianl colum PATH in the [tsv] and no need to use --QC/--somatic/--germline flag, since it's auto detected. See manual"
     exit 1
   }
@@ -269,12 +275,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
+    filePrefix = fastqFile1.getSimpleName().split("_R1")[0..-2].join("_R1")
     """
       fcid=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
-      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile1.getSimpleName().split("_R1")[0]}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
+      zcat $fastqFile1 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R1${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *R1*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
@@ -305,12 +312,13 @@ if (params.mapping) {
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
 
-    filePartNo = fastqFile2.getSimpleName().split("_R2")[1]
+    filePartNo = fastqFile2.getSimpleName().split("_R2")[-1]
+    filePrefix = fastqFile2.getSimpleName().split("_R2")[0..-2].join("_R2")
     """
       fcid=`zcat $fastqFile2 | head -1 | tr ':/' '@' | cut -d '@' -f2-4`
       touch \${fcid}.fcid
       echo -e "${idSample}@${fileID}\t${inputSize}" > file-size.txt
-      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${fastqFile2.getSimpleName().split("_R2")[0]}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
+      zcat $fastqFile2 | awk -v var="\${fcid}" 'BEGIN {FS = ":"} {lane=\$4 ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz" ; for (i = 1; i <= 3; i++) {getline ; print | "gzip > ${filePrefix}@"var"_L00"lane"_R2${filePartNo}.splitLanes.fastq.gz"}}'
       touch `ls *_R2*.splitLanes.fastq.gz | wc -l`.laneCount
     """
   }
@@ -362,8 +370,12 @@ if (params.mapping) {
         .map{ item ->
                 def idSample = item[0]
                 def target = item[1]
-                def fastqPair1 = item[2].toString().contains("_R1") ? item[2] : item[3]
-                def fastqPair2 = item[3].toString().contains("_R2") ? item[3] : item[2]
+                def fastqPair1 = item[2]
+                def fastqPair2 = item[3]
+                if (item[2].toString().split("_R1").size() < item[3].toString().split("_R1").size()) {
+                  fastqPair1 = item[3]
+                  fastqPair2 = item[2]
+                }
                 def fileID = item[4]
                 def lane = item[5]
 
@@ -438,7 +450,7 @@ if (params.mapping) {
 
     task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-    filePartNo = fastqFile1.getSimpleName().split("_R1")[1]
+    filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
     """
     rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
     readGroup="@RG\\tID:\${rgID}\\tSM:${idSample}\\tLB:${idSample}\\tPL:Illumina"
@@ -500,41 +512,23 @@ if (params.mapping) {
 	   }
 	   .set{ groupedBam }
 
-  // MergeBams
-  process MergeBams {
+  // MergeBams and MarkDuplicates
+  process MergeBamsAndMarkDuplicates {
     tag {idSample}
 
     input:
       set idSample, file(bam), target from groupedBam
 
     output:
-      set idSample, file("${idSample}.merged.bam"), target into mergedBam
+      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
       file("size.txt") into sizeOutput
 
     script:
-    """
-    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
-    echo -e "${idSample}\t`du -hs ${idSample}.merged.bam`" > size.txt
-    """
-  }
-
-
-// GATK MarkDuplicates
-  process MarkDuplicates {
-    tag {idSample}
-
-    input:
-      set idSample, file(bam), target from mergedBam
-
-    output:
-      set idSample, file("${idSample}.md.bam"), file("${idSample}.md.bai"), target into mdBams, mdBams4BQSR
-
-    script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 120.GB) {
+      if(bam.size() > 100.GB) {
         task.time = { params.maxWallTime }
       }
-      else if (bam.size() < 100.GB) {
+      else if (bam.size() < 80.GB) {
         task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
@@ -551,6 +545,7 @@ if (params.mapping) {
     maxMem = maxMem < 4 ? 5 : maxMem
     javaOptions = "--java-options '-Xms4000m -Xmx" + maxMem + "g'"
     """
+    samtools merge --threads ${task.cpus} ${idSample}.merged.bam ${bam.join(" ")}
     gatk MarkDuplicates \
       ${javaOptions} \
       --TMP_DIR ./ \
@@ -560,6 +555,8 @@ if (params.mapping) {
       --ASSUME_SORT_ORDER coordinate \
       --CREATE_INDEX true \
       --OUTPUT ${idSample}.md.bam
+
+    echo -e "${idSample}\t`du -hs ${idSample}.md.bam`" > size.txt
     """
   }
 
@@ -644,6 +641,7 @@ if (params.mapping) {
       file("file-size.txt") into bamSize
 
     script:
+
 
     if (task.attempt < 3 ) {
       sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
@@ -893,6 +891,7 @@ process CreateScatteredIntervals {
 agilentIList.mix(idtIList, wgsIList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
+
 
 bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; bamsForSvABA }
 
@@ -1572,7 +1571,7 @@ process DoFacets {
     set val("placeHolder"), idTumor, idNormal, file("*/*_hisens.seg") into FacetsHisens4Aggregate
     set idTumor, idNormal, target, file("${outputDir}/*purity.out") into facetsPurity4LOHHLA, facetsPurity4MetaDataParser
     set idTumor, idNormal, target, file("${outputDir}/*purity.Rdata"), file("${outputDir}/*purity.cncf.txt"), file("${outputDir}/*hisens.cncf.txt"), val("${outputDir}") into facetsForMafAnno, facetsForMafAnnoGermline
-    set idTumor, idNormal, target, file("${outputDir}/"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into Facets4FacetsPreview
+    set idTumor, idNormal, target, file("${outputDir}/*.{Rdata,png,out,seg,txt}"), file("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}") into Facets4FacetsPreview
     set val("placeHolder"), idTumor, idNormal, file("*/*.*_level.txt") into FacetsArmGeneOutput
     set val("placeHolder"), idTumor, idNormal, file("*/*.arm_level.txt") into FacetsArmLev4Aggregate
     set val("placeHolder"), idTumor, idNormal, file("*/*.gene_level.txt") into FacetsGeneLev4Aggregate
@@ -1645,8 +1644,8 @@ process DoFacetsPreviewQC {
   publishDir "${outDir}/somatic/${tag}/facets/${tag}/", mode: params.publishDirMode, pattern: "${idTumor}__${idNormal}.facets_qc.txt"
 
   input:
-    set idTumor, idNormal, target, file(facetsOutputFolder), file(countsFile), facetsOutputDir from Facets4FacetsPreview
-
+    set idTumor, idNormal, target, file(facetsOutputFolderFiles), file(countsFile), facetsOutputDir from Facets4FacetsPreview
+  
   output:
     set idTumor, idNormal, file("${idTumor}__${idNormal}.facets_qc.txt") into FacetsPreviewOut
 
@@ -1655,13 +1654,18 @@ process DoFacetsPreviewQC {
   script:
   tag = "${idTumor}__${idNormal}"
   """
-  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt
-  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt
+  mkdir -p ${facetsOutputDir} 
+  facetsFitFiles=( ${facetsOutputFolderFiles.join(" ")} )
+  for i in "\${facetsFitFiles[@]}" ; do 
+    cp \$i ${facetsOutputDir}/\$i
+  done
+  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
+  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
   gzip manifest.txt
   mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
   R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
   cp facets_qc.txt ${idTumor}__${idNormal}.facets_qc.txt
-
+  rm ${facetsOutputDir}/*
   """
 
 }
@@ -1755,6 +1759,14 @@ process RunLOHHLA {
     sed -i "s/^${idTumor}/${outputPrefix}/g" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
   else
     rm -rf *.DNA.HLAlossPrediction_CI.txt
+  fi
+
+  if [[ -f ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt ]]
+  then
+    sed -i "s/^/${outputPrefix}\t/g" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
+    sed -i "0,/^${outputPrefix}\t/s//sample\t/" ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.IntegerCPN_CI.txt
+  else
+    rm -rf *.DNA.IntegerCPN_CI.txt
   fi
 
   touch ${outputPrefix}.${params.lohhla.minCoverageFilter}.DNA.HLAlossPrediction_CI.txt
@@ -2529,6 +2541,7 @@ process SvABA {
 
 if (runQC) {
 // GATK CollectHsMetrics, WES only
+bamsBQSR4CollectHsMetrics.into{bamsBQSR4CollectHsMetrics; bamsBQSRSkipCollectHsMetrics}
 process QcCollectHsMetrics {
   tag {idSample}
 
@@ -2545,8 +2558,7 @@ process QcCollectHsMetrics {
     ])
 
   output:
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput
-    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetrics4Aggregate
+    set idSample, file("${idSample}.hs_metrics.txt") into collectHsMetricsOutput, collectHsMetrics4Aggregate
 
   when: params.assayType == "exome" && runQC
 
@@ -2589,13 +2601,20 @@ process QcCollectHsMetrics {
   """
 }
 
+if (runQC && params.assayType != "exome"){
+  bamsBQSRSkipCollectHsMetrics.map{ idSample, target, bam, bai ->
+    [idSample, ""]
+  }.into{collectHsMetricsOutput; collectHsMetrics4Aggregate}
+  
+}
+
 // Alfred, BAM QC
 
 process QcQualimap {
   tag {idSample}
   
-  publishDir "${outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*"
-  publishDir "${outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "${idSample}/*/*"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*.{html,tar.gz}"
+  publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*/*"
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
@@ -2604,11 +2623,10 @@ process QcQualimap {
     ])
 
   output:
-    set idSample, file("${idSample}") into qualimap4MultiQC, qualimap4Aggregate
-    set idSample, file("${idSample}/*.{html,txt}"), file("${idSample}/css/*"), file("${idSample}/raw_data_qualimapReport/*"), file("${idSample}/images_qualimapReport/*") into qualimapOutput
-
-
-  when: runQC
+    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Aggregate
+    set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
+  
+  when: runQC   
 
   script:
   if (params.genome == "smallGRCh37"){
@@ -2621,10 +2639,40 @@ process QcQualimap {
     } else {
       gffOptions = "-gff ${agilentTargets}"
     }
-  } else { gffOptions = "-gd HUMAN" }
-  javaMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+    nr = 750
+    nw = 300
+  } else { 
+    gffOptions = "-gd HUMAN" 
+    nr = 500
+    nw = 300
+  }
+  availMem = task.cpus * task.memory.toString().split(" ")[0].toInteger()
+  // javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
+  javaMem = availMem > 20 ? (availMem * 0.75).round() : ( availMem > 1 ? availMem - 1 : 1 )
+  if (workflow.profile == "juno") {
+    if (bam.size() > 200.GB) {
+      task.time = { params.maxWallTime }
+    }
+    else if (bam.size() < 100.GB) {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+    }
+    else {
+      task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+    }
+    task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+  }
   """
-  qualimap bamqc -bam ${bam} -c ${gffOptions} -outdir ${idSample} -nt ${task.cpus} --java-mem-size=${ javaMem > 1 ? javaMem - 1 : javaMem }G
+  qualimap bamqc \
+  -bam ${bam} \
+  ${gffOptions} \
+  -outdir ${idSample} \
+  -nt ${ task.cpus * 2 } \
+  -nw ${nw} \
+  -nr ${nr} \
+  --java-mem-size=${javaMem}G
+
+  mv ${idSample}/* . 
+  tar -czf ${idSample}_qualimap_rawdata.tar.gz genome_results.txt raw_data_qualimapReport/* 
   """
 }
 
@@ -2683,8 +2731,8 @@ process QcAlfred {
 alfredOutput
   .groupTuple(size:2, by:0)
   .join(fastPJson4sampleMultiQC, by:0)
-  .join(collectHsMetricsOutput, by:0)
   .join(qualimap4MultiQC, by:0)
+  .join(collectHsMetricsOutput, by:0)
   .set{sampleMetrics4MultiQC}
 
 process SampleRunMultiQC {
@@ -2694,7 +2742,7 @@ process SampleRunMultiQC {
   publishDir "${outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode
 
   input:
-    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(hsmetricsFile), file(qualimapFolder) from sampleMetrics4MultiQC
+    set idSample, file(alfredRGNTsvFile), file(alfredRGYTsvFile), file(fastpJsonFile), file(qualimapFolder), file(hsmetricsFile) from sampleMetrics4MultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
@@ -2709,6 +2757,12 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
+  
   parse_alfred.py --alfredfiles *alfred*tsv.gz 
   mkdir -p ignoreFolder 
   find . -maxdepth 1 \\( -name 'CO_ignore*mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore*mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
@@ -3037,6 +3091,7 @@ if ( !params.mapping && !params.bamMapping ){
   else{
     watchAggregateWithPath(file(runAggregate, checkIfExists: true))
 	   .set{inputAggregate}
+    epochMap[runAggregate] = 0
   }
   inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->
 		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
@@ -3061,10 +3116,10 @@ if ( !params.mapping && !params.bamMapping ){
 		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
 		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
 		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
-      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}/")]
-      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}/")]
-		  hsMetricsTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")]
-		  hsMetricsNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")]
+      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}_qualimap_rawdata.tar.gz")]
+      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}_qualimap_rawdata.tar.gz")]
+		  hsMetricsTumor: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
+		  hsMetricsNormal: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
       fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
       fastpNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.fastp.json")]
                 }
@@ -3108,6 +3163,7 @@ else if(!(runAggregate == false)) {
     else{
       watchAggregate(file(runAggregate, checkIfExists: false))
 	     .set{inputAggregate}
+      epochMap[runAggregate] = 0
     }
   }
   else if(runAggregate == true){
@@ -3226,7 +3282,7 @@ else if(!(runAggregate == false)) {
   		   .unique()
   		   .set{alfredIgnoreN}
 
-
+  
   inputPairing3.combine(collectHsMetrics4Aggregate)
   	     .branch { item ->
   		def idTumor = item[0]
@@ -3253,6 +3309,7 @@ else if(!(runAggregate == false)) {
   	       }
   	       .unique()
   	       .set{hsMetrics}
+  inputHsMetrics = hsMetrics
   inputPairing4.combine(fastPJson4cohortMultiQC)
          .branch { item ->
       def idTumor = item[0]
@@ -3298,7 +3355,6 @@ else if(!(runAggregate == false)) {
 
   inputAlfredIgnoreY = alfredIgnoreY
   inputAlfredIgnoreN = alfredIgnoreN
-  inputHsMetrics = hsMetrics
   inputFastP4MultiQC = fastPMetrics
   if (pairingQc){
   cohortQcConpairAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.into{inputConpairConcord4Aggregate; inputConpairConcord4MultiQC}
@@ -3592,10 +3648,10 @@ process GermlineAggregateSv {
 
 if (runAggregate && runQC) {
 
-inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
 inputAlfredIgnoreY.into{inputAlfredIgnoreY; inputAlfredIgnoreY4MultiQC }
 inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
 
+inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
 inputAlfredIgnoreY.join(inputAlfredIgnoreN)
 		  .join(inputHsMetrics)
 		  .set{inputQcBamAggregate}
@@ -3607,7 +3663,7 @@ process QcBamAggregate {
   publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNoraml), file(alfredIgnoreNTumor), file(alfredIgnoreNNoraml), file(hsMetricsTumor), file(hsMetricsNoraml) from inputQcBamAggregate
+    set cohort, file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(hsMetricsTumor), file(hsMetricsNormal) from inputQcBamAggregate
 
   output:
     file('alignment_qc.txt') into alignmentQcAggregatedOutput
@@ -3659,14 +3715,14 @@ process QcConpairAggregate {
   """
 }
 
-inputHsMetrics4MultiQC
-  .join(inputFastP4MultiQC,by:0)
+inputFastP4MultiQC
   .join(inputAlfredIgnoreY4MultiQC,by:0)
   .join(inputAlfredIgnoreN4MultiQC,by:0)
   .join(inputConpairConcord4MultiQC,by:0)
   .join(inputConpairContami4MultiQC,by:0)
   .join(inputFacetsQC4CohortMultiQC,by:0)
   .join(inputQualimap4CohortMultiQC,by:0)
+  .join(inputHsMetrics4MultiQC, by:0)
   .set{inputCohortRunMultiQC}
 
 process CohortRunMultiQC {
@@ -3676,13 +3732,13 @@ process CohortRunMultiQC {
   publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    set cohort, file(hsMetricsTumor), file(hsMetricsNormal), file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal) from inputCohortRunMultiQC
+    set cohort, file(fastPTumor), file(fastPNormal), file(alfredIgnoreYTumor), file(alfredIgnoreYNormal), file(alfredIgnoreNTumor), file(alfredIgnoreNNormal), file(concordFile), file(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), file(qualimapFolderTumor), file(qualimapFolderNormal), file(hsMetricsTumor), file(hsMetricsNormal) from inputCohortRunMultiQC
     set file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png") from Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo])
 
   output:
     set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
 
-  when: runQC && params.assayType == "exome"
+  when: runQC 
 
   script:
   if (params.assayType == "exome") {
@@ -3692,6 +3748,11 @@ process CohortRunMultiQC {
     assay = 'wgs'
   }
   """
+  for i in ./*_qualimap_rawdata.tar.gz ; do 
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+    mkdir -p qualimap/\$newFolder
+    tar -xzf \$i -C qualimap/\$newFolder
+  done
   echo -e "\\tTumor\\tNormal\\tTumor_Contamination\\tNormal_Contamination\\tConcordance" > conpair.tsv
   for i in ./*contamination.txt ; do
      j=./\$(basename \$i | cut -f 1 -d.).concordance.txt
@@ -3743,15 +3804,15 @@ process CohortRunMultiQC {
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
-  hsMetricsNum=`ls ./*.hs_metrics.txt | wc -l`
+  samplesNum=`for i in ./*contamination.txt ; do tail -n +2 \$i | cut -f 2 ; done | sort | uniq | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`
-  mqcSampleNum=\$((hsMetricsNum + fastpNum ))
+  mqcSampleNum=\$((samplesNum + fastpNum ))
   
   multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))" -x ignoreFolder/ -x fastp_original/
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  if [ \$hsMetricsNum -gt 50 ] ; then
+  if [ \$samplesNum -gt 50 ] ; then 
     cp genstats-QC_Status.txt QC_Status.txt
     beeswarm_config="max_table_rows: \${mqcSampleNum}"
   else
@@ -3782,6 +3843,7 @@ workflow.onComplete {
 def checkParamReturnFile(item) {
   params."${item}" = params.genomes[params.genome]."${item}"
   if(params."${item}" == null){println "${item} is not found in reference map"; exit 1}
+  if(file(params."${item}", checkIfExists: false) == []){println "${item} is not found; glob pattern produces empty list"; exit 1}
   return file(params."${item}", checkIfExists: true)
 }
 
@@ -3857,6 +3919,18 @@ def defineReferenceMap() {
   }
 
   return result_array
+}
+
+def touchInputs() {
+  new Timer().schedule({
+  for ( i in epochMap.keySet() ){
+    fileEpoch = file(i).lastModified()
+    if ( fileEpoch > epochMap[i]) {
+      epochMap[i] = fileEpoch
+      "touch -ca ${i}".execute()
+    }
+  }
+} as TimerTask, 1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
 }
 
 def watchMapping(tsvFile, assayType) {
