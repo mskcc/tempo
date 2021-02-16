@@ -1655,7 +1655,7 @@ process DoFacetsPreviewQC {
   for i in "\${facetsFitFiles[@]}" ; do 
     cp \$i ${facetsOutputDir}/\$i
   done
-  chmod -R ug+rw ${facetsOutputDir}/*
+  chmod -R u+rw ${facetsOutputDir}/*
   echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
   echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
   gzip manifest.txt
