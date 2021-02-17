@@ -2736,8 +2736,11 @@ process SampleRunMultiQC {
     find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
   fi
 
-  mkdir -p fastp_original ; mv *fastp.json fastp_original
-  for i in fastp_original/*fastp.json ; do 
+  mkdir -p fastp_original 
+  for i in `find . -maxdepth 1 -name "*fastp.json"` ; do 
+    mv \$i fastp_original 
+  done
+  for i in `find fastp_original -name "*fastp.json"` ; do
     outname=\$(basename \$i)
     python -c "import json
   with open('\$i', 'r') as data_file:
@@ -2757,7 +2760,7 @@ process SampleRunMultiQC {
   done
 
   echo -e "\\tCoverage" > coverage_split.txt
-  cover=\$(grep -i "mean cover" ./${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
+  cover=\$(grep -i "mean cover" ./qualimap/${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
   echo -e "${idSample}\\t\${cover}" >> coverage_split.txt
   
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
@@ -3725,8 +3728,11 @@ process CohortRunMultiQC {
   done
   cp conpair.tsv conpair_genstat.tsv
 
-  mkdir -p fastp_original ; mv *fastp.json fastp_original
-  for i in fastp_original/*fastp.json ; do 
+  mkdir -p fastp_original 
+  for i in `find . -maxdepth 1 -name "*fastp.json"` ; do 
+    mv \$i fastp_original 
+  done
+  for i in `find fastp_original -name "*fastp.json"` ; do
     outname=\$(basename \$i)
     python -c "import json
   with open('\$i', 'r') as data_file:
@@ -3745,7 +3751,7 @@ process CohortRunMultiQC {
   data_file.close()"
   done
   
-  for i in ./*/genome_results.txt ; do
+  for i in `find qualimap -name genome_results.txt` ; do
     sampleName=\$(dirname \$i | xargs -n 1 basename )
     cover=\$(grep -i "mean cover" \$i | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
     echo -e "\${sampleName}\\t\${cover}"
