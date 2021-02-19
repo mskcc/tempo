@@ -1,9 +1,10 @@
 #!/usr/bin/env Rscript
 
-# __author__  = "Philip Jonsson"
-# __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.6.0"
-# __status__  = "Dev"
+# __author__      = "Philip Jonsson"
+# __email__       = "jonssonp@mskcc.org"
+# __contributor__ = "Anne Marie Noronha (noronhaa@mskcc.org)"
+# __version__     = "0.6.1"
+# __status__      = "Dev"
 
 suppressPackageStartupMessages({
     library(data.table)
@@ -67,7 +68,7 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             Custom_filters = gsub(',', ';', Custom_filters), # note that semi-colons are not allowed in VCF INFO field
             FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER),
             alt_bias = t_depth_raw > 5 & (t_alt_count_raw_fwd == 0 | t_alt_count_raw_rev == 0),
-            ref_bias = t_depth_raw > 5 & (t_depth_raw_fwd == 0 | t_depth_raw_fwd == 0)
+            ref_bias = t_depth_raw > 5 & (t_depth_raw_fwd == 0 | t_depth_raw_rev == 0)
 )]
 
 # Apply filters to FILTER column
