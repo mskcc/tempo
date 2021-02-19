@@ -66,10 +66,11 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             RepeatMasker = ifelse(is.na(RepeatMasker), '', RepeatMasker),
             gnomAD_FILTER = ifelse(is.na(gnomAD_FILTER), 0, 1),
             Custom_filters = gsub(',', ';', Custom_filters), # note that semi-colons are not allowed in VCF INFO field
-            FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER),
+            #FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER),
             alt_bias = t_depth_raw > 5 & (t_alt_count_raw_fwd == 0 | t_alt_count_raw_rev == 0),
             ref_bias = t_depth_raw > 5 & (t_depth_raw_fwd == 0 | t_depth_raw_rev == 0)
 )]
+maf[, `:=` (FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER) )] # referencing new Custom_filters column
 
 # Apply filters to FILTER column
 maf[t_var_freq < tumor_vaf_cutoff, FILTER := add_tag(FILTER, 'low_vaf')]
