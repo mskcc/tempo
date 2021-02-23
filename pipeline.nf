@@ -135,7 +135,7 @@ if (params.mapping || params.bamMapping) {
     else if (params.watch == true) {
       pairingFile = file(params.pairing, checkIfExists: false)
       (checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
-      epochMap[params.pairing] = 0 
+      epochMap[params.pairing] = 0
     }
     else{}
     if (!runSomatic && !runGermline && !runQC){
@@ -712,10 +712,10 @@ if (params.bamMapping) {
       [ idSample,target, bam.getParent() ]
     }.set{ locateFastP4MultiQC}
 
-    locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
+    locateFastP4MultiQC.map{ idSample,target, bamFolder ->
       [idSample, file(bamFolder + "/fastp/*json")]
     }.into{fastPJson4sampleMultiQC;fastPJson4cohortMultiQC}
-  } 
+  }
 }
 
 if (params.pairing) {
@@ -1645,7 +1645,7 @@ process DoFacetsPreviewQC {
 
   input:
     set idTumor, idNormal, target, file(facetsOutputFolderFiles), file(countsFile), facetsOutputDir from Facets4FacetsPreview
-  
+
   output:
     set idTumor, idNormal, file("${idTumor}__${idNormal}.facets_qc.txt") into FacetsPreviewOut
 
@@ -1654,13 +1654,13 @@ process DoFacetsPreviewQC {
   script:
   tag = "${idTumor}__${idNormal}"
   """
-  mkdir -p ${facetsOutputDir} 
+  mkdir -p ${facetsOutputDir}
   facetsFitFiles=( ${facetsOutputFolderFiles.join(" ")} )
-  for i in "\${facetsFitFiles[@]}" ; do 
+  for i in "\${facetsFitFiles[@]}" ; do
     cp \$i ${facetsOutputDir}/\$i
   done
-  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt 
-  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt 
+  echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt
+  echo -e "${idTumor}__${idNormal}\\t\$(pwd)\\t${idTumor}" >> manifest.txt
   gzip manifest.txt
   mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
   R -e "facetsPreview::generate_genomic_annotations('${idTumor}__${idNormal}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
@@ -2527,7 +2527,7 @@ process SvABA {
     -n "${bamNormal}" \
     -G "${genomeFile}" \
     -p "${task.cpus}" \
-    --id-string "${idTumor}" \
+    --id-string "${idTumor}__${idNormal}" \
     -z
     rm -f *germline*
     """
@@ -2605,14 +2605,14 @@ if (runQC && params.assayType != "exome"){
   bamsBQSRSkipCollectHsMetrics.map{ idSample, target, bam, bai ->
     [idSample, ""]
   }.into{collectHsMetricsOutput; collectHsMetrics4Aggregate}
-  
+
 }
 
 // Alfred, BAM QC
 
 process QcQualimap {
   tag {idSample}
-  
+
   publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*.{html,tar.gz}"
   publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*/*"
 
@@ -2625,8 +2625,8 @@ process QcQualimap {
   output:
     set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Aggregate
     set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
-  
-  when: runQC   
+
+  when: runQC
 
   script:
   if (params.genome == "smallGRCh37"){
@@ -2641,8 +2641,8 @@ process QcQualimap {
     }
     nr = 750
     nw = 300
-  } else { 
-    gffOptions = "-gd HUMAN" 
+  } else {
+    gffOptions = "-gd HUMAN"
     nr = 500
     nw = 300
   }
@@ -2671,8 +2671,8 @@ process QcQualimap {
   -nr ${nr} \
   --java-mem-size=${javaMem}G
 
-  mv ${idSample}/* . 
-  tar -czf ${idSample}_qualimap_rawdata.tar.gz genome_results.txt raw_data_qualimapReport/* 
+  mv ${idSample}/* .
+  tar -czf ${idSample}_qualimap_rawdata.tar.gz genome_results.txt raw_data_qualimapReport/*
   """
 }
 
@@ -2757,21 +2757,21 @@ process SampleRunMultiQC {
     assay = 'wgs'
   }
   """
-  for i in ./*_qualimap_rawdata.tar.gz ; do 
-    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+  for i in ./*_qualimap_rawdata.tar.gz ; do
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev )
     mkdir -p qualimap/\$newFolder
     tar -xzf \$i -C qualimap/\$newFolder
   done
-  
-  parse_alfred.py --alfredfiles *alfred*tsv.gz 
-  mkdir -p ignoreFolder 
+
+  parse_alfred.py --alfredfiles *alfred*tsv.gz
+  mkdir -p ignoreFolder
   find . -maxdepth 1 \\( -name 'CO_ignore*mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore*mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
-  if [[ "${params.assayType}" == "exome" ]] ; then 
+  if [[ "${params.assayType}" == "exome" ]] ; then
     find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
   fi
 
   mkdir -p fastp_original ; mv *fastp.json fastp_original
-  for i in fastp_original/*fastp.json ; do 
+  for i in fastp_original/*fastp.json ; do
     outname=\$(basename \$i)
     python -c "import json
   with open('\$i', 'r') as data_file:
@@ -2793,11 +2793,11 @@ process SampleRunMultiQC {
   echo -e "\\tCoverage" > coverage_split.txt
   cover=\$(grep -i "mean cover" ./${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
   echo -e "${idSample}\\t\${cover}" >> coverage_split.txt
-  
+
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
 
   multiqc . -x ignoreFolder/ -x fastp_original/
-  general_stats_parse.py --print-criteria 
+  general_stats_parse.py --print-criteria
   rm -rf multiqc_report.html multiqc_data
 
   multiqc . --cl_config "title: \\"Sample MultiQC Report\\"" --cl_config "subtitle: \\"${idSample} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes FASTQ and alignment statistics for the sample ${idSample}.<br/>This report does not include QC metrics from the Tumor/Normal pair that includes ${idSample}. To review pairing QC, please refer to the multiqc_report.html from the somatic-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -t "tempo" -z -x ignoreFolder/ -x fastp_original/
@@ -2996,9 +2996,9 @@ process SomaticRunMultiQC {
   cp conpair.tsv conpair_genstat.tsv
   mkdir -p ignoreFolder ; mv conpair.tsv ignoreFolder
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
-  
+
   multiqc . -x ignoreFolder
-  general_stats_parse.py --print-criteria 
+  general_stats_parse.py --print-criteria
   rm -rf multiqc_report.html multiqc_data
 
   multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z -x ignoreFolder
@@ -3282,7 +3282,7 @@ else if(!(runAggregate == false)) {
   		   .unique()
   		   .set{alfredIgnoreN}
 
-  
+
   inputPairing3.combine(collectHsMetrics4Aggregate)
   	     .branch { item ->
   		def idTumor = item[0]
@@ -3738,7 +3738,7 @@ process CohortRunMultiQC {
   output:
     set cohort, file("*multiqc_report*.html"), file("*multiqc_data*.zip") into cohort_multiqc_report
 
-  when: runQC 
+  when: runQC
 
   script:
   if (params.assayType == "exome") {
@@ -3748,8 +3748,8 @@ process CohortRunMultiQC {
     assay = 'wgs'
   }
   """
-  for i in ./*_qualimap_rawdata.tar.gz ; do 
-    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev ) 
+  for i in ./*_qualimap_rawdata.tar.gz ; do
+    newFolder=\$(basename \$i | rev | cut -f 3- -d. | cut -f 3- -d_ | rev )
     mkdir -p qualimap/\$newFolder
     tar -xzf \$i -C qualimap/\$newFolder
   done
@@ -3761,7 +3761,7 @@ process CohortRunMultiQC {
   cp conpair.tsv conpair_genstat.tsv
 
   mkdir -p fastp_original ; mv *fastp.json fastp_original
-  for i in fastp_original/*fastp.json ; do 
+  for i in fastp_original/*fastp.json ; do
     outname=\$(basename \$i)
     python -c "import json
   with open('\$i', 'r') as data_file:
@@ -3779,7 +3779,7 @@ process CohortRunMultiQC {
     json.dump(data, data_file)
   data_file.close()"
   done
-  
+
   for i in ./*/genome_results.txt ; do
     sampleName=\$(dirname \$i | xargs -n 1 basename )
     cover=\$(grep -i "mean cover" \$i | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
@@ -3788,11 +3788,11 @@ process CohortRunMultiQC {
   echo -e "\\tTumor_Coverage\\tNormal_Coverage" > coverage_split.txt
   join -1 2 -2 1 -o 1.1,1.2,1.3,2.2 -t \$'\\t' <(join -1 1 -2 1 -t \$'\\t' <(cut -f2,3 conpair_genstat.tsv | tail -n +2 | sort | uniq) <(cat flatCoverage | sort | uniq)) <(cat flatCoverage | sort | uniq) | cut -f 1,3,4 >> coverage_split.txt
   join -1 1 -2 1 -t \$'\\t' <(cut -f 3 conpair_genstat.tsv | sort | uniq | sed "s/\$/\\t/g" ) <(cat flatCoverage | sort | uniq) >> coverage_split.txt
-  
+
   parse_alfred.py --alfredfiles *alfred*tsv.gz
-  mkdir -p ignoreFolder 
+  mkdir -p ignoreFolder
   find . -maxdepth 1 \\( -name 'CO_ignore_mqc.yaml' -o -name 'IS_*mqc.yaml' -o -name 'GC_ignore_mqc.yaml' -o -name 'ME_aware_mqc.yaml' \\) -type f -print0 | xargs -0r mv -t ignoreFolder
-  if [[ "${params.assayType}" == "exome" ]] ; then 
+  if [[ "${params.assayType}" == "exome" ]] ; then
     find . -maxdepth 1 -name 'CM_*mqc.yaml' -type f -print0 | xargs -0r mv -t ignoreFolder
   fi
   mv conpair.tsv ignoreFolder
@@ -3807,12 +3807,12 @@ process CohortRunMultiQC {
   samplesNum=`for i in ./*contamination.txt ; do tail -n +2 \$i | cut -f 2 ; done | sort | uniq | wc -l`
   fastpNum=`ls ./*fastp*json | wc -l`
   mqcSampleNum=\$((samplesNum + fastpNum ))
-  
+
   multiqc . --cl_config "max_table_rows: \$(( mqcSampleNum + 1 ))" -x ignoreFolder/ -x fastp_original/
-  general_stats_parse.py --print-criteria 
+  general_stats_parse.py --print-criteria
   rm -rf multiqc_report.html multiqc_data
 
-  if [ \$samplesNum -gt 50 ] ; then 
+  if [ \$samplesNum -gt 50 ] ; then
     cp genstats-QC_Status.txt QC_Status.txt
     beeswarm_config="max_table_rows: \${mqcSampleNum}"
   else
