@@ -2791,7 +2791,7 @@ process SampleRunMultiQC {
   done
 
   echo -e "\\tCoverage" > coverage_split.txt
-  cover=\$(grep -i "mean cover" ./${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
+  cover=\$(grep -i "mean cover" ./qualimap/${idSample}/genome_results.txt | cut -f 2 -d"=" | sed "s/\\s*//g" | tr -d "X")
   echo -e "${idSample}\\t\${cover}" >> coverage_split.txt
 
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
