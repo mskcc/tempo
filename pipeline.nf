@@ -895,7 +895,7 @@ process CreateScatteredIntervals2 {
       ])
   
   output:
-    set file("idt*.interval_list"), val("idtv2"), val("idtv2") into idtv2IList
+    set file("idt*.interval_list"), val("idt_v2"), val("idt_v2") into idtv2IList
     
   when: runSomatic || runGermline
 
@@ -907,12 +907,12 @@ process CreateScatteredIntervals2 {
     --intervals ${idtv2Targets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output idtv2
+    --output idt_v2
 
-  for i in idtv2/*.interval_list;
+  for i in idt_v2/*.interval_list;
   do
     BASENAME=`basename \$i`
-    mv \$i idtv2-\$BASENAME
+    mv \$i idt_v2-\$BASENAME
   done
   """
 }
@@ -1214,10 +1214,10 @@ process SomaticMergeDellyAndManta {
 bams4Strelka.combine(mantaToStrelka, by: [0, 1, 2]).into{input4Strelka;input4Strelka_2 }
 
 input4Strelka_2.filter{idTumor, idNormal, target, bamT, baiT, bamN, baiN, mantaCSI, mantaCSIi ->
-  target=="idtv2"
+  target=="idt_v2"
 }.set{input4Strelka_2}
 input4Strelka.filter{idTumor, idNormal, target, bamT, baiT, bamN, baiN, mantaCSI, mantaCSIi ->
-  target!="idtv2"
+  target!="idt_v2"
 }.set{input4Strelka}
 
 
@@ -1323,7 +1323,7 @@ process SomaticRunStrelka2_2 {
     options = "--exome"
     if (target == 'agilent') intervals = agilentTargets
     if (target == 'idt') intervals = idtTargets
-    if (target == 'idtv2') intervals = idtv2Targets
+    if (target == 'idt_v2') intervals = idtv2Targets
   }
   outputPrefix = "${idTumor}__${idNormal}"
   outfile = "${outputPrefix}.strelka2.vcf.gz"
@@ -2033,10 +2033,10 @@ facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
 			   .into{ mergedChannelMetaDataParser; mergedChannelMetaDataParser2 }
 
 mergedChannelMetaDataParser2.filter{ idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) ->
-  target == "idtv2"
+  target == "idt_v2"
 }.set{mergedChannelMetaDataParser2}
 mergedChannelMetaDataParser.filter{ idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) ->
-  target != "idtv2"
+  target != "idt_v2"
 }.set{mergedChannelMetaDataParser}
 
 // --- Generate sample-level metadata
