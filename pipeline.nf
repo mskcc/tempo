@@ -2252,10 +2252,10 @@ process GermlineRunStrelka2 {
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
-    set file(idtTargets), file(agilentTargets), file(wgsIntervals),
-    file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
-      referenceMap.idtTargets, referenceMap.agilentTargets, referenceMap.wgsTargets,
-      referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex, referenceMap.wgsTargetsIndex
+    set file(idtTargets), file(idtv2Targets), file(agilentTargets), file(wgsIntervals),
+    file(idtTargetsIndex), file(idtv2TargetsIndex), file(agilentTargetsIndex), file(wgsIntervalsIndex) from Channel.value([
+      referenceMap.idtTargets, referenceMap.idtv2Targets, referenceMap.agilentTargets, referenceMap.wgsTargets,
+      referenceMap.idtTargetsIndex, referenceMap.idtv2TargetsIndex, referenceMap.agilentTargetsIndex, referenceMap.wgsTargetsIndex
     ])
     
   output:
@@ -2270,6 +2270,7 @@ process GermlineRunStrelka2 {
     options = "--exome"
     if (target == 'agilent') intervals = agilentTargets
     if (target == 'idt') intervals = idtTargets
+    if (target == 'idt_v2') intervals = idtv2Targets
   }
   """
   configureStrelkaGermlineWorkflow.py \
@@ -2680,9 +2681,9 @@ process QcCollectHsMetrics {
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
-    set file(idtTargetsList), file(agilentTargetsList), file(idtBaitsList), file(agilentBaitsList) from Channel.value([
-      referenceMap.idtTargetsList, referenceMap.agilentTargetsList,
-      referenceMap.idtBaitsList, referenceMap.agilentBaitsList
+    set file(idtTargetsList), file(idtv2TargetsList), file(agilentTargetsList), file(idtBaitsList), file(idtv2BaitsList), file(agilentBaitsList) from Channel.value([
+      referenceMap.idtTargetsList, referenceMap.idtv2TargetsList, referenceMap.agilentTargetsList,
+      referenceMap.idtBaitsList, referenceMap.idtv2BaitsList, referenceMap.agilentBaitsList
     ])
 
   output:
@@ -2717,6 +2718,10 @@ process QcCollectHsMetrics {
     baitIntervals = "${idtBaitsList}"
     targetIntervals = "${idtTargetsList}"
   }
+  if (target == 'idt_v2'){
+    baitIntervals = "${idtv2BaitsList}"
+    targetIntervals = "${idtv2TargetsList}"
+  }
   """
   gatk CollectHsMetrics \
     ${javaOptions} \
@@ -2746,8 +2751,8 @@ process QcQualimap {
 
   input:
     set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
-    set file(idtTargets), file(agilentTargets) from Channel.value([
-      file(referenceMap.idtTargets.toString().replaceAll(".gz","")), file(referenceMap.agilentTargets.toString().replaceAll(".gz",""))
+    set file(idtTargets), file(idtv2Targets), file(agilentTargets) from Channel.value([
+      file(referenceMap.idtTargets.toString().replaceAll(".gz","")), file(referenceMap.idtv2Targets.toString().replaceAll(".gz","")), file(referenceMap.agilentTargets.toString().replaceAll(".gz",""))
     ])
 
   output:
@@ -2814,9 +2819,9 @@ process QcAlfred {
     each ignore_rg from ignore_read_groups
     set idSample, target, file(bam), file(bai) from bamsBQSR4Alfred
     file(genomeFile) from Channel.value([referenceMap.genomeFile])
-    set file(idtTargets), file(agilentTargets), file(idtTargetsIndex), file(agilentTargetsIndex) from Channel.value([
-      referenceMap.idtTargets, referenceMap.agilentTargets,
-      referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex
+    set file(idtTargets), file(idtv2Targets), file(agilentTargets), file(idtTargetsIndex), file(idtv2TargetsIndex), file(agilentTargetsIndex) from Channel.value([
+      referenceMap.idtTargets, referenceMap.idtv2Targets, referenceMap.agilentTargets,
+      referenceMap.idtTargetsIndex, referenceMap.idtv2TargetsIndex, referenceMap.agilentTargetsIndex
     ])
 
   output:
@@ -2843,6 +2848,7 @@ process QcAlfred {
   if (params.assayType == "exome") {
     if (target == "agilent") options = "--bed ${agilentTargets}"
     if (target == "idt") options = "--bed ${idtTargets}"
+    if (target == "idt_v2") options = "--bed ${idtv2Targets}"
   }
   def ignore = ignore_rg ? "--ignore" : ""
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.per_readgroup.tsv.gz"
