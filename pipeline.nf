@@ -2032,10 +2032,10 @@ facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
 			   .unique()
 			   .into{ mergedChannelMetaDataParser; mergedChannelMetaDataParser2 }
 
-mergedChannelMetaDataParser2.filter{ idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) ->
+mergedChannelMetaDataParser2.filter{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
   target == "idt_v2"
 }.set{mergedChannelMetaDataParser2}
-mergedChannelMetaDataParser.filter{ idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) ->
+mergedChannelMetaDataParser.filter{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
   target != "idt_v2"
 }.set{mergedChannelMetaDataParser}
 
@@ -2764,11 +2764,14 @@ process QcQualimap {
   script:
   if (params.genome == "smallGRCh37"){
     idtTargets = params.genomes["GRCh37"]."idtTargets".replaceAll(".gz","")
+    idtv2Targets = params.genomes["GRCh37"]."idtv2Targets".replaceAll(".gz","")
     agilentTargets =  params.genomes["GRCh37"]."agilentTargets".replaceAll(".gz","")
   }
   if (params.assayType == "exome"){
     if ( target == "idt"){
       gffOptions = "-gff ${idtTargets}"
+    } else if ( target == "idt_v2"){
+      gffOptions = "-gff ${idtv2Targets}"
     } else {
       gffOptions = "-gff ${agilentTargets}"
     }
