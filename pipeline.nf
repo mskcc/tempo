@@ -1318,12 +1318,9 @@ process SomaticRunStrelka2_2 {
 
   script:
   options = ""
-  intervals = wgsTargets
+  intervals = idtv2Targets
   if (params.assayType == "exome") {
     options = "--exome"
-    if (target == 'agilent') intervals = agilentTargets
-    if (target == 'idt') intervals = idtTargets
-    if (target == 'idt_v2') intervals = idtv2Targets
   }
   outputPrefix = "${idTumor}__${idNormal}"
   outfile = "${outputPrefix}.strelka2.vcf.gz"
@@ -2030,14 +2027,7 @@ facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
 			   .combine(mutSig4MetaDataParser, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [1,2])
 			   .unique()
-			   .into{ mergedChannelMetaDataParser; mergedChannelMetaDataParser2 }
-
-mergedChannelMetaDataParser2.filter{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
-  target == "idt_v2"
-}.set{mergedChannelMetaDataParser2}
-mergedChannelMetaDataParser.filter{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
-  target != "idt_v2"
-}.set{mergedChannelMetaDataParser}
+			   .set{ mergedChannelMetaDataParser }
 
 // --- Generate sample-level metadata
 process MetaDataParser {
@@ -2047,8 +2037,8 @@ process MetaDataParser {
 
   input:
     set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
-    set file(idtCodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
-      referenceMap.idtCodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
+    set file(idtCodingBed), file(idtv2CodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
+      referenceMap.idtCodingBed, referenceMap.idtv2CodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
     ]) 
 
   output:
@@ -2060,6 +2050,9 @@ process MetaDataParser {
   script:
   if (target == "idt") {
     codingRegionsBed = "${idtCodingBed}"
+  }
+  else if (target == "idt_v2") {
+    codingRegionsBed = "${idtv2CodingBed}"
   }
   else if (target == "agilent") {
     codingRegionsBed = "${agilentCodingBed}"
@@ -2083,45 +2076,6 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
-
-process MetaDataParser2 {
-  tag {idTumor + "__" + idNormal}
- 
-  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
-
-  input:
-    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser2
-    file(idtv2CodingBed) from Channel.value([
-      referenceMap.idtv2CodingBed
-    ]) 
-
-  output:
-    file("*.sample_data.txt") into MetaDataOutput_2
-    set val("placeHolder"), idTumor, idNormal, file("*.sample_data.txt") into MetaData4Aggregate_2
-
-  when: runSomatic
-
-  script:
-  codingRegionsBed = "${idtv2CodingBed}"
-  """
-  create_metadata_file.py \
-    --sampleID ${idTumor}__${idNormal} \
-    --tumorID ${idTumor} \
-    --normalID ${idNormal} \
-    --facetsPurity_out ${purityOut} \
-    --facetsQC ${qcOutput} \
-    --MSIsensor_output ${msifile} \
-    --mutational_signatures_output ${mutSig} \
-    --polysolver_output ${polysolverFile} \
-    --MAF_input ${mafFile} \
-    --coding_baits_BED ${codingRegionsBed}
-  
-  mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
-  """
-  }
-MetaDataOutput.mix(MetaDataOutput_2).set{MetaDataOutput}
-MetaData4Aggregate.mix(MetaData4Aggregate_2).set{MetaData4Aggregate}
-
 } else { 
   if (params.pairing) {
     pairing4QC.map{ idTumor, idNormal -> 
