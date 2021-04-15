@@ -2517,7 +2517,7 @@ process SvABA {
     when: "svaba" in tools && runSomatic && params.assayType == "genome"
 
     output:
-    file("*") into svaba_output
+    set file("*.vcf.gz*"), file("*.log"), file("*.txt.gz"), file(".contigs.bam") into svaba_output
     // TODO: where should the output channels go to?
 
     script:
