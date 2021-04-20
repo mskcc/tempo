@@ -52,9 +52,10 @@ gnomad_af_cutoff = args$gnomad_allele_frequency
 pon_cutoff = args$normal_panel_count
 
 add_tag = function(filter, tag) {
+    split_filter = unlist(strsplit(filter,";"))
     ifelse(filter == 'PASS',
            tag,
-           paste(filter, tag, sep = ';'))
+           paste(paste0(split_filter[!split_filter %in% tag],collapse=';'), tag, sep = ';'))
 }
 
 maf = fread(maf, data.table = TRUE)
@@ -65,6 +66,7 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
             RepeatMasker = ifelse(is.na(RepeatMasker), '', RepeatMasker),
             gnomAD_FILTER = ifelse(is.na(gnomAD_FILTER), 0, 1),
+            MuTect2 = ifelse(is.na(MuTect2),0,1),
             Custom_filters = gsub(',', ';', Custom_filters), # note that semi-colons are not allowed in VCF INFO field
             #FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER),
             alt_bias = t_depth_raw > 5 & (t_alt_count_raw_fwd == 0 | t_alt_count_raw_rev == 0),

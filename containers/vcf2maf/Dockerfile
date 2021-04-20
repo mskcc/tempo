@@ -143,5 +143,5 @@ RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/on
 # Add filter script
 COPY filter-somatic-maf.R /usr/bin
 COPY filter-germline-maf.R /usr/bin
-RUN chmod +x /usr/bin/filter-somatic-maf.R
-RUN chmod +x /usr/bin/filter-germline-maf.R
+RUN chmod 755 /usr/bin/filter-somatic-maf.R
+RUN chmod 755 /usr/bin/filter-germline-maf.R
