@@ -1964,6 +1964,37 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
+
+
+process RunSvABA {
+    tag { idTumor + "__" + idNormal }
+    publishDir "${outDir}/somatic/${idTumor}__${idNormal}/svaba", mode: params.publishDirMode
+
+    input:
+    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForSvABA
+    set file(genomeFile), file(genomeIndex), file(genomeDict), file(bwaIndex) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.bwaIndex
+    ])
+
+    when: "svaba" in tools && runSomatic && params.assayType == "genome"
+
+    output:
+    set file("*.vcf.gz*"), file("*.log"), file("*.txt.gz"), file(".contigs.bam") into svaba_output
+    // TODO: where should the output channels go to?
+
+    script:
+    """
+    svaba run \
+    -t "${bamTumor}" \
+    -n "${bamNormal}" \
+    -G "${genomeFile}" \
+    -p "${task.cpus}" \
+    --id-string "${idTumor}__${idNormal}" \
+    -z
+    rm -f *germline*
+    """
+}
+
 } else {
   if (params.pairing) {
     pairing4QC.map{ idTumor, idNormal ->
@@ -2501,36 +2532,6 @@ process GermlineMergeDellyAndManta {
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
   """
 }
-}
-
-
-process SvABA {
-    tag { idTumor + "__" + idNormal }
-    publishDir "${outDir}/somatic/${idTumor}__${idNormal}/svaba", mode: params.publishDirMode
-
-    input:
-    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal) from bamsForSvABA
-    set file(genomeFile), file(genomeIndex), file(genomeDict), file(bwaIndex) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.bwaIndex
-    ])
-
-    when: "svaba" in tools && runSomatic && params.assayType == "genome"
-
-    output:
-    set file("*.vcf.gz*"), file("*.log"), file("*.txt.gz"), file(".contigs.bam") into svaba_output
-    // TODO: where should the output channels go to?
-
-    script:
-    """
-    svaba run \
-    -t "${bamTumor}" \
-    -n "${bamNormal}" \
-    -G "${genomeFile}" \
-    -p "${task.cpus}" \
-    --id-string "${idTumor}__${idNormal}" \
-    -z
-    rm -f *germline*
-    """
 }
 
 /*
