@@ -12,7 +12,9 @@ before_install:
   # Install Nextflow
   - export NXF_VER=19.10.0 && curl -fsSL get.nextflow.io | bash
   - chmod 777 nextflow
-  - wget -O test-data.tar.gz --no-check-certificate 'https://docs.google.com/uc?export=download&id=1Jgsj4FEnwhNybaNuovyIdSXG6-iBzAIf'
+  # to change the test-data for travis, please download using the following command, extract, make changes, tarball again with gzip, and upload to google drive. 
+  # you will have to change the link below as well. Click to share the link, making it so anyone with the link can access, then extract the id in the link and put it here after "id="
+  - wget -O test-data.tar.gz --no-check-certificate 'https://docs.google.com/uc?export=download&id=1TxP_dRIDcR9DXlj7OBFUuJwW5Tw4gMam'
   - tar -xzvf test-data.tar.gz 
 
 script:
