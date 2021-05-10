@@ -2,14 +2,15 @@ FROM halllab/bcftools:v1.9
 
 LABEL maintainer="C. Allan Bolipata (bolipatc@mskcc.org)" \
     contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-    version.image="1.2.2" \
+    version.image="1.2.3" \
     version.vt="0.57721" \
-    version.filter-vcf="0.2.2" \
+    version.filter-vcf="0.2.3" \
     version.pysam="0.15.2" \
     source.getBaseCountsMultiSample="https://github.com/zengzheng123/GetBaseCountsMultiSample/releases/tag/v1.2.2" \
     version.getBaseCountsMultiSample="1.2.2"
 
 ENV GBCMS_VERSION 1.2.2
+ENV VT_VERSION 0.57721
 
 RUN apt-get update && \
     apt-get install --yes \
@@ -34,10 +35,12 @@ RUN apt-get update && \
 RUN pip install pysam==0.15.2
 
 # Install vt
-RUN git clone https://github.com/atks/vt.git && \
-    cd vt && \
+# RUN git clone https://github.com/atks/vt.git && \
+RUN wget https://github.com/atks/vt/archive/refs/tags/${VT_VERSION}.tar.gz && \
+    tar -xzf ${VT_VERSION}.tar.gz && \
+    cd vt-${VT_VERSION} && \
     make && \
-    cp /vt/vt /usr/bin
+    cp /vt-${VT_VERSION}/vt /usr/bin
 
 # Install GetBaseCountsMultiSample, copied from https://github.com/mskcc/roslin-variant/blob/2.5.x/build/containers/getbasecountsmultisample/1.2.2/Dockerfile
 RUN cd /tmp && \
@@ -59,4 +62,4 @@ RUN cd /tmp && \
 
 # Add filter script
 COPY filter-vcf.py /usr/bin
-RUN chmod +x /usr/bin/filter-vcf.py
+RUN chmod +rx /usr/bin/filter-vcf.py
