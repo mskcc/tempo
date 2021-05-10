@@ -35,7 +35,6 @@ RUN apt-get update && \
 RUN pip install pysam==0.15.2
 
 # Install vt
-# RUN git clone https://github.com/atks/vt.git && \
 RUN wget https://github.com/atks/vt/archive/refs/tags/${VT_VERSION}.tar.gz && \
     tar -xzf ${VT_VERSION}.tar.gz && \
     cd vt-${VT_VERSION} && \
