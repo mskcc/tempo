@@ -4073,6 +4073,7 @@ def watchMapping(tsvFile, assayType) {
 }
 
 def watchBamMapping(tsvFile, assayType){
+  def index = 1
   Channel.watchPath( tsvFile, 'create, modify' )
 	 .map{ row -> 
 	      index = 1 
@@ -4119,6 +4120,7 @@ def watchPairing(tsvFile){
 }
 
 def watchAggregateWithPath(tsvFile) {
+  def index = 1 
   Channel.watchPath(tsvFile, 'create, modify')
      .map{ row -> 
 	      index = 1 
