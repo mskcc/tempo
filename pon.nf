@@ -1,6 +1,7 @@
 referenceMap = defineReferenceMap()
 outDir     = file(params.outDir).toAbsolutePath()
 mappingFile = file(params.bamMapping, checkIfExists: true)
+tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
 TempoUtils.extractBAM(mappingFile, params.assayType)
 	.into{bams4MutectGermline; bams4MantaGermline; bamsForStrelkaGermline}
@@ -48,7 +49,7 @@ bamsForStrelkaGermline.join(mantaOutput, by:[0,1])
 process GermlineRunStrelka2 {
 	tag {idNormal}
 
-	publishDir "${outDir}/pon/${idNormal}/strelka2", mode: params.publishDirMode
+	//publishDir "${outDir}/pon/${idNormal}/strelka2", mode: params.publishDirMode
 
 	input:
 	set idNormal, target, file(bamNormal), file(baiNormal), file(mantaCSI), file(mantaCSI_idx) from bamsForStrelkaGermline
@@ -61,8 +62,7 @@ process GermlineRunStrelka2 {
     set file(wgsIntervals), file(wgsIntervalssIndex) from Channel.value([referenceMap.wgsTargets, referenceMap.wgsTargetsIndex])
 
 	output:
-	set idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into StrelkaGermline_out
-	set file("listoffiles.txt"), file("listoffiles2.txt") into outFiles
+	set idNormal, target, file("variants.vcf.gz"), file("variants.vcf.gz.tbi") into StrelkaGermline_prefilter
 
 	script:
 	options = ""
@@ -86,23 +86,43 @@ python Strelka/runWorkflow.py \\
     --mode local \\
     --jobs ${task.cpus}
 
-find . -type f > listoffiles.txt
+mv Strelka/results/variants/variants.vcf.gz ./variants.vcf.gz
+mv Strelka/results/variants/variants.vcf.gz.tbi ./variants.vcf.gz.tbi
 
-bcftools filter \\
+"""
+}
+
+process FilterGermlineStrelka2 {
+	tag {idNormal}
+
+	publishDir "${outDir}/pon/${idNormal}/strelka2", mode: params.publishDirMode
+
+	input:
+	set idNormal, target, file("variants.vcf.gz"), file("variants.vcf.gz.tbi") from StrelkaGermline_prefilter
+	set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+		referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+	])
+
+	output:
+	set idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into StrelkaGermline_out
+
+	script:
+	"""
+	bcftools filter \\
     --include 'FORMAT/AD[0:1]>1' \\
-    Strelka/results/variants/variants.vcf.gz | \\
+    variants.vcf.gz | \\
     bcftools norm \\
     --fasta-ref ${genomeFile} \\
-    -check-ref s \\
+    --check-ref s \\
     --multiallelics -both \\
     --output-type z \\
     --output ${idNormal}.strelka2.vcf.gz
 
-tabix --preset vcf ${idNormal}.strelka2.vcf.gz
+	tabix --preset vcf ${idNormal}.strelka2.vcf.gz
+	"""
 
-find . -type f > listoffiles2.txt
-"""
 }
+
 
 process CreateScatteredIntervals {
  	input:
@@ -203,7 +223,7 @@ process GermlineRunMutect2 {
     ])
 
 	output:
-    set id, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forGermlineMutect2Combine
+    set key, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forGermlineMutect2Combine
 
 	script:
 	mutect2Vcf = "${idNormal}_${intervalBed.baseName}.vcf.gz"
@@ -239,9 +259,7 @@ process GermlineCombineMutect2Vcf {
     ])
 
   output:
-    set idNormal, target, file("${outfile}"), file("${outfile}.tbi") into mutect2CombinedVcf4Combine
-
-  when: "mutect2" in tools 
+    set idNormal, target, file("${idNormal}.mutect2.vcf.gz"), file("${idNormal}.mutect2.vcf.gz.tbi") into mutect2CombinedVcf4Combine
 
   script:
   //def idNormal = id.toString().split("@")[0].split("__")[1]
@@ -274,35 +292,76 @@ process GermlineCombineMutect2Vcf {
   """
 }
 
-mutect2CombinedVcf4Combine.groupTuple(by:[1])
-	.combine(StrelkaGermline_out.groupTuple(by:[1]), by:[1])
-	.set{ponInputs}
+mutect2CombinedVcf4Combine
+  .combine(StrelkaGermline_out, by:[0,1])
+  .view()
+  .set{combineMutect_and_Strelka}
+
+process GermlineCombineChannel {
+
+  container = "cmopipeline/bcftools-vt:1.2.2"
+
+  input:
+  set idNormal, target, file(mutectFile), file(mutectFileTbi), file(strelkaFile), file(strelkaFileTbi) from combineMutect_and_Strelka
+
+  output:
+  set idNormal, target, file("${idNormal}.filtered.vcf.gz"), file("${idNormal}.filtered.vcf.gz.tbi") into combinedVcf
+
+  script:
+  """
+  bcftools isec \\
+    --output-type z \\
+    --prefix isecDir \\
+    ${mutectFile} ${strelkaFile}
+
+  bcftools concat \\
+    --allow-overlaps \\
+    --rm-dups all \\
+    isecDir/000*.vcf.gz | \\
+  bcftools sort | \\
+  bcftools filter \\
+    --include 'FILTER=\"PASS\"' \\
+    --output-type z \\
+    --output ${idNormal}.filtered.vcf.gz \\
+    
+  tabix --preset vcf ${idNormal}.filtered.vcf.gz
+  """
+
+}
+
+combinedVcf
+  .groupTuple(by:[1])
+  .view()
+  .map{ idNormal, target, filteredVcf, filteredVcfTbi -> 
+    [ target, filteredVcf, filteredVcfTbi ]
+  }.set{ponInputs}
 
 process generatePoN {
 	tag {target}
 
-	publishDir "${outDir}/pon/${idNormal}/pon/${target}", mode: params.publishDirMode
+	publishDir "${outDir}/pon/panel/${target}", mode: params.publishDirMode
 	
 	input:
-	set idNormals, target, file(mutectCalls), file(mutectCallsTbi), file(strelkaCalls), file(strelkaCallsTbi) from ponInputs
+	set target, file(vcfFiltered), file(vcfFilteredTbi) from ponInputs
 
 	output:
-	file("pon.annot.vcf.gz") into ponOutput
+	set target, file("pon_out/pon.vcf.gz"), file("pon_out/pon.vcf.gz.tbi") into ponOutput
 
 	script:
 	"""
-	bcftools merge \
-		--merge none \
-		--output-type z \
-		--output pon.vcf.gz \
-		pon/*vcf.gz
-
-	bcftools +fill-tags pon.vcf.gz \\
+	mkdir -p isecDir pon_out
+	bcftools isec \\
 		--output-type z \\
-		--output pon.annot.vcf.gz \\
-		--tags AC
+		-n +2 \\
+		-p isecDir \\
+		*.filtered.vcf.gz
+	bcftools merge \\
+		--merge both  \\
+		--output-type z \\
+		--output pon_out/pon.vcf.gz \\
+		isecDir/*vcf.gz 
 
-	tabix --preset vcf pon.annot.vcf.gz
+	tabix --preset vcf pon_out/pon.vcf.gz
 	"""
 
 }
