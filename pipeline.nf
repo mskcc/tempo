@@ -202,6 +202,7 @@ if (!(params.cosmic in ['v2', 'v3'])) {
 }
 
 referenceMap = defineReferenceMap()
+targetsMap = loadTargetReferences()
 
 /*
 ================================================================================
@@ -824,82 +825,24 @@ if (runSomatic || runGermline || runQC) {
 
 if (runSomatic || runGermline) {
 // GATK SplitIntervals, CreateScatteredIntervals
+
+targets4Intervals = Channel.from(targetsMap.keySet())
+  .map{ targetId ->
+    [ targetId, targetsMap."${targetId}"."targetsBedGz", targetsMap."${targetId}"."targetsBedGzTbi" ]
+  }
+
 process CreateScatteredIntervals {
+  tag {targetId}
 
   input:
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
       ])
-    set file(idtTargets), file(agilentTargets), file(wgsTargets),
-    file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
-      referenceMap.idtTargets, referenceMap.agilentTargets, referenceMap.wgsTargets,
-      referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex, referenceMap.wgsTargetsIndex
-      ])
-  
-  output:
-    set file("agilent*.interval_list"), val("agilent"), val("agilent") into agilentIList
-    set file("idt*.interval_list"), val("idt"), val("idt") into idtIList
-    set file("wgs*.interval_list"), val("wgs"), val("wgs") into wgsIList
-
-  when: runSomatic || runGermline
-
-  script:
-  scatterCount = params.scatterCount
-  """
-  gatk SplitIntervals \
-    --reference ${genomeFile} \
-    --intervals ${agilentTargets} \
-    --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output agilent
-
-  for i in agilent/*.interval_list;
-  do
-    BASENAME=`basename \$i`
-    mv \$i agilent-\$BASENAME
-  done
-
-  gatk SplitIntervals \
-    --reference ${genomeFile} \
-    --intervals ${idtTargets} \
-    --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output idt
-
-  for i in idt/*.interval_list;
-  do
-    BASENAME=`basename \$i`
-    mv \$i idt-\$BASENAME
-  done
-
-  gatk SplitIntervals \
-    --reference ${genomeFile} \
-    --intervals ${wgsTargets} \
-    --scatter-count ${scatterCount} \
-    --subdivision-mode INTERVAL_SUBDIVISION \
-    --output wgs 
-
-  for i in wgs/*.interval_list;
-  do
-    BASENAME=`basename \$i`
-    mv \$i wgs-\$BASENAME
-  done
-  """
-}
-
-process CreateScatteredIntervals2 {
-
-  input:
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
-      ])
-    set file(idtv2Targets), file(idtv2TargetsIndex) from Channel.value([
-      referenceMap.idtv2Targets, referenceMap.idtv2TargetsIndex
-      ])
-  
-  output:
-    set file("idt*.interval_list"), val("idt_v2"), val("idt_v2") into idtv2IList
+    set val(targetId), file(targets), file(targetsIndex) from targets4Intervals
     
+  output:
+    set file("*.interval_list"), val(targetId), val(targetId) into mergedIList4T, mergedIList4N 
+
   when: runSomatic || runGermline
 
   script:
@@ -907,20 +850,18 @@ process CreateScatteredIntervals2 {
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
-    --intervals ${idtv2Targets} \
+    --intervals ${targets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    --output idt_v2
+    --output $targetId
 
-  for i in idt_v2/*.interval_list;
+  for i in $targetId/*.interval_list;
   do
     BASENAME=`basename \$i`
-    mv \$i idt_v2-\$BASENAME
+    mv \$i ${targetId}-\$BASENAME
   done
   """
 }
-
-agilentIList.mix(idtIList, wgsIList, idtv2IList).into{mergedIList4T; mergedIList4N}
 
 //Associating interval_list files with BAM files, putting them into one channel
 
@@ -1214,15 +1155,10 @@ process SomaticMergeDellyAndManta {
 
 
 // --- Run Strelka2
-bams4Strelka.combine(mantaToStrelka, by: [0, 1, 2]).into{input4Strelka;input4Strelka_2 }
-
-input4Strelka_2.filter{idTumor, idNormal, target, bamT, baiT, bamN, baiN, mantaCSI, mantaCSIi ->
-  target=="idt_v2"
-}.set{input4Strelka_2}
-input4Strelka.filter{idTumor, idNormal, target, bamT, baiT, bamN, baiN, mantaCSI, mantaCSIi ->
-  target!="idt_v2"
-}.set{input4Strelka}
-
+bams4Strelka.combine(mantaToStrelka, by: [0, 1, 2])
+  .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
+    [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+  }.set{input4Strelka }
 
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
@@ -1230,14 +1166,9 @@ process SomaticRunStrelka2 {
   publishDir "${outDir}/somatic/${outputPrefix}/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"
 
   input:
-    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(mantaCSI), file(mantaCSIi) from input4Strelka
+    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(mantaCSI), file(mantaCSIi), file(targets), file(targetsIndex) from input4Strelka
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
-    ])
-    set file(idtTargets), file(agilentTargets), file(wgsTargets),
-    file(idtTargetsIndex), file(agilentTargetsIndex), file(wgsTargetsIndex) from Channel.value([
-      referenceMap.idtTargets, referenceMap.agilentTargets, referenceMap.wgsTargets,
-      referenceMap.idtTargetsIndex, referenceMap.agilentTargetsIndex, referenceMap.wgsTargetsIndex
     ])
 
   output:
@@ -1248,80 +1179,7 @@ process SomaticRunStrelka2 {
 
   script:
   options = ""
-  intervals = wgsTargets
-  if (params.assayType == "exome") {
-    options = "--exome"
-    if (target == 'agilent') intervals = agilentTargets
-    if (target == 'idt') intervals = idtTargets
-  }
-  outputPrefix = "${idTumor}__${idNormal}"
-  outfile = "${outputPrefix}.strelka2.vcf.gz"
-  """
-  configureStrelkaSomaticWorkflow.py \
-    ${options} \
-    --reportEVSFeatures \
-    --callRegions ${intervals} \
-    --referenceFasta ${genomeFile} \
-    --indelCandidates ${mantaCSI} \
-    --tumorBam ${bamTumor} \
-    --normalBam ${bamNormal} \
-    --runDir Strelka
-
-  python Strelka/runWorkflow.py \
-    --mode local \
-    --jobs ${task.cpus}
-
-  mv Strelka/results/variants/somatic.indels.vcf.gz \
-    Strelka_${outputPrefix}_somatic_indels.vcf.gz
-  mv Strelka/results/variants/somatic.indels.vcf.gz.tbi \
-    Strelka_${outputPrefix}_somatic_indels.vcf.gz.tbi
-  mv Strelka/results/variants/somatic.snvs.vcf.gz \
-    Strelka_${outputPrefix}_somatic_snvs.vcf.gz
-  mv Strelka/results/variants/somatic.snvs.vcf.gz.tbi \
-    Strelka_${outputPrefix}_somatic_snvs.vcf.gz.tbi
-
-  echo -e 'TUMOR ${idTumor}\\nNORMAL ${idNormal}' > samples.txt
-  
-  bcftools concat \
-    --allow-overlaps \
-    Strelka_${outputPrefix}_somatic_indels.vcf.gz Strelka_${outputPrefix}_somatic_snvs.vcf.gz | \
-  bcftools reheader \
-    --samples samples.txt | \
-  bcftools sort | \
-  bcftools norm \
-    --fasta-ref ${genomeFile} \
-    --check-ref s \
-    --output-type z \
-    --output ${outfile}
-
-  tabix --preset vcf ${outfile}
-  """
-}
-
-process SomaticRunStrelka2_2 {
-  tag {idTumor + "__" + idNormal}
-
-  publishDir "${outDir}/somatic/${outputPrefix}/strelka2", mode: params.publishDirMode, pattern: "*.vcf.{gz,gz.tbi}"
-
-  input:
-    set idTumor, idNormal, target, file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(mantaCSI), file(mantaCSIi) from input4Strelka_2
-    set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
-    ])
-    set file(idtv2Targets),file(idtv2TargetsIndex) from Channel.value([
-      referenceMap.idtv2Targets, 
-      referenceMap.idtv2TargetsIndex, 
-    ])
-
-  output:
-    set idTumor, idNormal, target, file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelka4Combine_2
-    set file('*strelka2.vcf.gz'), file('*strelka2.vcf.gz.tbi') into strelkaOutput_2
-
-  when: tools.containsAll(["manta", "strelka2"]) && runSomatic
-
-  script:
-  options = ""
-  intervals = idtv2Targets
+  intervals = targets
   if (params.assayType == "exome") {
     options = "--exome"
   }
@@ -1369,8 +1227,6 @@ process SomaticRunStrelka2_2 {
   """
 }
 
-strelkaOutput.mix(strelkaOutput_2).set{strelkaOutput}
-strelka4Combine.mix(strelka4Combine_2).set{strelka4Combine}
 
 mutect2CombinedVcf4Combine.combine(bamns4CombineChannel, by: [0,1,2]).combine(strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
 
@@ -2030,7 +1886,9 @@ facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
 			   .combine(mutSig4MetaDataParser, by: [0,1,2])
 			   .combine(hlaOutputForMetaDataParser, by: [1,2])
 			   .unique()
-			   .set{ mergedChannelMetaDataParser }
+         .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
+          [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
+         }.set{ mergedChannelMetaDataParser }
 
 // --- Generate sample-level metadata
 process MetaDataParser {
@@ -2039,10 +1897,7 @@ process MetaDataParser {
   publishDir "${outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 
   input:
-    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile) from mergedChannelMetaDataParser
-    set file(idtCodingBed), file(idtv2CodingBed), file(agilentCodingBed), file(wgsCodingBed) from Channel.value([
-      referenceMap.idtCodingBed, referenceMap.idtv2CodingBed, referenceMap.agilentCodingBed, referenceMap.wgsCodingBed
-    ]) 
+    set idNormal, target, idTumor, file(purityOut), file(mafFile), file(qcOutput), file(msifile), file(mutSig), placeHolder, file(polysolverFile), file(codingBed) from mergedChannelMetaDataParser 
 
   output:
     file("*.sample_data.txt") into MetaDataOutput
@@ -2051,18 +1906,7 @@ process MetaDataParser {
   when: runSomatic
 
   script:
-  if (target == "idt") {
-    codingRegionsBed = "${idtCodingBed}"
-  }
-  else if (target == "idt_v2") {
-    codingRegionsBed = "${idtv2CodingBed}"
-  }
-  else if (target == "agilent") {
-    codingRegionsBed = "${agilentCodingBed}"
-  }
-  else if (target == "wgs") {
-    codingRegionsBed = "${wgsCodingBed}"
-  }
+  codingRegionsBed = codingBed
   """
   create_metadata_file.py \
     --sampleID ${idTumor}__${idNormal} \
@@ -2199,20 +2043,21 @@ process GermlineCombineHaplotypecallerVcf {
 
 
 // --- Run Strelka2, germline
+
+bamsForStrelkaGermline
+  .map{ idNormal, target, bamNormal, baiNormal -> 
+    [idNormal, target, bamNormal, baiNormal, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+  }.set{bamsForStrelkaGermline}
 process GermlineRunStrelka2 {
   tag {idNormal}
 
   publishDir "${outDir}/germline/${idNormal}/strelka2", mode: params.publishDirMode
 
   input:
-    set idNormal, target, file(bamNormal), file(baiNormal) from bamsForStrelkaGermline
+    set idNormal, target, file(bamNormal), file(baiNormal), file(targets), file(targetsIndex) from bamsForStrelkaGermline
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
-    set file(idtTargets), file(idtTargetsIndex) from Channel.value([referenceMap.idtTargets, referenceMap.idtTargetsIndex])
-    set file(idtv2Targets), file(idtv2TargetsIndex) from Channel.value([referenceMap.idtv2Targets, referenceMap.idtv2TargetsIndex])
-    set file(agilentTargets), file(agilentTargetsIndex) from Channel.value([referenceMap.agilentTargets, referenceMap.agilentTargetsIndex])
-    set file(wgsIntervals), file(wgsIntervalssIndex) from Channel.value([referenceMap.wgsTargets, referenceMap.wgsTargetsIndex])
     
   output:
     set val("placeHolder"), idNormal, target, file("${idNormal}.strelka2.vcf.gz"), file("${idNormal}.strelka2.vcf.gz.tbi") into strelka4CombineGermline, strelkaOutputGermline
@@ -2221,12 +2066,9 @@ process GermlineRunStrelka2 {
   
   script:
   options = ""
-  intervals = wgsIntervals
+  intervals = targets
   if (params.assayType == "exome") {
     options = "--exome"
-    if (target == 'agilent') intervals = agilentTargets
-    if (target == 'idt') intervals = idtTargets
-    if (target == 'idt_v2') intervals = idtv2Targets
   }
   """
   configureStrelkaGermlineWorkflow.py \
@@ -2626,20 +2468,20 @@ process GermlineMergeDellyAndManta {
 
 if (runQC) {
 // GATK CollectHsMetrics, WES only
-bamsBQSR4CollectHsMetrics.into{bamsBQSR4CollectHsMetrics; bamsBQSRSkipCollectHsMetrics}
+bamsBQSR4CollectHsMetrics
+  .map{ idSample, target, bam, bai ->
+    [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
+  }.into{bamsBQSR4CollectHsMetrics; bamsBQSRSkipCollectHsMetrics}
+
 process QcCollectHsMetrics {
   tag {idSample}
 
   publishDir "${outDir}/bams/${idSample}/collecthsmetrics", mode: params.publishDirMode
 
   input:
-    set idSample, target, file(bam), file(bai) from bamsBQSR4CollectHsMetrics
+    set idSample, target, file(bam), file(bai), file(targetsList), file(baitsList) from bamsBQSR4CollectHsMetrics
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
-    ])
-    set file(idtTargetsList), file(idtv2TargetsList), file(agilentTargetsList), file(idtBaitsList), file(idtv2BaitsList), file(agilentBaitsList) from Channel.value([
-      referenceMap.idtTargetsList, referenceMap.idtv2TargetsList, referenceMap.agilentTargetsList,
-      referenceMap.idtBaitsList, referenceMap.idtv2BaitsList, referenceMap.agilentBaitsList
     ])
 
   output:
@@ -2664,20 +2506,8 @@ process QcCollectHsMetrics {
   memMultiplier = params.mem_per_core ? task.cpus : 1
   javaOptions = "--java-options '-Xmx" + task.memory.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
 
-  baitIntervals = ""
-  targetIntervals = ""
-  if (target == 'agilent'){
-    baitIntervals = "${agilentBaitsList}"
-    targetIntervals = "${agilentTargetsList}"
-  }
-  if (target == 'idt'){
-    baitIntervals = "${idtBaitsList}"
-    targetIntervals = "${idtTargetsList}"
-  }
-  if (target == 'idt_v2'){
-    baitIntervals = "${idtv2BaitsList}"
-    targetIntervals = "${idtv2TargetsList}"
-  }
+  baitIntervals = "${baitsList}"
+  targetIntervals = "${targetsList}"
   """
   gatk CollectHsMetrics \
     ${javaOptions} \
@@ -2691,13 +2521,18 @@ process QcCollectHsMetrics {
 }
 
 if (runQC && params.assayType != "exome"){
-  bamsBQSRSkipCollectHsMetrics.map{ idSample, target, bam, bai ->
+  bamsBQSRSkipCollectHsMetrics.map{ idSample, target, bam, bai, targetList, baitList ->
     [idSample, ""]
   }.into{collectHsMetricsOutput; collectHsMetrics4Aggregate}
   
 }
 
 // Alfred, BAM QC
+
+bamsBQSR4Qualimap
+  .map{ idSample, target, bam, bai -> 
+    [ idSample, target, bam, bai, file(targetsMap."$target".targetsBedGz.toString().replaceAll(".gz","")) ]
+  }.set{bamsBQSR4Qualimap}
 
 process QcQualimap {
   tag {idSample}
@@ -2706,10 +2541,7 @@ process QcQualimap {
   publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*/*"
 
   input:
-    set idSample, target, file(bam), file(bai) from bamsBQSR4Qualimap
-    set file(idtTargets), file(idtv2Targets), file(agilentTargets) from Channel.value([
-      file(referenceMap.idtTargets.toString().replaceAll(".gz","")), file(referenceMap.idtv2Targets.toString().replaceAll(".gz","")), file(referenceMap.agilentTargets.toString().replaceAll(".gz",""))
-    ])
+    set idSample, target, file(bam), file(bai), file(targetsBed) from bamsBQSR4Qualimap
 
   output:
     set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Aggregate
@@ -2718,19 +2550,8 @@ process QcQualimap {
   when: runQC   
 
   script:
-  if (params.genome == "smallGRCh37"){
-    idtTargets = params.genomes["GRCh37"]."idtTargets".replaceAll(".gz","")
-    idtv2Targets = params.genomes["GRCh37"]."idtv2Targets".replaceAll(".gz","")
-    agilentTargets =  params.genomes["GRCh37"]."agilentTargets".replaceAll(".gz","")
-  }
   if (params.assayType == "exome"){
-    if ( target == "idt"){
-      gffOptions = "-gff ${idtTargets}"
-    } else if ( target == "idt_v2"){
-      gffOptions = "-gff ${idtv2Targets}"
-    } else {
-      gffOptions = "-gff ${agilentTargets}"
-    }
+    gffOptions = "-gff ${targetsBed}"
     nr = 750
     nw = 300
   } else { 
@@ -2769,6 +2590,12 @@ process QcQualimap {
 }
 
 Channel.from(true, false).set{ ignore_read_groups }
+bamsBQSR4Alfred
+  .map{ idSample, target, bam, bai -> 
+    [ idSample, target, bam, bai, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi ]
+  }.set{bamsBQSR4Alfred}
+
+
 process QcAlfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 
@@ -2776,13 +2603,9 @@ process QcAlfred {
 
   input:
     each ignore_rg from ignore_read_groups
-    set idSample, target, file(bam), file(bai) from bamsBQSR4Alfred
+    set idSample, target, file(bam), file(bai), file(targets), file(targetsIndex) from bamsBQSR4Alfred
     file(genomeFile) from Channel.value([referenceMap.genomeFile])
-    set file(idtTargets), file(idtv2Targets), file(agilentTargets), file(idtTargetsIndex), file(idtv2TargetsIndex), file(agilentTargetsIndex) from Channel.value([
-      referenceMap.idtTargets, referenceMap.idtv2Targets, referenceMap.agilentTargets,
-      referenceMap.idtTargetsIndex, referenceMap.idtv2TargetsIndex, referenceMap.agilentTargetsIndex
-    ])
-
+    
   output:
     set idSample, file("${idSample}.alfred*tsv.gz") into bamsQcStats4Aggregate
     set idSample, file("${idSample}.alfred*tsv.gz"), file("${idSample}.alfred*tsv.gz.pdf") into alfredOutput
@@ -2805,9 +2628,7 @@ process QcAlfred {
 
   options = ""
   if (params.assayType == "exome") {
-    if (target == "agilent") options = "--bed ${agilentTargets}"
-    if (target == "idt") options = "--bed ${idtTargets}"
-    if (target == "idt_v2") options = "--bed ${idtv2Targets}"
+    if (target == "agilent") options = "--bed ${targets}"
   }
   def ignore = ignore_rg ? "--ignore" : ""
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.per_readgroup.tsv.gz"
@@ -4021,6 +3842,26 @@ def defineReferenceMap() {
     result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
+}
+
+def loadTargetReferences(){
+  def result_array = [:]
+  new File(params.targets_base).eachDir{ i -> 
+    def target_id = i.getBaseName()
+    result_array["${target_id}"] = [:]
+    for ( j in params.targets.keySet()) { // baitsInterval, targetsInterval, targetsBedGz, targetsBedGzTbi, codingBed
+      result_array."${target_id}" << [ ("$j".toString()) : evalTargetPath(j,target_id)]
+    }
+  }
+  return result_array
+}
+
+def evalTargetPath(item,target_id){
+  def templateString = params.targets."${item}"
+  if(templateString == null){println "${item} is not found in targets' map"; exit 1}
+  def res = evaluate("def targets_id=\"$target_id\" ; template=\"$templateString\"")
+  if(file(res, checkIfExists: false) == []){println "${item} is not found; glob pattern produces empty list"; exit 1}
+  return file(file(res, checkIfExists: true).toAbsolutePath().toRealPath())
 }
 
 def touchInputs() {
