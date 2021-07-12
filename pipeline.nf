@@ -107,6 +107,9 @@ if (params.watch == true){
   touchInputs()
 }
 
+referenceMap = defineReferenceMap()
+targetsMap = loadTargetReferences()
+
 println ""
 
 pairingQc = params.pairing
@@ -115,7 +118,7 @@ if (params.mapping || params.bamMapping) {
   TempoUtils.checkAssayType(params.assayType)
   if (params.watch == false) {
     mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
-    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType).into(3)
+    (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet()).into(3)
   }
   else if (params.watch == true) {
     mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
@@ -200,9 +203,6 @@ if (!(params.cosmic in ['v2', 'v3'])) {
   println "ERROR: Possible values of mutational signature reference --cosmic is 'v2', 'v3'"
   exit 1
 }
-
-referenceMap = defineReferenceMap()
-targetsMap = loadTargetReferences()
 
 /*
 ================================================================================
@@ -3901,7 +3901,7 @@ def watchMapping(tsvFile, assayType) {
               def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: false)
               def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: false)
               def numOfPairs = row.NUM_OF_PAIRS.toInteger()
-              if(!TempoUtils.checkTarget(target, assayType)){}
+              if(!TempoUtils.checkTarget(target, assayType, targetsMap.keySet())){}
               if(!TempoUtils.checkNumberOfItem(row, 5, tsvFile)){}
 
               [idSample, numOfPairs, target, fastqFile1, fastqFile2]
@@ -3934,7 +3934,7 @@ def watchBamMapping(tsvFile, assayType){
               def target = row.TARGET
               def bam = file(row.BAM, checkIfExists: false)
               def bai = file(row.BAI, checkIfExists: false)
-              if(!TempoUtils.checkTarget(target, assayType)){}
+              if(!TempoUtils.checkTarget(target, assayType, targetsMap.keySet())){}
               if(!TempoUtils.checkNumberOfItem(row, 4, tsvFile)){}
 
               [idSample, target, bam, bai]
