@@ -2531,7 +2531,7 @@ if (runQC && params.assayType != "exome"){
 
 bamsBQSR4Qualimap
   .map{ idSample, target, bam, bai -> 
-    [ idSample, target, bam, bai, file(targetsMap."$target".targetsBedGz.toString().replaceAll(".gz","")) ]
+    [ idSample, target, bam, bai, file(targetsMap."$target".targetsBed) ]
   }.set{bamsBQSR4Qualimap}
 
 process QcQualimap {
