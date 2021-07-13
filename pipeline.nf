@@ -3786,24 +3786,6 @@ def defineReferenceMap() {
     'svCallingExcludeRegions' : checkParamReturnFile("svCallingExcludeRegions"),
     'svCallingIncludeRegions' : checkParamReturnFile("svCallingIncludeRegions"),
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
-    // Target and Bait BED files
-    'idtTargets' : checkParamReturnFile("idtTargets"),
-    //'idtTargetsUnzipped' : checkParamReturnFile("idtTargetsUnzipped"),
-    'idtTargetsIndex' : checkParamReturnFile("idtTargetsIndex"),
-    'idtTargetsList' : checkParamReturnFile("idtTargetsList"),  
-    'idtBaitsList' : checkParamReturnFile("idtBaitsList"), 
-    'idtv2Targets' : checkParamReturnFile("idtv2Targets"),
-    'idtv2TargetsIndex' : checkParamReturnFile("idtv2TargetsIndex"),
-    'idtv2TargetsList' : checkParamReturnFile("idtv2TargetsList"),  
-    'idtv2BaitsList' : checkParamReturnFile("idtv2BaitsList"), 
-    'agilentTargets' : checkParamReturnFile("agilentTargets"),
-    //'agilentTargetsUnzipped' : checkParamReturnFile("agilentTargetsUnzipped"),
-    'agilentTargetsIndex' : checkParamReturnFile("agilentTargetsIndex"),
-    'agilentTargetsList' : checkParamReturnFile("agilentTargetsList"),  
-    'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
-    'wgsTargets' : checkParamReturnFile("wgsTargets"),
-    //'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
   ]
 
   if (workflow.profile != "test") {
@@ -3836,10 +3818,6 @@ def defineReferenceMap() {
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
-    result_array << ['idtCodingBed' : checkParamReturnFile("idtCodingBed")]
-    result_array << ['idtv2CodingBed' : checkParamReturnFile("idtv2CodingBed")]
-    result_array << ['agilentCodingBed' : checkParamReturnFile("agilentCodingBed")]    
-    result_array << ['wgsCodingBed' : checkParamReturnFile("wgsCodingBed")]  
   }
   return result_array
 }
