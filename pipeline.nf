@@ -1214,7 +1214,7 @@ process SomaticMergeDellyAndManta {
 
 // --- Run Ascat
 
-ascatAlleleCountLimit = params.ascat.alleleCountLimit != null ? params.ascat.alleleCountLimit : 1
+ascatAlleleCountLimit = params.ascatAlleleCount
 
 Channel.from(1..ascatAlleleCountLimit).set{ ascatAlleleCountSegments }
 
