@@ -924,7 +924,7 @@ agilentIList.mix(idtIList, wgsIList, idtv2IList).into{mergedIList4T; mergedIList
 
 //Associating interval_list files with BAM files, putting them into one channel
 
-bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA }
+bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA; bamsForAlleleCountAscatNGS; bamsForAscatNGS }
 
 bamsTN4Intervals.combine(mergedIList4T, by: 2).map{
   item ->
@@ -1209,6 +1209,103 @@ process SomaticMergeDellyAndManta {
     --output-file ${outputPrefix}.delly.manta.vcf.gz 
 
   tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz 
+  """
+}
+
+// --- Run Ascat
+
+ascatAlleleCountLimit = params.ascat.alleleCountLimit != null ? params.ascat.alleleCountLimit : 1
+
+Channel.from(1..ascatAlleleCountLimit).set{ ascatAlleleCountSegments }
+
+process runAscatAlleleCount {
+  tag {idTumor + "__" + idNormal + "@" + ascatIndex }
+  label 'ascat' 
+  
+  input: 
+  each ascatIndex from ascatAlleleCountSegments
+  set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAlleleCountAscatNGS
+  set file(genomeFile), file(genomeIndex), file(snpGcCorrections) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.snpGcCorrections)])
+
+  output:
+  set idTumor, idNormal, target, file("ascat_alleleCount_${ascatIndex}.tar.gz") into ascatAlleleCount4Ascat
+  file("listoffiles") into runAscatAlleleCountLoF
+
+  when: params.assayType == "genome" && "hrdetect" in tools 
+
+  script:
+  if (params.genome in ["GRCh37","smallGRCh37","GRCh38"]){
+    species = "HUMAN"
+    assembly = 37
+    if (params.genome in ["GRCh38"]) { assembly = 38 }
+  } else { // not sure if run will complete with these params. 
+    species = params.genome 
+    assembly = params.genome
+  }
+  if (ascatAlleleCountLimit == 1 ) { 
+    indexParam = ""
+  } else {
+    indexParam = "-i ${ascatIndex} -x ${ascatAlleleCountLimit}"
+  }
+  """
+  mkdir -p ascatResults ; export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  ascat.pl \\
+  -o ./ascatResults \\
+  -t ${tumorBam} -n ${normalBam} \\
+  -sg ${snpGcCorrections} \\
+  -r ${genomeFile} \\
+  -q 20 -g L \\
+  -rs "${species}" -ra "${assembly}" -pr "WGS" \
+  -c ${task.cpus} \\
+  -force \\
+  -p allele_count ${indexParam}
+  find . -type f > listoffiles
+  tar -czf ascat_alleleCount_${ascatIndex}.tar.gz ascatResults/
+  """
+}
+
+ascatAlleleCount4Ascat.groupTuple(by:[0,1,2],size:ascatAlleleCountLimit)
+  .map{idTumor, idNormal, target, ascatTar ->
+    [idTumor, idNormal, target, ascatTar.flatten() ]
+  }.combine(bamsForAscatNGS, by:[0,1,2])
+  .set{ascatAlleleCount4Ascat_Tuple}
+
+process runAscat {
+  tag {idTumor + "__" + idNormal}
+  label 'ascat' 
+  
+  input: 
+  set idTumor, idNormal, target, file(ascatTar), file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from ascatAlleleCount4Ascat_Tuple
+  set file(genomeFile), file(genomeIndex), file(snpGcCorrections) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.snpGcCorrections)])
+
+  output:
+  set idTumor, idNormal, target, file("ascatResults/*.copynumber.caveman.csv") into ascatOut4HRdetect
+
+  when: params.assayType == "genome" && "hrdetect" in tools 
+
+  script:
+  if (params.genome in ["GRCh37","smallGRCh37","GRCh38"]){
+    species = "HUMAN"
+    assembly = 37
+    if (params.genome in ["GRCh38"]) { assembly = 38 }
+  } else { // not sure if run will complete with these params. 
+    species = params.genome 
+    assembly = params.genome
+  }
+  """
+  export TMPDIR=\$(pwd)/tmp ; mkdir \$TMPDIR 
+  for i in ascat_alleleCount_*.tar.gz ;do
+    tar -xzf \$i 
+  done
+  ascat.pl \\
+  -o ./ascatResults \\
+  -t ${tumorBam} -n ${normalBam} \\
+  -sg ${snpGcCorrections} \\
+  -r ${genomeFile} \\
+  -q 20 -g L \\
+  -rs "${species}" -ra "${assembly}" -pr "WGS" \\
+  -c ${task.cpus} \\
+  -force 
   """
 }
 
@@ -3982,7 +4079,8 @@ def defineReferenceMap() {
     'agilentBaitsList' : checkParamReturnFile("agilentBaitsList"), 
     'wgsTargets' : checkParamReturnFile("wgsTargets"),
     //'wgsTargetsUnzipped' : checkParamReturnFile("wgsTargetsUnzipped"),
-    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex")
+    'wgsTargetsIndex' : checkParamReturnFile("wgsTargetsIndex"),
+    'snpGcCorrections' : checkParamReturnFile("snpGcCorrections")
   ]
 
   if (workflow.profile != "test") {
