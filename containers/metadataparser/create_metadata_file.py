@@ -4,7 +4,7 @@
 __author__  = "Evan Biederstedt"
 __contributor__  = "Yixiao Gong, Anne Marie Noronha"
 __email__   = "biederse@mskcc.org; evan.biederstedt@gmail.com; gongy@mskcc.org; noronhaa@mskcc.org"
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 __status__  = "Dev"
 
 
@@ -170,16 +170,9 @@ if MAF_input is not None and coding_baits_BED is not None:
     ## AgilentExon_51MB_b37_v3_baits.bed, total_cds_size = 30.89918
     ## IDT_Exome_v1_FP_b37_baits.bed, total_cds_size = 36.00458
     ## WGS, total_cds_size = 45.57229
-    if "AgilentExon_51MB_b37" in coding_baits_BED:
-    	tmb = mutationNum/30.89918
-    elif "IDT_Exome_v1_FP_b37" in coding_baits_BED:
-    	tmb = mutationNum/36.00458
-    elif "IDT_Exome_v2_FP_b37" in coding_baits_BED:
-    	tmb = mutationNum/31.30753
-    elif "b37_wgs_calling_regions" in coding_baits_BED:
-    	tmb = mutationNum/45.57229
-    else: 
-    	tmb = None ## this shouldn't happen
+    ## pybedtools.BedTool.total_coverage() calculates total_cds_size
+    total_cds_size = pybedtools.BedTool.total_coverage(CodingRegionsBaits)/1000000
+    tmb = mutationNum/total_cds_size
 
     results["Number_of_Mutations"] = len(maf.index)
     results['TMB']=[tmb]
