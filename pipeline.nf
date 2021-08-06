@@ -1379,6 +1379,10 @@ mutect2CombinedVcf4Combine.combine(bamns4CombineChannel, by: [0,1,2]).combine(st
 process SomaticCombineChannel {
   tag {idTumor + "__" + idNormal}
 
+  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*pass.vcf"
+  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.union.annot.vcf"
+
+
   input:
     set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
@@ -1399,6 +1403,7 @@ process SomaticCombineChannel {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.pass.vcf") into mutationMergedVcf
+    file("${idTumor}.union.annot.vcf")
 
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
   
