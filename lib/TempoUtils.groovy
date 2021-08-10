@@ -117,7 +117,7 @@ class TempoUtils {
   static def checkTarget(it, assayType) {
     def supportedTargets = []
     if(assayType == "genome"){ supportedTargets = ["wgs"] }
-    else if(assayType == "exome"){ supportedTargets = ["agilent", "idt"]}
+    else if(assayType == "exome"){ supportedTargets = ["agilent", "idt","idt_v2"]}
     else {} // this is covered by checkAssayType(){} above
 
     if(!supportedTargets.contains(it)){
