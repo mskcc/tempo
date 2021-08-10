@@ -1100,30 +1100,26 @@ process SomaticMergeDellyAndManta {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  """ 
-  bcftools view \
-    --samples ${idTumor},${idNormal} \
-    --output-type z \
-    --output-file ${outputPrefix}.manta.swap.vcf.gz \
-    ${outputPrefix}.manta.vcf.gz 
-    
-  tabix --preset vcf ${outputPrefix}.manta.swap.vcf.gz
+  """
+  bcftools concat \\
+    --allow-overlaps \\
+    --output-type z \\
+    --output ${outputPrefix}.delly.vcf.gz \\
+    *.delly.vcf.gz 
+  tabix --preset vcf ${outputPrefix}.delly.vcf.gz 
 
-  bcftools concat \
-    --allow-overlaps \
-    --output-type z \
-    --output ${outputPrefix}.delly.manta.unfiltered.vcf.gz \
-    *.delly.vcf.gz ${outputPrefix}.manta.swap.vcf.gz
-  
-  tabix --preset vcf ${outputPrefix}.delly.manta.unfiltered.vcf.gz
+  mergesvvcf \\
+    -n -m 1 \\
+    -l delly,manta \\
+    -o ${outputPrefix}.delly.manta.vcf \\
+    -f -d -s -v \\
+    ${outputPrefix}.delly.vcf.gz ${mantaFile} 
 
-  bcftools filter \
-    --include 'FILTER=\"PASS\"' \
-    --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
-    ${outputPrefix}.delly.manta.unfiltered.vcf.gz | \
-  bcftools sort \
-    --output-type z \
-    --output-file ${outputPrefix}.delly.manta.vcf.gz 
+  bcftools view \\
+    --samples ${idTumor},${idNormal} \\
+    --output-type z \\
+    --output-file ${outputPrefix}.delly.manta.vcf.gz \\
+    ${outputPrefix}.delly.manta.vcf
 
   tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz 
   """
@@ -2450,23 +2446,27 @@ process GermlineMergeDellyAndManta {
   when: tools.containsAll(["manta", "delly"]) && runGermline
 
   script:
-  """ 
-  bcftools concat \
-    --allow-overlaps \
-    --output-type z \
-    --output ${idNormal}.delly.manta.unfiltered.vcf.gz \
-    *.delly.vcf.gz ${idNormal}.manta.vcf.gz
+  """
+  bcftools concat \\
+    --allow-overlaps \\
+    --output-type z \\
+    --output ${idNormal}.delly.vcf.gz \\
+    *.delly.vcf.gz 
+  tabix --preset vcf ${idNormal}.delly.vcf.gz 
 
-  tabix --preset vcf ${idNormal}.delly.manta.unfiltered.vcf.gz
+  mergesvvcf \\
+    -n -m 1 \\
+    -l delly,manta \\
+    -o ${idNormal}.delly.manta.vcf \\
+    -f -d -s -v \\
+    ${idNormal}.delly.vcf.gz ${mantaVcf}
 
-  bcftools filter \
-    --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
-    --include 'FILTER=\"PASS\"' \
-    --output-type z \
-    --output ${idNormal}.delly.manta.vcf.gz \
-    ${idNormal}.delly.manta.unfiltered.vcf.gz 
-    
-  tabix --preset vcf ${idNormal}.delly.manta.vcf.gz
+  bcftools view \\
+    --output-type z \\
+    --output-file ${idNormal}.delly.manta.vcf.gz \\
+    ${idNormal}.delly.manta.vcf
+
+  tabix --preset vcf ${idNormal}.delly.manta.vcf.gz 
   """
 }
 }
