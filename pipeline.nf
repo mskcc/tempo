@@ -100,6 +100,9 @@ multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_conf
 multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
 multiqcTempoLogo = workflow.projectDir + "/docs/tempoLogo.png"
 epochMap = [:]
+startEpoch = new Date().getTime()
+limitInputLines = 0
+chunkSizeLimit = params.chunkSizeLimit
 if (params.watch == true){
   touchInputs()
 }
@@ -3998,9 +4001,11 @@ def defineReferenceMap() {
 
 def touchInputs() {
   new Timer().schedule({
+  def timeNow = new Date().getTime()
+  limitInputLines = chunkSizeLimit + ( ((timeNow - startEpoch)/60000) * (chunkSizeLimit / params.touchInputsInterval) )
   for ( i in epochMap.keySet() ){
     fileEpoch = file(i).lastModified()
-    if ( fileEpoch > epochMap[i]) {
+    if (( fileEpoch > epochMap[i]) || (chunkSizeLimit > 0 )) {
       epochMap[i] = fileEpoch
       "touch -ca ${i}".execute()
     }
@@ -4009,9 +4014,22 @@ def touchInputs() {
 }
 
 def watchMapping(tsvFile, assayType) {
+  def index = 1 
   Channel.watchPath( tsvFile, 'create, modify' )
-	 .splitCsv(sep: '\t', header: true)
-	 .unique()
+	 .map{ row -> 
+	      index = 1 
+	      row
+	 }.splitCsv(sep: '\t', header: true)
+	 .map{ row -> 
+	      [index++] + row
+	 }.filter{ row ->
+	      if (chunkSizeLimit > 0 ){
+	      	row[0] < limitInputLines
+	      } else { 1 }
+	 }.map{ row ->
+	      row[1]
+	 }.unique()
+	 .view()
 	 .map{ row ->
               def idSample = row.SAMPLE
               def target = row.TARGET
@@ -4031,9 +4049,21 @@ def watchMapping(tsvFile, assayType) {
 }
 
 def watchBamMapping(tsvFile, assayType){
+  def index = 1
   Channel.watchPath( tsvFile, 'create, modify' )
-	 .splitCsv(sep: '\t', header: true)
-	 .unique()
+	 .map{ row -> 
+	      index = 1 
+	      row
+	 }.splitCsv(sep: '\t', header: true)
+	 .map{ row -> 
+	      [index++] + row
+	 }.filter{ row ->
+	      if (chunkSizeLimit > 0 ){
+	      	row[0] < limitInputLines
+	      } else { 1 }
+	 }.map{ row ->
+	      row[1]
+	 }.unique()
 	 .map{ row ->
               def idSample = row.SAMPLE
               def target = row.TARGET
@@ -4066,9 +4096,21 @@ def watchPairing(tsvFile){
 }
 
 def watchAggregateWithPath(tsvFile) {
+  def index = 1 
   Channel.watchPath(tsvFile, 'create, modify')
-         .splitCsv(sep: '\t', header: true)
-	 .unique()
+     .map{ row -> 
+	      index = 1 
+	      row
+	 }.splitCsv(sep: '\t', header: true)
+	 .map{ row -> 
+	      [index++] + row
+	 }.filter{ row ->
+	      if (chunkSizeLimit > 0 ){
+	      	row[0] < limitInputLines
+	      } else { 1 }
+	 }.map{ row ->
+	      row[1]
+	 }.unique()
          .map{ row ->
               def idNormal = row.NORMAL_ID
               def idTumor = row.TUMOR_ID
@@ -4088,7 +4130,7 @@ def watchAggregateWithPath(tsvFile) {
 
 def watchAggregate(tsvFile) {
   Channel.watchPath(file(runAggregate), 'create, modify')
-         .splitCsv(sep: '\t', header: true)
+     .splitCsv(sep: '\t', header: true)
 	 .unique()
          .map{ row ->
               def idNormal = row.NORMAL_ID
