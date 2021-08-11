@@ -2,7 +2,8 @@
 
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.2.0"
+# __contributor__ = "Anne Marie Noronha (noronhaa@mskcc.org)"
+# __version__ = "0.2.1"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
@@ -36,9 +37,10 @@ normal_depth_cutoff = args$normal_depth
 normal_vaf_cutoff = args$normal_vaf
 
 add_tag = function(filter, tag) {
+    split_filter = unlist(strsplit(filter,";"))
     ifelse(filter == 'PASS',
            tag,
-           paste(filter, tag, sep = ';'))
+           paste(paste0(split_filter[!split_filter %in% tag],collapse=';'), tag, sep = ';'))
 }
 
 ch_genes = c("ASXL1", "ATM", "BCOR", "CALR", "CBL", "CEBPA", "CREBBP", "DNMT3A", "ETV6", "EZH2", "FLT3", "GNAS",
@@ -52,6 +54,7 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
             RepeatMasker = ifelse(is.na(RepeatMasker), '', RepeatMasker),
             gnomAD_FILTER = ifelse(is.na(gnomAD_FILTER), 0, 1),
+	    MuTect2 = ifelse(is.na(MuTect2), 0, 1),
             ch_gene = Hugo_Symbol %in% ch_genes
 )]
 
