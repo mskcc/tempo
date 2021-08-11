@@ -171,7 +171,7 @@ if MAF_input is not None and coding_baits_BED is not None:
     ## IDT_Exome_v1_FP_b37_baits.bed, total_cds_size = 36.00458
     ## WGS, total_cds_size = 45.57229
     ## pybedtools.BedTool.total_coverage() calculates total_cds_size
-    total_cds_size = pybedtools.BedTool.total_coverage(CodingRegionsBaits)/1000000
+    total_cds_size = round(pybedtools.BedTool.total_coverage(CodingRegionsBaits)/1000000,5)
     tmb = mutationNum/total_cds_size
 
     results["Number_of_Mutations"] = len(maf.index)
