@@ -562,9 +562,11 @@ if (params.mapping) {
   }
 
 
- // GATK BaseRecalibrator , CreateRecalibrationTable 
-  process CreateRecalibrationTable {
+ // GATK BaseRecalibrator , ApplyBQSR 
+  process RunBQSR {
     tag {idSample}
+    
+    publishDir "${outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
 
     input:
       set idSample, file(bam), file(bai), target from mdBams
@@ -577,41 +579,62 @@ if (params.mapping) {
         referenceMap.knownIndels,
         referenceMap.knownIndelsIndex 
       ])
-
     output:
-      set idSample, file("${idSample}.recal.table") into recalibrationTable
-
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
+      set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
+      file("file-size.txt") into bamSize
     script:
-    if (task.attempt < 3 ){
-      sparkConf = " BaseRecalibratorSpark --conf 'spark.executor.cores = " + task.cpus + "'"
-      if (workflow.profile == "juno") {
-        if (bam.size() > 480.GB) {
-          task.time = { params.maxWallTime }
-        }
-        else if (bam.size() < 240.GB) {
-          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
-        }
-        else {
-          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
-        }
+    if (workflow.profile == "juno") {
+      if(bam.size() > 200.GB) {
+        task.time = { params.maxWallTime }
       }
+      else if (bam.size() < 100.GB) {
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+      }
+      else {
+        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+      }
+      task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+    }
+    if (task.attempt < 3 ) {
+      sparkConf = "Spark --conf 'spark.executor.cores = " + task.cpus + "'"
     }
     else {
-      sparkConf = " BaseRecalibrator"
+      sparkConf=""
       task.cpus = 4
       task.memory = { 6.GB }
       if (workflow.profile == "juno"){ task.time = { params.maxWallTime } }
     }
-
+    
     memMultiplier = params.mem_per_core ? task.cpus : 1
     // when increase memory requested from system every time it retries, keep java Xmx steady, in order to give more memory for java garbadge collection
     originalMem = task.attempt ==1 ? task.memory : originalMem
-    javaOptions = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-
+    maxMem = (memMultiplier * originalMem.toString().split(" ")[0].toInteger() - 3)
+    maxMem = maxMem < 4 ? 5 : maxMem
+    javaOptions    = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
     knownSites = knownIndels.collect{ "--known-sites ${it}" }.join(' ')
+    if ( task.attempt < 3 )
     """
     gatk \
-      ${sparkConf} \
+      BQSRPipeline${sparkConf} \
+      -R ${genomeFile} \
+      -I ${bam} \
+      --known-sites ${dbsnp} \
+      ${knownSites} \
+      --verbosity INFO \
+      --create-output-bam-index true \
+      -O ${idSample}.bam 
+   
+    echo -e "${idSample}\t\$(du -b ${idSample}.bam)" > file-size.txt
+   
+    if [[ -f ${idSample}.bai ]]; then
+      mv ${idSample}.bai ${idSample}.bam.bai
+    fi
+    """
+    else 
+    """
+    gatk \
+      BaseRecalibrator${sparkConf} \
       ${javaOptions} \
       --reference ${genomeFile} \
       --known-sites ${dbsnp} \
@@ -619,68 +642,21 @@ if (params.mapping) {
       --verbosity INFO \
       --input ${bam} \
       --output ${idSample}.recal.table
-    """ 
-  }
-
-  mdBams4BQSR.combine(recalibrationTable, by:[0]).set{ inputsBQSR }
-
-  // GATK ApplyBQSR, RecalibrateBAM
-  process RecalibrateBam {
-    tag {idSample}
-
-    publishDir "${outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
-
-    input:
-      set idSample, file(bam), file(bai), target, file(recalibrationReport) from inputsBQSR
-      set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
-        referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict 
-      ])
-
-    output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
-      set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
-      file("file-size.txt") into bamSize
-
-    script:
-
-    if (task.attempt < 3 ) {
-      sparkConf = " ApplyBQSRSpark --conf 'spark.executor.cores = " + task.cpus + "'"
-      if (workflow.profile == "juno") {
-        if (bam.size() > 200.GB){
-          task.time = { params.maxWallTime }
-        }
-        else if (bam.size() < 100.GB) {
-          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
-        }
-        else {
-          task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
-        }
-      }
-    }
-    else {
-      sparkConf = " ApplyBQSR"
-      task.cpus = 4
-      task.memory = { 6.GB }
-      if (workflow.profile == "juno"){ task.time = { params.maxWallTime } }
-    }
-
-    memMultiplier = params.mem_per_core ? task.cpus : 1
-    // when increase memory requested from system every time it retries, keep java Xmx steady, in order to give more memory for java garbadge collection
-    originalMem = task.attempt ==1 ? task.memory : originalMem
-    javaOptions = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
-    """
-    echo -e "${idSample}\t${bam.size()}" > file-size.txt
+    
     gatk \
-      ${sparkConf} \
+      ApplyBQSR${sparkConf} \
       ${javaOptions} \
       --reference ${genomeFile} \
       --create-output-bam-index true \
-      --bqsr-recal-file ${recalibrationReport} \
+      --bqsr-recal-file ${idSample}.recal.table \
       --input ${bam} \
       --output ${idSample}.bam
+
+    echo -e "${idSample}\t\$(du -b ${idSample}.bam)" > file-size.txt
+
     if [[ -f ${idSample}.bai ]]; then
       mv ${idSample}.bai ${idSample}.bam.bai
-    fi
+    fi    
     """
   }
 
