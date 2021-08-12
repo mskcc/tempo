@@ -54,7 +54,7 @@ Required target files have already been built for Agilent and IDT exome baits an
 * `targets.bed.gz.tbi`: The above file will need to be indexed with `tabix`.
 * `targets.interval_list`: The bed file can be used as input to create the interval list. Create using the `BedToIntervalList` tools from gatk.
 * `baits.interval_list`: The baits file can also be obtained from the provider of the baitset, typically as a bed file. Create the interval list using the `BedToIntervalList` tool from gatk. If a bait bed file is not provided, you can copy or link to `targets.interval_list` instead.
-* `coding.bed`: This file will be used to calculate TMB. The known coding regions of the reference should be intersected with the targets file. 
+* `coding.bed`: This file will be used to calculate TMB. The known coding regions of the reference should first be downloaded (ex: [EnsGene for hg19](https://genome.ucsc.edu/cgi-bin/hgTables?hgsid=1138949195_54NfeOmJerLbPvAdqAA6vaGWonRr&clade=mammal&org=Human&db=hg19&hgta_group=genes&hgta_track=ensGene&hgta_table=0&hgta_regionType=genome&position=chrX%3A15%2C578%2C261-15%2C621%2C068&hgta_outputType=bed&hgta_outFileName=)) and then be intersected with the targets file using `bedtools`. The result should subsequently be sorted and merged with `bedtools`. 
 
 ### Input to Tempo
 
