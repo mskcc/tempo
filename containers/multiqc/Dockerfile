@@ -2,8 +2,9 @@ FROM continuumio/miniconda3:4.8.2
 
 LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
     version.base="4.8.2" \
-    version.image="0.0.10" \
-    version.general_stats_parse="0.0.3"
+    version.image="0.1.2" \
+    version.general_stats_parse="0.0.4" \
+    version.parse_alfred="0.0.2"
 
 ENV envName "multiqc"
 
@@ -33,3 +34,6 @@ COPY example_exome_multiqc_config.yaml ${configPath}
 RUN chmod 744 ${configPath}/*
 COPY general_stats_parse.py /opt/conda/envs/${envName}/bin/general_stats_parse.py
 RUN chmod 755 /opt/conda/envs/${envName}/bin/general_stats_parse.py
+COPY parse_alfred.py /opt/conda/envs/${envName}/bin/parse_alfred.py
+RUN chmod 755 /opt/conda/envs/${envName}/bin/parse_alfred.py
+

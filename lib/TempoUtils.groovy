@@ -36,7 +36,7 @@ class TempoUtils {
   }
 
 
-  static def extractBAM(tsvFile, assayType) {
+  static def extractBAM(tsvFile, assayType, targetList) {
     def allRows = [:]
     def allFiles = [:]
     Channel.from(tsvFile)
@@ -46,7 +46,7 @@ class TempoUtils {
       if(!checkNumberOfItem(row, 4, tsvFile)){System.exit(1)}
       if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
       if(!checkDuplicates(allFiles, row.BAM, row.SAMPLE + "\t" + row.BAM, tsvFile)){System.exit(1)}
-      if(!checkTarget(row.TARGET, assayType)){System.exit(1)}
+      if(!checkTarget(row.TARGET, assayType, targetList)){System.exit(1)}
       def idSample = row.SAMPLE
       def target = row.TARGET
       def bam = file(row.BAM, checkIfExists: true)
@@ -59,7 +59,7 @@ class TempoUtils {
   }
 
 
-  static def extractFastq(tsvFile, assayType) {
+  static def extractFastq(tsvFile, assayType, targetList) {
     def allRows = [:]
     def allFiles = [:]
 
@@ -70,7 +70,7 @@ class TempoUtils {
       if(!checkNumberOfItem(row, 4, tsvFile)){System.exit(1)}
       if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
       if(!checkDuplicates(allFiles, row.FASTQ_PE1, row.SAMPLE + "\t" + row.FASTQ_PE1, tsvFile)){System.exit(1)}
-      if(!checkTarget(row.TARGET, assayType)){System.exit(1)}
+      if(!checkTarget(row.TARGET, assayType, targetList)){System.exit(1)}
       def idSample = row.SAMPLE
       def target = row.TARGET
       def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: true)
@@ -102,10 +102,10 @@ class TempoUtils {
   }
 
   // Check TARGET field in mapping file is in the supported bait set list associated with --assayType what was provided as parameter
-  static def checkTarget(it, assayType) {
+  static def checkTarget(it, assayType, availableTargets) {
     def supportedTargets = []
     if(assayType == "genome"){ supportedTargets = ["wgs"] }
-    else if(assayType == "exome"){ supportedTargets = ["agilent", "idt"]}
+    else if(assayType == "exome"){ supportedTargets = availableTargets }
     else {} // this is covered by checkAssayType(){} above
 
     if(!supportedTargets.contains(it)){
