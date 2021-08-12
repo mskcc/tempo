@@ -1355,6 +1355,9 @@ mutect2CombinedVcf4Combine.combine(bamns4CombineChannel, by: [0,1,2]).combine(st
 process SomaticCombineChannel {
   tag {idTumor + "__" + idNormal}
 
+// 3 intermidiate files (plus 3 index files) output for step by step filter check (2 filter steps involved here)
+  publishDir "${outDir}/somatic/${idTumor}__${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.union.annot.*"
+
   input:
     set idTumor, idNormal, target, file(mutectCombinedVcf), file(mutectCombinedVcfIndex), file(bamTumor), file(baiTumor), file(bamNormal), file(baiNormal), file(strelkaVcf), file(strelkaVcfIndex) from mutectStrelkaChannel
     set file(genomeFile), file(genomeIndex) from Channel.value([
@@ -1375,6 +1378,13 @@ process SomaticCombineChannel {
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.pass.vcf") into mutationMergedVcf
+    file("${idTumor}__${idNormal}.union.annot.vcf.gz")
+    file("${idTumor}__${idNormal}.union.annot.vcf.gz.tbi")
+    file("${idTumor}__${idNormal}.union.annot.filter.vcf.gz")
+    file("${idTumor}__${idNormal}.union.annot.filter.vcf.gz.tbi")
+    file("${idTumor}__${idNormal}.union.annot.filter.pass.vcf.gz")
+    file("${idTumor}__${idNormal}.union.annot.filter.pass.vcf.gz.tbi")
+
 
   when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
   
@@ -1507,16 +1517,16 @@ process SomaticCombineChannel {
     -r ${genomeFile} \
     -o ${idTumor}.union.annot.vcf -
 
-  # Do custom filter annotation, then filter variants
-  filter-vcf.py ${idTumor}.union.annot.vcf
+  mv ${idTumor}.union.annot.vcf ${outputPrefix}.union.annot.vcf
 
-  mv ${idTumor}.union.annot.filter.vcf ${outputPrefix}.vcf
+  # Do custom filter annotation, then filter variants
+  filter-vcf.py ${outputPrefix}.union.annot.vcf
 
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type v \
-    --output ${idTumor}__${idNormal}.filtered.vcf \
-    ${idTumor}__${idNormal}.vcf
+    --output ${outputPrefix}.vcf \
+    ${outputPrefix}.union.annot.filter.vcf
 
   # Add normal read count, using all reads
   GetBaseCountsMultiSample \
@@ -1525,12 +1535,12 @@ process SomaticCombineChannel {
     --fasta ${genomeFile} \
     --bam ${idTumor}:${bamTumor} \
     --bam ${idNormal}:${bamNormal} \
-    --vcf ${outputPrefix}.filtered.vcf \
+    --vcf ${outputPrefix}.vcf \
     --output ${outputPrefix}.genotyped.vcf 
   
-  bgzip ${outputPrefix}.filtered.vcf
+  bgzip ${outputPrefix}.vcf
   bgzip ${outputPrefix}.genotyped.vcf
-  tabix --preset vcf ${outputPrefix}.filtered.vcf.gz
+  tabix --preset vcf ${outputPrefix}.vcf.gz
   tabix --preset vcf ${outputPrefix}.genotyped.vcf.gz
 
   bcftools annotate \
@@ -1538,8 +1548,17 @@ process SomaticCombineChannel {
     --header-lines vcf.ad_n.header \
     --columns FORMAT/alt_count_raw:=FORMAT/AD,FORMAT/ref_count_raw:=FORMAT/RD,FORMAT/alt_count_raw_fwd:=FORMAT/ADP,FORMAT/ref_count_raw_fwd:=FORMAT/RDP,FORMAT/alt_count_raw_rev:=FORMAT/ADN,FORMAT/ref_count_raw_rev:=FORMAT/RDN,FORMAT/depth_raw:=FORMAT/DP,FORMAT/depth_raw_fwd:=FORMAT/DPP,FORMAT/depth_raw_rev:=FORMAT/DPN \
     --output-type v \
-    --output ${outputPrefix}.pass.vcf \
-    ${outputPrefix}.filtered.vcf.gz
+    --output ${outputPrefix}.union.annot.filter.pass.vcf \
+    ${outputPrefix}.vcf.gz
+
+  cp ${outputPrefix}.union.annot.filter.pass.vcf ${outputPrefix}.pass.vcf
+  bgzip ${outputPrefix}.union.annot.vcf
+  bgzip ${outputPrefix}.union.annot.filter.vcf
+  bgzip ${outputPrefix}.union.annot.filter.pass.vcf
+  tabix --preset vcf ${outputPrefix}.union.annot.vcf.gz
+  tabix --preset vcf ${outputPrefix}.union.annot.filter.vcf.gz
+  tabix --preset vcf ${outputPrefix}.union.annot.filter.pass.vcf.gz
+
   """
 }
 
@@ -2230,6 +2249,10 @@ haplotypecallerCombinedVcf4Combine.combine(strelka4CombineGermline, by: [0,1,2])
 process GermlineCombineChannel {
   tag {idTumor + "__" + idNormal}
 
+// 3 intermidiate files (plus 3 index files) output for step by step filter check (2 filter steps involved here)
+  publishDir "${outDir}/germline${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.union.*"
+  publishDir "${outDir}/germline${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.germline.vcf.gz*"
+
   input:
     set idNormal, target, placeHolder, file(haplotypecallercombinedVcf), file(haplotypecallercombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex), idTumor, file(bamTumor), file(baiTumor) from mergedChannelVcfCombine
     set file(genomeFile), file(genomeIndex) from Channel.value([
@@ -2246,6 +2269,12 @@ process GermlineCombineChannel {
 
   output:
     set idTumor, idNormal, target, file("${idTumor}__${idNormal}.germline.vcf") into mutationMergedGermline
+    file("${idNormal}.union.vcf.gz")
+    file("${idNormal}.union.vcf.gz.tbi")
+    file("${idNormal}.union.pass.vcf.gz")
+    file("${idNormal}.union.pass.vcf.gz.tbi")
+    file("${idTumor}__${idNormal}.germline.vcf.gz")
+    file("${idTumor}__${idNormal}.germline.vcf.gz.tbi")
 
   when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
@@ -2335,6 +2364,8 @@ process GermlineCombineChannel {
     --output-type z \
     --output ${idNormal}.union.vcf.gz
 
+  tabix --preset vcf ${idNormal}.union.vcf.gz
+
   bcftools filter \
     --include 'FILTER=\"PASS\"' \
     --output-type z \
@@ -2368,6 +2399,10 @@ process GermlineCombineChannel {
     --output-type v \
     ${idNormal}.union.gnomad.vcf.gz \
     ${idTumor}.genotyped.vcf.gz
+
+  bgzip -c ${idTumor}__${idNormal}.germline.vcf > ${idTumor}__${idNormal}.germline.vcf.gz
+  tabix --preset vcf ${idTumor}__${idNormal}.germline.vcf.gz
+
   """
 }
 
