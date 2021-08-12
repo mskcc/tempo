@@ -8,9 +8,9 @@ Output: 'input_filename.filter.vcf'
 """
 
 __author__  = "Philip Jonsson"
-__contributor__  = "Yixiao Gong"
-__email__   = "jonssonp@mskcc.org; gongy@mskcc.org"
-__version__ = "0.2.2"
+__contributor__  = "Yixiao Gong; Anne Marie Noronha"
+__email__   = "jonssonp@mskcc.org; gongy@mskcc.org; noronhaa@mskcc.org"
+__version__ = "0.2.3"
 __status__  = "Dev"
 
 import sys, os
@@ -90,11 +90,11 @@ for var in vcf_in.fetch():
     if "MuTect2" in info:
         t_fw = var.samples[tumor]['F1R2']
         t_rev = var.samples[tumor]['F2R1']
-        n_fw = var.samples[tumor]['F1R2']
-        n_rev = var.samples[tumor]['F2R1']
+        n_fw = var.samples[normal]['F1R2']
+        n_rev = var.samples[normal]['F2R1']
 
         if t_fw[1] == 0 or t_rev[1] == 0: # if all support reads come from one read-pair orientation
-            if t_fw[0] > 10 and t_rev[0] > 10 or n_fw[0] > 10 and n_rev[0] > 10:
+            if ( t_fw[0] > 10 and t_rev[0] > 10 ) or ( n_fw[0] > 10 and n_rev[0] > 10 ):
                 new_flags.append('strand_bias')
 
     ## Filters not in use:
