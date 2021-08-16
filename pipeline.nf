@@ -1093,7 +1093,7 @@ process SomaticMergeDellyAndManta {
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz*") into dellyMantaCombinedOutput
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz") into dellyMantaCombined4Aggregate
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz") into dellyMantaCombined4Aggregate, SVCombinedVcf4Bedpe
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedTbi4Aggregate
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
@@ -1123,6 +1123,39 @@ process SomaticMergeDellyAndManta {
 
   tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz 
   """
+}
+
+process SomaticSVVcf2Bedpe {
+  tag {idTumor + "__" + idNormal}
+
+  publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.bedpe"
+
+  input:
+    set val("placeHolder"), idTumor, idNormal, file(vcfFile) from SVCombinedVcf4Bedpe
+
+  output:
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
+
+  when: runSomatic
+
+  script:
+  outputPrefix = "${idTumor}__${idNormal}"
+  """
+  headerline=\$(zgrep -n "^#CHROM" ${vcfFile} | cut -f 1 -d:)
+  zcat ${vcfFile} | head -n \$headerline > ${outputPrefix}.clean.vcf
+  zcat ${vcfFile} \\
+    | tail -n "+\$headerline" | grep -v "^#" \\
+    | grep -P ";END=|\\tEND=" || true >> ${outputPrefix}.clean.vcf
+
+  svtools vcftobedpe \\
+    -i ${outputPrefix}.clean.vcf \\
+    -o ${outputPrefix}.combinedcallers.bedpe \\
+    -t ${outputPrefix}_tmp
+  if [ ! -s ${outputPrefix}.combined.bedpe ] ; then 
+    echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\t${idNormal}\\t${idTumor}\\tDO218709_normal\\tDO218709_tumor" >> ${outputPrefix}.combined.bedpe
+  fi
+  """
+
 }
 
 
@@ -2440,7 +2473,7 @@ process GermlineMergeDellyAndManta {
 
   output:
     set val("placeHolder"), val("noTumor"), idNormal, file("${idNormal}.delly.manta.vcf.gz*") into dellyMantaCombinedOutputGermline
-    set val("placeHolder"), val("noTumor"), idNormal, file("${idNormal}.delly.manta.vcf.gz") into dellyMantaCombined4AggregateGermline
+    set val("placeHolder"), val("noTumor"), idNormal, file("${idNormal}.delly.manta.vcf.gz") into dellyMantaCombined4AggregateGermline, GermlineSVCombinedVcf4Bedpe
     set val("placeHolder"), val("noTumor"), idNormal, file("${idNormal}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedTbi4AggregateGermline
 
   when: tools.containsAll(["manta", "delly"]) && runGermline
@@ -2467,6 +2500,39 @@ process GermlineMergeDellyAndManta {
     ${idNormal}.delly.manta.vcf
 
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz 
+  """
+}
+
+process GermlineSVVcf2Bedpe {
+  tag {idNormal}
+
+  publishDir "${outDir}/germline/${idNormal}/combined_svs", mode: params.publishDirMode, pattern: "*.bedpe"
+
+  input:
+    set val("placeHolder"), idTumor, idNormal, file(vcfFile) from GermlineSVCombinedVcf4Bedpe
+
+  output:
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into GermlineSVCombinedBedpe
+
+  when: runGermline
+
+  script:
+  outputPrefix = "${idNormal}"
+  """
+  headerline=\$(zgrep -n "^#CHROM" ${vcfFile} | cut -f 1 -d:)
+  zcat ${vcfFile} | head -n \$headerline > ${outputPrefix}.clean.vcf
+  zcat ${vcfFile} \\
+    | tail -n "+\$headerline" | grep -v "^#" \\
+    | grep -P ";END=|\\tEND=" || true >> ${outputPrefix}.clean.vcf
+
+  svtools vcftobedpe \\
+    -i ${outputPrefix}.clean.vcf \\
+    -o ${outputPrefix}.combined.bedpe \\
+    -t ${outputPrefix}_tmp
+
+  if [ ! -s ${outputPrefix}.combined.bedpe ] ; then 
+    echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\t${idNormal}" >> ${outputPrefix}.combined.bedpe
+  fi
   """
 }
 }
