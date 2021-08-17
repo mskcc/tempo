@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
-nextflow.enable.dsl=2
+nextflow.enable.dsl = 2
 
 
 if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
-  println "ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)"
+  println 'ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)'
   exit 1
 }
 
@@ -15,61 +15,133 @@ runSomatic = params.somatic
 runQC = params.QC
 runAggregate = params.aggregate
 runConpairAll = false
-wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect{it.trim().toLowerCase()} : []
-multiqcWesConfig = workflow.projectDir + "/lib/multiqc_config/exome_multiqc_config.yaml"
-multiqcWgsConfig = workflow.projectDir + "/lib/multiqc_config/wgs_multiqc_config.yaml"
-multiqcTempoLogo = workflow.projectDir + "/docs/tempoLogo.png"
+wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect { it.trim().toLowerCase() } : []
+multiqcWesConfig = workflow.projectDir + '/lib/multiqc_config/exome_multiqc_config.yaml'
+multiqcWgsConfig = workflow.projectDir + '/lib/multiqc_config/wgs_multiqc_config.yaml'
+multiqcTempoLogo = workflow.projectDir + '/docs/tempoLogo.png'
 epochMap = [:]
 startEpoch = new Date().getTime()
 limitInputLines = 0
 chunkSizeLimit = params.chunkSizeLimit
-if (params.watch == true){
-  touchInputs()
+
+include { defineReferenceMap; loadTargetReferences } from './modules/local/define_maps'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/local/watch_inputs'
+
+if (params.watch == true) {
+  touchInputs(chunkSizeLimit, startEpoch, epochMap)
 }
 
-include { defineReferenceMap; loadTargetReferences  } from './modules/local/define_maps'
 
 include { SplitLanesR1; SplitLanesR2 } from './modules/process/SplitLanes' addParams(wallTimeExitCode: wallTimeExitCode)
 include { AlignReads }                 from './modules/process/AlignReads' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { MergeBamsAndMarkDuplicates } from './modules/process/MergeBamsAndMarkDuplicates' addParams(wallTimeExitCode: wallTimeExitCode)
+include { RunBQSR }                    from './modules/process/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
 
+println ''
 
-println ""
+referenceMap = defineReferenceMap()
+targetsMap   = loadTargetReferences()
+
 
 pairingQc = params.pairing
 
-if (!runSomatic && runGermline){
-    println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
-    runSomatic = true
+
+//NOTE: Currently not including some argumet controls here (tempo1.4 lines 117-162).  
+//      Check back once workflow is established to decide how that should be implemented.
+    if (params.mapping || params.bamMapping) {
+      TempoUtils.checkAssayType(params.assayType)
+      if (params.watch == false) {
+        mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
+       // (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet()).into(3)
+        checkMapping1 = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
+        checkMapping2 = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
+        inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
+
+      }
+      else if (params.watch == true) {
+        mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
+        //(checkMapping1, checkMapping2, inputMapping) = params.mapping ? watchMapping(mappingFile, params.assayType).into(3) : watchBamMapping(mappingFile, params.assayType).into(3)
+        checkMapping1 = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
+        checkMapping2 = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
+        inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
+        epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
+      }
+      else{}
+      if(params.pairing){
+        if(runQC){
+          pairingQc = true
+        }
+        if (params.watch == false) {
+          pairingFile = file(params.pairing, checkIfExists: true)
+          //(checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
+          checkPairing1 = TempoUtils.extractPairing(pairingFile)
+          checkPairing2 = TempoUtils.extractPairing(pairingFile)
+          inputPairing  = TempoUtils.extractPairing(pairingFile)
+
+          TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
+          //if(!TempoUtils.crossValidateSamples(checkMapping2, checkPairing2)){exit 1}
+        }
+        else if (params.watch == true) {
+          pairingFile = file(params.pairing, checkIfExists: false)
+          //(checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
+          checkPairing1 = watchPairing(pairingFile)
+          checkPairing2 = watchPairing(pairingFile)
+          inputPairing  = watchPairing(pairingFile)
+          epochMap[params.pairing] = 0 
+        }
+        else{}
+        if (!runSomatic && !runGermline && !runQC){
+          println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
+          exit 1
+        }
+      }
+      else{
+        if (runSomatic || runGermline){
+          println "ERROR: --pairing [tsv] needed when using --mapping/--bamMapping [tsv] with --somatic/--germline"
+          exit 1
+        }
+      }
+    }
+    else{
+      if(params.pairing){
+        println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
+        exit 1
+      }
+    }
+
+
+if (!runSomatic && runGermline) {
+  println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
+  runSomatic = true
 }
 
-if (runAggregate == false){
-  if (!params.mapping && !params.bamMapping){
-    println "ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run."
+if (runAggregate == false) {
+  if (!params.mapping && !params.bamMapping) {
+    println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
     exit 1
   }
 }
-else if (runAggregate == true){
-  if ((params.mapping || params.bamMapping) && params.pairing){
-    if (!(runSomatic || runGermline || runQC)){
-      println "ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate"
+else if (runAggregate == true) {
+  if ((params.mapping || params.bamMapping) && params.pairing) {
+    if (!(runSomatic || runGermline || runQC)) {
+      println 'ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate'
     }
   }
-  else if ((params.mapping || params.bamMapping) && !params.pairing){
-    if (!runQC){
-      println "ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true."
+  else if ((params.mapping || params.bamMapping) && !params.pairing) {
+    if (!runQC) {
+      println 'ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true.'
       exit 1
     }
   }
-  else{
-    println "ERROR: (--mapping/--bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true"
-    println "       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual"
+  else {
+    println 'ERROR: (--mapping/--bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true'
+    println '       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual'
     exit 1
   }
-
 }
 else {
-  if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping){
-    println "ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!"
+  if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping) {
+    println 'ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!'
     println "       If you want to run aggregate somatic/germline/qc, just include an additianl colum PATH in the [tsv] and no need to use --QC/--somatic/--germline flag, since it's auto detected. See manual"
     exit 1
   }
@@ -80,170 +152,281 @@ if (!(params.cosmic in ['v2', 'v3'])) {
   exit 1
 }
 
-
 workflow {
-  referenceMap = defineReferenceMap()
-  targetsMap   = loadTargetReferences()
+  //referenceMap = defineReferenceMap()
+  //targetsMap   = loadTargetReferences()
 
   mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
   inputMapping = TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet())
 
   // Skip these processes if starting from aligned BAM files
   if (params.mapping) {
-
     // Parse input FASTQ mapping
-    if(params.watch != true){
-    inputMapping.groupTuple(by: [0])
+    if (params.watch != true) {
+      inputMapping.groupTuple(by: [0])
                 .map { idSample, targets, files_pe1, files_pe2
                   -> tuple(groupKey(idSample, targets.size()), targets, files_pe1, files_pe2)
                 }
                 .transpose()
-          .set{ inputMapping }
+          .set { inputMapping }
     }
 
-    inputMapping.map{ idSample, target, file_pe1, file_pe2 ->
-                    [idSample, target, file_pe1, file_pe2, idSample + "@" + file_pe1.getSimpleName(), file_pe1.getSimpleName()]
-                }
-                .set{ inputFastqs }
+    inputMapping.map { idSample, target, file_pe1, file_pe2 ->
+                    [idSample, target, file_pe1, file_pe2, idSample + '@' + file_pe1.getSimpleName(), file_pe1.getSimpleName()]
+    }
+                .set { inputFastqs }
 
     if (params.splitLanes) {
-        inputFastqs.set{ fastqsNeedSplit }
-        inputFastqs.set{ fastqsNoNeedSplit }
+      inputFastqs.set { fastqsNeedSplit }
+      inputFastqs.set { fastqsNoNeedSplit }
 
-        fastqsNeedSplit
-            .filter{ item -> !(item[2].getName() =~ /_L(\d){3}_/) }
-            .multiMap{ idSample, target, file_pe1, file_pe2, fileID, lane ->
-                inputFastqR1: [idSample, target, file_pe1, file_pe1.toString()]
-                inputFastqR2: [idSample, target, file_pe2, file_pe2.toString()]
+      fastqsNeedSplit
+            .filter { item -> !(item[2].getName() =~ /_L(\d){3}_/) }
+            .multiMap { idSample, target, file_pe1, file_pe2, fileID, lane ->
+              inputFastqR1: [idSample, target, file_pe1, file_pe1.toString()]
+              inputFastqR2: [idSample, target, file_pe2, file_pe2.toString()]
             }
-            .set{ fastqsNeedSplit }
+            .set { fastqsNeedSplit }
 
-        fastqsNoNeedSplit
-            .filter{ item -> item[2].getName() =~ /_L(\d){3}_/ }
+      fastqsNoNeedSplit
+            .filter { item -> item[2].getName() =~ /_L(\d){3}_/ }
             .map { idSample, target, file_pe1, file_pe2, fileID, lane
-                    -> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
+              -> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
             }
-            .set{ fastqsNoNeedSplit }
+            .set { fastqsNoNeedSplit }
 
-        perLaneFastqsR1 = SplitLanesR1(fastqsNeedSplit.inputFastqR1).R1SplitData
-        perLaneFastqsR2 = SplitLanesR2(fastqsNeedSplit.inputFastqR2).R2SplitData
+      perLaneFastqsR1 = SplitLanesR1(fastqsNeedSplit.inputFastqR1).R1SplitData
+      perLaneFastqsR2 = SplitLanesR2(fastqsNeedSplit.inputFastqR2).R2SplitData
 
-
-        def fastqR1fileIDs = [:]
-        perLaneFastqsR1 = perLaneFastqsR1.transpose()
-            .map{ item ->
+      def fastqR1fileIDs = [:]
+      perLaneFastqsR1 = perLaneFastqsR1.transpose()
+            .map { item ->
                 def idSample = item[0]
                 def target = item[1]
                 def fastq = item[2]
-                def fileID = idSample + "@" + item[3].getSimpleName()
-                def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+                def fileID = idSample + '@' + item[3].getSimpleName()
+                def lane = fastq.getSimpleName().split('_L00')[1].split('_')[0]
                 def laneCount = item[4].getSimpleName().toInteger()
 
                 // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
-                if ( !params.watch ){
-                if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+                if ( !params.watch ) {
+                  if (!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + '@' + lane, fileID + "\t" + fastq, 'the follwoing fastq files since they contain the same RGID')) { exit 1 }
                 }
-
                 [idSample, target, fastq, fileID, lane, laneCount]
             }
 
-        def fastqR2fileIDs = [:]
-        perLaneFastqsR2 = perLaneFastqsR2.transpose()
-                .map{ item ->
-                def idSample = item[0]
-                def target = item[1]
-                def fastq = item[2]
-                def fileID = idSample + "@" + item[3].getSimpleName()
-                def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
-                def laneCount = item[4].getSimpleName().toInteger()
-
-                if ( !params.watch ){
-                    if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+      def fastqR2fileIDs = [:]
+      perLaneFastqsR2 = perLaneFastqsR2.transpose()
+                .map { item ->
+                  def idSample = item[0]
+                  def target = item[1]
+                  def fastq = item[2]
+                  def fileID = idSample + '@' + item[3].getSimpleName()
+                  def lane = fastq.getSimpleName().split('_L00')[1].split('_')[0]
+                  def laneCount = item[4].getSimpleName().toInteger()
+                  if ( !params.watch ) {
+                    if (!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + '@' + lane, fileID + "\t" + fastq, 'the follwoing fastq files since they contain the same RGID')) { exit 1 }
+                  }
+                  [idSample, target, fastq, fileID, lane, laneCount]
                 }
 
-                [idSample, target, fastq, fileID, lane, laneCount]
-                }
-
-        fastqFiles  = perLaneFastqsR1
+      fastqFiles  = perLaneFastqsR1
             .mix(perLaneFastqsR2)
-            .groupTuple(by: [0,1,3,4,5], size: 2, sort: true)
+            .groupTuple(by: [0, 1, 3, 4, 5], size: 2, sort: true)
             .map {  idSample, target, fastqPairs, fileID, lanes, laneCount ->
-            tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
+              tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
             }
-            .map{ idSample, target, fastqPairs, fileID, lane ->
+            .map { idSample, target, fastqPairs, fileID, lane ->
                 [idSample, target, fastqPairs[0], fastqPairs[1], fileID, lane]
             }
-            .map{ item ->
-                    def idSample = item[0]
-                    def target = item[1]
-                    def fastqPair1 = item[2]
-                    def fastqPair2 = item[3]
-                    if (item[2].toString().split("_R1").size() < item[3].toString().split("_R1").size()) {
-                    fastqPair1 = item[3]
-                    fastqPair2 = item[2]
-                    }
-                    def fileID = item[4]
-                    def lane = item[5]
-
-                [idSample, target, fastqPair1, fastqPair1.size(), fastqPair2, fastqPair2.size(), fileID, lane]
+            .map { item ->
+              def idSample = item[0]
+              def target = item[1]
+              def fastqPair1 = item[2]
+              def fastqPair2 = item[3]
+              if (item[2].toString().split('_R1').size() < item[3].toString().split('_R1').size()) {
+                fastqPair1 = item[3]
+                fastqPair2 = item[2]
+              }
+              def fileID = item[4]
+              def lane = item[5]
+              [idSample, target, fastqPair1, fastqPair1.size(), fastqPair2, fastqPair2.size(), fileID, lane]
             }
             .mix(fastqsNoNeedSplit)
     }
-    else{
-     fastqFiles = inputFastqs.map { idSample, target, file_pe1, file_pe2, fileID, lane
-					-> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
-				   }
+    else {
+      fastqFiles = inputFastqs.map { idSample, target, file_pe1, file_pe2, fileID, lane
+        -> tuple(idSample, target, file_pe1, file_pe1.size(),
+                                             file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
+      }
     }
-
 
     //Align reads to reference.
-    readAlignOut = AlignReads(fastqFiles, Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex]))
+    AlignReads(fastqFiles, Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex]))
 
-    fastPJson4cohortMultiQC = readAlignOut.fastPJson4MultiQC
-    .groupTuple(by:[2])
-    .map{idSample, jsonFile, fileID -> 
-      def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
-      [idSampleout, jsonFile]
-    }.groupTuple(by: [0])
-    .map{ idSample, jsonFile -> 
-      [idSample, jsonFile.flatten()]
-    }
-  
-    fastPJson4sampleMultiQC = readAlignOut.fastPJson4MultiQC
-    .groupTuple(by:[2])
-    .map{idSample, jsonFile, fileID -> 
-      def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
-      [idSampleout, jsonFile]
-    }.groupTuple(by: [0])
-    .map{ idSample, jsonFile -> 
-      [idSample, jsonFile.flatten()]
-    }
+    fastPJson4cohortMultiQC = AlignReads.out.fastPJson4MultiQC
+      .groupTuple(by:[2])
+      .map { idSample, jsonFile, fileID ->
+        def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
+        [idSampleout, jsonFile]
+      }.groupTuple(by: [0])
+      .map { idSample, jsonFile ->
+        [idSample, jsonFile.flatten()]
+      }
+
+    fastPJson4sampleMultiQC = AlignReads.out.fastPJson4MultiQC
+      .groupTuple(by:[2])
+      .map { idSample, jsonFile, fileID ->
+        def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
+        [idSampleout, jsonFile]
+      }.groupTuple(by: [0])
+      .map { idSample, jsonFile ->
+        [idSample, jsonFile.flatten()]
+      }
 
     // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
     def allReadIds = [:]
-    readAlignOut.sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
+    AlignReads.out.sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = '@' + readIdFile.getSimpleName().replaceAll('@', ':')
       // Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
-      if ( !params.watch ){
-       if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the following samples, since they contain the same read: \n${readId}")){exit 1}
+      if ( !params.watch ) {
+        if (!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the following samples, since they contain the same read: \n${ readId }")) {exit 1}
       }
       [idSample, target, bam, fileID, lane]
-	   }
-	   .groupTuple(by: [3])
-	   .map{ item ->
-		      def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
-		      def target   = item[1] instanceof Collection ? item[1].first() : item[1]
-		      def bams = item[2]
-		      [idSample, target, bams]
-	   }
-	   .groupTuple(by: [0])
-	   .map{ item ->
-		      def idSample = item[0]
-		      def target =  item[1] instanceof Collection ? item[1].first() : item[1]
-		      def bams = item[2].flatten()
-		      [idSample, bams, target]
-	   }
-	   .set{ groupedBam }
+    }
+    .groupTuple(by: [3])
+    .map { item ->
+      def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
+      def target   = item[1] instanceof Collection ? item[1].first() : item[1]
+      def bams = item[2]
+      [idSample, target, bams]
+    }
+    .groupTuple(by: [0])
+    .map { item ->
+      def idSample = item[0]
+      def target =  item[1] instanceof Collection ? item[1].first() : item[1]
+      def bams = item[2].flatten()
+      [idSample, bams, target]
+    }
+    .set { groupedBam }
+
+    MergeBamsAndMarkDuplicates(groupedBam)
+    RunBQSR(MergeBamsAndMarkDuplicates.out.mdBams,
+            Channel.value([
+              referenceMap.genomeFile,
+              referenceMap.genomeIndex,
+              referenceMap.genomeDict,
+              referenceMap.dbsnp,
+              referenceMap.dbsnpIndex,
+              referenceMap.knownIndels,
+              referenceMap.knownIndelsIndex
+            ]))
+
+/*
+    File file = new File(outname)
+    file.newWriter().withWriter { w ->
+        w << "SAMPLE\tTARGET\tBAM\tBAI\n"
+    }
+
+    RunBQSR.out.bamResults.subscribe { Object obj ->
+        file.withWriterAppend { out ->
+            out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
+        }
+    }
+*/
 
   } //end if params.mapping
 
+
+
+  /*
+  ================================================================================
+  =                                PAIRING TUMOR and NORMAL                      =
+  ================================================================================
+  */
+  // If starting with BAM files, parse BAM pairing input
+ /* if (params.bamMapping) {
+    //inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
+
+    if (runQC){
+      inputMapping.map{idSample, target, bam, bai ->
+        [ idSample,target, bam.getParent() ]
+      }.set{locateFastP4MultiQC}
+
+      inputMapping.map{ idSample,target, bamFolder -> 
+        [idSample, file(bamFolder + "/fastp/*json")]
+      }.set{fastPJson}
+    } 
+  }
+
+  if (params.pairing) {
+
+    // Parse input FASTQ mapping
+    //inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing}
+    RunBQSR.out.bamsBQSR.combine(inputPairing)
+                            .filter { item ->
+                              def idSample = item[0]
+                              def target = item[1]
+                              def sampleBam = item[2]
+                              def sampleBai = item[3]
+                              def idTumor = item[4]
+                              def idNormal = item[5]
+                              idSample == idTumor
+                            }.map { item ->
+                              def idTumor = item[4]
+                              def idNormal = item[5]
+                              def tumorBam = item[2]
+                              def tumorBai = item[3]
+                              def target = item[1]
+                              return [ idTumor, idNormal, target, tumorBam, tumorBai ]
+                            }
+                .unique()
+                .set{ bamsTumor }
+
+
+
+    RunBQSR.out.bamsBQSR.combine(inputPairing)
+                            .filter { item ->
+                              def idSample = item[0]
+                              def target = item[1]
+                              def sampleBam = item[2]
+                              def sampleBai = item[3]
+                              def idTumor = item[4]
+                              def idNormal = item[5]
+                              idSample == idNormal
+                            }.map { item ->
+                              def idTumor = item[4]
+                              def idNormal = item[5]
+                              def normalBam = item[2]
+                              def normalBai = item[3]
+                              def target = item[1]
+                              return [ idTumor, idNormal, target, normalBam, normalBai ]
+                            }.unique()
+                .set{ bamsNormal }
+    bamsNormal.map { item ->
+              def idNormal = item[1]
+              def target = item[2]
+              def normalBam = item[3]
+              def normalBai = item[4]
+              return [ idNormal, target, normalBam, normalBai ] }
+      .unique()
+      .set{ bams }
+
+
+    bamsTumor.combine(bamsNormal, by: [0,1,2])
+                            .map { item -> // re-order the elements
+                              def idTumor = item[0]
+                              def idNormal = item[1]
+                              def target = item[2]
+                              def bamTumor = item[3]
+                              def baiTumor = item[4]
+                              def bamNormal = item[5]
+                              def baiNormal = item[6]
+
+                              return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
+                            }
+                .set{ bamFiles }
+
+
+    } // End of "if (pairingQc) {}"
+*/
 }
