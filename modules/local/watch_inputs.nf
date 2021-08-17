@@ -1,4 +1,4 @@
-def touchInputs() {
+def touchInputs(chunkSizeLimit, startEpoch, epochMap) {
   new Timer().schedule({
   def timeNow = new Date().getTime()
   limitInputLines = chunkSizeLimit + ( ((timeNow - startEpoch)/60000) * (chunkSizeLimit / params.touchInputsInterval) )

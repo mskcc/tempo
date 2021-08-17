@@ -1,14 +1,16 @@
-  params.wallTimeExitCode = "" 
-  
+
+  params.wallTimeExitCode = ""
+
+  // AlignReads - Map reads with BWA mem output SAM
   process MergeBamsAndMarkDuplicates {
     tag {idSample}
 
     input:
-      tuple val(idSample), file(bam), val(target)
+      tuple val(idSample), path(bam), val(target)
 
     output:
-      tuple val(idSample), file("${idSample}.md.bam"), file("${idSample}.md.bai"), val(target) emit: mdBams, mdBams4BQSR
-      file("size.txt") emit: sizeOutput
+      tuple val(idSample), file("${idSample}.md.bam"), file("${idSample}.md.bai"), val(target), emit:  mdBams
+      path("size.txt"), emit: sizeOutput
 
     script:
     if (workflow.profile == "juno") {
@@ -25,7 +27,7 @@
     }
 
     memMultiplier = params.mem_per_core ? task.cpus : 1
-
+    
     // when increase memory requested from system every time it retries, keep java Xmx steady, in order to give more memory for java garbadge collection
     originalMem = task.attempt ==1 ? task.memory : originalMem
     maxMem = (memMultiplier * originalMem.toString().split(" ")[0].toInteger() - 3)

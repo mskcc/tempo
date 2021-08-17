@@ -1,7 +1,6 @@
  params.outDir = ""
  params.wallTimeExitCode = ""
  
- 
  process RunBQSR {
     tag {idSample}
     
@@ -12,9 +11,9 @@
       tuple file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex) 
 
     output:
-      tuple val(idSample), val(target), file("${idSample}.bam"), file("${idSample}.bam.bai"), emit: bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
-      tuple val(idSample), val(target), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai"), emit: bamResults
-      file("file-size.txt"), emit: bamSize
+      tuple val(idSample), val(target), file("${idSample}.bam"), file("${idSample}.bam.bai"), emit: bamsBQSR
+      tuple val(idSample), val(target), val(val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam")), val(val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam.bai")), emit: bamResults
+      path("file-size.txt"), emit: bamSize
 
     script:
     if (workflow.profile == "juno") {

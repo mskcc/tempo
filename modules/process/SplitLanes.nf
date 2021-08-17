@@ -1,3 +1,5 @@
+  params.wallTimeExitCode = ""
+  
   process SplitLanesR1 {
     tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
 
@@ -17,10 +19,10 @@
         task.time = { params.maxWallTime }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+        task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+        task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
       // if it's the last time to try, use 500h as time limit no matter for what reason it failed before
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
@@ -56,10 +58,10 @@
         task.time = { params.maxWallTime }
       }
       else if (inputSize < 5.GB) {
-        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+        task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {
-        task.time = task.exitStatus.toString() in wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+        task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
       }
       task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
     }
