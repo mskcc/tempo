@@ -1223,18 +1223,6 @@ process runAscat {
   """
 }
 
-
-// --- Run Strelka2
-bams4Strelka.combine(mantaToStrelka, by: [0, 1, 2]).into{input4Strelka;input4Strelka_2 }
-
-input4Strelka_2.filter{idTumor, idNormal, target, bamT, baiT, bamN, baiN, mantaCSI, mantaCSIi ->
-  target=="idt_v2"
-}.set{input4Strelka_2}
-input4Strelka.filter{idTumor, idNormal, target, bamT, baiT, bamN, baiN, mantaCSI, mantaCSIi ->
-  target!="idt_v2"
-}.set{input4Strelka}
-
-
 process SomaticSVVcf2Bedpe {
   tag {idTumor + "__" + idNormal}
 
