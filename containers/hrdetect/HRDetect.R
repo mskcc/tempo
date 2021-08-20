@@ -172,7 +172,7 @@ res<-HRDetect_pipeline(input_matrix,
 
 #save HRDetect scores
 hrdetect_output = as.data.table(res$hrdetect_output, keep.rownames="sample")
-write.table(hrdetect_output,file = paste0(basename(file_path_sans_ext(inputTSV)),"_res.tsv"), row.names=F, quote=F, sep = "\t")
+write.table(hrdetect_output,file = paste0(basename(file_path_sans_ext(inputTSV)),".hrdetect.tsv"), row.names=F, quote=F, sep = "\t")
 
 # Cleanup
 unlink("tmp", recursive = T)
