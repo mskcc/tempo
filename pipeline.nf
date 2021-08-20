@@ -1093,7 +1093,8 @@ process SomaticMergeDellyAndManta {
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz*") into dellyMantaCombinedOutput
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz") into dellyMantaCombined4Aggregate, SVCombinedVcf4Bedpe
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz") into dellyMantaCombined4Aggregate
+    set idTumor, idNormal, target, file("${outputPrefix}.delly.manta.vcf.gz") into SVCombinedVcf4Bedpe
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz.tbi") into dellyMantaCombinedTbi4Aggregate
 
   when: tools.containsAll(["manta", "delly"]) && runSomatic
@@ -1229,10 +1230,10 @@ process SomaticSVVcf2Bedpe {
   publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.bedpe"
 
   input:
-    set val("placeHolder"), idTumor, idNormal, file(vcfFile) from SVCombinedVcf4Bedpe
+    set idTumor, idNormal, target, file(vcfFile) from SVCombinedVcf4Bedpe
 
   output:
-    set idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
+    set idTumor, idNormal, target, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
 
   when: runSomatic
 
@@ -1626,7 +1627,7 @@ process HRDetect {
   publishDir "${outDir}/somatic/${outputPrefix}/hrdetect/", mode: params.publishDirMode, pattern: "*.hrdetect.tsv"
 
   input:
-    set idTumor, idNormal, file(mafFile), file(cnvFile), file(svFile) file from input4HRDtect
+    set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) file from input4HRDtect
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into hrDetect4Aggregate
@@ -1635,7 +1636,11 @@ process HRDetect {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
+  genome_version = params.genome == 'GRCh38' ? "hg38" : "hg19"
   """
+  echo -e "sample\\tsv\\tmutations\\tcnv" > ${outputPrefix}.tsv
+  echo -e "${outputPrefix}\\t${svFile}\\t${mafFile}\\t${cnvFile}" > ${outputPrefix}.tsv
+  Rscript --no-init-file /usr/bin/HRDetect.R ${outputPrefix}.tsv ${genome_version} ${task.cpus}
   """
 
 }
