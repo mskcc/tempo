@@ -1630,7 +1630,7 @@ process HRDetect {
     set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) file from input4HRDtect
 
   output:
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into hrDetect4Aggregate
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into HRDetect4Aggregate
 
   when: runSomatic && params.assayType == "genome" && "hrdetect" in tools
 
