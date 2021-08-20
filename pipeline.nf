@@ -1630,6 +1630,7 @@ process HRDetect {
     set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) file from input4HRDtect
 
   output:
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into HRDetectOutput
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into HRDetect4Aggregate
 
   when: runSomatic && params.assayType == "genome" && "hrdetect" in tools
@@ -3230,6 +3231,7 @@ if ( !params.mapping && !params.bamMapping ){
                   predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
                   intCPN4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*DNA.IntegerCPN_CI.txt")]
                   MetaData4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.sample_data.txt")]
+                  HRDetect4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.hrdetect.txt")]
                   mafFile4AggregateGermline: [idTumor, idNormal, cohort, "placeHolder", file(path + "/germline/" + idNormal + "/*/" + idTumor + "__" + idNormal + ".germline.final.maf")]
                   dellyMantaCombined4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
@@ -3260,6 +3262,7 @@ if ( !params.mapping && !params.bamMapping ){
   inputPredictHLA4Aggregate = aggregateList.predictHLA4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
   inputIntCPN4Aggregate = aggregateList.intCPN4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
   inputSomaticAggregateMetadata = aggregateList.MetaData4Aggregate.transpose().groupTuple(by:[2])
+  inputSomaticAggregateHRDetect = aggregateList.HRDetect4Aggregate.transpose().groupTuple(by:[2])
   inputGermlineAggregateMaf = aggregateList.mafFile4AggregateGermline.transpose().groupTuple(by:[2])
   inputGermlineAggregateSv = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
   inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
@@ -3307,6 +3310,7 @@ else if(!(runAggregate == false)) {
                        cohortSomaticAggregateLOHHLA;
                        cohortSomaticAggregateLOHHLA1;
                        cohortSomaticAggregateMetadata;
+                       cohortSomaticAggregateHRDetect;
                        cohortGermlineAggregateMaf;
                        cohortGermlineAggregateSv;
                        cohortGermlineAggregateSv1;
@@ -3332,6 +3336,7 @@ else if(!(runAggregate == false)) {
   inputPredictHLA4Aggregate = cohortSomaticAggregateLOHHLA.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputIntCPN4Aggregate = cohortSomaticAggregateLOHHLA1.combine(intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
   inputSomaticAggregateMetadata = cohortSomaticAggregateMetadata.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
+  inputSomaticAggregateHRDetect = cohortSomaticAggregateHRDetect.combine(HRDetect4Aggregate, by:[1,2]).groupTuple(by:[2])
 
   if (runGermline){
   inputGermlineAggregateMaf = cohortGermlineAggregateMaf.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
@@ -3682,6 +3687,27 @@ process SomaticAggregateMetadata {
   mkdir sample_data_tmp
   mv *.sample_data.txt sample_data_tmp/
   awk 'FNR==1 && NR!=1{next;}{print}' sample_data_tmp/*.sample_data.txt > sample_data.txt
+  """
+}
+
+process SomaticAggregateHRDetect {
+
+  tag {cohort}
+
+  publishDir "${outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+
+  input:
+    set idTumors, idNormals, cohort, placeHolder, file(HRDetectFile) from inputSomaticAggregateHRDetect
+
+  output:
+    file("hrdetect.txt") into HRDetectAggregatedOutput
+
+  when: runSomatic
+
+  script:
+  """
+  ## Collect and merge HRDetect file
+  awk 'FNR==1 && NR!=1{next;}{print}' *.hrdetect.txt > hrdetect.txt
   """
 }
 }
