@@ -75,13 +75,13 @@ class TempoUtils {
       def target = row.TARGET
       def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: true)
       def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: true)
-      
       if(!checkFileExtension(fastqFile1,".fastq.gz")){System.exit(1)}
       if(!checkFileExtension(fastqFile2,".fastq.gz")){System.exit(1)}
 
 
       [idSample, target, fastqFile1, fastqFile2]
     }
+
   }
 
 
@@ -152,6 +152,7 @@ class TempoUtils {
 
 
   // Check samples are present both mapping and pairing files
+  // Note: This function is deprecated as of DSL2 update.  See SampleValidation.nf.
   static def crossValidateSamples(mapping, pairing) {
     def samplesInMapping = mapping.map{[it[0]]}.flatten().unique().toSortedList().get()
     def samplesInPairing = pairing.flatten().unique().toSortedList().get()

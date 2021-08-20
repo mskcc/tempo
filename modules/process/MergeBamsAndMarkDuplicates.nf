@@ -1,7 +1,6 @@
 
   params.wallTimeExitCode = ""
 
-  // AlignReads - Map reads with BWA mem output SAM
   process MergeBamsAndMarkDuplicates {
     tag {idSample}
 
