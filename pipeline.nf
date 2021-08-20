@@ -1627,7 +1627,7 @@ process HRDetect {
   publishDir "${outDir}/somatic/${outputPrefix}/hrdetect/", mode: params.publishDirMode, pattern: "*.hrdetect.tsv"
 
   input:
-    set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) file from input4HRDtect
+    set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) from input4HRDtect
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into HRDetectOutput
