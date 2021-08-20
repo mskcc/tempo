@@ -1145,7 +1145,7 @@ process runAscatAlleleCount {
   set idTumor, idNormal, target, file("ascat_alleleCount_${ascatIndex}.tar.gz") into ascatAlleleCount4Ascat
   file("listoffiles") into runAscatAlleleCountLoF
 
-  when: params.assayType == "genome" && "hrdetect" in tools 
+  when: runSomatic && params.assayType == "genome" && "hrdetect" in tools
 
   script:
   if (params.genome in ["GRCh37","smallGRCh37","GRCh38"]){
@@ -1195,7 +1195,7 @@ process runAscat {
   output:
   set idTumor, idNormal, target, file("ascatResults/*.copynumber.caveman.csv") into ascatOut4HRdetect
 
-  when: params.assayType == "genome" && "hrdetect" in tools 
+  when: runSomatic && params.assayType == "genome" && "hrdetect" in tools
 
   script:
   if (params.genome in ["GRCh37","smallGRCh37","GRCh38"]){
@@ -1232,7 +1232,7 @@ process SomaticSVVcf2Bedpe {
     set val("placeHolder"), idTumor, idNormal, file(vcfFile) from SVCombinedVcf4Bedpe
 
   output:
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
+    set idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
 
   when: runSomatic
 
@@ -1250,7 +1250,7 @@ process SomaticSVVcf2Bedpe {
     -o ${outputPrefix}.combinedcallers.bedpe \\
     -t ${outputPrefix}_tmp
   if [ ! -s ${outputPrefix}.combined.bedpe ] ; then 
-    echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\t${idNormal}\\t${idTumor}\\tDO218709_normal\\tDO218709_tumor" >> ${outputPrefix}.combined.bedpe
+    echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\t${idNormal}\\t${idTumor}" >> ${outputPrefix}.combined.bedpe
   fi
   """
 
@@ -2610,7 +2610,7 @@ process GermlineSVVcf2Bedpe {
     set val("placeHolder"), idTumor, idNormal, file(vcfFile) from GermlineSVCombinedVcf4Bedpe
 
   output:
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into GermlineSVCombinedBedpe
+    set idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into GermlineSVCombinedBedpe
 
   when: runGermline
 
