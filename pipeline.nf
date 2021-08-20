@@ -1232,7 +1232,7 @@ process SomaticSVVcf2Bedpe {
     set val("placeHolder"), idTumor, idNormal, file(vcfFile) from SVCombinedVcf4Bedpe
 
   output:
-    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
+    set idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
 
   when: runSomatic
 
@@ -1612,6 +1612,32 @@ process SomaticAnnotateMaf {
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix}
   """
+}
+
+
+mafFile.into{mafFile; mafFileForHRDetect}
+
+mafFileForHRDetect.combine(ascatOut4HRdetect, by: [0,1,2]).combine(SVCombinedBedpe, by: [0,1,2]).set{input4HRDtect}
+
+process HRDetect {
+
+  tag {idTumor + "__" + idNormal}
+
+  publishDir "${outDir}/somatic/${outputPrefix}/hrdetect/", mode: params.publishDirMode, pattern: "*.hrdetect.tsv"
+
+  input:
+    set idTumor, idNormal, file(mafFile), file(cnvFile), file(svFile) file from input4HRDtect
+
+  output:
+    set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into hrDetect4Aggregate
+
+  when: runSomatic && params.assayType == "genome" && "hrdetect" in tools
+
+  script:
+  outputPrefix = "${idTumor}__${idNormal}"
+  """
+  """
+
 }
 
 
