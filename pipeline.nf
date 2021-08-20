@@ -1641,7 +1641,7 @@ process HRDetect {
   """
   echo -e "sample\\tsv\\tmutations\\tcnv" > ${outputPrefix}.tsv
   echo -e "${outputPrefix}\\t${svFile}\\t${mafFile}\\t${cnvFile}" > ${outputPrefix}.tsv
-  Rscript --no-init-file /usr/bin/HRDetect.R ${outputPrefix}.tsv ${genome_version} ${task.cpus}
+  Rscript --no-init-file ${workflow.launchDir}/containers/hrdetect/HRDetect.R ${outputPrefix}.tsv ${genome_version} ${task.cpus}
   """
 
 }
