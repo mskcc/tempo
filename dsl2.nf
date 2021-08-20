@@ -2,6 +2,7 @@
 nextflow.enable.dsl = 2
 
 
+
 if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
   println 'ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)'
   exit 1
@@ -36,6 +37,8 @@ include { SplitLanesR1; SplitLanesR2 } from './modules/process/SplitLanes' addPa
 include { AlignReads }                 from './modules/process/AlignReads' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
 include { MergeBamsAndMarkDuplicates } from './modules/process/MergeBamsAndMarkDuplicates' addParams(wallTimeExitCode: wallTimeExitCode)
 include { RunBQSR }                    from './modules/process/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { CrossValidateSamples }       from './modules/process/SampleValidation'
+
 
 println ''
 
@@ -46,118 +49,102 @@ targetsMap   = loadTargetReferences()
 pairingQc = params.pairing
 
 
-//NOTE: Currently not including some argumet controls here (tempo1.4 lines 117-162).  
-//      Check back once workflow is established to decide how that should be implemented.
-    if (params.mapping || params.bamMapping) {
-      TempoUtils.checkAssayType(params.assayType)
-      if (params.watch == false) {
-        mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
-       // (checkMapping1, checkMapping2, inputMapping) = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()).into(3) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet()).into(3)
-        checkMapping1 = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
-        checkMapping2 = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
-        inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
 
+workflow {
+  if (params.mapping || params.bamMapping) {
+    TempoUtils.checkAssayType(params.assayType)
+    if (params.watch == false) {
+      keySet = targetsMap.keySet()
+      mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
+      inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
+    }
+    else if (params.watch == true) {
+      mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
+      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
+      epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
+    }
+    else{}
+    if(params.pairing){
+      if(runQC){
+        pairingQc = true
+      }
+      if (params.watch == false) {
+        pairingFile = file(params.pairing, checkIfExists: true)
+        //(checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
+        inputPairing  = TempoUtils.extractPairing(pairingFile)
+        TempoUtils.crossValidateTargets(inputMapping, inputPairing)
+
+        samplesInMapping = inputMapping.flatMap{[it[0]]}.unique().toSortedList()
+        samplesInPairing = inputPairing.flatten().unique().toSortedList()
+        CrossValidateSamples(samplesInMapping, samplesInPairing)
+        if(!CrossValidateSamples.out.isValid) {exit 1}
       }
       else if (params.watch == true) {
-        mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-        //(checkMapping1, checkMapping2, inputMapping) = params.mapping ? watchMapping(mappingFile, params.assayType).into(3) : watchBamMapping(mappingFile, params.assayType).into(3)
-        checkMapping1 = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
-        checkMapping2 = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
-        inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
-        epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
+        pairingFile = file(params.pairing, checkIfExists: false)
+        inputPairing  = watchPairing(pairingFile)
+        epochMap[params.pairing] = 0 
       }
       else{}
-      if(params.pairing){
-        if(runQC){
-          pairingQc = true
-        }
-        if (params.watch == false) {
-          pairingFile = file(params.pairing, checkIfExists: true)
-          //(checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
-          checkPairing1 = TempoUtils.extractPairing(pairingFile)
-          checkPairing2 = TempoUtils.extractPairing(pairingFile)
-          inputPairing  = TempoUtils.extractPairing(pairingFile)
-
-          TempoUtils.crossValidateTargets(checkMapping1, checkPairing1)
-          //if(!TempoUtils.crossValidateSamples(checkMapping2, checkPairing2)){exit 1}
-        }
-        else if (params.watch == true) {
-          pairingFile = file(params.pairing, checkIfExists: false)
-          //(checkPairing1, checkPairing2, inputPairing) = watchPairing(pairingFile).into(3)
-          checkPairing1 = watchPairing(pairingFile)
-          checkPairing2 = watchPairing(pairingFile)
-          inputPairing  = watchPairing(pairingFile)
-          epochMap[params.pairing] = 0 
-        }
-        else{}
-        if (!runSomatic && !runGermline && !runQC){
-          println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
-          exit 1
-        }
-      }
-      else{
-        if (runSomatic || runGermline){
-          println "ERROR: --pairing [tsv] needed when using --mapping/--bamMapping [tsv] with --somatic/--germline"
-          exit 1
-        }
-      }
-    }
-    else{
-      if(params.pairing){
-        println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
+      if (!runSomatic && !runGermline && !runQC){
+        println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
         exit 1
       }
     }
-
-
-if (!runSomatic && runGermline) {
-  println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
-  runSomatic = true
-}
-
-if (runAggregate == false) {
-  if (!params.mapping && !params.bamMapping) {
-    println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
-    exit 1
-  }
-}
-else if (runAggregate == true) {
-  if ((params.mapping || params.bamMapping) && params.pairing) {
-    if (!(runSomatic || runGermline || runQC)) {
-      println 'ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate'
+    else{
+      if (runSomatic || runGermline){
+        println "ERROR: --pairing [tsv] needed when using --mapping/--bamMapping [tsv] with --somatic/--germline"
+        exit 1
+      }
     }
   }
-  else if ((params.mapping || params.bamMapping) && !params.pairing) {
-    if (!runQC) {
-      println 'ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true.'
+  else{
+    if(params.pairing){
+      println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
+      exit 1
+    }
+  }
+
+  if (!runSomatic && runGermline) {
+    println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
+    runSomatic = true
+  }
+  if (runAggregate == false) {
+    if (!params.mapping && !params.bamMapping) {
+      println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
+      exit 1
+    }
+  }
+  else if (runAggregate == true) {
+    if ((params.mapping || params.bamMapping) && params.pairing) {
+      if (!(runSomatic || runGermline || runQC)) {
+        println 'ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate'
+      }
+    }
+    else if ((params.mapping || params.bamMapping) && !params.pairing) {
+      if (!runQC) {
+        println 'ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true.'
+        exit 1
+      }
+    }
+    else {
+      println 'ERROR: (--mapping/--bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true'
+      println '       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual'
       exit 1
     }
   }
   else {
-    println 'ERROR: (--mapping/--bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true'
-    println '       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual'
+    if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping) {
+      println 'ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!'
+      println "       If you want to run aggregate somatic/germline/qc, just include an additianl colum PATH in the [tsv] and no need to use --QC/--somatic/--germline flag, since it's auto detected. See manual"
+      exit 1
+    }
+  }
+
+  if (!(params.cosmic in ['v2', 'v3'])) {
+    println "ERROR: Possible values of mutational signature reference --cosmic is 'v2', 'v3'"
     exit 1
   }
-}
-else {
-  if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping) {
-    println 'ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!'
-    println "       If you want to run aggregate somatic/germline/qc, just include an additianl colum PATH in the [tsv] and no need to use --QC/--somatic/--germline flag, since it's auto detected. See manual"
-    exit 1
-  }
-}
 
-if (!(params.cosmic in ['v2', 'v3'])) {
-  println "ERROR: Possible values of mutational signature reference --cosmic is 'v2', 'v3'"
-  exit 1
-}
-
-workflow {
-  //referenceMap = defineReferenceMap()
-  //targetsMap   = loadTargetReferences()
-
-  mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
-  inputMapping = TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet())
 
   // Skip these processes if starting from aligned BAM files
   if (params.mapping) {
@@ -210,7 +197,7 @@ workflow {
 
                 // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
                 if ( !params.watch ) {
-                  if (!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + '@' + lane, fileID + "\t" + fastq, 'the follwoing fastq files since they contain the same RGID')) { exit 1 }
+                  if (!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + '@' + lane, fileID + "\t" + fastq, 'the following fastq files since they contain the same RGID')) { exit 1 }
                 }
                 [idSample, target, fastq, fileID, lane, laneCount]
             }
@@ -321,18 +308,11 @@ workflow {
               referenceMap.knownIndelsIndex
             ]))
 
-/*
+
     File file = new File(outname)
     file.newWriter().withWriter { w ->
         w << "SAMPLE\tTARGET\tBAM\tBAI\n"
     }
-
-    RunBQSR.out.bamResults.subscribe { Object obj ->
-        file.withWriterAppend { out ->
-            out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
-        }
-    }
-*/
 
   } //end if params.mapping
 
