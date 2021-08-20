@@ -1654,12 +1654,13 @@ process RunPolysolver {
   output:
     set val("placeHolder"), idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput, hlaOutputForLOHHLA, hlaOutputForMetaDataParser
 
-  when: "polysolver" in tools && runSomatic
+  when: "polysolver" in tools && runSomatic && ["GRCh38","GRCh37"].contains(params.genome)
   
   script:
   outputPrefix = "${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
+  genome_ = params.genome == "GRCh37" ? "hg19" : "hg38"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
   
@@ -1669,7 +1670,7 @@ process RunPolysolver {
     ${bamNormal} \
     Unknown \
     1 \
-    hg19 \
+    ${genome_} \
     STDFQ \
     0 \
     ${outputDir}
