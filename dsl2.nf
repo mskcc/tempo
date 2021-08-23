@@ -314,7 +314,13 @@ workflow {
         w << "SAMPLE\tTARGET\tBAM\tBAI\n"
     }
 
-  } //end if params.mapping
+    RunBQSR.out.bamResults.subscribe { Object obj ->
+      file.withWriterAppend { out ->
+          out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
+      }
+  }
+
+} //end if params.mapping
 
 
 

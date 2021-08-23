@@ -5,14 +5,16 @@
     tag {idSample}
     
     publishDir "${params.outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
+    //publishDir params.outDir + "/bams/" + idSample, mode: 'copy', pattern: "*.bam*"
+    //publishDir "/home/pricea2/tmp/dsl2/${idSample}", mode: 'copy', pattern: "*.bam*"
 
     input:
-      tuple val(idSample), file(bam), file(bai), val(target)
-      tuple file(genomeFile), file(genomeIndex), file(genomeDict), file(dbsnp), file(dbsnpIndex), file(knownIndels), file(knownIndelsIndex) 
+      tuple val(idSample), path(bam), path(bai), val(target)
+      tuple path(genomeFile), path(genomeIndex), path(genomeDict), path(dbsnp), path(dbsnpIndex), path(knownIndels), path(knownIndelsIndex) 
 
     output:
-      tuple val(idSample), val(target), file("${idSample}.bam"), file("${idSample}.bam.bai"), emit: bamsBQSR
-      tuple val(idSample), val(target), val(val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam")), val(val("${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam.bai")), emit: bamResults
+      tuple val(idSample), val(target), path("${idSample}.bam"), path("${idSample}.bam.bai"), emit: bamsBQSR
+      tuple val(idSample), val(target), val("${params.outDir}/bams/${idSample}/${idSample}.bam"), val("${params.outDir}/bams/${idSample}/${idSample}.bam.bai"), emit: bamResults
       path("file-size.txt"), emit: bamSize
 
     script:
