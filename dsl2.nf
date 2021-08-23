@@ -38,7 +38,7 @@ include { AlignReads }                 from './modules/process/AlignReads' addPa
 include { MergeBamsAndMarkDuplicates } from './modules/process/MergeBamsAndMarkDuplicates' addParams(wallTimeExitCode: wallTimeExitCode)
 include { RunBQSR }                    from './modules/process/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
 include { CrossValidateSamples }       from './modules/process/SampleValidation'
-
+include { CreateScatteredIntervals }   from './modules/process/CreateScatteredIntervals'
 
 println ''
 
@@ -318,10 +318,8 @@ workflow {
       file.withWriterAppend { out ->
           out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
       }
-  }
-
-} //end if params.mapping
-
+    }
+  } //end if params.mapping
 
 
   /*
@@ -330,9 +328,8 @@ workflow {
   ================================================================================
   */
   // If starting with BAM files, parse BAM pairing input
- /* if (params.bamMapping) {
+  if (params.bamMapping) {
     //inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
-
     if (runQC){
       inputMapping.map{idSample, target, bam, bai ->
         [ idSample,target, bam.getParent() ]
@@ -345,74 +342,170 @@ workflow {
   }
 
   if (params.pairing) {
-
     // Parse input FASTQ mapping
     //inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing}
     RunBQSR.out.bamsBQSR.combine(inputPairing)
-                            .filter { item ->
-                              def idSample = item[0]
-                              def target = item[1]
-                              def sampleBam = item[2]
-                              def sampleBai = item[3]
-                              def idTumor = item[4]
-                              def idNormal = item[5]
-                              idSample == idTumor
-                            }.map { item ->
-                              def idTumor = item[4]
-                              def idNormal = item[5]
-                              def tumorBam = item[2]
-                              def tumorBai = item[3]
-                              def target = item[1]
-                              return [ idTumor, idNormal, target, tumorBam, tumorBai ]
-                            }
-                .unique()
-                .set{ bamsTumor }
-
-
+      .filter { item ->
+        def idSample = item[0]
+        def target = item[1]
+        def sampleBam = item[2]
+        def sampleBai = item[3]
+        def idTumor = item[4]
+        def idNormal = item[5]
+        idSample == idTumor
+      }.map { item ->
+        def idTumor = item[4]
+        def idNormal = item[5]
+        def tumorBam = item[2]
+        def tumorBai = item[3]
+        def target = item[1]
+        return [ idTumor, idNormal, target, tumorBam, tumorBai ]
+      }
+      .unique()
+      .set{ bamsTumor }
 
     RunBQSR.out.bamsBQSR.combine(inputPairing)
-                            .filter { item ->
-                              def idSample = item[0]
-                              def target = item[1]
-                              def sampleBam = item[2]
-                              def sampleBai = item[3]
-                              def idTumor = item[4]
-                              def idNormal = item[5]
-                              idSample == idNormal
-                            }.map { item ->
-                              def idTumor = item[4]
-                              def idNormal = item[5]
-                              def normalBam = item[2]
-                              def normalBai = item[3]
-                              def target = item[1]
-                              return [ idTumor, idNormal, target, normalBam, normalBai ]
-                            }.unique()
-                .set{ bamsNormal }
+      .filter { item ->
+        def idSample = item[0]
+        def target = item[1]
+        def sampleBam = item[2]
+        def sampleBai = item[3]
+        def idTumor = item[4]
+        def idNormal = item[5]
+        idSample == idNormal
+      }.map { item ->
+        def idTumor = item[4]
+        def idNormal = item[5]
+        def normalBam = item[2]
+        def normalBai = item[3]
+        def target = item[1]
+        return [ idTumor, idNormal, target, normalBam, normalBai ]
+      }
+      .unique()
+      .set{ bamsNormal }
+
     bamsNormal.map { item ->
-              def idNormal = item[1]
-              def target = item[2]
-              def normalBam = item[3]
-              def normalBai = item[4]
-              return [ idNormal, target, normalBam, normalBai ] }
+      def idNormal = item[1]
+      def target = item[2]
+      def normalBam = item[3]
+      def normalBai = item[4]
+      return [ idNormal, target, normalBam, normalBai ] }
       .unique()
       .set{ bams }
 
-
     bamsTumor.combine(bamsNormal, by: [0,1,2])
-                            .map { item -> // re-order the elements
-                              def idTumor = item[0]
-                              def idNormal = item[1]
-                              def target = item[2]
-                              def bamTumor = item[3]
-                              def baiTumor = item[4]
-                              def bamNormal = item[5]
-                              def baiNormal = item[6]
+      .map { item -> // re-order the elements
+        def idTumor = item[0]
+        def idNormal = item[1]
+        def target = item[2]
+        def bamTumor = item[3]
+        def baiTumor = item[4]
+        def bamNormal = item[5]
+        def baiNormal = item[6]
 
-                              return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
-                            }
-                .set{ bamFiles }
+        return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
+      }
+      .set{ bamFiles }
+
+  } // End of "if (pairingQc) {}"
 
 
-    } // End of "if (pairingQc) {}"
-*/
+  /*
+  ================================================================================
+  =                                SOMATIC PIPELINE                              =
+  ================================================================================
+  */
+  if (runSomatic || runGermline || runQC) {
+    // parse --tools parameter for downstream 'when' conditionals, e.g. when: 'delly ' in tools
+    tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
+
+    // Allow shorter names
+    if ("mutect" in tools) {
+      tools.add("mutect2")
+    }
+    if ("strelka" in tools) {
+      tools.add("strelka2")
+    }
+
+    // If using Strelka2, run Manta as well to generate candidate indels
+    if ("strelka2" in tools) {
+      tools.add("manta")
+    }
+
+    // If using running either conpair or conpairAll, run pileup as well to generate pileups
+    if ("conpair" in tools) {
+      tools.add("pileup")
+    }
+    if ("conpairall" in tools) {
+      runConpairAll = true
+      tools.add("pileup")
+    }
+  }
+
+  if (runSomatic || runGermline) {
+  // GATK SplitIntervals, CreateScatteredIntervals
+
+    targets4Intervals = Channel.from(targetsMap.keySet())
+      .map{ targetId ->
+        [ targetId, targetsMap."${targetId}"."targetsBedGz", targetsMap."${targetId}"."targetsBedGzTbi" ]
+      }
+
+    CreateScatteredIntervals(Channel.value([referenceMap.genomeFile, 
+                                            referenceMap.genomeIndex, 
+                                            referenceMap.genomeDict]), 
+                                            targets4Intervals,
+                                            runSomatic, runGermline)
+
+    //Associating interval_list files with BAM files, putting them into one channel
+    //bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA }
+    bamFiles.combine(CreateScatteredIntervals.out.mergedIList, by: 2).map{
+      item ->
+        def idTumor = item[1]
+        def idNormal = item[2]
+        def target = item[0]
+        def tumorBam = item[3]
+        def normalBam = item[4]
+        def tumorBai = item[5]
+        def normalBai = item[6]
+        def intervalBed = item[7]
+        def key = idTumor+"__"+idNormal+"@"+target // adding one unique key
+
+        return [ key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
+    }.map{ 
+        key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> 
+        tuple ( 
+            groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
+            idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed
+        )
+    }
+    .transpose()
+    .set{ mergedChannelSomatic }
+
+    bams.combine(CreateScatteredIntervals.out.mergedIList, by: 1)
+    .map{
+      item ->
+        def idNormal = item[1]
+        def target = item[0]
+        def normalBam = item[2]
+        def normalBai = item[3]
+        def intervalBed = item[4]
+        def key = idNormal+"@"+target // adding one unique key
+
+        return [ key, idNormal, target, normalBam, normalBai, intervalBed ]
+    }.map{
+        key, idNormal, target, normalBam, normalBai, intervalBed ->
+        tuple (
+            groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
+            idNormal, target, normalBam, normalBai, intervalBed
+        )
+    }
+    .transpose()
+    .set{ mergedChannelGermline }
+  } //end if (runSomatic || runGermline)
+
+
+
+
+
+
 }
