@@ -5,8 +5,6 @@
     tag {idSample}
     
     publishDir "${params.outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
-    //publishDir params.outDir + "/bams/" + idSample, mode: 'copy', pattern: "*.bam*"
-    //publishDir "/home/pricea2/tmp/dsl2/${idSample}", mode: 'copy', pattern: "*.bam*"
 
     input:
       tuple val(idSample), path(bam), path(bai), val(target)
