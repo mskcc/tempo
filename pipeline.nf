@@ -221,7 +221,7 @@ if (params.mapping) {
                 -> tuple(groupKey(idSample, targets.size()), targets, files_pe1, files_pe2)
               }
               .transpose()
-	      .set{ inputMapping }
+          .set{ inputMapping }
   }
 
   inputMapping.map{ idSample, target, file_pe1, file_pe2 ->
@@ -236,9 +236,9 @@ if (params.mapping) {
   fastqsNeedSplit
         .filter{ item -> !(item[2].getName() =~ /_L(\d){3}_/) }
         .multiMap{ idSample, target, file_pe1, file_pe2, fileID, lane ->
-		inputFastqR1: [idSample, target, file_pe1, file_pe1.toString()]
-		inputFastqR2: [idSample, target, file_pe2, file_pe2.toString()]
-	}
+        inputFastqR1: [idSample, target, file_pe1, file_pe1.toString()]
+        inputFastqR2: [idSample, target, file_pe2, file_pe2.toString()]
+    }
         .set{ fastqsNeedSplit }
 
   fastqsNoNeedSplit
@@ -329,35 +329,35 @@ if (params.mapping) {
   perLaneFastqsR1 = perLaneFastqsR1.transpose()
         .map{ item ->
           def idSample = item[0]
-	  def target = item[1]
-	  def fastq = item[2]
-	  def fileID = idSample + "@" + item[3].getSimpleName()
-	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
-	  def laneCount = item[4].getSimpleName().toInteger()
+      def target = item[1]
+      def fastq = item[2]
+      def fileID = idSample + "@" + item[3].getSimpleName()
+      def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+      def laneCount = item[4].getSimpleName().toInteger()
 
-	  // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
-	  if ( !params.watch ){
-	  if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
-	  }
+      // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
+      if ( !params.watch ){
+      if(!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+      }
 
-	  [idSample, target, fastq, fileID, lane, laneCount]
+      [idSample, target, fastq, fileID, lane, laneCount]
         }
 
   def fastqR2fileIDs = [:]
   perLaneFastqsR2 = perLaneFastqsR2.transpose()
         .map{ item ->
           def idSample = item[0]
-	  def target = item[1]
-	  def fastq = item[2]
-	  def fileID = idSample + "@" + item[3].getSimpleName()
-	  def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
-	  def laneCount = item[4].getSimpleName().toInteger()
+      def target = item[1]
+      def fastq = item[2]
+      def fileID = idSample + "@" + item[3].getSimpleName()
+      def lane = fastq.getSimpleName().split("_L00")[1].split("_")[0]
+      def laneCount = item[4].getSimpleName().toInteger()
 
-	  if ( !params.watch ){
-	  if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
-	  }
+      if ( !params.watch ){
+      if(!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + "@" + lane, fileID + "\t" + fastq, "the follwoing fastq files since they contain the same RGID")){exit 1}
+      }
 
-	  [idSample, target, fastq, fileID, lane, laneCount]
+      [idSample, target, fastq, fileID, lane, laneCount]
         }
 
   fastqFiles  = perLaneFastqsR1
@@ -387,8 +387,8 @@ if (params.mapping) {
   }
   else{
      fastqFiles =  inputFastqs.map { idSample, target, file_pe1, file_pe2, fileID, lane
-					-> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
-				   }
+                    -> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
+                   }
   }
 
   // AlignReads - Map reads with BWA mem output SAM
@@ -491,28 +491,28 @@ if (params.mapping) {
   def allReadIds = [:]
   sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
 
-		// Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
-		if ( !params.watch ){
-		if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
-		}
+        // Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
+        if ( !params.watch ){
+        if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
+        }
 
-		[idSample, target, bam, fileID, lane]
-	   }
-	   .groupTuple(by: [3])
-	   .map{ item ->
-		      def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
-		      def target   = item[1] instanceof Collection ? item[1].first() : item[1]
-		      def bams = item[2]
-		      [idSample, target, bams]
-	   }
-	   .groupTuple(by: [0])
-	   .map{ item ->
-		      def idSample = item[0]
-		      def target =  item[1] instanceof Collection ? item[1].first() : item[1]
-		      def bams = item[2].flatten()
-		      [idSample, bams, target]
-	   }
-	   .set{ groupedBam }
+        [idSample, target, bam, fileID, lane]
+       }
+       .groupTuple(by: [3])
+       .map{ item ->
+              def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
+              def target   = item[1] instanceof Collection ? item[1].first() : item[1]
+              def bams = item[2]
+              [idSample, target, bams]
+       }
+       .groupTuple(by: [0])
+       .map{ item ->
+              def idSample = item[0]
+              def target =  item[1] instanceof Collection ? item[1].first() : item[1]
+              def bams = item[2].flatten()
+              [idSample, bams, target]
+       }
+       .set{ groupedBam }
 
   // MergeBams and MarkDuplicates
   process MergeBamsAndMarkDuplicates {
@@ -717,8 +717,8 @@ if (params.pairing) {
                             def target = item[1]
                             return [ idTumor, idNormal, target, tumorBam, tumorBai ]
                           }
-			  .unique()
-			  .into{bamsTumor4Combine; bamsTumor4VcfCombine}
+              .unique()
+              .into{bamsTumor4Combine; bamsTumor4VcfCombine}
 
   bamsBQSR4Normal.combine(pairing4N)
                           .filter { item ->
@@ -737,15 +737,15 @@ if (params.pairing) {
                             def target = item[1]
                             return [ idTumor, idNormal, target, normalBam, normalBai ]
                           }.unique()
-			  .into{ bamsNormal4Combine; bamsNormalOnly }
+              .into{ bamsNormal4Combine; bamsNormalOnly }
   bamsNormalOnly.map { item ->
-			def idNormal = item[1]
-			def target = item[2]
-			def normalBam = item[3]
-			def normalBai = item[4]
-			return [ idNormal, target, normalBam, normalBai ] }
-	.unique()
-	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+            def idNormal = item[1]
+            def target = item[2]
+            def normalBam = item[3]
+            def normalBai = item[4]
+            return [ idNormal, target, normalBam, normalBai ] }
+    .unique()
+    .into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
   bamsTumor4Combine.combine(bamsNormal4Combine, by: [0,1,2])
@@ -760,7 +760,7 @@ if (params.pairing) {
 
                             return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
                           }
-			  .set{bamFiles}
+              .set{bamFiles}
 
 
 } // End of "if (pairingQc) {}"
@@ -1676,8 +1676,8 @@ process RunPolysolver {
 // *purity.out from FACETS, winners.hla.txt from POLYSOLVER
 
 bamsForLOHHLA.combine(facetsPurity4LOHHLA, by: [0,1,2])
-	     .combine(hlaOutputForLOHHLA, by: [1,2])
-	     .set{ mergedChannelLOHHLA }
+         .combine(hlaOutputForLOHHLA, by: [1,2])
+         .set{ mergedChannelLOHHLA }
 
 // Run LOHHLA
 process RunLOHHLA {
@@ -1876,11 +1876,11 @@ process RunMsiSensor {
 
 
 facetsPurity4MetaDataParser.combine(maf4MetaDataParser, by: [0,1,2])
-			   .combine(FacetsQC4MetaDataParser, by: [0,1,2])
-			   .combine(msi4MetaDataParser, by: [0,1,2])
-			   .combine(mutSig4MetaDataParser, by: [0,1,2])
-			   .combine(hlaOutputForMetaDataParser, by: [1,2])
-			   .unique()
+               .combine(FacetsQC4MetaDataParser, by: [0,1,2])
+               .combine(msi4MetaDataParser, by: [0,1,2])
+               .combine(mutSig4MetaDataParser, by: [0,1,2])
+               .combine(hlaOutputForMetaDataParser, by: [1,2])
+               .unique()
          .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
           [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
          }.set{ mergedChannelMetaDataParser }
@@ -2084,8 +2084,8 @@ process GermlineRunStrelka2 {
 
 // Join HaploTypeCaller and Strelka outputs,  bcftools
 haplotypecallerCombinedVcf4Combine.combine(strelka4CombineGermline, by: [0,1,2])
-				  .combine(bamsTumor4VcfCombine, by: [1,2])
-				  .set{ mergedChannelVcfCombine }
+                  .combine(bamsTumor4VcfCombine, by: [1,2])
+                  .set{ mergedChannelVcfCombine }
 
 // --- Combine VCFs with germline calls from Haplotypecaller and Strelka2
 process GermlineCombineChannel {
@@ -2797,8 +2797,8 @@ tumorPileups.combine(pairingT4Conpair)
                           def tumorPileup = item[1]
                           return [ idTumor, idNormal, tumorPileup ]
                         }
-			.unique()
-			.into{pileupT; pileupT4Combine}
+            .unique()
+            .into{pileupT; pileupT4Combine}
 
 normalPileups.combine(pairingN4Conpair)
                         .filter { item ->
@@ -2813,8 +2813,8 @@ normalPileups.combine(pairingN4Conpair)
                           def normalPileup = item[1]
                           return [ idTumor, idNormal, normalPileup ]
                         }
-			.unique()
-			.into{pileupN; pileupN4Combine}
+            .unique()
+            .into{pileupN; pileupN4Combine}
 
 
 pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
@@ -3014,15 +3014,15 @@ if ( !params.mapping && !params.bamMapping ){
   pairingQc = true
   if(!params.watch){
     TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
-	      .set{inputAggregate}
+          .set{inputAggregate}
   }
   else{
     watchAggregateWithPath(file(runAggregate, checkIfExists: true))
-	   .set{inputAggregate}
+       .set{inputAggregate}
     epochMap[runAggregate] = 0
   }
   inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->
-		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
+          finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
                   NetMhcStats4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.all_neoantigen_predictions.txt")]
                   FacetsPurity4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_purity.seg")]
                   FacetsHisens4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_hisens.seg")]
@@ -3040,18 +3040,18 @@ if ( !params.mapping && !params.bamMapping ){
                   dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
                   conpairConcord4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".concordance.txt")]
                   conpairContami4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".contamination.txt")]
-		  alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.tsv.gz/")]
-		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
-		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
-		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
+          alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.tsv.gz/")]
+          alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
+          alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
+          alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
       qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}_qualimap_rawdata.tar.gz")]
       qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}_qualimap_rawdata.tar.gz")]
-		  hsMetricsTumor: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
-		  hsMetricsNormal: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
+          hsMetricsTumor: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
+          hsMetricsNormal: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
       fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
       fastpNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.fastp.json")]
                 }
-		.set {aggregateList}
+        .set {aggregateList}
   inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
   inputSomaticAggregateNetMHC = aggregateList.NetMhcStats4Aggregate.transpose().groupTuple(by:[2])
   inputPurity4Aggregate = aggregateList.FacetsPurity4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
@@ -3081,23 +3081,23 @@ else if(!(runAggregate == false)) {
   if (!(runAggregate == true)){
     if(!params.watch){
       TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
-	        .groupTuple()
+            .groupTuple()
                 .map{ cohort, idTumor, idNormal, pathNoUse
                       -> tuple( groupKey(cohort, idTumor instanceof Collection ? idTumor.size() : 1), idTumor, idNormal)
                 }
                 .transpose()
-	        .set{inputAggregate}
+            .set{inputAggregate}
     }
     else{
       watchAggregate(file(runAggregate, checkIfExists: false))
-	     .set{inputAggregate}
+         .set{inputAggregate}
       epochMap[runAggregate] = 0
     }
   }
   else if(runAggregate == true){
     inputPairing.into{inputPairing; cohortTable}
     cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
-	       .set{inputAggregate}
+           .set{inputAggregate}
   }
   else{}
   inputAggregate.into{ cohortSomaticAggregateMaf;
@@ -3148,94 +3148,94 @@ else if(!(runAggregate == false)) {
   if (runQC){
   inputPairing.into{inputPairing;inputPairing1;inputPairing2;inputPairing3;inputPairing4;inputPairing5}
   bamsQcStats4Aggregate.branch{ item ->
-  			def idSample = item[0]
-  			def alfred = item[1]
+              def idSample = item[0]
+              def alfred = item[1]
   
-  			ignoreY: alfred =~ /.+\.alfred\.tsv\.gz/
-  			ignoreN: alfred =~ /.+\.alfred\.per_readgroup\.tsv\.gz/
-  		     }
-  		     .set{bamsQcStats4Aggregate}
+              ignoreY: alfred =~ /.+\.alfred\.tsv\.gz/
+              ignoreN: alfred =~ /.+\.alfred\.per_readgroup\.tsv\.gz/
+               }
+               .set{bamsQcStats4Aggregate}
 
   inputPairing1.combine(bamsQcStats4Aggregate.ignoreY)
-  	     .branch { item ->
-  		def idTumor = item[0]
-  		def idNormal = item[1]
-  		def idSample = item[2]
-  		def alfred = item[3]
+           .branch { item ->
+          def idTumor = item[0]
+          def idNormal = item[1]
+          def idSample = item[2]
+          def alfred = item[3]
   
-  		tumor: idSample == idTumor
-  		normal: idSample == idNormal
-  	    }
-  	    .set{alfredIgnoreY}
+          tumor: idSample == idTumor
+          normal: idSample == idNormal
+          }
+          .set{alfredIgnoreY}
   alfredIgnoreY.tumor.combine(alfredIgnoreY.normal, by:[0,1])
-  		   .combine(cohortQcBamAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
-  		   .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
-  		   .groupTuple(by:[0])
-  		   .map{ item ->
-  			def cohort = item[0]
-  			def idTumors = item[1].unique()
-  			def idNormals = item[2].unique()
-  			def fileTumor = item[3].unique()
-  			def fileNormal = item[4].unique()
+             .combine(cohortQcBamAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+             .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+             .groupTuple(by:[0])
+             .map{ item ->
+              def cohort = item[0]
+              def idTumors = item[1].unique()
+              def idNormals = item[2].unique()
+              def fileTumor = item[3].unique()
+              def fileNormal = item[4].unique()
   
-			  [cohort, fileTumor, fileNormal]
-  		   }
-  		   .unique()
-  		   .set{alfredIgnoreY}
+              [cohort, fileTumor, fileNormal]
+             }
+             .unique()
+             .set{alfredIgnoreY}
   
   inputPairing2.combine(bamsQcStats4Aggregate.ignoreN)
-  	     .branch { item ->
-  		def idTumor = item[0]
-  		def idNormal = item[1]
-  		def idSample = item[2]
-  		def alfred = item[3]
+           .branch { item ->
+          def idTumor = item[0]
+          def idNormal = item[1]
+          def idSample = item[2]
+          def alfred = item[3]
   
-  		tumor: idSample == idTumor
-  		normal: idSample == idNormal
-  	    }
-  	    .set{alfredIgnoreN}
+          tumor: idSample == idTumor
+          normal: idSample == idNormal
+          }
+          .set{alfredIgnoreN}
   alfredIgnoreN.tumor.combine(alfredIgnoreN.normal, by:[0,1])
-  		   .combine(cohortQcBamAggregate1.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
-  		   .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
-  		   .groupTuple(by:[0])
-  		   .map{ item ->
-  			def cohort = item[0]
-  			def idTumors = item[1].unique()
-  			def idNormals = item[2].unique()
-  			def fileTumor = item[3].unique()
-  			def fileNormal = item[4].unique()
+             .combine(cohortQcBamAggregate1.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+             .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+             .groupTuple(by:[0])
+             .map{ item ->
+              def cohort = item[0]
+              def idTumors = item[1].unique()
+              def idNormals = item[2].unique()
+              def fileTumor = item[3].unique()
+              def fileNormal = item[4].unique()
   
-			[cohort, fileTumor, fileNormal]
-  		   }
-  		   .unique()
-  		   .set{alfredIgnoreN}
+            [cohort, fileTumor, fileNormal]
+             }
+             .unique()
+             .set{alfredIgnoreN}
   
   inputPairing3.combine(collectHsMetrics4Aggregate)
-  	     .branch { item ->
-  		def idTumor = item[0]
-  		def idNormal = item[1]
-  		def idSample = item[2]
-  		def hsMetrics = item[3]
+           .branch { item ->
+          def idTumor = item[0]
+          def idNormal = item[1]
+          def idSample = item[2]
+          def hsMetrics = item[3]
   
-  		tumor: idSample == idTumor
-  		normal: idSample == idNormal
-  	    }
-  	    .set{hsMetrics}
+          tumor: idSample == idTumor
+          normal: idSample == idNormal
+          }
+          .set{hsMetrics}
   hsMetrics.tumor.combine(hsMetrics.normal, by:[0,1])
-  	       .combine(cohortQcBamAggregate2.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
-  	       .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
-  	       .groupTuple(by:[0])
-  	       .map{ item ->
-  		    def cohort = item[0]
-  		    def idTumors = item[1].unique()
-  		    def idNormals = item[2].unique()
-  		    def fileTumor = item[3].unique()
-  		    def fileNormal = item[4].unique()
-  		    
-		    [cohort, fileTumor, fileNormal]
-  	       }
-  	       .unique()
-  	       .set{hsMetrics}
+             .combine(cohortQcBamAggregate2.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+             .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+             .groupTuple(by:[0])
+             .map{ item ->
+              def cohort = item[0]
+              def idTumors = item[1].unique()
+              def idNormals = item[2].unique()
+              def fileTumor = item[3].unique()
+              def fileNormal = item[4].unique()
+              
+            [cohort, fileTumor, fileNormal]
+             }
+             .unique()
+             .set{hsMetrics}
   inputHsMetrics = hsMetrics
   inputPairing4.combine(fastPJson4cohortMultiQC)
          .branch { item ->
@@ -3352,10 +3352,10 @@ process SomaticAggregateNetMHC {
 }
 
 inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
-		     .join(inputOutLog4Aggregate, by:[0])
-		     .join(inputArmLev4Aggregate, by:[0])
-		     .join(inputGeneLev4Aggregate, by:[0])
-		     .set{inputSomaticAggregateFacets}
+             .join(inputOutLog4Aggregate, by:[0])
+             .join(inputArmLev4Aggregate, by:[0])
+             .join(inputGeneLev4Aggregate, by:[0])
+             .set{inputSomaticAggregateFacets}
 
 process SomaticAggregateFacets {
 
@@ -3391,7 +3391,7 @@ process SomaticAggregateFacets {
 }
 
 inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
-		       .set{inputSomaticAggregateSv}
+               .set{inputSomaticAggregateSv}
 
 process SomaticAggregateSv {
 
@@ -3434,7 +3434,7 @@ process SomaticAggregateSv {
 }
 
 inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
-			 .set{inputSomaticAggregateLOHHLA}
+             .set{inputSomaticAggregateLOHHLA}
 
 process SomaticAggregateLOHHLA {
 
@@ -3529,7 +3529,7 @@ process GermlineAggregateMaf {
 
 // --- Aggregate per-sample germline data, SVs
 inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
-			.set{inputGermlineAggregateSv}
+            .set{inputGermlineAggregateSv}
 
 process GermlineAggregateSv {
 
@@ -3580,8 +3580,8 @@ inputAlfredIgnoreN.into{inputAlfredIgnoreN; inputAlfredIgnoreN4MultiQC }
 
 inputHsMetrics.into{inputHsMetrics; inputHsMetrics4MultiQC}
 inputAlfredIgnoreY.join(inputAlfredIgnoreN)
-		  .join(inputHsMetrics)
-		  .set{inputQcBamAggregate}
+          .join(inputHsMetrics)
+          .set{inputQcBamAggregate}
 
 process QcBamAggregate {
 
@@ -3612,7 +3612,7 @@ process QcBamAggregate {
 if (pairingQc){
 
 inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
-			     .set{inputQcConpairAggregate}
+                 .set{inputQcConpairAggregate}
 
 process QcConpairAggregate {
 
@@ -3870,21 +3870,21 @@ def touchInputs() {
 def watchMapping(tsvFile, assayType) {
   def index = 1 
   Channel.watchPath( tsvFile, 'create, modify' )
-	 .map{ row -> 
-	      index = 1 
-	      row
-	 }.splitCsv(sep: '\t', header: true)
-	 .map{ row -> 
-	      [index++] + row
-	 }.filter{ row ->
-	      if (chunkSizeLimit > 0 ){
-	      	row[0] < limitInputLines
-	      } else { 1 }
-	 }.map{ row ->
-	      row[1]
-	 }.unique()
-	 .view()
-	 .map{ row ->
+     .map{ row -> 
+          index = 1 
+          row
+     }.splitCsv(sep: '\t', header: true)
+     .map{ row -> 
+          [index++] + row
+     }.filter{ row ->
+          if (chunkSizeLimit > 0 ){
+              row[0] < limitInputLines
+          } else { 1 }
+     }.map{ row ->
+          row[1]
+     }.unique()
+     .view()
+     .map{ row ->
               def idSample = row.SAMPLE
               def target = row.TARGET
               def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: false)
@@ -3905,20 +3905,20 @@ def watchMapping(tsvFile, assayType) {
 def watchBamMapping(tsvFile, assayType){
   def index = 1
   Channel.watchPath( tsvFile, 'create, modify' )
-	 .map{ row -> 
-	      index = 1 
-	      row
-	 }.splitCsv(sep: '\t', header: true)
-	 .map{ row -> 
-	      [index++] + row
-	 }.filter{ row ->
-	      if (chunkSizeLimit > 0 ){
-	      	row[0] < limitInputLines
-	      } else { 1 }
-	 }.map{ row ->
-	      row[1]
-	 }.unique()
-	 .map{ row ->
+     .map{ row -> 
+          index = 1 
+          row
+     }.splitCsv(sep: '\t', header: true)
+     .map{ row -> 
+          [index++] + row
+     }.filter{ row ->
+          if (chunkSizeLimit > 0 ){
+              row[0] < limitInputLines
+          } else { 1 }
+     }.map{ row ->
+          row[1]
+     }.unique()
+     .map{ row ->
               def idSample = row.SAMPLE
               def target = row.TARGET
               def bam = file(row.BAM, checkIfExists: false)
@@ -3937,8 +3937,8 @@ def watchBamMapping(tsvFile, assayType){
 
 def watchPairing(tsvFile){
   Channel.watchPath( tsvFile, 'create, modify' )
-	 .splitCsv(sep: '\t', header: true)
-	 .unique()
+     .splitCsv(sep: '\t', header: true)
+     .unique()
          .map { row ->
               def TUMOR_ID = row.TUMOR_ID
               def NORMAL_ID = row.NORMAL_ID
@@ -3946,25 +3946,25 @@ def watchPairing(tsvFile){
 
               [TUMOR_ID, NORMAL_ID]
          }
-	 .unique()
+     .unique()
 }
 
 def watchAggregateWithPath(tsvFile) {
   def index = 1 
   Channel.watchPath(tsvFile, 'create, modify')
      .map{ row -> 
-	      index = 1 
-	      row
-	 }.splitCsv(sep: '\t', header: true)
-	 .map{ row -> 
-	      [index++] + row
-	 }.filter{ row ->
-	      if (chunkSizeLimit > 0 ){
-	      	row[0] < limitInputLines
-	      } else { 1 }
-	 }.map{ row ->
-	      row[1]
-	 }.unique()
+          index = 1 
+          row
+     }.splitCsv(sep: '\t', header: true)
+     .map{ row -> 
+          [index++] + row
+     }.filter{ row ->
+          if (chunkSizeLimit > 0 ){
+              row[0] < limitInputLines
+          } else { 1 }
+     }.map{ row ->
+          row[1]
+     }.unique()
          .map{ row ->
               def idNormal = row.NORMAL_ID
               def idTumor = row.TUMOR_ID
@@ -3979,13 +3979,13 @@ def watchAggregateWithPath(tsvFile) {
                     -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal, path)
          }
          .transpose()
-	 .unique()
+     .unique()
 }
 
 def watchAggregate(tsvFile) {
   Channel.watchPath(file(runAggregate), 'create, modify')
      .splitCsv(sep: '\t', header: true)
-	 .unique()
+     .unique()
          .map{ row ->
               def idNormal = row.NORMAL_ID
               def idTumor = row.TUMOR_ID
@@ -3999,5 +3999,5 @@ def watchAggregate(tsvFile) {
                     -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal)
          }
          .transpose()
-	 .unique()
+     .unique()
 }
