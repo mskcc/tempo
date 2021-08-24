@@ -39,6 +39,9 @@ include { MergeBamsAndMarkDuplicates } from './modules/process/MergeBamsAndMarkD
 include { RunBQSR }                    from './modules/process/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
 include { CrossValidateSamples }       from './modules/process/SampleValidation'
 include { CreateScatteredIntervals }   from './modules/process/CreateScatteredIntervals'
+include { RunMutect2 }                 from './modules/process/RunMutect2'
+include { SomaticCombineMutect2Vcf }   from './modules/process/SomaticCombineMutect2Vcf' addParams(outDir: outDir)
+include { SomaticDellyCall }           from './modules/process/SomaticDellyCall' addParams(outDir: outDir)
 
 println ''
 
@@ -49,7 +52,7 @@ targetsMap   = loadTargetReferences()
 pairingQc = params.pairing
 
 
-
+ 
 workflow {
   if (params.mapping || params.bamMapping) {
     TempoUtils.checkAssayType(params.assayType)
@@ -503,6 +506,32 @@ workflow {
     .set{ mergedChannelGermline }
   } //end if (runSomatic || runGermline)
 
+
+
+  if (runSomatic){
+    RunMutect2(mergedChannelSomatic, 
+              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+              tools,
+              runSomatic)
+
+    //Formatting the channel to be keyed by idTumor, idNormal, and target
+    // group by groupKey(key, intervalBed.size())
+    RunMutect2.out.forMutect2Combine.groupTuple().set{ forMutect2Combine }
+    SomaticCombineMutect2Vcf(forMutect2Combine, 
+                             Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                             tools,
+                             runSomatic)
+
+    // --- Run Delly
+    Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
+    SomaticDellyCall(svTypes,
+                     bamFiles,
+                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]),
+                     tools,
+                     runSomatic)
+
+
+  }
 
 
 
