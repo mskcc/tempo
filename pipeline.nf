@@ -805,10 +805,6 @@ if (runSomatic || runGermline) {
 targets4Intervals = Channel.from(targetsMap.keySet())
   .map{ targetId ->
     [ targetId, targetsMap."${targetId}"."targetsBedGz", targetsMap."${targetId}"."targetsBedGzTbi" ]
-  }.filter{ targetId, bedgz, bedgztbi ->
-    if ( params.assayType == "genome" ) {
-      targetId == "wgs"
-    } else { targetId != "wgs" }
   }
 
 process CreateScatteredIntervals {
@@ -3843,6 +3839,8 @@ def loadTargetReferences(){
   def result_array = [:]
   new File(params.targets_base).eachDir{ i -> 
     def target_id = i.getBaseName()
+    if (params.assayType == "genome" && target_id != "wgs" ){ return }
+    if (params.assayType != "genome" && target_id == "wgs" ){ return }
     result_array["${target_id}"] = [:]
     for ( j in params.targets.keySet()) { // baitsInterval, targetsInterval, targetsBedGz, targetsBedGzTbi, codingBed
       result_array."${target_id}" << [ ("$j".toString()) : evalTargetPath(j,target_id)]
