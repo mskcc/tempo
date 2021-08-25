@@ -823,12 +823,13 @@ process CreateScatteredIntervals {
 
   script:
   scatterCount = params.scatterCount
+  subdivision_mode = targetId == "wgs" ? "INTERVAL_SUBDIVISION" : "BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW"
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${targets} \
     --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --subdivision-mode ${subdivision_mode} \
     --output $targetId
 
   for i in $targetId/*.interval_list;
@@ -1649,12 +1650,13 @@ process RunPolysolver {
   output:
     set val("placeHolder"), idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput, hlaOutputForLOHHLA, hlaOutputForMetaDataParser
 
-  when: "polysolver" in tools && runSomatic
+  when: "polysolver" in tools && runSomatic && ["GRCh38","GRCh37"].contains(params.genome)
   
   script:
   outputPrefix = "${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
+  genome_ = params.genome == "GRCh37" ? "hg19" : "hg38"
   """
   cp /home/polysolver/scripts/shell_call_hla_type .
   
@@ -1664,7 +1666,7 @@ process RunPolysolver {
     ${bamNormal} \
     Unknown \
     1 \
-    hg19 \
+    ${genome_} \
     STDFQ \
     0 \
     ${outputDir}
@@ -3837,6 +3839,8 @@ def loadTargetReferences(){
   def result_array = [:]
   new File(params.targets_base).eachDir{ i -> 
     def target_id = i.getBaseName()
+    if (params.assayType == "genome" && target_id != "wgs" ){ return }
+    if (params.assayType != "genome" && target_id == "wgs" ){ return }
     result_array["${target_id}"] = [:]
     for ( j in params.targets.keySet()) { // baitsInterval, targetsInterval, targetsBedGz, targetsBedGzTbi, codingBed
       result_array."${target_id}" << [ ("$j".toString()) : evalTargetPath(j,target_id)]
