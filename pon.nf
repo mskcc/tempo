@@ -110,13 +110,26 @@ process FilterGermlineStrelka2 {
 	"""
 	bcftools filter \\
     --include 'FORMAT/AD[0:1]>1' \\
-    variants.vcf.gz | \\
+    --output-type v \\
+    --output intermediate.vcf \\
+    variants.vcf.gz 
+
+    sed -i -e 's/ID=RU,Number=1/ID=RU,Number=A/' \\
+    -e 's/ID=AD,Number=./ID=AD,Number=R/' \\
+    -e 's/ADR,Number=./ADR,Number=R/g' \\
+    -e 's/ADF,Number=./ADF,Number=R/g' \\
+    -e 's/PL,Number=R/PL,Number=G/g' intermediate.vcf
+
+    bgzip -c intermediate.vcf > intermediate.vcf.gz
+    tabix -p vcf intermediate.vcf.gz
+
     bcftools norm \\
     --fasta-ref ${genomeFile} \\
     --check-ref s \\
     --multiallelics -both \\
     --output-type z \\
-    --output ${idNormal}.strelka2.vcf.gz
+    --output ${idNormal}.strelka2.vcf.gz \\
+    intermediate.vcf.gz
 
 	tabix --preset vcf ${idNormal}.strelka2.vcf.gz
 	"""
@@ -339,8 +352,6 @@ combinedVcf
 process generatePoN {
 	tag {target}
 
-	publishDir "${outDir}/pon/panel/${target}", mode: params.publishDirMode
-	
 	input:
 	set target, file(vcfFiltered), file(vcfFilteredTbi) from ponInputs
 
@@ -364,6 +375,124 @@ process generatePoN {
 	tabix --preset vcf pon_out/pon.vcf.gz
 	"""
 
+}
+
+process annotatePoNvcf {
+  tag {target}
+  container = "cmopipeline/bcftools-vt:1.2.2"
+
+  publishDir "${outDir}/pon/panel/${target}", mode: params.publishDirMode
+
+  input:
+  set target, file(pon), file(ponTbi) from ponOutput
+  set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
+      referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,
+      referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex
+    ])
+  set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
+    ])
+  set file(repeatMasker), file(repeatMaskerIndex), file(mapabilityBlacklist), file(mapabilityBlacklistIndex) from Channel.value([
+      referenceMap.repeatMasker, referenceMap.repeatMaskerIndex,
+      referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex
+    ])
+
+  output:
+  set target, file("pon.gnomad.vcf.gz"), file("pon.gnomad.vcf.gz.tbi") into annotatedPonVcf
+
+  script:
+  gnomad = gnomadWgsVcf
+  if (params.assayType == 'genome') {
+    gnomad = gnomadWgsVcf
+  }
+  else if (params.assayType == 'exome') {
+    gnomad = gnomadWesVcf
+  }
+  """
+  echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
+  echo -e "##INFO=<ID=RepeatMasker,Number=1,Type=String,Description=\"RepeatMasker\">" > vcf.rm.header
+
+  bcftools annotate \\
+    --annotations ${gnomad} \\
+    --columns INFO \\
+    ${pon} | \\
+  bcftools sort | \\
+  bcftools annotate \\
+    --header-lines vcf.map.header \\
+    --annotations ${mapabilityBlacklist} \\
+    --columns CHROM,FROM,TO,EncodeDacMapability | \\
+  bcftools annotate \\
+    --header-lines vcf.rm.header \\
+    --annotations ${repeatMasker} \\
+    --columns CHROM,FROM,TO,RepeatMasker | \\
+  bcftools filter \\
+    --exclude \"${params.germlineVariant.gnomadAf}\" \\
+    --output-type z \\
+    --output pon.gnomad.vcf.gz
+
+  tabix -p vcf pon.gnomad.vcf.gz
+
+  """
+}
+
+process ponVcf2ponMaf {
+  tag {target}
+  container = "cmopipeline/vcf2maf:vep88_1.2.4"
+
+  publishDir "${outDir}/pon/panel/${target}", mode: params.publishDirMode, pattern: "*.gnomad*.maf"
+
+  input:
+  set target, file(pon), file(ponTbi) from annotatedPonVcf
+  set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
+      referenceMap.vepCache, referenceMap.isoforms
+    ])
+
+  output:
+  file("pon.gnomad.oncokb.maf") into annotatedPonMaf
+  file("pon.gnomad.maf") into annotatedPonMafOut
+
+  script:
+  if (target == 'wgs') {
+    infoCols = "MuTect2,EncodeDacMapability,RepeatMasker,gnomAD_FILTER,AC,AF,AC_nfe_seu,AF_nfe_seu,AC_afr,AF_afr,AC_nfe_onf,AF_nfe_onf,AC_amr,AF_amr,AC_eas,AF_eas,AC_nfe_nwe,AF_nfe_nwe,AC_nfe_est,AF_nfe_est,AC_nfe,AF_nfe,AC_fin,AF_fin,AC_asj,AF_asj,AC_oth,AF_oth,AC_popmax,AN_popmax,AF_popmax"
+  }
+  else {
+    infoCols = "MuTect2,EncodeDacMapability,RepeatMasker,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
+  }
+  // vcf2maf does not work with multi-sample vcfs. work-around from: https://www.biostars.org/p/108112/#108816
+  """
+  vcf-query --list-columns ${pon} > sample_ids
+  mkdir vcf2maf
+  cat sample_ids | while read sample_id ; do
+    vcf-subset --exclude-ref --columns \$sample_id ${pon} > vcf2maf/\$sample_id.vcf
+    perl /opt/vcf2maf.pl \\
+      --maf-center MSKCC-CMO \\
+      --vep-path /usr/bin/vep \\
+      --vep-data ${vepCache} \\
+      --vep-forks 4 \\
+      --ref-fasta ${genomeFile} \\
+      --custom-enst ${isoforms} \\
+      --filter-vcf 0 \\
+      --retain-info ${infoCols} \\
+      --input-vcf vcf2maf/\$sample_id.vcf \\
+      --output-maf vcf2maf/\$sample_id.maf \\
+      --normal-id \$sample_id
+
+    Rscript --no-init-file /usr/bin/filter-germline-maf.R \\
+      --normal-depth ${params.germlineVariant.normalDepth} \\
+      --normal-vaf ${params.germlineVariant.normalVaf} \\
+      --maf-file vcf2maf/\$sample_id.maf \\
+      --output-prefix vcf2maf/\$sample_id.custom-filter
+  done
+
+  grep -h ^Hugo vcf2maf/*custom-filter.unfiltered.maf | head -n1 > pon.gnomad.maf
+  grep -hEv "^#|^Hugo" vcf2maf/*custom-filter.unfiltered.maf >> pon.gnomad.maf
+
+  python /usr/bin/oncokb_annotator/MafAnnotator.py \\
+    -i pon.gnomad.maf \\
+    -o pon.gnomad.oncokb.maf
+
+  """  
 }
 
 def checkParamReturnFile(item) {
