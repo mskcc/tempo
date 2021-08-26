@@ -14,12 +14,13 @@ process CreateScatteredIntervals {
 
   script:
   scatterCount = params.scatterCount
+  subdivision_mode = targetId == "wgs" ? "INTERVAL_SUBDIVISION" : "BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW"
   """
   gatk SplitIntervals \
     --reference ${genomeFile} \
     --intervals ${targets} \
     --scatter-count ${scatterCount} \
-    --subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
+    --subdivision-mode ${subdivision_mode} \
     --output $targetId
 
   for i in $targetId/*.interval_list;
