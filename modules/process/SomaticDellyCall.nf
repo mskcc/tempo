@@ -13,7 +13,7 @@ process SomaticDellyCall {
     val(runSomatic)
 
   output:
-    tuple val(idTumor), val(idNormal), val(target), path("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), path("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi"), emit: dellyFilter
+    tuple val(idTumor), val(idNormal), val(target), path("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), path("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi"), emit: dellyFilter4Combine
     tuple path("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), path("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi"), emit: dellyOutput
 
   when: "delly" in tools && runSomatic

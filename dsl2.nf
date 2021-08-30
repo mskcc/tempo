@@ -42,6 +42,10 @@ include { CreateScatteredIntervals }   from './modules/process/CreateScatteredIn
 include { RunMutect2 }                 from './modules/process/RunMutect2'
 include { SomaticCombineMutect2Vcf }   from './modules/process/SomaticCombineMutect2Vcf' addParams(outDir: outDir)
 include { SomaticDellyCall }           from './modules/process/SomaticDellyCall' addParams(outDir: outDir)
+include { SomaticRunManta }            from './modules/process/SomaticRunManta' addParams(outDir: outDir)
+include { SomaticMergeDellyAndManta }  from './modules/process/SomaticMergeDellyAndManta' addParams(outDir: outDir)
+include { SomaticRunStrelka2 }         from './modules/process/SomaticRunStrelka2' addParams(outDir: outDir)
+include { SomaticCombineChannel }      from './modules/process/SomaticCombineChannel' addParams(outDir: outDir)
 
 println ''
 
@@ -446,8 +450,14 @@ workflow {
   }
 
   if (runSomatic || runGermline) {
-  // GATK SplitIntervals, CreateScatteredIntervals
-
+    //This is here to address a synchronization issue in which the targets4Intervals command can try to run
+    //before targetsMap is properly set.  
+    while(targetsMap.keySet() == [] || targetsMap.keySet() == null)
+    {
+      targetsMap   = loadTargetReferences()
+      sleep(10)
+    }
+    //println targetsMap.keySet()
     targets4Intervals = Channel.from(targetsMap.keySet())
       .map{ targetId ->
         [ targetId, targetsMap."${targetId}"."targetsBedGz", targetsMap."${targetId}"."targetsBedGzTbi" ]
@@ -529,6 +539,45 @@ workflow {
                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]),
                      tools,
                      runSomatic)
+
+
+    SomaticRunManta(bamFiles, 
+                  Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+                  Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]),
+                  tools,
+                  runSomatic)
+
+
+      // Put manta output and delly output into the same channel so they can be processed together in the group key
+      // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+      SomaticDellyCall.out.dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(SomaticRunManta.out.manta4Combine, by: [0,1,2]).set{ dellyMantaCombineChannel }
+
+      // --- Process Delly and Manta VCFs 
+      // Merge VCFs, Delly and Manta
+      SomaticMergeDellyAndManta(dellyMantaCombineChannel,
+                                tools,
+                                runSomatic)
+
+      // --- Run Strelka2
+      bamFiles.combine(SomaticRunManta.out.mantaToStrelka, by: [0, 1, 2])
+          .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
+                [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+          }.set{ input4Strelka }
+
+      SomaticRunStrelka2(input4Strelka,
+                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                         tools,
+                         runSomatic)
+
+      SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(SomaticRunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
+
+      SomaticCombineChannel(mutectStrelkaChannel,
+                            Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+                            Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
+                            Channel.value([referenceMap.exomePoN, referenceMap.wgsPoN,referenceMap.exomePoNIndex, referenceMap.wgsPoNIndex,]),
+                            Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
+                            tools,
+                            runSomatic)
 
 
   }
