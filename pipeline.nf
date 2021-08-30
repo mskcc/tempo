@@ -1112,15 +1112,19 @@ process SomaticMergeDellyAndManta {
   mergesvvcf \\
     -n -m 1 \\
     -l delly,manta \\
-    -o ${outputPrefix}.delly.manta.vcf \\
+    -o ${outputPrefix}.delly.manta.raw.vcf \\
     -f -d -s -v \\
     ${outputPrefix}.delly.vcf.gz ${mantaFile} 
+
+  cat ${outputPrefix}.delly.manta.raw.vcf | \\
+    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' \\
+    > ${outputPrefix}.delly.manta.clean.vcf
 
   bcftools view \\
     --samples ${idTumor},${idNormal} \\
     --output-type z \\
     --output-file ${outputPrefix}.delly.manta.vcf.gz \\
-    ${outputPrefix}.delly.manta.vcf
+    ${outputPrefix}.delly.manta.clean.vcf
 
   tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz 
   """
@@ -1240,15 +1244,9 @@ process SomaticSVVcf2Bedpe {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   """
-  headerline=\$(zgrep -n "^#CHROM" ${vcfFile} | cut -f 1 -d:)
-  zcat ${vcfFile} | head -n \$headerline > ${outputPrefix}.clean.vcf
-  zcat ${vcfFile} \\
-    | tail -n "+\$headerline" | grep -v "^#" \\
-    | grep -P ";END=|\\tEND=" || true >> ${outputPrefix}.clean.vcf
-
   svtools vcftobedpe \\
-    -i ${outputPrefix}.clean.vcf \\
-    -o ${outputPrefix}.combinedcallers.bedpe \\
+    -i ${vcfFile} \\
+    -o ${outputPrefix}.combined.bedpe \\
     -t ${outputPrefix}_tmp
   if [ ! -s ${outputPrefix}.combined.bedpe ] ; then 
     echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\t${idNormal}\\t${idTumor}" >> ${outputPrefix}.combined.bedpe
@@ -2620,14 +2618,18 @@ process GermlineMergeDellyAndManta {
   mergesvvcf \\
     -n -m 1 \\
     -l delly,manta \\
-    -o ${idNormal}.delly.manta.vcf \\
+    -o ${idNormal}.delly.manta.raw.vcf \\
     -f -d -s -v \\
     ${idNormal}.delly.vcf.gz ${mantaVcf}
+
+  cat ${idNormal}.delly.manta.raw.vcf | \\
+    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' \\
+    > ${idNormal}.delly.manta.clean.vcf
 
   bcftools view \\
     --output-type z \\
     --output-file ${idNormal}.delly.manta.vcf.gz \\
-    ${idNormal}.delly.manta.vcf
+    ${idNormal}.delly.manta.clean.vcf
 
   tabix --preset vcf ${idNormal}.delly.manta.vcf.gz 
   """
@@ -2649,14 +2651,8 @@ process GermlineSVVcf2Bedpe {
   script:
   outputPrefix = "${idNormal}"
   """
-  headerline=\$(zgrep -n "^#CHROM" ${vcfFile} | cut -f 1 -d:)
-  zcat ${vcfFile} | head -n \$headerline > ${outputPrefix}.clean.vcf
-  zcat ${vcfFile} \\
-    | tail -n "+\$headerline" | grep -v "^#" \\
-    | grep -P ";END=|\\tEND=" || true >> ${outputPrefix}.clean.vcf
-
   svtools vcftobedpe \\
-    -i ${outputPrefix}.clean.vcf \\
+    -i ${vcfFile} \\
     -o ${outputPrefix}.combined.bedpe \\
     -t ${outputPrefix}_tmp
 
