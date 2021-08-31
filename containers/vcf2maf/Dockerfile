@@ -145,3 +145,7 @@ COPY filter-somatic-maf.R /usr/bin
 COPY filter-germline-maf.R /usr/bin
 RUN chmod 755 /usr/bin/filter-somatic-maf.R
 RUN chmod 755 /usr/bin/filter-germline-maf.R
+
+# Revert plyr/dplyr versions for compatibility with annotateMaf package
+RUN R -e "install.packages('remotes')"
+RUN R -e "require(remotes) ; packages <- c('plyr','dplyr') ; versions <- c('1.8.4', '0.8.3') ; for (i in 1:length(packages)){ install_version(packages[i], version = versions[i], repos = 'http://cran.us.r-project.org') }"
