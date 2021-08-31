@@ -1627,7 +1627,7 @@ process HRDetect {
 
   input:
     set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) from input4HRDtect
-    file(HRDetect_script) from Channel.value([workflow.launchDir + "/containers/hrdetect/HRDetect.R"])
+    file(HRDetect_script) from Channel.value([workflow.projectDir + "/containers/hrdetect/HRDetect.R"])
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into HRDetectOutput
