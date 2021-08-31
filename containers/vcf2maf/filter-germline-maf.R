@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
     library(argparse)
 })
 
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 3)
 args = commandArgs(TRUE)
 
 if (is.null(args) | length(args)<1) {
