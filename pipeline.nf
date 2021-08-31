@@ -1627,6 +1627,7 @@ process HRDetect {
 
   input:
     set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) from input4HRDtect
+    file(HRDetect_script) from Channel.value([workflow.launchDir + "/containers/hrdetect/HRDetect.R"])
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.hrdetect.tsv") into HRDetectOutput
@@ -1639,8 +1640,8 @@ process HRDetect {
   genome_version = params.genome == 'GRCh38' ? "hg38" : "hg19"
   """
   echo -e "sample\\tsv\\tmutations\\tcnv" > ${outputPrefix}.tsv
-  echo -e "${outputPrefix}\\t${svFile}\\t${mafFile}\\t${cnvFile}" > ${outputPrefix}.tsv
-  Rscript ${workflow.launchDir}/containers/hrdetect/HRDetect.R ${outputPrefix}.tsv ${genome_version} ${task.cpus}
+  echo -e "${outputPrefix}\\t${svFile}\\t${mafFile}\\t${cnvFile}" >> ${outputPrefix}.tsv
+  Rscript ${HRDetect_script} ${outputPrefix}.tsv ${genome_version} ${task.cpus}
   """
 
 }
