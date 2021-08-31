@@ -1117,8 +1117,8 @@ process SomaticMergeDellyAndManta {
     ${outputPrefix}.delly.vcf.gz ${mantaFile} 
 
   cat ${outputPrefix}.delly.manta.raw.vcf | \\
-    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' \\
-  | bcftools sort
+    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \
+  bcftools sort | \
     > ${outputPrefix}.delly.manta.clean.vcf
 
   bcftools view \\
