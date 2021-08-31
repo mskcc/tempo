@@ -28,7 +28,7 @@ Somatic Analysis
  - SomaticCombineMutect2Vcf --- combine Mutect2 calls, bcftools
  - SomaticDellyCall --- somatic SV calling, Delly
  - SomaticRunManta --- somatic SV calling, Manta
- - SomaticMergeDellyAndManta --- combine Manta and Delly VCFs
+ - Som--- combine Manta and Delly VCFs
  - SomaticRunStrelka2 --- somatic SNV calling, Strelka2, using Manta for small indel calling by default
  - SomaticCombineChannel --- combine and filter VCFs, bcftools
  - SomaticAnnotateMaf --- annotate MAF, vcf2maf
@@ -1118,6 +1118,7 @@ process SomaticMergeDellyAndManta {
 
   cat ${outputPrefix}.delly.manta.raw.vcf | \\
     awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' \\
+  | bcftools sort
     > ${outputPrefix}.delly.manta.clean.vcf
 
   bcftools view \\
