@@ -35,7 +35,7 @@ if(is.na(n_parallel)){n_parallel=1}
 message(paste("========= Genome Version ", genome_version, "=========", sep=" "))
 input.files<-fread(inputTSV, header = T, data.table = T)
 
-sample_names<-input.files$sample[1:5]
+sample_names<-input.files$sample
 
 dir.create("tmp")
 
