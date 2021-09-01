@@ -46,6 +46,16 @@ include { SomaticRunManta }            from './modules/process/SomaticRunManta' 
 include { SomaticMergeDellyAndManta }  from './modules/process/SomaticMergeDellyAndManta' addParams(outDir: outDir)
 include { SomaticRunStrelka2 }         from './modules/process/SomaticRunStrelka2' addParams(outDir: outDir)
 include { SomaticCombineChannel }      from './modules/process/SomaticCombineChannel' addParams(outDir: outDir)
+include { SomaticAnnotateMaf }         from './modules/process/SomaticAnnotateMaf' addParams(outDir: outDir)
+include { RunMutationSignatures }      from './modules/process/RunMutationSignatures'
+include { DoFacets }                   from './modules/process/DoFacets' addParams(outDir: outDir)
+include { DoFacetsPreviewQC }          from './modules/process/DoFacetsPreviewQC' addParams(outDir: outDir)
+include { RunPolysolver }              from './modules/process/RunPolysolver'
+include { RunLOHHLA }                  from './modules/process/RunLOHHLA' addParams(outDir: outDir)
+include { RunNeoantigen }              from './modules/process/RunNeoantigen' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { SomaticFacetsAnnotation }    from './modules/process/SomaticFacetsAnnotation' addParams(outDir: outDir)
+include { RunMsiSensor }               from './modules/process/RunMsiSensor'
+include { MetaDataParser }             from './modules/process/MetaDataParser' addParams(outDir: outDir)
 
 println ''
 
@@ -532,7 +542,6 @@ workflow {
                              tools,
                              runSomatic)
 
-    // --- Run Delly
     Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
     SomaticDellyCall(svTypes,
                      bamFiles,
@@ -548,42 +557,115 @@ workflow {
                   runSomatic)
 
 
-      // Put manta output and delly output into the same channel so they can be processed together in the group key
-      // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-      SomaticDellyCall.out.dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(SomaticRunManta.out.manta4Combine, by: [0,1,2]).set{ dellyMantaCombineChannel }
+    // Put manta output and delly output into the same channel so they can be processed together in the group key
+    // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+    SomaticDellyCall.out.dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(SomaticRunManta.out.manta4Combine, by: [0,1,2]).set{ dellyMantaCombineChannel }
 
-      // --- Process Delly and Manta VCFs 
-      // Merge VCFs, Delly and Manta
-      SomaticMergeDellyAndManta(dellyMantaCombineChannel,
-                                tools,
-                                runSomatic)
+    // --- Process Delly and Manta VCFs 
+    // Merge VCFs, Delly and Manta
+    SomaticMergeDellyAndManta(dellyMantaCombineChannel,
+                              tools,
+                              runSomatic)
 
-      // --- Run Strelka2
-      bamFiles.combine(SomaticRunManta.out.mantaToStrelka, by: [0, 1, 2])
-          .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
-                [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
-          }.set{ input4Strelka }
+    bamFiles.combine(SomaticRunManta.out.mantaToStrelka, by: [0, 1, 2])
+        .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
+              [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+        }.set{ input4Strelka }
 
-      SomaticRunStrelka2(input4Strelka,
-                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                         tools,
-                         runSomatic)
+    SomaticRunStrelka2(input4Strelka,
+                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                        tools,
+                        runSomatic)
 
-      SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(SomaticRunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
+    SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(SomaticRunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
 
-      SomaticCombineChannel(mutectStrelkaChannel,
-                            Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
-                            Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
-                            Channel.value([referenceMap.exomePoN, referenceMap.wgsPoN,referenceMap.exomePoNIndex, referenceMap.wgsPoNIndex,]),
-                            Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
+    SomaticCombineChannel(mutectStrelkaChannel,
+                          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+                          Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
+                          Channel.value([referenceMap.exomePoN, referenceMap.wgsPoN,referenceMap.exomePoNIndex, referenceMap.wgsPoNIndex,]),
+                          Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
+                          tools,
+                          runSomatic)
+
+    SomaticAnnotateMaf(SomaticCombineChannel.out.mutationMergedVcf,
+                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
+                                        referenceMap.vepCache, referenceMap.isoforms
+                                      ]),
+                        tools,
+                        runSomatic
+                      )
+
+    RunMutationSignatures(SomaticAnnotateMaf.out.mafFile, 
+                          tools,
+                          runSomatic)
+
+    DoFacets(bamFiles,
+              Channel.value([referenceMap.facetsVcf]),
+              tools,
+              runSomatic)
+
+    DoFacetsPreviewQC(DoFacets.out.Facets4FacetsPreview,
+                      tools,
+                      runSomatic)
+
+    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{FacetsQC4Aggregate} // idTumor, idNormal, summaryFiles, qcFiles
+    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{FacetsQC4SomaticMultiQC} // idTumor, idNormal, summaryFiles, qcFiles
+    FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
+      ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
+    }.set{FacetsQC4Aggregate}
+
+    RunPolysolver(bams,
+                  tools,
+                  runSomatic)
+
+    bamFiles.combine(DoFacets.out.facetsPurity, by: [0,1,2])
+      .combine(RunPolysolver.out.hlaOutput, by: [1,2])
+      .set{ mergedChannelLOHHLA }
+
+    RunLOHHLA(mergedChannelLOHHLA, 
+              Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat]),
+              tools,
+              runSomatic)
+
+    RunPolysolver.out.hlaOutput.combine(SomaticAnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }
+
+    RunNeoantigen(input4Neoantigen,
+                  Channel.value([referenceMap.neoantigenCDNA, referenceMap.neoantigenCDS]),
+                  tools,
+                  runSomatic)
+
+    DoFacets.out.facetsForMafAnno.combine(RunNeoantigen.out.mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
+
+    SomaticFacetsAnnotation(facetsMafFileSomatic,
                             tools,
                             runSomatic)
 
+    RunMsiSensor(bamFiles,
+                 Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.msiSensorList]),
+                 tools,
+                 runSomatic)
+
+    DoFacets.out.facetsPurity.combine(SomaticFacetsAnnotation.out.maf4MetaDataParser, by: [0,1,2])
+			   .combine(DoFacets.out.FacetsQC4MetaDataParser, by: [0,1,2])
+			   .combine(RunMsiSensor.out.msi4MetaDataParser, by: [0,1,2])
+			   .combine(RunMutationSignatures.out.mutSig4MetaDataParser, by: [0,1,2])
+			   .combine(RunPolysolver.out.hlaOutput, by: [1,2])
+			   .unique()
+         .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
+          [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
+         }.set{ mergedChannelMetaDataParser }
+
+    MetaDataParser(mergedChannelMetaDataParser,
+                   runSomatic)
 
   }
-
-
-
+  else { 
+    if (params.pairing) {
+      inputPairing.map{ idTumor, idNormal -> 
+        ["placeHolder",idTumor, idNormal,"",""]
+      }.set{ FacetsQC4Aggregate }
+    }
+  } //End of 'if somatic'
 
 
 }
