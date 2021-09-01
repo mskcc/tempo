@@ -33,29 +33,29 @@ if (params.watch == true) {
 }
 
 
-include { SplitLanesR1; SplitLanesR2 } from './modules/process/SplitLanes' addParams(wallTimeExitCode: wallTimeExitCode)
-include { AlignReads }                 from './modules/process/AlignReads' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
-include { MergeBamsAndMarkDuplicates } from './modules/process/MergeBamsAndMarkDuplicates' addParams(wallTimeExitCode: wallTimeExitCode)
-include { RunBQSR }                    from './modules/process/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
-include { CrossValidateSamples }       from './modules/process/SampleValidation'
-include { CreateScatteredIntervals }   from './modules/process/CreateScatteredIntervals'
-include { RunMutect2 }                 from './modules/process/RunMutect2'
-include { SomaticCombineMutect2Vcf }   from './modules/process/SomaticCombineMutect2Vcf' addParams(outDir: outDir)
-include { SomaticDellyCall }           from './modules/process/SomaticDellyCall' addParams(outDir: outDir)
-include { SomaticRunManta }            from './modules/process/SomaticRunManta' addParams(outDir: outDir)
-include { SomaticMergeDellyAndManta }  from './modules/process/SomaticMergeDellyAndManta' addParams(outDir: outDir)
-include { SomaticRunStrelka2 }         from './modules/process/SomaticRunStrelka2' addParams(outDir: outDir)
-include { SomaticCombineChannel }      from './modules/process/SomaticCombineChannel' addParams(outDir: outDir)
-include { SomaticAnnotateMaf }         from './modules/process/SomaticAnnotateMaf' addParams(outDir: outDir)
-include { RunMutationSignatures }      from './modules/process/RunMutationSignatures'
-include { DoFacets }                   from './modules/process/DoFacets' addParams(outDir: outDir)
-include { DoFacetsPreviewQC }          from './modules/process/DoFacetsPreviewQC' addParams(outDir: outDir)
-include { RunPolysolver }              from './modules/process/RunPolysolver'
-include { RunLOHHLA }                  from './modules/process/RunLOHHLA' addParams(outDir: outDir)
-include { RunNeoantigen }              from './modules/process/RunNeoantigen' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
-include { SomaticFacetsAnnotation }    from './modules/process/SomaticFacetsAnnotation' addParams(outDir: outDir)
-include { RunMsiSensor }               from './modules/process/RunMsiSensor'
-include { MetaDataParser }             from './modules/process/MetaDataParser' addParams(outDir: outDir)
+include { SplitLanesR1; SplitLanesR2 } from './modules/process/Alignment/SplitLanes' addParams(wallTimeExitCode: wallTimeExitCode)
+include { AlignReads }                 from './modules/process/Alignment/AlignReads' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { MergeBamsAndMarkDuplicates } from './modules/process/Alignment/MergeBamsAndMarkDuplicates' addParams(wallTimeExitCode: wallTimeExitCode)
+include { RunBQSR }                    from './modules/process/Alignment/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { CrossValidateSamples }       from './modules/process/QC/SampleValidation'
+include { CreateScatteredIntervals }   from './modules/process/Somatic/CreateScatteredIntervals'
+include { RunMutect2 }                 from './modules/process/Somatic/RunMutect2'
+include { SomaticCombineMutect2Vcf }   from './modules/process/Somatic/SomaticCombineMutect2Vcf' addParams(outDir: outDir)
+include { SomaticDellyCall }           from './modules/process/Somatic/SomaticDellyCall' addParams(outDir: outDir)
+include { SomaticRunManta }            from './modules/process/Somatic/SomaticRunManta' addParams(outDir: outDir)
+include { SomaticMergeDellyAndManta }  from './modules/process/Somatic/SomaticMergeDellyAndManta' addParams(outDir: outDir)
+include { SomaticRunStrelka2 }         from './modules/process/Somatic/SomaticRunStrelka2' addParams(outDir: outDir)
+include { SomaticCombineChannel }      from './modules/process/Somatic/SomaticCombineChannel' addParams(outDir: outDir)
+include { SomaticAnnotateMaf }         from './modules/process/Somatic/SomaticAnnotateMaf' addParams(outDir: outDir)
+include { RunMutationSignatures }      from './modules/process/Somatic/RunMutationSignatures'
+include { DoFacets }                   from './modules/process/Somatic/DoFacets' addParams(outDir: outDir)
+include { DoFacetsPreviewQC }          from './modules/process/Somatic/DoFacetsPreviewQC' addParams(outDir: outDir)
+include { RunPolysolver }              from './modules/process/Somatic/RunPolysolver'
+include { RunLOHHLA }                  from './modules/process/Somatic/RunLOHHLA' addParams(outDir: outDir)
+include { RunNeoantigen }              from './modules/process/Somatic/RunNeoantigen' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { SomaticFacetsAnnotation }    from './modules/process/Somatic/SomaticFacetsAnnotation' addParams(outDir: outDir)
+include { RunMsiSensor }               from './modules/process/Somatic/RunMsiSensor'
+include { MetaDataParser }             from './modules/process/Somatic/MetaDataParser' addParams(outDir: outDir)
 
 println ''
 
