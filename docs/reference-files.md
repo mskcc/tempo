@@ -15,9 +15,10 @@ Part of the [GATK bundle](https://software.broadinstitute.org/gatk/download/bund
 BED files that specify the regions of the genome to consider for variant calling are specified in the [input files](running-the-pipeline.md#input-files).
 
 ### Exome Capture Platforms
-For exomes, use BED file corresponding to the platform used for target capture. Currently, Tempo supports:
+For exomes, use BED file corresponding to the platform used for target capture. Currently, Juno reference files are configured to support:
 - __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent.
 - __IDT_Exome__: xGen Exome Research Panel v1.0 from IDT.
+- __IDT_Exome_v2__: xGen Exome Research Panel v2.0 from IDT.
 
 ::: tip Note
 Contact us if you are interested in support for other sequencing assays or capture kits.
@@ -78,6 +79,7 @@ You can have as many targets as you like. Under each folder are the 6 target fil
 In this case, the files are symbolically linked to the original. Whether soft links or hard links are used, the files in this folder should strictly match the names `coding.bed`, `baits.interval_list`, `targets.interval_list`, `targets.bed`, `targets.bed.gz`, `targets.bed.gz.tbi`. 
 
 When running Tempo, use the parameter `--targets_base <targets_base folder>` so that Nextflow will know where to find your target files. 
+When running with `--assayType genome`, only the `<targets_base>/wgs` target folder will be available. Conversely, the `<targets_base>/wgs` target folder will not be available when `--assayType genome` is not set.
 
 ## RepeatMasker and Mappability Blacklist
 BED files with genomic repeat and mappability information are used to annotate the VCFs with somatic and germline SNV/indels. These data are from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html), and the files are retrieved from the [UCSC Genome Browser](https://genome.ucsc.edu) and parsed as such:
