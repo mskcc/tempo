@@ -32,12 +32,14 @@ if (params.watch == true) {
   touchInputs(chunkSizeLimit, startEpoch, epochMap)
 }
 
-
+//Alignment
 include { SplitLanesR1; SplitLanesR2 } from './modules/process/Alignment/SplitLanes' addParams(wallTimeExitCode: wallTimeExitCode)
 include { AlignReads }                 from './modules/process/Alignment/AlignReads' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
 include { MergeBamsAndMarkDuplicates } from './modules/process/Alignment/MergeBamsAndMarkDuplicates' addParams(wallTimeExitCode: wallTimeExitCode)
 include { RunBQSR }                    from './modules/process/Alignment/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
 include { CrossValidateSamples }       from './modules/process/QC/SampleValidation'
+
+//Somatic
 include { CreateScatteredIntervals }   from './modules/process/Somatic/CreateScatteredIntervals'
 include { RunMutect2 }                 from './modules/process/Somatic/RunMutect2'
 include { SomaticCombineMutect2Vcf }   from './modules/process/Somatic/SomaticCombineMutect2Vcf' addParams(outDir: outDir)
@@ -56,6 +58,14 @@ include { RunNeoantigen }              from './modules/process/Somatic/RunNeoant
 include { SomaticFacetsAnnotation }    from './modules/process/Somatic/SomaticFacetsAnnotation' addParams(outDir: outDir)
 include { RunMsiSensor }               from './modules/process/Somatic/RunMsiSensor'
 include { MetaDataParser }             from './modules/process/Somatic/MetaDataParser' addParams(outDir: outDir)
+
+//Germline
+include { GermlineRunHaplotypecaller }        from './modules/process/Germline/GermlineRunHaplotypecaller'
+include { GermlineCombineHaplotypecallerVcf } from './modules/process/Germline/GermlineCombineHaplotypecallerVcf' addParams(outDir: outDir)
+include { GermlineRunStrelka2 }               from './modules/process/Germline/GermlineRunStrelka2' addParams(outDir: outDir)
+include { GermlineCombineChannel }            from './modules/process/Germline/GermlineCombineChannel' addParams(outDir: outDir)
+
+
 
 println ''
 
@@ -666,6 +676,49 @@ workflow {
       }.set{ FacetsQC4Aggregate }
     }
   } //End of 'if somatic'
+
+
+
+/*
+================================================================================
+=                                GERMLINE PIPELINE                              =
+================================================================================
+*/
+if (runGermline){
+  GermlineRunHaplotypecaller(mergedChannelGermline,
+                             Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                             tools,
+                             runGermline)
+
+  GermlineRunHaplotypecaller.out.haplotypecaller4Combine.groupTuple().set{ haplotypecaller4Combine }
+
+  GermlineCombineHaplotypecallerVcf(haplotypecaller4Combine,
+                                    Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                                    tools,
+                                    runGermline)
+
+  bams.map{ idNormal, target, bamNormal, baiNormal -> 
+            [idNormal, target, bamNormal, baiNormal, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+          }.set{bamsForStrelkaGermline}
+
+  GermlineRunStrelka2(bamsForStrelkaGermline, 
+                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                      tools,
+                      runGermline)
+
+  // Join HaploTypeCaller and Strelka outputs, bcftools.
+  GermlineCombineHaplotypecallerVcf.out.haplotypecallerCombinedVcfOutput.combine(GermlineRunStrelka2.out.strelkaOutputGermline, by: [0,1,2])
+				  .combine(bamsTumor, by: [1,2])
+				  .set{ mergedChannelVcfCombine }
+
+  GermlineCombineChannel(mergedChannelVcfCombine,
+                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex,]),
+                         Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
+                         Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex, referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
+                         tools,
+                         runGermline)
+
+}
 
 
 }
