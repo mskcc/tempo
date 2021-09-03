@@ -64,13 +64,17 @@ include { GermlineRunHaplotypecaller }        from './modules/process/Germline/G
 include { GermlineCombineHaplotypecallerVcf } from './modules/process/Germline/GermlineCombineHaplotypecallerVcf' addParams(outDir: outDir)
 include { GermlineRunStrelka2 }               from './modules/process/Germline/GermlineRunStrelka2' addParams(outDir: outDir)
 include { GermlineCombineChannel }            from './modules/process/Germline/GermlineCombineChannel' addParams(outDir: outDir)
-
+include { GermlineAnnotateMaf }               from './modules/process/Germline/GermlineAnnotateMaf' addParams(outDir: outDir)
+include { GermlineFacetsAnnotation }          from './modules/process/Germline/GermlineFacetsAnnotation' addParams(outDir: outDir)
+include { GermlineDellyCall }                 from './modules/process/Germline/GermlineDellyCall' addParams(outDir: outDir)
+include { GermlineRunManta }                  from './modules/process/Germline/GermlineRunManta' addParams(outDir: outDir)
+include { GermlineMergeDellyAndManta }        from './modules/process/Germline/GermlineMergeDellyAndManta' addParams(outDir: outDir)
 
 
 println ''
 
-referenceMap = defineReferenceMap()
-targetsMap   = loadTargetReferences()
+//referenceMap = defineReferenceMap()
+//targetsMap   = loadTargetReferences()
 
 
 pairingQc = params.pairing
@@ -78,6 +82,9 @@ pairingQc = params.pairing
 
  
 workflow {
+  referenceMap = defineReferenceMap()
+  targetsMap   = loadTargetReferences()
+
   if (params.mapping || params.bamMapping) {
     TempoUtils.checkAssayType(params.assayType)
     if (params.watch == false) {
@@ -470,15 +477,13 @@ workflow {
   }
 
   if (runSomatic || runGermline) {
-    //This is here to address a synchronization issue in which the targets4Intervals command can try to run
-    //before targetsMap is properly set.  
-    while(targetsMap.keySet() == [] || targetsMap.keySet() == null)
-    {
-      targetsMap   = loadTargetReferences()
-      sleep(10)
-    }
-    //println targetsMap.keySet()
+
     targets4Intervals = Channel.from(targetsMap.keySet())
+      .map{ targetId ->
+        [ targetId, targetsMap[targetId]."targetsBedGz", targetsMap[targetId]."targetsBedGzTbi" ]
+      }
+
+  targets4Intervals = Channel.from(targetsMap.keySet())
       .map{ targetId ->
         [ targetId, targetsMap."${targetId}"."targetsBedGz", targetsMap."${targetId}"."targetsBedGzTbi" ]
       }
@@ -675,8 +680,7 @@ workflow {
         ["placeHolder",idTumor, idNormal,"",""]
       }.set{ FacetsQC4Aggregate }
     }
-  } //End of 'if somatic'
-
+  } //End of 'if runSomatic'
 
 
 /*
@@ -684,41 +688,77 @@ workflow {
 =                                GERMLINE PIPELINE                              =
 ================================================================================
 */
-if (runGermline){
-  GermlineRunHaplotypecaller(mergedChannelGermline,
-                             Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+  if (runGermline){
+    GermlineRunHaplotypecaller(mergedChannelGermline,
+                              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                              tools,
+                              runGermline)
+
+    GermlineRunHaplotypecaller.out.haplotypecaller4Combine.groupTuple().set{ haplotypecaller4Combine }
+
+    GermlineCombineHaplotypecallerVcf(haplotypecaller4Combine,
+                                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                                      tools,
+                                      runGermline)
+
+    bams.map{ idNormal, target, bamNormal, baiNormal -> 
+              [idNormal, target, bamNormal, baiNormal, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+            }.set{bamsForStrelkaGermline}
+
+    GermlineRunStrelka2(bamsForStrelkaGermline, 
+                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                        tools,
+                        runGermline)
+
+    // Join HaploTypeCaller and Strelka outputs, bcftools.
+    GermlineCombineHaplotypecallerVcf.out.haplotypecallerCombinedVcfOutput.combine(GermlineRunStrelka2.out.strelkaOutputGermline, by: [0,1,2])
+            .combine(bamsTumor, by: [1,2])
+            .set{ mergedChannelVcfCombine }
+
+    GermlineCombineChannel(mergedChannelVcfCombine,
+                          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex,]),
+                          Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
+                          Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex, referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
+                          tools,
+                          runGermline)
+
+    GermlineAnnotateMaf(GermlineCombineChannel.out.mutationMergedGermline,
+                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
+                                       referenceMap.vepCache, referenceMap.isoforms]),
+                                       tools,
+                                       runGermline)
+    
+    DoFacets.out.facetsForMafAnno.combine(GermlineAnnotateMaf.out.mafFileGermline, by: [0,1,2])
+            .set{ facetsMafFileGermline }
+
+    GermlineFacetsAnnotation(facetsMafFileGermline,
                              tools,
                              runGermline)
 
-  GermlineRunHaplotypecaller.out.haplotypecaller4Combine.groupTuple().set{ haplotypecaller4Combine }
+    Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
 
-  GermlineCombineHaplotypecallerVcf(haplotypecaller4Combine,
-                                    Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                                    tools,
-                                    runGermline)
-
-  bams.map{ idNormal, target, bamNormal, baiNormal -> 
-            [idNormal, target, bamNormal, baiNormal, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
-          }.set{bamsForStrelkaGermline}
-
-  GermlineRunStrelka2(bamsForStrelkaGermline, 
-                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+    GermlineDellyCall(svTypesGermline,
+                      bams,
+                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]),
                       tools,
                       runGermline)
 
-  // Join HaploTypeCaller and Strelka outputs, bcftools.
-  GermlineCombineHaplotypecallerVcf.out.haplotypecallerCombinedVcfOutput.combine(GermlineRunStrelka2.out.strelkaOutputGermline, by: [0,1,2])
-				  .combine(bamsTumor, by: [1,2])
-				  .set{ mergedChannelVcfCombine }
+    GermlineRunManta(bams,
+                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+                     Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]),
+                     tools,
+                     runGermline)
 
-  GermlineCombineChannel(mergedChannelVcfCombine,
-                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex,]),
-                         Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
-                         Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex, referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
-                         tools,
-                         runGermline)
+    GermlineDellyCall.out.dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5)
+            .combine(GermlineRunManta.out.mantaOutputGermline, by: [0,1])
+            .set{ dellyMantaChannelGermline }
 
-}
+    GermlineMergeDellyAndManta(dellyMantaChannelGermline,
+                               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                               tools,
+                               runGermline)
+
+  } //End of 'if runGermline'
 
 
 }
