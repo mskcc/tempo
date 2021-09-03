@@ -1,8 +1,6 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl = 2
 
-
-
 if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
   println 'ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)'
   exit 1
@@ -70,17 +68,21 @@ include { GermlineDellyCall }                 from './modules/process/Germline/G
 include { GermlineRunManta }                  from './modules/process/Germline/GermlineRunManta' addParams(outDir: outDir)
 include { GermlineMergeDellyAndManta }        from './modules/process/Germline/GermlineMergeDellyAndManta' addParams(outDir: outDir)
 
+//QC
+include { QcCollectHsMetrics }                 from './modules/process/QC/QcCollectHsMetrics' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { QcQualimap }                         from './modules/process/QC/QcQualimap' addParams(outDir: outDir)
+include { QcAlfred }                           from './modules/process/QC/QcAlfred' addParams(outDir: outDir)
+include { SampleRunMultiQC }                   from './modules/process/QC/SampleRunMultiQC'
+include { QcPileup }                           from './modules/process/QC/QcPileup'
+include { QcConpair }                          from './modules/process/QC/QcConpair'
+include { SomaticRunMultiQC }                  from './modules/process/QC/SomaticRunMultiQC'
+include { QcConpairAll }                       from './modules/process/QC/QcConpairAll'
 
 println ''
-
-//referenceMap = defineReferenceMap()
-//targetsMap   = loadTargetReferences()
-
 
 pairingQc = params.pairing
 
 
- 
 workflow {
   referenceMap = defineReferenceMap()
   targetsMap   = loadTargetReferences()
@@ -623,8 +625,8 @@ workflow {
                       tools,
                       runSomatic)
 
-    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{FacetsQC4Aggregate} // idTumor, idNormal, summaryFiles, qcFiles
-    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{FacetsQC4SomaticMultiQC} // idTumor, idNormal, summaryFiles, qcFiles
+    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4Aggregate } // idTumor, idNormal, summaryFiles, qcFiles
+    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4SomaticMultiQC } // idTumor, idNormal, summaryFiles, qcFiles
     FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
       ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
     }.set{FacetsQC4Aggregate}
@@ -760,5 +762,134 @@ workflow {
 
   } //End of 'if runGermline'
 
+
+/*
+================================================================================
+=                              Quality Control                                 =
+================================================================================
+*/
+  if (runQC) {
+    RunBQSR.out.bamsBQSR.map{ idSample, target, bam, bai ->
+        [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
+    }.set{bamsBQSR4HsMetrics}
+
+    QcCollectHsMetrics(bamsBQSR4HsMetrics,
+                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                       params.assayType,
+                       runQC)
+
+    if (runQC && params.assayType != "exome"){
+      QcCollectHsMetrics.out.collectHsMetricsOutput
+        .map{ idSample, target, bam, bai, targetList, baitList -> [idSample, ""]}
+        .into{ collectHsMetricsOutput }
+    }
+
+    RunBQSR.out.bamsBQSR
+      .map{ idSample, target, bam, bai -> [ idSample, target, bam, bai, file(targetsMap."$target".targetsBed) ]}
+      .set{ bamsBQSR4Qualimap }
+
+    QcQualimap(bamsBQSR4Qualimap,
+               runQC)
+
+    Channel.from(true, false).set{ ignore_read_groups }
+    RunBQSR.out.bamsBQSR
+      .map{ idSample, target, bam, bai -> 
+        [ idSample, target, bam, bai, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi ]
+      }.set{ bamsBQSR4Alfred }
+
+    QcAlfred(ignore_read_groups, 
+             bamsBQSR4Alfred,
+             Channel.value([referenceMap.genomeFile]),
+             runQC)
+
+    QcAlfred.out.alfredOutput
+      .groupTuple(size:2, by:0)
+      .join(fastPJson4sampleMultiQC, by:0)
+      .join(QcQualimap.out.qualimap4Process, by:0)
+      .join(QcCollectHsMetrics.out.collectHsMetricsOutput, by:0)
+      .set{ sampleMetrics4MultiQC }
+
+
+    SampleRunMultiQC(sampleMetrics4MultiQC, 
+                     Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]))
+
+
+    if (pairingQc) {
+      QcPileup(RunBQSR.out.bamsBQSR,
+               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+               tools,
+               runQC)
+
+
+      QcPileup.out.pileupOutput.combine(inputPairing)
+              .filter { item ->
+                def idSample = item[0]
+                def samplePileup = item[1]
+                def idTumor = item[2]
+                def idNormal = item[3]
+                idSample == idTumor
+              }.map { item ->
+                def idTumor = item[2]
+                def idNormal = item[3]
+                def tumorPileup = item[1]
+                return [ idTumor, idNormal, tumorPileup ]
+              }
+              .unique()
+              .set{ pileupT }
+
+      QcPileup.out.pileupOutput.combine(inputPairing)
+              .filter { item ->
+                def idSample = item[0]
+                def samplePileup = item[1]
+                def idTumor = item[2]
+                def idNormal = item[3]
+                idSample == idNormal
+              }.map { item ->
+                def idTumor = item[2]
+                def idNormal = item[3]
+                def normalPileup = item[1]
+                return [ idTumor, idNormal, normalPileup ]
+              }
+              .unique()
+              .set{ pileupN }
+
+      pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
+
+      QcConpair(pileupConpair,
+                Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                tools,
+                runQC)
+
+      if (runSomatic) {
+        QcConpair.out.conpairOutput
+          .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
+          .join(FacetsQC4SomaticMultiQC, by:[0,1])
+          .set{ somaticMultiQCinput }
+      } else {
+        QcConpair.out.conpairOutput
+          .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles, "", ""]}
+          .set{ somaticMultiQCinput }
+      }
+
+      SomaticRunMultiQC(somaticMultiQCinput,
+                        Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo]))
+
+
+      if(runConpairAll){
+        pileupT.combine(pileupN).unique().set{ pileupConpairAll }
+
+        QcConpairAll(pileupConpairAll,
+                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+                     runConpairAll,
+                     runQC)
+      }
+
+      // -- Run based on QcConpairAll channels or the single QcConpair channels
+      conpairConcord4Aggregate = (!runConpairAll ? QcConpair.out.conpairConcord : QcConpairAll.out.conpairAllConcord)
+      conpairContami4Aggregate = (!runConpairAll ? QcConpair.out.conpairContami : QcConpairAll.out.conpairAllContami)
+
+    } // End of "if (pairingQc)". Doing QcPileup or QcConpair/QcConpairAll only when --pairing [tsv] is given
+
+  } // End of "if (runQc)"
 
 }
