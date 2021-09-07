@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process GermlineCombineHaplotypecallerVcf {
   tag {idNormal}
 

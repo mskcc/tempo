@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process GermlineRunStrelka2 {
   tag {idNormal}
 

@@ -2,10 +2,8 @@ process QcConpairAll {
   tag {idTumor + "@" + idNormal}
 
   input:
-    tuple val(idTumor), val(idNormal_noUse), path(pileupTumor), val(idTumor_noUse), val(idNormal), path(pileupNormal) from pileupConpairAll
-    tuple path(genomeFile), path(genomeIndex), path(genomeDict) from Channel.value([
-      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
-    ])
+    tuple val(idTumor), val(idNormal_noUse), path(pileupTumor), val(idTumor_noUse), val(idNormal), path(pileupNormal)
+    tuple path(genomeFile), path(genomeIndex), path(genomeDict)
     val(runConpairAll)
     val(runQC)
 

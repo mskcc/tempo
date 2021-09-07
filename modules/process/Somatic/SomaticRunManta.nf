@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process SomaticRunManta {
   tag {idTumor + "__" + idNormal}
 

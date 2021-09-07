@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process MetaDataParser {
   tag {idTumor + "__" + idNormal}
  

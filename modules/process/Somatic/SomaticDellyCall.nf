@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process SomaticDellyCall {
   tag {idTumor + "__" + idNormal + '@' + svType}
 

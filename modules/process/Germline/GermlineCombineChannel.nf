@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process GermlineCombineChannel {
   tag {idTumor + "__" + idNormal}
 

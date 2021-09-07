@@ -31,47 +31,47 @@ if (params.watch == true) {
 }
 
 //Alignment
-include { SplitLanesR1; SplitLanesR2 } from './modules/process/Alignment/SplitLanes' addParams(wallTimeExitCode: wallTimeExitCode)
-include { AlignReads }                 from './modules/process/Alignment/AlignReads' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
-include { MergeBamsAndMarkDuplicates } from './modules/process/Alignment/MergeBamsAndMarkDuplicates' addParams(wallTimeExitCode: wallTimeExitCode)
-include { RunBQSR }                    from './modules/process/Alignment/RunBQSR' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
+include { SplitLanesR1; SplitLanesR2 } from './modules/process/Alignment/SplitLanes' 
+include { AlignReads }                 from './modules/process/Alignment/AlignReads'
+include { MergeBamsAndMarkDuplicates } from './modules/process/Alignment/MergeBamsAndMarkDuplicates'
+include { RunBQSR }                    from './modules/process/Alignment/RunBQSR' 
 include { CrossValidateSamples }       from './modules/process/QC/SampleValidation'
 
 //Somatic
 include { CreateScatteredIntervals }   from './modules/process/Somatic/CreateScatteredIntervals'
 include { RunMutect2 }                 from './modules/process/Somatic/RunMutect2'
-include { SomaticCombineMutect2Vcf }   from './modules/process/Somatic/SomaticCombineMutect2Vcf' addParams(outDir: outDir)
-include { SomaticDellyCall }           from './modules/process/Somatic/SomaticDellyCall' addParams(outDir: outDir)
-include { SomaticRunManta }            from './modules/process/Somatic/SomaticRunManta' addParams(outDir: outDir)
-include { SomaticMergeDellyAndManta }  from './modules/process/Somatic/SomaticMergeDellyAndManta' addParams(outDir: outDir)
-include { SomaticRunStrelka2 }         from './modules/process/Somatic/SomaticRunStrelka2' addParams(outDir: outDir)
-include { SomaticCombineChannel }      from './modules/process/Somatic/SomaticCombineChannel' addParams(outDir: outDir)
-include { SomaticAnnotateMaf }         from './modules/process/Somatic/SomaticAnnotateMaf' addParams(outDir: outDir)
+include { SomaticCombineMutect2Vcf }   from './modules/process/Somatic/SomaticCombineMutect2Vcf' 
+include { SomaticDellyCall }           from './modules/process/Somatic/SomaticDellyCall' 
+include { SomaticRunManta }            from './modules/process/Somatic/SomaticRunManta' 
+include { SomaticMergeDellyAndManta }  from './modules/process/Somatic/SomaticMergeDellyAndManta' 
+include { SomaticRunStrelka2 }         from './modules/process/Somatic/SomaticRunStrelka2' 
+include { SomaticCombineChannel }      from './modules/process/Somatic/SomaticCombineChannel' 
+include { SomaticAnnotateMaf }         from './modules/process/Somatic/SomaticAnnotateMaf' 
 include { RunMutationSignatures }      from './modules/process/Somatic/RunMutationSignatures'
-include { DoFacets }                   from './modules/process/Somatic/DoFacets' addParams(outDir: outDir)
-include { DoFacetsPreviewQC }          from './modules/process/Somatic/DoFacetsPreviewQC' addParams(outDir: outDir)
+include { DoFacets }                   from './modules/process/Somatic/DoFacets' 
+include { DoFacetsPreviewQC }          from './modules/process/Somatic/DoFacetsPreviewQC' 
 include { RunPolysolver }              from './modules/process/Somatic/RunPolysolver'
-include { RunLOHHLA }                  from './modules/process/Somatic/RunLOHHLA' addParams(outDir: outDir)
-include { RunNeoantigen }              from './modules/process/Somatic/RunNeoantigen' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
-include { SomaticFacetsAnnotation }    from './modules/process/Somatic/SomaticFacetsAnnotation' addParams(outDir: outDir)
+include { RunLOHHLA }                  from './modules/process/Somatic/RunLOHHLA' 
+include { RunNeoantigen }              from './modules/process/Somatic/RunNeoantigen' 
+include { SomaticFacetsAnnotation }    from './modules/process/Somatic/SomaticFacetsAnnotation' 
 include { RunMsiSensor }               from './modules/process/Somatic/RunMsiSensor'
-include { MetaDataParser }             from './modules/process/Somatic/MetaDataParser' addParams(outDir: outDir)
+include { MetaDataParser }             from './modules/process/Somatic/MetaDataParser' 
 
 //Germline
 include { GermlineRunHaplotypecaller }        from './modules/process/Germline/GermlineRunHaplotypecaller'
-include { GermlineCombineHaplotypecallerVcf } from './modules/process/Germline/GermlineCombineHaplotypecallerVcf' addParams(outDir: outDir)
-include { GermlineRunStrelka2 }               from './modules/process/Germline/GermlineRunStrelka2' addParams(outDir: outDir)
-include { GermlineCombineChannel }            from './modules/process/Germline/GermlineCombineChannel' addParams(outDir: outDir)
-include { GermlineAnnotateMaf }               from './modules/process/Germline/GermlineAnnotateMaf' addParams(outDir: outDir)
-include { GermlineFacetsAnnotation }          from './modules/process/Germline/GermlineFacetsAnnotation' addParams(outDir: outDir)
-include { GermlineDellyCall }                 from './modules/process/Germline/GermlineDellyCall' addParams(outDir: outDir)
-include { GermlineRunManta }                  from './modules/process/Germline/GermlineRunManta' addParams(outDir: outDir)
-include { GermlineMergeDellyAndManta }        from './modules/process/Germline/GermlineMergeDellyAndManta' addParams(outDir: outDir)
+include { GermlineCombineHaplotypecallerVcf } from './modules/process/Germline/GermlineCombineHaplotypecallerVcf' 
+include { GermlineRunStrelka2 }               from './modules/process/Germline/GermlineRunStrelka2' 
+include { GermlineCombineChannel }            from './modules/process/Germline/GermlineCombineChannel' 
+include { GermlineAnnotateMaf }               from './modules/process/Germline/GermlineAnnotateMaf' 
+include { GermlineFacetsAnnotation }          from './modules/process/Germline/GermlineFacetsAnnotation' 
+include { GermlineDellyCall }                 from './modules/process/Germline/GermlineDellyCall' 
+include { GermlineRunManta }                  from './modules/process/Germline/GermlineRunManta' 
+include { GermlineMergeDellyAndManta }        from './modules/process/Germline/GermlineMergeDellyAndManta' a
 
 //QC
-include { QcCollectHsMetrics }                 from './modules/process/QC/QcCollectHsMetrics' addParams(outDir: outDir, wallTimeExitCode: wallTimeExitCode)
-include { QcQualimap }                         from './modules/process/QC/QcQualimap' addParams(outDir: outDir)
-include { QcAlfred }                           from './modules/process/QC/QcAlfred' addParams(outDir: outDir)
+include { QcCollectHsMetrics }                 from './modules/process/QC/QcCollectHsMetrics' 
+include { QcQualimap }                         from './modules/process/QC/QcQualimap' 
+include { QcAlfred }                           from './modules/process/QC/QcAlfred'
 include { SampleRunMultiQC }                   from './modules/process/QC/SampleRunMultiQC'
 include { QcPileup }                           from './modules/process/QC/QcPileup'
 include { QcConpair }                          from './modules/process/QC/QcConpair'
@@ -479,13 +479,12 @@ workflow {
   }
 
   if (runSomatic || runGermline) {
-
     targets4Intervals = Channel.from(targetsMap.keySet())
       .map{ targetId ->
         [ targetId, targetsMap[targetId]."targetsBedGz", targetsMap[targetId]."targetsBedGzTbi" ]
       }
 
-  targets4Intervals = Channel.from(targetsMap.keySet())
+    targets4Intervals = Channel.from(targetsMap.keySet())
       .map{ targetId ->
         [ targetId, targetsMap."${targetId}"."targetsBedGz", targetsMap."${targetId}"."targetsBedGzTbi" ]
       }
@@ -498,20 +497,21 @@ workflow {
 
     //Associating interval_list files with BAM files, putting them into one channel
     //bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA }
-    bamFiles.combine(CreateScatteredIntervals.out.mergedIList, by: 2).map{
-      item ->
-        def idTumor = item[1]
-        def idNormal = item[2]
-        def target = item[0]
-        def tumorBam = item[3]
-        def normalBam = item[4]
-        def tumorBai = item[5]
-        def normalBai = item[6]
-        def intervalBed = item[7]
-        def key = idTumor+"__"+idNormal+"@"+target // adding one unique key
+    bamFiles.combine(CreateScatteredIntervals.out.mergedIList, by: 2)
+      .map{
+        item ->
+          def idTumor = item[1]
+          def idNormal = item[2]
+          def target = item[0]
+          def tumorBam = item[3]
+          def normalBam = item[4]
+          def tumorBai = item[5]
+          def normalBai = item[6]
+          def intervalBed = item[7]
+          def key = idTumor+"__"+idNormal+"@"+target // adding one unique key
 
-        return [ key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
-    }.map{ 
+          return [ key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
+      }.map{ 
         key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> 
         tuple ( 
             groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
@@ -522,17 +522,17 @@ workflow {
     .set{ mergedChannelSomatic }
 
     bams.combine(CreateScatteredIntervals.out.mergedIList, by: 1)
-    .map{
-      item ->
-        def idNormal = item[1]
-        def target = item[0]
-        def normalBam = item[2]
-        def normalBai = item[3]
-        def intervalBed = item[4]
-        def key = idNormal+"@"+target // adding one unique key
+      .map{
+        item ->
+          def idNormal = item[1]
+          def target = item[0]
+          def normalBam = item[2]
+          def normalBai = item[3]
+          def intervalBed = item[4]
+          def key = idNormal+"@"+target // adding one unique key
 
-        return [ key, idNormal, target, normalBam, normalBai, intervalBed ]
-    }.map{
+          return [ key, idNormal, target, normalBam, normalBai, intervalBed ]
+      }.map{
         key, idNormal, target, normalBam, normalBai, intervalBed ->
         tuple (
             groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
@@ -542,7 +542,6 @@ workflow {
     .transpose()
     .set{ mergedChannelGermline }
   } //end if (runSomatic || runGermline)
-
 
 
   if (runSomatic){
@@ -820,7 +819,6 @@ workflow {
                tools,
                runQC)
 
-
       QcPileup.out.pileupOutput.combine(inputPairing)
               .filter { item ->
                 def idSample = item[0]
@@ -873,7 +871,6 @@ workflow {
 
       SomaticRunMultiQC(somaticMultiQCinput,
                         Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo]))
-
 
       if(runConpairAll){
         pileupT.combine(pileupN).unique().set{ pileupConpairAll }

@@ -1,6 +1,3 @@
-params.outDir = ""
-params.wallTimeExitCode = ""
-
 process RunNeoantigen {
   tag {idTumor + "__" + idNormal}
 

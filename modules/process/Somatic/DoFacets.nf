@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process DoFacets {
   tag {idTumor + "__" + idNormal}
 
