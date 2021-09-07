@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process SomaticCombineMutect2Vcf {
   tag {idTumor + "__" + idNormal}
 

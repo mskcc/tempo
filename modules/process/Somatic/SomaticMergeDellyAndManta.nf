@@ -1,6 +1,3 @@
-params.outDir = ""
-
-// Merge VCFs, Delly and Manta
 process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 

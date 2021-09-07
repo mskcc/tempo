@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process SomaticRunStrelka2 {
   tag {idTumor + "__" + idNormal}
 

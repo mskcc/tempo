@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process SomaticCombineChannel {
   tag {idTumor + "__" + idNormal}
 

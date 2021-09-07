@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process GermlineAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
@@ -48,4 +46,4 @@ process GermlineAnnotateMaf {
     --maf-file ${outputPrefix}.raw.maf \
     --output-prefix ${outputPrefix}
   """
-  }
+}

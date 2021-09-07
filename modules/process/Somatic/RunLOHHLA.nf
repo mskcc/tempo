@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process RunLOHHLA {
   tag {idTumor + "__" + idNormal}
 

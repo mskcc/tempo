@@ -1,6 +1,3 @@
-params.outDir = ""
-params.wallTimeExitCode = ""
-
 process QcCollectHsMetrics {
   tag {idSample}
 

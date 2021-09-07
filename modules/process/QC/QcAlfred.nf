@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process QcAlfred {
   tag {idSample + "@" + "ignore_rg_" + ignore_rg }
 

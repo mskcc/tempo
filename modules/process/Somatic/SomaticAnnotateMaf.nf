@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process SomaticAnnotateMaf {
   tag {idTumor + "__" + idNormal}
 

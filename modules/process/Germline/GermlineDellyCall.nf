@@ -1,5 +1,3 @@
-params.outDir = ""
-
 process GermlineDellyCall {
   tag {idNormal + '@' + svType}
 
