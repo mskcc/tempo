@@ -66,7 +66,7 @@ include { GermlineAnnotateMaf }               from './modules/process/Germline/G
 include { GermlineFacetsAnnotation }          from './modules/process/Germline/GermlineFacetsAnnotation' 
 include { GermlineDellyCall }                 from './modules/process/Germline/GermlineDellyCall' 
 include { GermlineRunManta }                  from './modules/process/Germline/GermlineRunManta' 
-include { GermlineMergeDellyAndManta }        from './modules/process/Germline/GermlineMergeDellyAndManta' a
+include { GermlineMergeDellyAndManta }        from './modules/process/Germline/GermlineMergeDellyAndManta'
 
 //QC
 include { QcCollectHsMetrics }                 from './modules/process/QC/QcCollectHsMetrics' 
@@ -77,6 +77,20 @@ include { QcPileup }                           from './modules/process/QC/QcPile
 include { QcConpair }                          from './modules/process/QC/QcConpair'
 include { SomaticRunMultiQC }                  from './modules/process/QC/SomaticRunMultiQC'
 include { QcConpairAll }                       from './modules/process/QC/QcConpairAll'
+include { CohortRunMultiQC }                   from './modules/process/QC/CohortRunMultiQC'
+
+//Aggregate
+include { GermlineAggregateMaf }               from './modules/process/Aggregate/GermlineAggregateMaf'
+include { GermlineAggregateSv }                from './modules/process/Aggregate/GermlineAggregateSv'
+include { QcBamAggregate }                     from './modules/process/Aggregate/QcBamAggregate'
+include { QcConpairAggregate }                 from './modules/process/Aggregate/QcConpairAggregate'
+include { SomaticAggregateFacets }             from './modules/process/Aggregate/SomaticAggregateFacets'
+include { SomaticAggregateLOHHLA }             from './modules/process/Aggregate/SomaticAggregateLOHHLA'
+include { SomaticAggregateMaf }                from './modules/process/Aggregate/SomaticAggregateMaf'
+include { SomaticAggregateMetadata }           from './modules/process/Aggregate/SomaticAggregateMetadata'
+include { SomaticAggregateNetMHC }             from './modules/process/Aggregate/SomaticAggregateNetMHC'
+include { SomaticAggregateSv }                 from './modules/process/Aggregate/SomaticAggregateSv'
+
 
 println ''
 
@@ -106,7 +120,6 @@ workflow {
       }
       if (params.watch == false) {
         pairingFile = file(params.pairing, checkIfExists: true)
-        //(checkPairing1, checkPairing2, inputPairing) = TempoUtils.extractPairing(pairingFile).into(3)
         inputPairing  = TempoUtils.extractPairing(pairingFile)
         TempoUtils.crossValidateTargets(inputMapping, inputPairing)
 
@@ -287,25 +300,15 @@ workflow {
     //Align reads to reference.
     AlignReads(fastqFiles, Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex]))
 
-    fastPJson4cohortMultiQC = AlignReads.out.fastPJson4MultiQC
+    AlignReads.out.fastPJson4MultiQC
       .groupTuple(by:[2])
-      .map { idSample, jsonFile, fileID ->
+      .map{idSample, jsonFile, fileID -> 
         def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
         [idSampleout, jsonFile]
       }.groupTuple(by: [0])
-      .map { idSample, jsonFile ->
+      .map{ idSample, jsonFile -> 
         [idSample, jsonFile.flatten()]
-      }
-
-    fastPJson4sampleMultiQC = AlignReads.out.fastPJson4MultiQC
-      .groupTuple(by:[2])
-      .map { idSample, jsonFile, fileID ->
-        def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
-        [idSampleout, jsonFile]
-      }.groupTuple(by: [0])
-      .map { idSample, jsonFile ->
-        [idSample, jsonFile.flatten()]
-      }
+      }.set{ fastPJson } 
 
     // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
     def allReadIds = [:]
@@ -365,7 +368,6 @@ workflow {
   */
   // If starting with BAM files, parse BAM pairing input
   if (params.bamMapping) {
-    //inputMapping.into{bamsBQSR4Alfred; bamsBQSR4Qualimap; bamsBQSR4CollectHsMetrics; bamsBQSR4Tumor; bamsBQSR4Normal; bamsBQSR4QcPileup; bamPaths4MultiQC}
     if (runQC){
       inputMapping.map{idSample, target, bam, bai ->
         [ idSample,target, bam.getParent() ]
@@ -379,7 +381,6 @@ workflow {
 
   if (params.pairing) {
     // Parse input FASTQ mapping
-    //inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing}
     RunBQSR.out.bamsBQSR.combine(inputPairing)
       .filter { item ->
         def idSample = item[0]
@@ -496,7 +497,6 @@ workflow {
                                             runSomatic, runGermline)
 
     //Associating interval_list files with BAM files, putting them into one channel
-    //bamFiles.into{bamsTN4Intervals; bamsForDelly; bamsForManta; bams4Strelka; bamns4CombineChannel; bamsForMsiSensor; bamFiles4DoFacets; bamsForLOHHLA }
     bamFiles.combine(CreateScatteredIntervals.out.mergedIList, by: 2)
       .map{
         item ->
@@ -780,7 +780,7 @@ workflow {
     if (runQC && params.assayType != "exome"){
       QcCollectHsMetrics.out.collectHsMetricsOutput
         .map{ idSample, target, bam, bai, targetList, baitList -> [idSample, ""]}
-        .into{ collectHsMetricsOutput }
+        .set{ collectHsMetricsOutput }
     }
 
     RunBQSR.out.bamsBQSR
@@ -803,11 +803,10 @@ workflow {
 
     QcAlfred.out.alfredOutput
       .groupTuple(size:2, by:0)
-      .join(fastPJson4sampleMultiQC, by:0)
+      .join(fastPJson, by:0)
       .join(QcQualimap.out.qualimap4Process, by:0)
       .join(QcCollectHsMetrics.out.collectHsMetricsOutput, by:0)
       .set{ sampleMetrics4MultiQC }
-
 
     SampleRunMultiQC(sampleMetrics4MultiQC, 
                      Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]))
@@ -888,5 +887,284 @@ workflow {
     } // End of "if (pairingQc)". Doing QcPileup or QcConpair/QcConpairAll only when --pairing [tsv] is given
 
   } // End of "if (runQc)"
+
+
+/*
+================================================================================
+=                              Cohort Aggregation                              =
+================================================================================
+*/
+  if ( !params.mapping && !params.bamMapping ){
+    runSomatic = true
+    runGermline = true
+    runQC = true
+    pairingQc = true
+    if(!params.watch){
+      TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
+        .set{ inputAggregate }
+    }
+    else{
+      watchAggregateWithPath(file(runAggregate, checkIfExists: true))
+        .set{ inputAggregate }
+      epochMap[runAggregate] = 0
+    }
+
+    inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->
+		  finalMaf4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.maf" )]
+      NetMhcStats4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.all_neoantigen_predictions.txt")]
+      FacetsPurity4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_purity.seg")]
+      FacetsHisens4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*_hisens.seg")]
+      FacetsOutLog4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt")]
+      FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.arm_level.txt")]
+      FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
+      FacetsQC4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*.facets_qc.txt")]
+      dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
+      dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
+      predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
+      intCPN4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*DNA.IntegerCPN_CI.txt")]
+      MetaData4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.sample_data.txt")]
+      mafFile4AggregateGermline: [idTumor, idNormal, cohort, "placeHolder", file(path + "/germline/" + idNormal + "/*/" + idTumor + "__" + idNormal + ".germline.final.maf")]
+      dellyMantaCombined4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz")]
+      dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
+      conpairConcord4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".concordance.txt")]
+      conpairContami4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".contamination.txt")]
+		  alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.tsv.gz/")]
+		  alfredIgnoreYNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.tsv.gz/")]
+		  alfredIgnoreNTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.per_readgroup.tsv.gz/")]
+		  alfredIgnoreNNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.alfred.per_readgroup.tsv.gz/")]
+      qualimapTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/qualimap/${idTumor}_qualimap_rawdata.tar.gz")]
+      qualimapNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/qualimap/${idNormal}_qualimap_rawdata.tar.gz")]
+		  hsMetricsTumor: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
+		  hsMetricsNormal: params.assayType == "exome" ? [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.hs_metrics.txt")] : [cohort, idTumor, idNormal, ""]
+      fastpTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.fastp.json")]
+      fastpNormal: [cohort, idTumor, idNormal, file(path + "/bams/" + idNormal + "/*/*.fastp.json")]
+    }
+		.set { aggregateList }
+
+    inputSomaticAggregateMaf = aggregateList.finalMaf4Aggregate.transpose().groupTuple(by:[2])
+    inputSomaticAggregateNetMHC = aggregateList.NetMhcStats4Aggregate.transpose().groupTuple(by:[2])
+    inputPurity4Aggregate = aggregateList.FacetsPurity4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputHisens4Aggregate = aggregateList.FacetsHisens4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputOutLog4Aggregate = aggregateList.FacetsOutLog4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputArmLev4Aggregate = aggregateList.FacetsArmLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputGeneLev4Aggregate = aggregateList.FacetsGeneLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputFacetsQC4CohortMultiQC = aggregateList.FacetsQC4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+    inputSomaticAggregateSv = aggregateList.dellyMantaCombined4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputSomaticAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputPredictHLA4Aggregate = aggregateList.predictHLA4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputIntCPN4Aggregate = aggregateList.intCPN4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputSomaticAggregateMetadata = aggregateList.MetaData4Aggregate.transpose().groupTuple(by:[2])
+    inputGermlineAggregateMaf = aggregateList.mafFile4AggregateGermline.transpose().groupTuple(by:[2])
+    inputGermlineAggregateSv = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+    inputGermlineAggregateSvTbi = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+    inputAlfredIgnoreY = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+    inputAlfredIgnoreN = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+    inputQualimap4CohortMultiQC = aggregateList.qualimapTumor.unique().combine(aggregateList.qualimapNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+    inputHsMetrics = aggregateList.hsMetricsTumor.unique().combine(aggregateList.hsMetricsNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
+    aggregateList.conpairConcord4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.set{inputConpairConcord}
+    aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.set{inputConpairContami}
+    aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
+  
+  }
+  else if(!(runAggregate == false)) {
+    if (!(runAggregate == true)){
+      if(!params.watch){
+        TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
+            .groupTuple()
+            .map{ cohort, idTumor, idNormal, pathNoUse
+                  -> tuple( groupKey(cohort, idTumor instanceof Collection ? idTumor.size() : 1), idTumor, idNormal)
+            }
+            .transpose()
+            .set{ inputAggregate }
+      }
+      else{
+        watchAggregate(file(runAggregate, checkIfExists: false))
+          .set{ inputAggregate }
+        epochMap[runAggregate] = 0
+      }
+    }
+    else if(runAggregate == true){
+      inputPairing.set{ cohortTable }
+      cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
+          .set{ inputAggregate }
+    }
+    else{}
+              
+    if (runSomatic){
+      inputSomaticAggregateMaf = inputAggregate.combine(SomaticFacetsAnnotation.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputSomaticAggregateNetMHC = inputAggregate.combine(RunNeoantigen.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputPurity4Aggregate = inputAggregate.combine(DoFacets.out.FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputHisens4Aggregate = inputAggregate.combine(DoFacets.out.FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputOutLog4Aggregate = inputAggregate.combine(DoFacets.out.FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputArmLev4Aggregate = inputAggregate.combine(DoFacets.out.FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputGeneLev4Aggregate = inputAggregate.combine(DoFacets.out.FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputSomaticAggregateSv = inputAggregate.combine(SomaticMergeDellyAndManta.out.dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputSomaticAggregateSvTbi = inputAggregate.combine(SomaticMergeDellyAndManta.out.dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputPredictHLA4Aggregate = inputAggregate.combine(RunLOHHLA.out.predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputIntCPN4Aggregate = inputAggregate.combine(RunLOHHLA.out.intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputSomaticAggregateMetadata = inputAggregate.combine(MetaDataParser.out.MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
+
+      if (runGermline){
+        inputGermlineAggregateMaf = inputAggregate.combine(GermlineFacetsAnnotation.out.mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
+        inputGermlineAggregateSv = inputAggregate.combine(GermlineMergeDellyAndManta.out.dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+        inputGermlineAggregateSvTbi = inputAggregate.combine(GermlineMergeDellyAndManta.out.dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+      }
+    }
+
+
+    if (runQC){
+      QcAlfred.out.bamsQcStats4Aggregate.branch{ item ->
+            def idSample = item[0]
+            def alfred = item[1]
+      
+            ignoreY: alfred =~ /.+\.alfred\.tsv\.gz/
+            ignoreN: alfred =~ /.+\.alfred\.per_readgroup\.tsv\.gz/
+        }
+        .set{ bamsQcStats4Aggregate }
+
+      inputPairing.combine(bamsQcStats4Aggregate.ignoreY)
+            .branch { item ->
+              def idTumor = item[0]
+              def idNormal = item[1]
+              def idSample = item[2]
+              def alfred = item[3]
+          
+              tumor: idSample == idTumor
+              normal: idSample == idNormal
+            }
+            .set{ alfredIgnoreY }
+
+      alfredIgnoreY.tumor.combine(alfredIgnoreY.normal, by:[0,1])
+            .combine(inputAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+            .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+            .groupTuple(by:[0])
+            .map{ item ->
+              def cohort = item[0]
+              def idTumors = item[1].unique()
+              def idNormals = item[2].unique()
+              def fileTumor = item[3].unique()
+              def fileNormal = item[4].unique()
+        
+              [cohort, fileTumor, fileNormal]
+            }
+            .unique()
+            .set{ alfredIgnoreY }
+      
+      inputPairing.combine(bamsQcStats4Aggregate.ignoreN)
+            .branch { item ->
+              def idTumor = item[0]
+              def idNormal = item[1]
+              def idSample = item[2]
+              def alfred = item[3]
+          
+              tumor: idSample == idTumor
+              normal: idSample == idNormal
+            }
+            .set{ alfredIgnoreN }
+
+      alfredIgnoreN.tumor.combine(alfredIgnoreN.normal, by:[0,1])
+            .combine(inputAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+            .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+            .groupTuple(by:[0])
+            .map{ item ->
+              def cohort = item[0]
+              def idTumors = item[1].unique()
+              def idNormals = item[2].unique()
+              def fileTumor = item[3].unique()
+              def fileNormal = item[4].unique()
+        
+              [cohort, fileTumor, fileNormal]
+            }
+            .unique()
+            .set{ alfredIgnoreN }
+      
+      inputPairing.combine(QcCollectHsMetrics.out.collectHsMetricsOutput)
+            .branch { item ->
+              def idTumor = item[0]
+              def idNormal = item[1]
+              def idSample = item[2]
+              def hsMetrics = item[3]
+          
+              tumor: idSample == idTumor
+              normal: idSample == idNormal
+            }
+            .set{ hsMetrics }
+
+      hsMetrics.tumor.combine(hsMetrics.normal, by:[0,1])
+              .combine(inputAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+              .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+              .groupTuple(by:[0])
+              .map{ item ->
+                def cohort = item[0]
+                def idTumors = item[1].unique()
+                def idNormals = item[2].unique()
+                def fileTumor = item[3].unique()
+                def fileNormal = item[4].unique()
+                
+                [cohort, fileTumor, fileNormal]
+              }
+              .unique()
+              .set{ hsMetrics }
+
+      inputHsMetrics = hsMetrics
+      inputPairing.combine(fastPJson)
+            .branch { item ->
+              def idTumor = item[0]
+              def idNormal = item[1]
+              def idSample = item[2]
+              def jsonFiles = item[3]
+          
+              tumor: idSample == idTumor
+              normal: idSample == idNormal
+            }
+            .set{ fastPMetrics }
+
+      fastPMetrics.tumor.combine(fastPMetrics.normal, by:[0,1])
+              .combine(inputAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+              .map{ item -> [item[6], item[0], item[1], item[3], item[5]]}
+              .groupTuple(by:[0])
+              .map{ item ->
+                def cohort = item[0]
+                def idTumors = item[1].unique()
+                def idNormals = item[2].unique()
+                def fileTumor = item[3].flatten().unique()
+                def fileNormal = item[4].flatten().unique()
+                
+                [cohort, fileTumor, fileNormal]
+              }
+              .unique()
+              .set{ fastPMetrics }
+
+      inputPairing.combine(QcQualimap.out.qualimap4Process)
+        .branch { idTumor, idNormal, idSample, qualimapDir ->
+          tumor:  idSample == idTumor
+          normal: idSample == idNormal
+        }
+        .set{ qualimap4AggregateTN }
+
+      qualimap4AggregateTN.tumor.combine(qualimap4AggregateTN.normal, by:[0,1])
+        .combine(inputAggregate.map{ item -> [item[1], item[2], item[0]]}, by:[0,1])
+        .map{ item -> [item[6], item[3], item[5]]}
+        .groupTuple(by:[0])
+        .map{ cohort, fileTumor, fileNormal ->
+            [cohort, fileTumor.unique(), fileNormal.unique()]
+        }
+        .unique()
+        .set{ inputQualimap4CohortMultiQC }
+
+      inputAlfredIgnoreY = alfredIgnoreY
+      inputAlfredIgnoreN = alfredIgnoreN
+      inputFastP4MultiQC = fastPMetrics
+
+      if (pairingQc){
+        inputAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairConcord4Aggregate }
+        inputAggregate.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairContami4Aggregate }
+        inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{ inputFacetsQC4CohortMultiQC }
+      }
+    } //end 'if (runQC)'
+  }//end 'else if(!(runAggregate == false))'
+  else{}
+
+
 
 }
