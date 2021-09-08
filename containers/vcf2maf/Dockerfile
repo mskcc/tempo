@@ -136,7 +136,7 @@ RUN R -e "install.packages('remotes')"
 COPY r_versions.txt /
 RUN R -e "require(remotes) ; x <- read.table('/r_versions.txt',sep='\t',header=T) ; for (i in 1:dim(x)[[1]]){ install_version(as.character(x\$package[i]), version = as.character(x\$version[i]), repos = 'http://cran.us.r-project.org') }" 
 
-RUN R -e "devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}')"
+RUN R -e "devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}', upgrade = 'never')"
 
 # install oncokb-annotator
 RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \
