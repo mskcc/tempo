@@ -96,7 +96,7 @@ process CohortRunMultiQC {
     beeswarm_config="max_table_rows: \$(( mqcSampleNum + 1 ))"
   fi
 
-  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" --cl_config "report_comment: \\"This report includes FASTQ and alignment for all samples in ${cohort}and Tumor/Normal pair statistics for all pairs in ${cohort}.\\"" -z -x ignoreFolder/ -x fastp_original/
+  multiqc . --cl_config "title: \\"Cohort MultiQC Report\\"" --cl_config "subtitle: \\"${cohort} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "\${beeswarm_config}" --cl_config "report_comment: \\"This report includes FASTQ and alignment for all samples in ${cohort} and Tumor/Normal pair statistics for all pairs in ${cohort}.\\"" -z -x ignoreFolder/ -x fastp_original/
 
   """
 }

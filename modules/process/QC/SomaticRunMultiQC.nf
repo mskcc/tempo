@@ -10,6 +10,7 @@ process SomaticRunMultiQC {
 
   output:
     tuple val(idTumor), val(idNormal), path("*multiqc_report*.html"), path("*multiqc_data*.zip"), emit: somatic_multiqc_report
+    tuple val(idTumor), val(idNormal), path("QC_Status.txt")
 
   script: 
   outPrefix = "${idTumor}__${idNormal}"
@@ -38,6 +39,8 @@ process SomaticRunMultiQC {
   rm -rf multiqc_report.html multiqc_data
 
   multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z -x ignoreFolder
+
+  mv genstats-QC_Status.txt QC_Status.txt
 
   """
 
