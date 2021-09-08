@@ -1,7 +1,7 @@
 process SomaticFacetsAnnotation {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(purity_rdata), path(purity_cncf), path(hisens_cncf), val(facetsPath), path(maf)
