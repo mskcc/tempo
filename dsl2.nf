@@ -1166,5 +1166,89 @@ workflow {
   else{}
 
 
+  if (runAggregate && runSomatic) {
+    SomaticAggregateMaf(inputSomaticAggregateMaf,
+                        runSomatic)
 
+    SomaticAggregateNetMHC(inputSomaticAggregateNetMHC,
+                           runSomatic)
+
+    inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
+		     .join(inputOutLog4Aggregate, by:[0])
+		     .join(inputArmLev4Aggregate, by:[0])
+		     .join(inputGeneLev4Aggregate, by:[0])
+		     .set{ inputSomaticAggregateFacets }
+
+    SomaticAggregateFacets(inputSomaticAggregateFacets, 
+                           runSomatic)
+
+    inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
+		      .set{ inputSomaticAggregateSv }
+
+    SomaticAggregateSv(inputSomaticAggregateSv,
+                       runSomatic)
+
+    inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
+          .set{ inputSomaticAggregateLOHHLA }
+
+    SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA,
+                           runSomatic)
+
+    SomaticAggregateMetadata(inputSomaticAggregateMetadata,
+                             runSomatic)
+
+  } //end 'if (runAggregate && runSomatic)'
+
+
+  if (runAggregate && runGermline) {
+    GermlineAggregateMaf(inputGermlineAggregateMaf,
+                         runGermline)
+
+    // --- Aggregate per-sample germline data, SVs
+    inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
+          .set{ inputGermlineAggregateSv }
+
+    GermlineAggregateSv(inputGermlineAggregateSv,
+                        runGermline)
+                        
+  } 
+
+
+  if (runAggregate && runQC) {
+    inputAlfredIgnoreY.join(inputAlfredIgnoreN)
+          .join(inputHsMetrics)
+          .set{ inputQcBamAggregate }
+
+    QcBamAggregate(inputQcBamAggregate,
+                   runQC)
+
+    if (pairingQc){
+      inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
+			     .set{ inputQcConpairAggregate }
+
+      QcConpairAggregate(inputQcConpairAggregate,
+                         runQC)
+      
+      inputFastP4MultiQC
+        .join(inputAlfredIgnoreY,by:0)
+        .join(inputAlfredIgnoreN,by:0)
+        .join(inputConpairConcord4Aggregate,by:0)
+        .join(inputConpairContami4Aggregate,by:0)
+        .join(inputFacetsQC4CohortMultiQC,by:0)
+        .join(inputQualimap4CohortMultiQC,by:0)
+        .join(inputHsMetrics, by:0)
+        .set{ inputCohortRunMultiQC }
+
+      CohortRunMultiQC(inputCohortRunMultiQC,
+                       Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]),
+                       runQC)
+    }
+  }
+}
+
+workflow.onComplete {
+  file(params.fileTracking).text = ""
+  file(outDir).eachFileRecurse{
+    file(params.fileTracking).append(it + "\n")
+  }
 }
