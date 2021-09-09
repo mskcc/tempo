@@ -380,8 +380,17 @@ workflow {
   }
 
   if (params.pairing) {
+    if(params.bamMapping)
+    {
+      inputChannel = inputMapping
+    }
+    else
+    {
+      inputChannel =  RunBQSR.out.bamsBQSR
+    }
+
     // Parse input FASTQ mapping
-    RunBQSR.out.bamsBQSR.combine(inputPairing)
+    inputChannel.combine(inputPairing)
       .filter { item ->
         def idSample = item[0]
         def target = item[1]
@@ -401,7 +410,7 @@ workflow {
       .unique()
       .set{ bamsTumor }
 
-    RunBQSR.out.bamsBQSR.combine(inputPairing)
+    inputChannel.combine(inputPairing)
       .filter { item ->
         def idSample = item[0]
         def target = item[1]
