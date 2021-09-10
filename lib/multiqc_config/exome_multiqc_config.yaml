@@ -182,8 +182,6 @@ table_cond_formatting_rules:
             - eq: 15
         warn:
             - gt: 15
-        fail:
-            - gt: 20
     mqc-generalstats-genstats_mskcc_conpair-Concordance:
         pass:
             - gt: 90
@@ -206,8 +204,6 @@ table_cond_formatting_rules:
             - eq: 15
         warn:
             - gt: 15
-        fail:
-            - gt: 20
     Concordance:
         pass:
             - gt: 90
@@ -228,8 +224,6 @@ table_cond_formatting_rules:
             - eq: 97
         warn:
             - lt: 97
-        fail:
-            - lt: 60
     FOLD_ENRICHMENT:
         pass:
             - gt: 30
@@ -242,8 +236,6 @@ table_cond_formatting_rules:
             - eq: 55
         warn:
             - gt: 55
-        fail: 
-            - gt: 75
 
 
 table_cond_formatting_colours:
