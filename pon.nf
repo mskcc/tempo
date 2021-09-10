@@ -4,7 +4,7 @@ mappingFile = file(params.bamMapping, checkIfExists: true)
 tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
 
 TempoUtils.extractBAM(mappingFile, params.assayType)
-	.into{bams4MutectGermline; bams4MantaGermline; bamsForStrelkaGermline}
+	.into{bams4MutectGermline; bams4MantaGermline; bamsForStrelkaGermline; bams4QC}
 
 process GermlineRunManta {
 	tag {idNormal}
@@ -236,20 +236,23 @@ process GermlineRunMutect2 {
     ])
 
 	output:
-    set key, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forGermlineMutect2Combine
+    // set key, idNormal, target, file("*filtered.vcf.gz"), file("*filtered.vcf.gz.tbi"), file("*Mutect2FilteringStats.tsv") into forGermlineMutect2Combine
+    set key, idNormal, target, file("${mutect2Vcf}"), file("${mutect2Vcf}.tbi") into forGermlineMutect2Combine
 
+  // definitions for terms in FilterMutectCalls here: https://support.sentieon.com/appnotes/out_fields/
+  // Removed FilterMutectCalls because at the end all uncommon variants will be assumed as 
 	script:
 	mutect2Vcf = "${idNormal}_${intervalBed.baseName}.vcf.gz"
-  	prefix = "${mutect2Vcf}".replaceFirst(".vcf.gz", "")
+  prefix = "${mutect2Vcf}".replaceFirst(".vcf.gz", "")
 	"""
 	gatk --java-options -Xmx8g Mutect2 \\
     --reference ${genomeFile} \\
     --intervals ${intervalBed} \\
     --input ${bamNormal} \\
-     --tumor ${idNormal} \\
-     --output ${mutect2Vcf}
+    --tumor ${idNormal} \\
+    --output ${mutect2Vcf}
 
-    gatk --java-options -Xmx8g FilterMutectCalls \\
+  gatk --java-options -Xmx8g FilterMutectCalls \\
     --variant ${mutect2Vcf} \\
     --stats ${prefix}.Mutect2FilteringStats.tsv \\
     --output ${prefix}.gatk-filtered.vcf.gz
@@ -266,7 +269,7 @@ process GermlineCombineMutect2Vcf {
   publishDir "${outDir}/pon/${idNormal}/mutect2", mode: params.publishDirMode
 
   input:
-    set id, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex), file(mutect2Stats) from forGermlineMutect2Combine
+    set id, idNormal, target, file(mutect2Vcf), file(mutect2VcfIndex) from forGermlineMutect2Combine
     set file(genomeFile), file(genomeIndex), file(genomeDict) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict
     ])
@@ -307,84 +310,17 @@ process GermlineCombineMutect2Vcf {
 
 mutect2CombinedVcf4Combine
   .combine(StrelkaGermline_out, by:[0,1])
-  .view()
   .set{combineMutect_and_Strelka}
 
 process GermlineCombineChannel {
+  tag {idNormal}
 
   container = "cmopipeline/bcftools-vt:1.2.2"
+
+  publishDir "${outDir}/pon/${idNormal}", mode: params.publishDirMode
 
   input:
   set idNormal, target, file(mutectFile), file(mutectFileTbi), file(strelkaFile), file(strelkaFileTbi) from combineMutect_and_Strelka
-
-  output:
-  set idNormal, target, file("${idNormal}.filtered.vcf.gz"), file("${idNormal}.filtered.vcf.gz.tbi") into combinedVcf
-
-  script:
-  """
-  bcftools isec \\
-    --output-type z \\
-    --prefix isecDir \\
-    ${mutectFile} ${strelkaFile}
-
-  bcftools concat \\
-    --allow-overlaps \\
-    --rm-dups all \\
-    isecDir/000*.vcf.gz | \\
-  bcftools sort | \\
-  bcftools filter \\
-    --include 'FILTER=\"PASS\"' \\
-    --output-type z \\
-    --output ${idNormal}.filtered.vcf.gz \\
-    
-  tabix --preset vcf ${idNormal}.filtered.vcf.gz
-  """
-
-}
-
-combinedVcf
-  .groupTuple(by:[1])
-  .view()
-  .map{ idNormal, target, filteredVcf, filteredVcfTbi -> 
-    [ target, filteredVcf, filteredVcfTbi ]
-  }.set{ponInputs}
-
-process generatePoN {
-	tag {target}
-
-	input:
-	set target, file(vcfFiltered), file(vcfFilteredTbi) from ponInputs
-
-	output:
-	set target, file("pon_out/pon.vcf.gz"), file("pon_out/pon.vcf.gz.tbi") into ponOutput
-
-	script:
-	"""
-	mkdir -p isecDir pon_out
-	bcftools isec \\
-		--output-type z \\
-		-n +2 \\
-		-p isecDir \\
-		*.filtered.vcf.gz
-	bcftools merge \\
-		--merge both  \\
-		--output-type z \\
-		--output pon_out/pon.vcf.gz \\
-		isecDir/*vcf.gz 
-
-	tabix --preset vcf pon_out/pon.vcf.gz
-	"""
-
-}
-
-process annotatePoNvcf {
-  tag {target}
-  container = "cmopipeline/bcftools-vt:1.2.2"
-
-  publishDir "${outDir}/pon/panel/${target}", mode: params.publishDirMode
-
-  input:
-  set target, file(pon), file(ponTbi) from ponOutput
   set file(gnomadWesVcf), file(gnomadWesVcfIndex), file(gnomadWgsVcf), file(gnomadWgsVcfIndex) from Channel.value([
       referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,
       referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex
@@ -398,7 +334,7 @@ process annotatePoNvcf {
     ])
 
   output:
-  set target, file("pon.gnomad.vcf.gz"), file("pon.gnomad.vcf.gz.tbi") into annotatedPonVcf
+  set idNormal, target, file("${idNormal}.combined.annot.vcf.gz"), file("${idNormal}.combined.annot.vcf.gz.tbi") into combinedVcf, combinedVcf4Annot, combinedVcf4Subtract
 
   script:
   gnomad = gnomadWgsVcf
@@ -412,11 +348,25 @@ process annotatePoNvcf {
   echo -e '##INFO=<ID=EncodeDacMapability,Number=1,Type=String,Description="EncodeDacMapability">' > vcf.map.header
   echo -e "##INFO=<ID=RepeatMasker,Number=1,Type=String,Description=\"RepeatMasker\">" > vcf.rm.header
 
+  bcftools isec \\
+    --output-type z \\
+    --prefix isecDir \\
+    ${mutectFile} ${strelkaFile}
+
+  bcftools concat \\
+    --allow-overlaps \\
+    --rm-dups all \\
+    isecDir/0000.vcf.gz isecDir/0001.vcf.gz isecDir/0002.vcf.gz | \\
+  bcftools sort \\
+    --output-type z \\
+    --output-file concat.vcf.gz 
+
+  tabix -p vcf concat.vcf.gz 
+
   bcftools annotate \\
     --annotations ${gnomad} \\
     --columns INFO \\
-    ${pon} | \\
-  bcftools sort | \\
+    concat.vcf.gz | \\
   bcftools annotate \\
     --header-lines vcf.map.header \\
     --annotations ${mapabilityBlacklist} \\
@@ -428,29 +378,38 @@ process annotatePoNvcf {
   bcftools filter \\
     --exclude \"${params.germlineVariant.gnomadAf}\" \\
     --output-type z \\
-    --output pon.gnomad.vcf.gz
+    --output ${idNormal}.combined.annot.vcf.gz
 
-  tabix -p vcf pon.gnomad.vcf.gz
+  tabix -p vcf ${idNormal}.combined.annot.vcf.gz
+
+  bcftools filter \\
+    --include 'FILTER=\"PASS\"' \\
+    --output-type z \\
+    --output ${idNormal}.combined.annot.pass.vcf.gz \\
+    ${idNormal}.combined.annot.vcf.gz
+
+  tabix -p vcf ${idNormal}.combined.annot.pass.vcf.gz
 
   """
 }
 
-process ponVcf2ponMaf {
-  tag {target}
-  container = "cmopipeline/vcf2maf:vep88_1.2.4"
+process GermlineAnnotateMaf {
+  tag {idNormal}
 
-  publishDir "${outDir}/pon/panel/${target}", mode: params.publishDirMode, pattern: "*.gnomad*.maf"
+  cpus = 2
 
   input:
-  set target, file(pon), file(ponTbi) from annotatedPonVcf
+  set idNormal, target, file(vcfGz), file(vcfGzTbi) from combinedVcf4Annot
   set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
       referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
       referenceMap.vepCache, referenceMap.isoforms
     ])
+  file(filter_script) from Channel.value([workflow.projectDir + "/containers/vcf2maf/filter-germline-pon-maf.R"])
 
   output:
-  file("pon.gnomad.oncokb.maf") into annotatedPonMaf
-  file("pon.gnomad.maf") into annotatedPonMafOut
+  set idNormal, target, file("${idNormal}.oncokb.custom-filter.vcf.gz"), file("${idNormal}.oncokb.custom-filter.vcf.gz.tbi") into annotatedNormalVcf
+  set idNormal, target, file("${idNormal}.oncokb.custom-filter.maf"), file("${idNormal}.oncokb.custom-filter.unfiltered.maf") into annotatedNormalMaf
+
 
   script:
   if (target == 'wgs') {
@@ -459,40 +418,114 @@ process ponVcf2ponMaf {
   else {
     infoCols = "MuTect2,EncodeDacMapability,RepeatMasker,gnomAD_FILTER,non_cancer_AC_nfe_onf,non_cancer_AF_nfe_onf,non_cancer_AC_nfe_seu,non_cancer_AF_nfe_seu,non_cancer_AC_eas,non_cancer_AF_eas,non_cancer_AC_asj,non_cancer_AF_asj,non_cancer_AC_afr,non_cancer_AF_afr,non_cancer_AC_amr,non_cancer_AF_amr,non_cancer_AC_nfe_nwe,non_cancer_AF_nfe_nwe,non_cancer_AC_nfe,non_cancer_AF_nfe,non_cancer_AC_nfe_swe,non_cancer_AF_nfe_swe,non_cancer_AC,non_cancer_AF,non_cancer_AC_fin,non_cancer_AF_fin,non_cancer_AC_eas_oea,non_cancer_AF_eas_oea,non_cancer_AC_raw,non_cancer_AF_raw,non_cancer_AC_sas,non_cancer_AF_sas,non_cancer_AC_eas_kor,non_cancer_AF_eas_kor,non_cancer_AC_popmax,non_cancer_AF_popmax"
   }
-  // vcf2maf does not work with multi-sample vcfs. work-around from: https://www.biostars.org/p/108112/#108816
   """
-  vcf-query --list-columns ${pon} > sample_ids
-  mkdir vcf2maf
-  cat sample_ids | while read sample_id ; do
-    vcf-subset --exclude-ref --columns \$sample_id ${pon} > vcf2maf/\$sample_id.vcf
-    perl /opt/vcf2maf.pl \\
-      --maf-center MSKCC-CMO \\
-      --vep-path /usr/bin/vep \\
-      --vep-data ${vepCache} \\
-      --vep-forks 4 \\
-      --ref-fasta ${genomeFile} \\
-      --custom-enst ${isoforms} \\
-      --filter-vcf 0 \\
-      --retain-info ${infoCols} \\
-      --input-vcf vcf2maf/\$sample_id.vcf \\
-      --output-maf vcf2maf/\$sample_id.maf \\
-      --normal-id \$sample_id
+  zcat ${vcfGz} > combined.vcf
+  perl /opt/vcf2maf.pl \\
+    --maf-center MSKCC-CMO \\
+    --vep-path /usr/bin/vep \\
+    --vep-data ${vepCache} \\
+    --vep-forks 4 \\
+    --ref-fasta ${genomeFile} \\
+    --custom-enst ${isoforms} \\
+    --filter-vcf 0 \\
+    --retain-info ${infoCols} \\
+    --input-vcf combined.vcf \\
+    --output-maf ${idNormal}.maf \\
+    --normal-id ${idNormal}
 
-    Rscript --no-init-file /usr/bin/filter-germline-maf.R \\
-      --normal-depth ${params.germlineVariant.normalDepth} \\
-      --normal-vaf ${params.germlineVariant.normalVaf} \\
-      --maf-file vcf2maf/\$sample_id.maf \\
-      --output-prefix vcf2maf/\$sample_id.custom-filter
-  done
+    python /usr/bin/oncokb_annotator/MafAnnotator.py \\
+    -i ${idNormal}.maf \\
+    -o ${idNormal}.oncokb.maf
 
-  grep -h ^Hugo vcf2maf/*custom-filter.unfiltered.maf | head -n1 > pon.gnomad.maf
-  grep -hEv "^#|^Hugo" vcf2maf/*custom-filter.unfiltered.maf >> pon.gnomad.maf
+  Rscript --no-init-file ${filter_script} \\
+    --normal-depth ${params.germlineVariant.normalDepth} \\
+    --normal-vaf ${params.germlineVariant.normalVaf} \\
+    --maf-file ${idNormal}.oncokb.maf \\
+    --output-prefix ${idNormal}.oncokb.custom-filter
 
-  python /usr/bin/oncokb_annotator/MafAnnotator.py \\
-    -i pon.gnomad.maf \\
-    -o pon.gnomad.oncokb.maf
+  perl /opt/maf2vcf.pl \\
+    --input-maf ${idNormal}.oncokb.custom-filter.maf \\
+    --ref-fasta ${genomeFile}  \\
+    --output-vcf ${idNormal}.oncokb.custom-filter.vcf \\
+    --output-dir dummy
 
-  """  
+  bgzip ${idNormal}.oncokb.custom-filter.vcf
+  tabix -p vcf ${idNormal}.oncokb.custom-filter.vcf.gz
+
+  """
+
+}
+
+combinedVcf4Subtract.join(annotatedNormalVcf, by:[0,1]).set{combinedVcf4Subtract}
+
+process PareVariants {
+  tag {idNormal}
+  container = "cmopipeline/bcftools-vt:1.2.2"
+
+  input:
+  set idNormal, target, file(vcfGz), file(vcfGzTbi), file(filteredVcfGz), file(filteredVcfGzTbi) from combinedVcf4Subtract
+
+  output:
+  set idNormal, target, file("${idNormal}.filtered.vcf.gz"), file("${idNormal}.filtered.vcf.gz.tbi") into combinedFilteredVcf
+
+  script:
+  """
+  bcftools isec \\
+    --output-type z \\
+    -n ~11 \\
+    -p isecDir \\
+    ${vcfGz} ${filteredVcfGz}
+
+  cp isecDir/0000.vcf.gz ${idNormal}.filtered.vcf.gz
+  cp isecDir/0000.vcf.gz.tbi ${idNormal}.filtered.vcf.gz.tbi
+
+  """
+}
+
+// combinedVcf
+combinedFilteredVcf
+  .groupTuple(by:[1])
+  .view()
+  .set{ponInputs}
+
+process generatePoN {
+	tag {target}
+
+	input:
+	set idNormal, target, file(vcfFiltered), file(vcfFilteredTbi) from ponInputs
+
+	output:
+	set target, file("pon_out/pon.vcf.gz"), file("pon_out/pon.vcf.gz.tbi") into ponOutputVcf
+
+	script:
+  // BCFTOOLS_PLUGINS can be found where bcftools is installed under <bcftools dir>/libexec/bcftools
+  minSamples = idNormal.size() > 3 ? 3 : idNormal.size()
+	"""
+  export BCFTOOLS_PLUGINS=/opt/hall-lab/bcftools-1.9/libexec/bcftools
+	mkdir -p isecDir pon_out
+	bcftools isec \\
+		--output-type z \\
+		-n +${minSamples} \\
+		-p isecDir \\
+		${vcfFiltered}
+	bcftools merge \\
+		--merge both  \\
+		--output-type z \\
+		--output pon_out/pon_deprecated.vcf.gz \\
+		isecDir/*vcf.gz 
+
+  bcftools merge \\
+    --merge both  \\
+    ${vcfFiltered} | \\
+  bcftools +fill-tags \\
+    --output-type z \\
+    --output pon_out/pon.vcf.gz # \\
+    #-- -t all
+
+	tabix --preset vcf pon_out/pon.vcf.gz
+  tabix --preset vcf pon_out/pon_deprecated.vcf.gz
+	"""
+
 }
 
 def checkParamReturnFile(item) {
