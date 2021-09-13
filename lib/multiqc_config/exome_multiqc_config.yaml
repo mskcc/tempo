@@ -230,7 +230,7 @@ table_cond_formatting_rules:
             - eq: 30
         warn:
             - lt: 30
-    mqc-generalstats-custom_content-DuplicateFraction:
+    mqc-generalstats-me_ignore-DuplicateFraction:
         pass:
             - lt: 55
             - eq: 55
