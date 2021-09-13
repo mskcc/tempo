@@ -367,28 +367,25 @@ workflow {
   ================================================================================
   */
   // If starting with BAM files, parse BAM pairing input
+ 
   if (params.bamMapping) {
+    inputChannel = inputMapping
     if (runQC){
       inputMapping.map{idSample, target, bam, bai ->
         [ idSample,target, bam.getParent() ]
-      }.set{locateFastP4MultiQC}
+      }.set{ locateFastP4MultiQC }
 
-      inputMapping.map{ idSample,target, bamFolder -> 
+      locateFastP4MultiQC.map{ idSample,target, bamFolder -> 
         [idSample, file(bamFolder + "/fastp/*json")]
-      }.set{fastPJson}
+      }.set{ fastPJson }
     } 
+  }
+  else
+  {
+    inputChannel = RunBQSR.out.bamsBQSR
   }
 
   if (params.pairing) {
-    if(params.bamMapping)
-    {
-      inputChannel = inputMapping
-    }
-    else
-    {
-      inputChannel =  RunBQSR.out.bamsBQSR
-    }
-
     // Parse input FASTQ mapping
     inputChannel.combine(inputPairing)
       .filter { item ->
@@ -776,10 +773,12 @@ workflow {
 =                              Quality Control                                 =
 ================================================================================
 */
+
   if (runQC) {
-    RunBQSR.out.bamsBQSR.map{ idSample, target, bam, bai ->
+
+    inputChannel.map{ idSample, target, bam, bai ->
         [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
-    }.set{bamsBQSR4HsMetrics}
+    }.set{ bamsBQSR4HsMetrics }
 
     QcCollectHsMetrics(bamsBQSR4HsMetrics,
                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
@@ -792,7 +791,7 @@ workflow {
         .set{ collectHsMetricsOutput }
     }
 
-    RunBQSR.out.bamsBQSR
+    inputChannel
       .map{ idSample, target, bam, bai -> [ idSample, target, bam, bai, file(targetsMap."$target".targetsBed) ]}
       .set{ bamsBQSR4Qualimap }
 
@@ -800,7 +799,7 @@ workflow {
                runQC)
 
     Channel.from(true, false).set{ ignore_read_groups }
-    RunBQSR.out.bamsBQSR
+    inputChannel
       .map{ idSample, target, bam, bai -> 
         [ idSample, target, bam, bai, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi ]
       }.set{ bamsBQSR4Alfred }
@@ -822,7 +821,7 @@ workflow {
 
 
     if (pairingQc) {
-      QcPileup(RunBQSR.out.bamsBQSR,
+      QcPileup(inputChannel,
                Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
                tools,
                runQC)
@@ -895,7 +894,9 @@ workflow {
 
     } // End of "if (pairingQc)". Doing QcPileup or QcConpair/QcConpairAll only when --pairing [tsv] is given
 
-  } // End of "if (runQc)"
+  } // End of "if (runQc)" 
+
+
 
 
 /*
