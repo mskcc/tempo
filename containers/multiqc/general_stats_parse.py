@@ -127,8 +127,10 @@ def assessDataPoint(dataPoint,PF_metrics):
 def equalize_var_type(var,base):
     if isinstance(base,str):
         return str(var)
-    if isinstance(base,(float,int,long)):
-        return float(var.replace(",","").replace(" ","")) 
+    if isinstance(base,(float,int)):
+        if isinstance(var,str):
+            return float(var.replace(",","").replace(" ","")) 
+        else: return float(var)
 
 def genCriteriaTable(criteriaJson, suffixDictionary):
     tab = pd.DataFrame(columns=["pass","warn","fail"])

@@ -236,6 +236,8 @@ table_cond_formatting_rules:
             - eq: 55
         warn:
             - gt: 55
+        fail:
+            - gt: 75
 
 
 table_cond_formatting_colours:
