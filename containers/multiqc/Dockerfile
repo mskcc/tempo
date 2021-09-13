@@ -8,7 +8,7 @@ LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
     version.clean_fastp="0.0.1"
 
 ENV envName "multiqc"
-ENV MULTIQC_VERSION "1.9"
+ENV MULTIQC_VERSION "1.11"
 
 RUN apt-get update && apt-get install -y procps && apt-get clean -y
 
@@ -34,6 +34,9 @@ RUN mkdir -p ${configPath}
 COPY example_wgs_multiqc_config.yaml ${configPath}
 COPY example_exome_multiqc_config.yaml ${configPath}
 RUN chmod 744 ${configPath}/*
+
+# install supporting python packages
+RUN pip install rich==10.4.0
 
 # copy auxiliary scripts
 COPY general_stats_parse.py /opt/conda/envs/${envName}/bin/general_stats_parse.py
