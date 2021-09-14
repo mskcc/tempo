@@ -73,6 +73,7 @@ These outputs are:
 - `combined_mutatations`: unfiltered and final filtered maf per tumor-normal pair.
   - `*.somatic.unfiltered.maf`: Unfiltered mutations `generated in the SomaticAnnotateMaf`.
   - `*.somatic.final.maf`: Filtered mutations from MuTect2 and Strelka2, annotated with mutational effects, neoantigen predictions, and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
+  - `intermidiate_files/*`: 3 intermidiate vcf files contains all mutations before any filter after mutect and strelka, mutations after `filter-vcf.py`, and mutations after bcftools filter by `FILTER=PASS`.
 - `combined_svs`: Combined Delly and Manta SV calls.
 - `conpair`: Per tumor-normal-pair, the Conpair-generated concordance and contamination files.
 - `delly`: Delly output.
@@ -122,6 +123,7 @@ These outputs are:
 - `combined_mutatations`: unfiltered and final filtered maf per tumor-normal pair.
   - `*.germline.unfiltered.maf`: Unfiltered mutations `generated in the GermlineAnnotateMaf`.
   - `*.germline.final.maf`: Filtered mutations from HaplotypeCaller and Strelka2, annotated with mutational effects and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#germline-snvs-and-indels).
+  - `intermidiate_files/*`: 3 intermidiate vcf files contains all mutations before any filter after mutect and strelka, mutations after bcftools filter by `FILTER=PASS`, and gnomAD filter.
 - `combined_svs`: Combined Delly and Manta SV calls.
 - `delly`: Delly output.
 - `manta`: Manta output.
