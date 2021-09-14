@@ -1617,7 +1617,7 @@ process SomaticAnnotateMaf {
 
 mafFile.into{mafFile; mafFileForHRDetect}
 
-mafFileForHRDetect.combine(ascatOut4HRdetect, by: [0,1,2]).combine(SVCombinedBedpe, by: [0,1,2]).set{input4HRDtect}
+mafFileForHRDetect.combine(ascatOut4HRdetect, by: [0,1,2]).combine(SVCombinedBedpe, by: [0,1,2]).set{input4HRDetect}
 
 process HRDetect {
 
@@ -1626,7 +1626,7 @@ process HRDetect {
   publishDir "${outDir}/somatic/${outputPrefix}/hrdetect/", mode: params.publishDirMode, pattern: "*.hrdetect.tsv"
 
   input:
-    set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) from input4HRDtect
+    set idTumor, idNormal, target, file(mafFile), file(cnvFile), file(svFile) from input4HRDetect
     file(HRDetect_script) from Channel.value([workflow.projectDir + "/containers/hrdetect/HRDetect.R"])
 
   output:
@@ -3229,7 +3229,7 @@ if ( !params.mapping && !params.bamMapping ){
                   predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
                   intCPN4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*DNA.IntegerCPN_CI.txt")]
                   MetaData4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.sample_data.txt")]
-                  HRDetect4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.hrdetect.txt")]
+                  HRDetect4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.hrdetect.tsv")]
                   mafFile4AggregateGermline: [idTumor, idNormal, cohort, "placeHolder", file(path + "/germline/" + idNormal + "/*/" + idTumor + "__" + idNormal + ".germline.final.maf")]
                   dellyMantaCombined4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz")]
                   dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
@@ -3698,14 +3698,14 @@ process SomaticAggregateHRDetect {
     set idTumors, idNormals, cohort, placeHolder, file(HRDetectFile) from inputSomaticAggregateHRDetect
 
   output:
-    file("hrdetect.txt") into HRDetectAggregatedOutput
+    file("hrdetect.tsv") into HRDetectAggregatedOutput
 
   when: runSomatic
 
   script:
   """
   ## Collect and merge HRDetect file
-  awk 'FNR==1 && NR!=1{next;}{print}' *.hrdetect.txt > hrdetect.txt
+  awk 'FNR==1 && NR!=1{next;}{print}' *.hrdetect.tsv > hrdetect.tsv
   """
 }
 }
