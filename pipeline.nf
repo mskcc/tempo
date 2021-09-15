@@ -2094,8 +2094,8 @@ process GermlineCombineChannel {
   tag {idTumor + "__" + idNormal}
 
 // 3 intermidiate files (plus 3 index files) output for step by step filter check (2 filter steps involved here)
-  publishDir "${outDir}/germline${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.union.*"
-  publishDir "${outDir}/germline${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.germline.vcf.gz*"
+  publishDir "${outDir}/germline/${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.union.*"
+  publishDir "${outDir}/germline/${idNormal}/combined_mutations/intermediate_files/", mode: params.publishDirMode, pattern: "*.germline.vcf.gz*"
 
   input:
     set idNormal, target, placeHolder, file(haplotypecallercombinedVcf), file(haplotypecallercombinedVcfIndex), file(strelkaVcf), file(strelkaVcfIndex), idTumor, file(bamTumor), file(baiTumor) from mergedChannelVcfCombine
