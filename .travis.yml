@@ -10,7 +10,7 @@ services:
 
 before_install:
   # Install Nextflow
-  - export NXF_VER=19.10.0 && curl -fsSL get.nextflow.io | bash
+  - export NXF_VER=20.10.0 && curl -fsSL get.nextflow.io | bash
   - chmod 777 nextflow
   # to change the test-data for travis, please download using the following command, extract, make changes, tarball again with gzip, and upload to google drive. 
   # you will have to change the link below as well. Click to share the link, making it so anyone with the link can access, then extract the id in the link and put it here after "id="
