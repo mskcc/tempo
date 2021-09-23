@@ -488,12 +488,12 @@ workflow {
   if (runSomatic || runGermline) {
     targets4Intervals = Channel.from(targetsMap.keySet())
       .map{ targetId ->
-        [ targetId, targetsMap[targetId]."targetsBedGz", targetsMap[targetId]."targetsBedGzTbi" ]
+        [ targetId, targetsMap[targetId].targetsBedGz, targetsMap[targetId].targetsBedGzTbi ]
       }
 
     targets4Intervals = Channel.from(targetsMap.keySet())
       .map{ targetId ->
-        [ targetId, targetsMap."${targetId}"."targetsBedGz", targetsMap."${targetId}"."targetsBedGzTbi" ]
+        [ targetId, targetsMap."${targetId}".targetsBedGz, targetsMap."${targetId}".targetsBedGzTbi ]
       }
 
     CreateScatteredIntervals(Channel.value([referenceMap.genomeFile, 
