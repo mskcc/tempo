@@ -621,11 +621,7 @@ workflow {
                           tools,
                           runSomatic)
 
-    Channel.value([referenceMap.facetsVcf]).view()
-
-
     DoFacets(bamFiles,
-            //  Channel.value([referenceMap.facetsVcf]),
               tools,
               runSomatic)
 

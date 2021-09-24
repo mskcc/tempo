@@ -58,9 +58,6 @@ def defineReferenceMap() {
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
   }
-  //else{
-   // result_array << ['facetsVcf' : checkParamReturnFile("facetsVcf")]  
- // }
   return result_array
 }
 
