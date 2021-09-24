@@ -623,7 +623,7 @@ workflow {
 
     DoFacets(bamFiles,
               tools,
-	      file(referenceMap.facetsVcf),
+	      Channel.value([referenceMap.facetsVcf]),
               runSomatic)
 
     DoFacetsPreviewQC(DoFacets.out.Facets4FacetsPreview,
