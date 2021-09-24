@@ -7,7 +7,7 @@ process DoFacets {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
-    //path(facetsVcf)
+    path(facetsVcf)
     val(tools)
     val(runSomatic)
 
