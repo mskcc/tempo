@@ -7,7 +7,8 @@ process DoFacets {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
-    path(facetsVcf)
+    //path(facetsVcf)
+    //Channel.value([referenceMap.facetsVcf])
     val(tools)
     val(runSomatic)
 
@@ -39,7 +40,7 @@ process DoFacets {
 
   Rscript /usr/bin/facets-suite/snp-pileup-wrapper.R \
     --pseudo-snps 50 \
-    --vcf-file ${facetsVcf} \
+    --vcf-file ${referenceMap.facetsVcf} \
     --output-prefix ${tag} \
     --normal-bam ${bamNormal} \
     --tumor-bam ${bamTumor}
