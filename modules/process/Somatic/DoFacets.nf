@@ -7,7 +7,8 @@ process DoFacets {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
-    //path(facetsVcf)
+    path(facetsVcf)
+    
     val(tools)
     val(runSomatic)
 
@@ -26,12 +27,16 @@ process DoFacets {
     tuple val(idTumor), val(idNormal), val(target), path("*/*.qc.txt"), emit: FacetsQC4MetaDataParser
     tuple val(idTumor), val(idNormal), path("*_OUT.txt"), emit: FacetsRunSummary
 
-  when: "facets" in tools && runSomatic
+  when: "facets" in tools && runSomatic && facetsVcf
 
   script:
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outfile = tag + ".snp_pileup.gz"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
+  if(facetsVcf == 1)
+  {
+    facetsVcf = referenceMap.facetsVcf
+  }
   """
   touch .Rprofile
 
@@ -39,7 +44,7 @@ process DoFacets {
 
   Rscript /usr/bin/facets-suite/snp-pileup-wrapper.R \
     --pseudo-snps 50 \
-    --vcf-file ${referenceMap.facetsVcf} \
+    --vcf-file ${facetsVcf} \
     --output-prefix ${tag} \
     --normal-bam ${bamNormal} \
     --tumor-bam ${bamTumor}
