@@ -621,16 +621,9 @@ workflow {
                           tools,
                           runSomatic)
 
-    Channel.value([referenceMap.facetsVcf])
-    if(referenceMap.facetsVcf != null)
-    {
-      facetsVcfInput = Channel.value([referenceMap.facetsVcf])
-    }
-    else{
-      facetsVcfInput = Channel.value(1)
-    }
+
     DoFacets(bamFiles,
-              facetsVcfInput,
+              Channel.value([referenceMap.facetsVcf]),
               tools,
               runSomatic)
 

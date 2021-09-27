@@ -7,8 +7,7 @@ process DoFacets {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
-    path(facetsVcf)
-    
+    file(facetsVcf)
     val(tools)
     val(runSomatic)
 
@@ -33,10 +32,7 @@ process DoFacets {
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outfile = tag + ".snp_pileup.gz"
   outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
-  if(facetsVcf == 1)
-  {
-    facetsVcf = referenceMap.facetsVcf
-  }
+
   """
   touch .Rprofile
 
