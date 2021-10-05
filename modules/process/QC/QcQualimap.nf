@@ -6,13 +6,11 @@ process QcQualimap {
 
   input:
     tuple val(idSample), val(target), path(bam), path(bai), path(targetsBed)
-    val(runQC)
 
   output:
     tuple val(idSample), path("${idSample}_qualimap_rawdata.tar.gz"), emit: qualimap4Process
     tuple val(idSample), path("*.html"), path("css/*"), path("images_qualimapReport/*"), emit: qualimapOutput
   
-  when: runQC   
 
   script:
   if (params.assayType == "exome"){

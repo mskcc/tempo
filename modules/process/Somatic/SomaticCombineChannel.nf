@@ -10,8 +10,6 @@ process SomaticCombineChannel {
     tuple path(repeatMasker), path(repeatMaskerIndex), path(mapabilityBlacklist), path(mapabilityBlacklistIndex)
     tuple path(exomePoN), path(wgsPoN), path(exomePoNIndex), path(wgsPoNIndex)
     tuple path(gnomadWesVcf), path(gnomadWesVcfIndex), path(gnomadWgsVcf), path(gnomadWgsVcfIndex) 
-    val(tools)
-    val(runSomatic)
     
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.pass.vcf"), emit: mutationMergedVcf
@@ -21,8 +19,6 @@ process SomaticCombineChannel {
     path("${idTumor}__${idNormal}.union.annot.filter.vcf.gz.tbi")
     path("${idTumor}__${idNormal}.union.annot.filter.pass.vcf.gz")
     path("${idTumor}__${idNormal}.union.annot.filter.pass.vcf.gz.tbi")
-
-  when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
   
   script:
   outputPrefix = "${idTumor}__${idNormal}"

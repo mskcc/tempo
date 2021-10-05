@@ -4,13 +4,9 @@ process DoFacetsPreviewQC {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), file(facetsOutputFolderFiles), path(countsFile), val(facetsOutputDir)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val(idTumor), val(idNormal), path("${idTumor}__${idNormal}.facets_qc.txt"), emit: FacetsPreviewOut
-
-  when: "facets" in tools && runSomatic
 
   script:
   tag = "${idTumor}__${idNormal}"

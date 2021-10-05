@@ -122,26 +122,6 @@ workflow alignment_wf
       }
       else{}
 
-/*      if(params.pairing){
-        if (params.watch == false) {
-          pairingFile = file(params.pairing, checkIfExists: true)
-          inputPairing  = TempoUtils.extractPairing(pairingFile)
-          TempoUtils.crossValidateTargets(inputMapping, inputPairing)
-
-          samplesInMapping = inputMapping.flatMap{[it[0]]}.unique().toSortedList()
-          samplesInPairing = inputPairing.flatten().unique().toSortedList()
-          CrossValidateSamples(samplesInMapping, samplesInPairing)
-          if(!CrossValidateSamples.out.isValid) {exit 1}
-        }
-        else if (params.watch == true) {
-          pairingFile = file(params.pairing, checkIfExists: false)
-          inputPairing  = watchPairing(pairingFile)
-          epochMap[params.pairing] = 0 
-        }
-        else{}
-      }
-*/
-
       // Parse input FASTQ mapping
       if (params.watch != true) {
         inputMapping.groupTuple(by: [0])
@@ -313,16 +293,213 @@ workflow alignment_wf
   
 
   emit:
-    //CrossValidateSamples_output = CrossValidateSamples.out
-    //SplitLanesR1_output = SplitLanesR1.out
-    //SplitLanesR2_output = SplitLanesR2.out
-    //AlignReads_output = AlignReads.out
-    //MergeBamsAndMarkDuplicates_output = MergeBamsAndMarkDuplicates.out
-    RunBQSR_bamsBQSR = RunBQSR.out.bamsBQSR
+    RunBQSR_bamsBQSR   = RunBQSR.out.bamsBQSR
     RunBQSR_bamResults = RunBQSR.out.bamResults
-    RunBQSR_bamSize = RunBQSR.out.bamSize
+    RunBQSR_bamSize    = RunBQSR.out.bamSize
+    fastPJson          = fastPJson
+}
+
+workflow manta_wf
+{
+  take: bamFiles
+
+  main:
+    SomaticRunManta(bamFiles, 
+              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+              Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]))
+  emit:
+    manta4Combine    = SomaticRunManta.out.manta4Combine
+    mantaOutput      = SomaticRunManta.out.mantaOutput
+    mantaToStrelka   = SomaticRunManta.out.mantaToStrelka
+}
+
+workflow loh_wf
+{
+  take:
+    bams
+    bamFiles
+    facetsPurity
+
+  main:
+      RunPolysolver(bams)
+
+      bamFiles.combine(facetsPurity, by: [0,1,2])
+              .combine(RunPolysolver.out.hlaOutput, by: [1,2])
+              .set{ mergedChannelLOHHLA }
+
+      RunLOHHLA(mergedChannelLOHHLA, 
+                Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat]))
+
+  emit:
+    hlaOutput = RunPolysolver.out.hlaOutput
+}
+
+workflow facets_wf
+{
+  take:
+    bamFiles
+
+  main:
+    DoFacets(bamFiles, Channel.value([referenceMap.facetsVcf]))
+
+    DoFacetsPreviewQC(DoFacets.out.Facets4FacetsPreview)
+
+  emit:
+    snpPileupOutput = DoFacets.out.snpPileupOutput
+    FacetsOutput = DoFacets.out.FacetsOutput
+    FacetsOutLog4Aggregate = DoFacets.out.FacetsOutLog4Aggregate
+    FacetsPurity4Aggregate = DoFacets.out.FacetsPurity4Aggregate
+    FacetsHisens4Aggregate = DoFacets.out.FacetsHisens4Aggregate
+    facetsPurity =  DoFacets.out.facetsPurity
+    facetsForMafAnno =  DoFacets.out.facetsForMafAnno
+    Facets4FacetsPreview =  DoFacets.out.Facets4FacetsPreview
+    FacetsArmGeneOutput =  DoFacets.out.FacetsArmGeneOutput
+    FacetsArmLev4Aggregate =  DoFacets.out.FacetsArmLev4Aggregate
+    FacetsGeneLev4Aggregate = DoFacets.out.FacetsGeneLev4Aggregate
+    FacetsQC4MetaDataParser = DoFacets.out.FacetsQC4MetaDataParser
+    FacetsRunSummary =  DoFacets.out.FacetsRunSummary
+    FacetsPreviewOut = DoFacetsPreviewQC.out.FacetsPreviewOut
 
 }
+
+workflow snv_wf
+{
+  take: 
+    bamFiles
+    mergedIList
+    mantaToStrelka
+    hlaOutput
+    facetsForMafAnno
+
+  main:
+      bamFiles.combine(mergedIList, by: 2)
+      .map{
+        item ->
+          def idTumor = item[1]
+          def idNormal = item[2]
+          def target = item[0]
+          def tumorBam = item[3]
+          def normalBam = item[4]
+          def tumorBai = item[5]
+          def normalBai = item[6]
+          def intervalBed = item[7]
+          def key = idTumor+"__"+idNormal+"@"+target // adding one unique key
+
+          return [ key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
+      }.map{ 
+        key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> 
+        tuple ( 
+            groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
+            idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed
+        )
+    }
+    .transpose()
+    .set{ mergedChannelSomatic }
+
+    RunMutect2(mergedChannelSomatic, 
+          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    RunMutect2.out.forMutect2Combine.groupTuple().set{ forMutect2Combine }
+
+    SomaticCombineMutect2Vcf(forMutect2Combine, 
+                             Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    bamFiles.combine(mantaToStrelka, by: [0, 1, 2])
+        .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
+              [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+        }.set{ input4Strelka }
+
+    SomaticRunStrelka2(input4Strelka,
+                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(SomaticRunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
+
+    SomaticCombineChannel(mutectStrelkaChannel,
+                          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+                          Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
+                          Channel.value([referenceMap.exomePoN, referenceMap.wgsPoN,referenceMap.exomePoNIndex, referenceMap.wgsPoNIndex,]),
+                          Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]))
+
+    SomaticAnnotateMaf(SomaticCombineChannel.out.mutationMergedVcf,
+                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
+                                        referenceMap.vepCache, referenceMap.isoforms]))
+
+
+    hlaOutput.combine(SomaticAnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }
+
+    RunNeoantigen(input4Neoantigen, Channel.value([referenceMap.neoantigenCDNA, referenceMap.neoantigenCDS]))
+
+    facetsForMafAnno.combine(RunNeoantigen.out.mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
+
+    SomaticFacetsAnnotation(facetsMafFileSomatic)
+
+
+  //emit:
+}
+
+workflow sampleQC_wf
+{
+  take:
+    inputChannel
+    fastPJson
+
+  main:
+    inputChannel.map{ idSample, target, bam, bai ->
+        [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
+    }.set{ bamsBQSR4HsMetrics }
+
+    QcCollectHsMetrics(bamsBQSR4HsMetrics,
+                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    if (params.assayType != "exome"){
+      QcCollectHsMetrics.out.collectHsMetricsOutput
+        .map{ idSample, target, bam, bai, targetList, baitList -> [idSample, ""]}
+        .set{ collectHsMetricsOutput }
+    }
+
+    inputChannel
+      .map{ idSample, target, bam, bai -> [ idSample, target, bam, bai, file(targetsMap."$target".targetsBed) ]}
+      .set{ bamsBQSR4Qualimap }
+
+    QcQualimap(bamsBQSR4Qualimap)
+
+    Channel.from(true, false).set{ ignore_read_groups }
+    inputChannel
+      .map{ idSample, target, bam, bai -> 
+        [ idSample, target, bam, bai, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi ]
+      }.set{ bamsBQSR4Alfred }
+
+    QcAlfred(ignore_read_groups, 
+             bamsBQSR4Alfred,
+             Channel.value([referenceMap.genomeFile]))
+
+    QcAlfred.out.alfredOutput
+      .groupTuple(size:2, by:0)
+      .join(fastPJson, by:0)
+      .join(QcQualimap.out.qualimap4Process, by:0)
+      .join(QcCollectHsMetrics.out.collectHsMetricsOutput, by:0)
+      .set{ sampleMetrics4MultiQC }
+
+    SampleRunMultiQC(sampleMetrics4MultiQC, 
+                     Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]))
+}
+
+workflow scatter_wf
+{
+  main:
+    targets4Intervals = Channel.from(targetsMap.keySet())
+        .map{ targetId ->
+          [ targetId, targetsMap."${targetId}".targetsBedGz, targetsMap."${targetId}".targetsBedGzTbi ]
+        }
+
+    CreateScatteredIntervals(Channel.value([referenceMap.genomeFile, 
+                                            referenceMap.genomeIndex, 
+                                            referenceMap.genomeDict]), 
+                                            targets4Intervals)
+  emit:
+    mergedIList = CreateScatteredIntervals.out.mergedIList
+}
+
 
 workflow {
   if (params.mapping || params.bamMapping) {
@@ -426,171 +603,6 @@ workflow {
     alignment_wf()
   }
 
- /* if (params.mapping) {
-    // Parse input FASTQ mapping
-    if (params.watch != true) {
-      inputMapping.groupTuple(by: [0])
-                .map { idSample, targets, files_pe1, files_pe2
-                  -> tuple(groupKey(idSample, targets.size()), targets, files_pe1, files_pe2)
-                }
-                .transpose()
-          .set { inputMapping }
-    }
-
-    inputMapping.map { idSample, target, file_pe1, file_pe2 ->
-                    [idSample, target, file_pe1, file_pe2, idSample + '@' + file_pe1.getSimpleName(), file_pe1.getSimpleName()]
-    }
-                .set { inputFastqs }
-
-    if (params.splitLanes) {
-      inputFastqs.set { fastqsNeedSplit }
-      inputFastqs.set { fastqsNoNeedSplit }
-
-      fastqsNeedSplit
-            .filter { item -> !(item[2].getName() =~ /_L(\d){3}_/) }
-            .multiMap { idSample, target, file_pe1, file_pe2, fileID, lane ->
-              inputFastqR1: [idSample, target, file_pe1, file_pe1.toString()]
-              inputFastqR2: [idSample, target, file_pe2, file_pe2.toString()]
-            }
-            .set { fastqsNeedSplit }
-
-      fastqsNoNeedSplit
-            .filter { item -> item[2].getName() =~ /_L(\d){3}_/ }
-            .map { idSample, target, file_pe1, file_pe2, fileID, lane
-              -> tuple(idSample, target, file_pe1, file_pe1.size(), file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
-            }
-            .set { fastqsNoNeedSplit }
-
-      perLaneFastqsR1 = SplitLanesR1(fastqsNeedSplit.inputFastqR1).R1SplitData
-      perLaneFastqsR2 = SplitLanesR2(fastqsNeedSplit.inputFastqR2).R2SplitData
-
-      def fastqR1fileIDs = [:]
-      perLaneFastqsR1 = perLaneFastqsR1.transpose()
-            .map { item ->
-                def idSample = item[0]
-                def target = item[1]
-                def fastq = item[2]
-                def fileID = idSample + '@' + item[3].getSimpleName()
-                def lane = fastq.getSimpleName().split('_L00')[1].split('_')[0]
-                def laneCount = item[4].getSimpleName().toInteger()
-
-                // This only checks if same read groups appears in two or more fastq files which belongs to the same sample. Cross sample check will be performed after AlignReads since the read group info is not available for fastqs which does not need to be split.
-                if ( !params.watch ) {
-                  if (!TempoUtils.checkDuplicates(fastqR1fileIDs, fileID + '@' + lane, fileID + "\t" + fastq, 'the following fastq files since they contain the same RGID')) { exit 1 }
-                }
-                [idSample, target, fastq, fileID, lane, laneCount]
-            }
-
-      def fastqR2fileIDs = [:]
-      perLaneFastqsR2 = perLaneFastqsR2.transpose()
-                .map { item ->
-                  def idSample = item[0]
-                  def target = item[1]
-                  def fastq = item[2]
-                  def fileID = idSample + '@' + item[3].getSimpleName()
-                  def lane = fastq.getSimpleName().split('_L00')[1].split('_')[0]
-                  def laneCount = item[4].getSimpleName().toInteger()
-                  if ( !params.watch ) {
-                    if (!TempoUtils.checkDuplicates(fastqR2fileIDs, fileID + '@' + lane, fileID + "\t" + fastq, 'the follwoing fastq files since they contain the same RGID')) { exit 1 }
-                  }
-                  [idSample, target, fastq, fileID, lane, laneCount]
-                }
-
-      fastqFiles  = perLaneFastqsR1
-            .mix(perLaneFastqsR2)
-            .groupTuple(by: [0, 1, 3, 4, 5], size: 2, sort: true)
-            .map {  idSample, target, fastqPairs, fileID, lanes, laneCount ->
-              tuple(idSample, target, fastqPairs, groupKey(fileID, laneCount), lanes)
-            }
-            .map { idSample, target, fastqPairs, fileID, lane ->
-                [idSample, target, fastqPairs[0], fastqPairs[1], fileID, lane]
-            }
-            .map { item ->
-              def idSample = item[0]
-              def target = item[1]
-              def fastqPair1 = item[2]
-              def fastqPair2 = item[3]
-              if (item[2].toString().split('_R1').size() < item[3].toString().split('_R1').size()) {
-                fastqPair1 = item[3]
-                fastqPair2 = item[2]
-              }
-              def fileID = item[4]
-              def lane = item[5]
-              [idSample, target, fastqPair1, fastqPair1.size(), fastqPair2, fastqPair2.size(), fileID, lane]
-            }
-            .mix(fastqsNoNeedSplit)
-    }
-    else {
-      fastqFiles = inputFastqs.map { idSample, target, file_pe1, file_pe2, fileID, lane
-        -> tuple(idSample, target, file_pe1, file_pe1.size(),
-                                             file_pe2, file_pe2.size(), groupKey(fileID, 1), lane)
-      }
-    }
-
-    //Align reads to reference.
-    AlignReads(fastqFiles, Channel.value([referenceMap.genomeFile, referenceMap.bwaIndex]))
-
-    AlignReads.out.fastPJson4MultiQC
-      .groupTuple(by:[2])
-      .map{idSample, jsonFile, fileID -> 
-        def idSampleout = idSample[0] instanceof Collection ? idSample[0].first() : idSample[0]
-        [idSampleout, jsonFile]
-      }.groupTuple(by: [0])
-      .map{ idSample, jsonFile -> 
-        [idSample, jsonFile.flatten()]
-      }.set{ fastPJson } 
-
-    // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
-    def allReadIds = [:]
-    AlignReads.out.sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = '@' + readIdFile.getSimpleName().replaceAll('@', ':')
-      // Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
-      if ( !params.watch ) {
-        if (!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the following samples, since they contain the same read: \n${ readId }")) {exit 1}
-      }
-      [idSample, target, bam, fileID, lane]
-    }
-    .groupTuple(by: [3])
-    .map { item ->
-      def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
-      def target   = item[1] instanceof Collection ? item[1].first() : item[1]
-      def bams = item[2]
-      [idSample, target, bams]
-    }
-    .groupTuple(by: [0])
-    .map { item ->
-      def idSample = item[0]
-      def target =  item[1] instanceof Collection ? item[1].first() : item[1]
-      def bams = item[2].flatten()
-      [idSample, bams, target]
-    }
-    .set { groupedBam }
-
-    MergeBamsAndMarkDuplicates(groupedBam)
-    RunBQSR(MergeBamsAndMarkDuplicates.out.mdBams,
-            Channel.value([
-              referenceMap.genomeFile,
-              referenceMap.genomeIndex,
-              referenceMap.genomeDict,
-              referenceMap.dbsnp,
-              referenceMap.dbsnpIndex,
-              referenceMap.knownIndels,
-              referenceMap.knownIndelsIndex
-            ]))
-
-
-    File file = new File(outname)
-    file.newWriter().withWriter { w ->
-        w << "SAMPLE\tTARGET\tBAM\tBAI\n"
-    }
-
-    RunBQSR.out.bamResults.subscribe { Object obj ->
-      file.withWriterAppend { out ->
-          out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
-      }
-    }
-  }
-  */
-   //end if params.mapping
 
 
   /*
@@ -614,8 +626,8 @@ workflow {
   }
   else
   {
-    //inputChannel = RunBQSR.out.bamsBQSR
     inputChannel = alignment_wf.out.RunBQSR_bamsBQSR
+    fastPJson = alignment_wf.out.fastPJson
   }
 
   if (params.pairing) {
@@ -685,6 +697,36 @@ workflow {
 
   } // End of "if (pairingQc) {}"
 
+
+  if (params.mantaWF || params.snvWF)
+  {
+    manta_wf(bamFiles)
+  }
+
+  if (params.scatterWF || params.snvWF)
+  {
+    scatter_wf()
+  }
+
+  if(params.lohWF || params.facetsWF || params.snvWF)
+  {
+    facets_wf(bamFiles)
+  }
+
+  if(params.lohWF || params.snvWF)
+  {
+    loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
+  }
+
+  if(params.snvWF)
+  {
+    snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
+  }
+
+  if(params.sampleQCWF)
+  {
+    sampleQC_wf(inputChannel, fastPJson)
+  }
 
   /*
   ================================================================================

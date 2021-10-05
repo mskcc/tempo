@@ -3,13 +3,9 @@ process RunPolysolver {
   
   input:
     tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val("placeHolder"), val(idNormal), val(target), path("${outputPrefix}.hla.txt"), emit: hlaOutput
-
-  when: "polysolver" in tools && runSomatic && ["GRCh38","GRCh37"].contains(params.genome)
   
   script:
   outputPrefix = "${idNormal}"

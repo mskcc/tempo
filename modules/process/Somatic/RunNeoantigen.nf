@@ -6,15 +6,11 @@ process RunNeoantigen {
   input:
     tuple val(idNormal), val(target), val(placeHolder), path(polysolverFile), val(idTumor), path(mafFile)
     tuple path(neoantigenCDNA), path(neoantigenCDS)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${idTumor}__${idNormal}.all_neoantigen_predictions.txt"), emit: NetMhcStats4Aggregate
     path("${idTumor}__${idNormal}.all_neoantigen_predictions.txt"), emit: NetMhcStatsOutput
     tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/${outputPrefix}.neoantigens.maf"), emit: mafFileForMafAnno
-
-  when: tools.containsAll(["neoantigen", "mutect2", "manta", "strelka2"]) && runSomatic
 
   script:
 

@@ -7,15 +7,11 @@ process SomaticRunManta {
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
     tuple path(genomeFile), path(genomeIndex)
     tuple path(svCallingIncludeRegions), path(svCallingIncludeRegionsIndex)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz"), emit: manta4Combine
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz.tbi"), emit: mantaOutput
     tuple val(idTumor), val(idNormal), val(target), path("*.candidateSmallIndels.vcf.gz"), path("*.candidateSmallIndels.vcf.gz.tbi"), emit: mantaToStrelka
-
-  when: "manta" in tools && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
