@@ -6,14 +6,10 @@ process SomaticRunStrelka2 {
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal), path(mantaCSI), path(mantaCSIi), path(targets), path(targetsIndex)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict) 
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path('*strelka2.vcf.gz'), path('*strelka2.vcf.gz.tbi'), emit: strelka4Combine
     tuple path('*strelka2.vcf.gz'), path('*strelka2.vcf.gz.tbi'), emit: strelkaOutput
-
-  when: tools.containsAll(["manta", "strelka2"]) && runSomatic
 
   script:
   options = ""

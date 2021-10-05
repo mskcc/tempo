@@ -4,13 +4,9 @@ process RunMutect2 {
   input:
     tuple val(id), val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal), path(intervalBed)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val(id), val(idTumor), val(idNormal), val(target), path("*filtered.vcf.gz"), path("*filtered.vcf.gz.tbi"), path("*Mutect2FilteringStats.tsv"), emit: forMutect2Combine
-
-  when: "mutect2" in tools && runSomatic
 
   script:
   mutect2Vcf = "${idTumor}__${idNormal}_${intervalBed.baseName}.vcf.gz"

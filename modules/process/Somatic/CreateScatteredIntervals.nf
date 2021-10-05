@@ -4,13 +4,9 @@ process CreateScatteredIntervals {
   input:
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
     tuple val(targetId), path(targets), path(targetsIndex)
-    val(runSomatic)
-    val(runGermline)
     
   output:
     tuple path("*.interval_list"), val(targetId), val(targetId), emit: mergedIList
-
-  when: runSomatic || runGermline
 
   script:
   scatterCount = params.scatterCount

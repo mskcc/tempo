@@ -6,13 +6,11 @@ process QcCollectHsMetrics {
   input:
     tuple val(idSample), val(target), path(bam), path(bai), path(targetsList), path(baitsList)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(assayType)
-    val(runQC)
 
   output:
     tuple val(idSample), path("${idSample}.hs_metrics.txt"), emit: collectHsMetricsOutput
 
-  when: params.assayType == "exome" && runQC
+  when: params.assayType == "exome"
 
   script:
   if (workflow.profile == "juno") {

@@ -6,15 +6,11 @@ process RunLOHHLA {
   input:
     tuple val(idNormal), val(target), val(idTumor), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal), path(purityOut), val(placeHolder), path(winnersHla)
     tuple path(hlaFasta), path(hlaDat)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple path("*.DNA.HLAlossPrediction_CI.txt"), path("*DNA.IntegerCPN_CI.txt"), path("*.pdf"), path("*.RData"), optional: true, emit: lohhlaOutput
     tuple val("placeHolder"), val(idTumor), val(idNormal), file("*.DNA.HLAlossPrediction_CI.txt"), emit: predictHLA4Aggregate
     tuple val("placeHolder"), val(idTumor), val(idNormal), file("*DNA.IntegerCPN_CI.txt"), emit: intCPN4Aggregate
-
-  when: tools.containsAll(["lohhla", "polysolver", "facets"]) && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"

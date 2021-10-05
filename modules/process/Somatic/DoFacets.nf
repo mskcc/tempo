@@ -8,8 +8,6 @@ process DoFacets {
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
     file(facetsVcf)
-    val(tools)
-    val(runSomatic)
 
   output:
     path("${outfile}"), emit: snpPileupOutput
@@ -25,8 +23,6 @@ process DoFacets {
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*.gene_level.txt"), emit: FacetsGeneLev4Aggregate
     tuple val(idTumor), val(idNormal), val(target), path("*/*.qc.txt"), emit: FacetsQC4MetaDataParser
     tuple val(idTumor), val(idNormal), path("*_OUT.txt"), emit: FacetsRunSummary
-
-  when: "facets" in tools && runSomatic && facetsVcf
 
   script:
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"

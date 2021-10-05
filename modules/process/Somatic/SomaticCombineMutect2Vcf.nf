@@ -6,13 +6,9 @@ process SomaticCombineMutect2Vcf {
   input:
     tuple val(id), val(idTumor), val(idNormal), val(target), path(mutect2Vcf), path(mutect2VcfIndex), path(mutect2Stats)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outfile}"), path("${outfile}.tbi"), emit: mutect2CombinedVcfOutput
-
-  when: "mutect2" in tools && runSomatic
 
   script:
   idTumor = id.toString().split("__")[0]

@@ -6,14 +6,10 @@ process SomaticAnnotateMaf {
   input:
     tuple val(idTumor), val(idNormal), val(target), path(vcfMerged)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict), path(vepCache), path(isoforms)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.maf"), emit: mafFile
     path("${outputPrefix}.unfiltered.maf"), emit: unfilteredMafOutput
-
-  when: tools.containsAll(["manta", "strelka2", "mutect2"]) && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}.somatic"

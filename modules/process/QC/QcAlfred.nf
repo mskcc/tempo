@@ -7,13 +7,10 @@ process QcAlfred {
     each ignore_rg
     tuple val(idSample), val(target), path(bam), path(bai), path(targets), path(targetsIndex)
     path(genomeFile)
-    val(runQC)
     
   output:
     tuple val(idSample), path("${idSample}.alfred*tsv.gz"), emit: bamsQcStats4Aggregate
     tuple val(idSample), path("${idSample}.alfred*tsv.gz"), path("${idSample}.alfred*tsv.gz.pdf"), emit: alfredOutput
-
-  when: runQC
 
   script:
   if (workflow.profile == "juno") {
