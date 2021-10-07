@@ -5,15 +5,11 @@ process SomaticMergeDellyAndManta {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(dellyVcfs), path(dellyVcfsIndex), path(mantaFile)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz*"), emit: dellyMantaCombinedOutput
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz"), emit: dellyMantaCombined4Aggregate
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz.tbi"), emit: dellyMantaCombinedTbi4Aggregate
-
-  when: tools.containsAll(["manta", "delly"]) && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"

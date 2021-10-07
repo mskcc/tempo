@@ -4,15 +4,11 @@ process QcConpairAll {
   input:
     tuple val(idTumor), val(idNormal_noUse), path(pileupTumor), val(idTumor_noUse), val(idNormal), path(pileupNormal)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(runConpairAll)
-    val(runQC)
 
   output:
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.{concordance,contamination}.txt"), emit: conpairAllOutput
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.concordance.txt"), emit: conpairAllConcord
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.contamination.txt"), emit: conpairAllContami
-
-  when: runConpairAll && runQC
 
   script:
   outPrefix = "${idTumor}__${idNormal}"
