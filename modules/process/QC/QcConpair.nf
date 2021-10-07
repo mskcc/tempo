@@ -6,15 +6,11 @@ process QcConpair {
   input:
     tuple val(idTumor), val(idNormal), path(pileupTumor), path(pileupNormal)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(tools)
-    val(runQC)
 
   output:
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.{concordance,contamination}.txt"), emit: conpairOutput
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.concordance.txt"), emit: conpairConcord
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.contamination.txt"), emit: conpairContami
-
-  when: "conpair" in tools && runQC
 
   script:
   outPrefix = "${idTumor}__${idNormal}"

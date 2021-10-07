@@ -5,11 +5,11 @@ process SomaticRunMultiQC {
   publishDir "${params.outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  
   
   input:
-    tuple val(idTumor), val(idNormal), path(conpairFiles), path(facetsSummaryFiles), path(facetsQCFiles)
-    tuple path("exome_multiqc_config.yaml"), path("wgs_multiqc_config.yaml"), path("tempoLogo.png")
+    tuple val(idTumor), val(idNormal), file(conpairFiles), file(facetsSummaryFiles), file(facetsQCFiles)
+    tuple file("exome_multiqc_config.yaml"), file("wgs_multiqc_config.yaml"), file("tempoLogo.png")
 
   output:
-    tuple val(idTumor), val(idNormal), path("*multiqc_report*.html"), path("*multiqc_data*.zip"), emit: somatic_multiqc_report
+    tuple val(idTumor), val(idNormal), file("*multiqc_report*.html"), file("*multiqc_data*.zip"), emit: somatic_multiqc_report
 
   script: 
   outPrefix = "${idTumor}__${idNormal}"
@@ -30,7 +30,7 @@ process SomaticRunMultiQC {
   tail -n +2 ${facetsQCFiles} | cut -f 1,28,97 | sed "s/TRUE\$/PASS/g" | sed "s/FALSE\$/FAIL/g" >> ${facetsQCFiles}.qc.txt
 
   cp conpair.tsv conpair_genstat.tsv
-  mkdir -p ignoreFolder ; mv conpair.tsv ignoreFolder
+  mkdir -p ignoreFolder ; cp conpair.tsv ignoreFolder
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
   
   multiqc . -x ignoreFolder

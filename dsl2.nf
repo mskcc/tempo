@@ -313,6 +313,41 @@ workflow manta_wf
     mantaToStrelka   = SomaticRunManta.out.mantaToStrelka
 }
 
+workflow msiSensor_wf
+{
+  take:
+    bamFiles
+
+  main:
+        RunMsiSensor(bamFiles,
+                 Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.msiSensorList]))
+
+  emit:
+    msi4MetaDataParser = RunMsiSensor.out.msi4MetaDataParser
+}
+
+workflow mutSig_wf
+{
+  take:
+    mafFile
+
+  main:
+      RunMutationSignatures(mafFile)
+
+  emit:
+    mutSig4MetaDataParser = RunMutationSignatures.out.mutSig4MetaDataParser
+
+}
+
+workflow mdParse_wf
+{
+  take:
+    mergedChannelMetaDataParser
+
+  main:
+    MetaDataParser(mergedChannelMetaDataParser)
+}
+
 workflow loh_wf
 {
   take:
@@ -344,21 +379,49 @@ workflow facets_wf
 
     DoFacetsPreviewQC(DoFacets.out.Facets4FacetsPreview)
 
+    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4Aggregate }      // idTumor, idNormal, summaryFiles, qcFiles
+    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4SomaticMultiQC } // idTumor, idNormal, summaryFiles, qcFiles
+    FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
+      ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
+    }.set{ FacetsQC4Aggregate }
+
   emit:
-    snpPileupOutput = DoFacets.out.snpPileupOutput
-    FacetsOutput = DoFacets.out.FacetsOutput
-    FacetsOutLog4Aggregate = DoFacets.out.FacetsOutLog4Aggregate
-    FacetsPurity4Aggregate = DoFacets.out.FacetsPurity4Aggregate
-    FacetsHisens4Aggregate = DoFacets.out.FacetsHisens4Aggregate
-    facetsPurity =  DoFacets.out.facetsPurity
-    facetsForMafAnno =  DoFacets.out.facetsForMafAnno
-    Facets4FacetsPreview =  DoFacets.out.Facets4FacetsPreview
-    FacetsArmGeneOutput =  DoFacets.out.FacetsArmGeneOutput
-    FacetsArmLev4Aggregate =  DoFacets.out.FacetsArmLev4Aggregate
+    snpPileupOutput         = DoFacets.out.snpPileupOutput
+    FacetsOutput            = DoFacets.out.FacetsOutput
+    FacetsOutLog4Aggregate  = DoFacets.out.FacetsOutLog4Aggregate
+    FacetsPurity4Aggregate  = DoFacets.out.FacetsPurity4Aggregate
+    FacetsHisens4Aggregate  = DoFacets.out.FacetsHisens4Aggregate
+    facetsPurity            = DoFacets.out.facetsPurity
+    facetsForMafAnno        = DoFacets.out.facetsForMafAnno
+    Facets4FacetsPreview    = DoFacets.out.Facets4FacetsPreview
+    FacetsArmGeneOutput     = DoFacets.out.FacetsArmGeneOutput
+    FacetsArmLev4Aggregate  = DoFacets.out.FacetsArmLev4Aggregate
     FacetsGeneLev4Aggregate = DoFacets.out.FacetsGeneLev4Aggregate
     FacetsQC4MetaDataParser = DoFacets.out.FacetsQC4MetaDataParser
-    FacetsRunSummary =  DoFacets.out.FacetsRunSummary
-    FacetsPreviewOut = DoFacetsPreviewQC.out.FacetsPreviewOut
+    FacetsRunSummary        = DoFacets.out.FacetsRunSummary
+    FacetsPreviewOut        = DoFacetsPreviewQC.out.FacetsPreviewOut
+    FacetsQC4Aggregate      = FacetsQC4Aggregate
+    FacetsQC4SomaticMultiQC = FacetsQC4SomaticMultiQC
+}
+
+workflow sv_wf
+{
+  take:
+    bamFiles
+    manta4Combine
+
+  main:
+    Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
+    SomaticDellyCall(svTypes, bamFiles,
+                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]))
+
+    // Put manta output and delly output into the same channel so they can be processed together in the group key
+    // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+    SomaticDellyCall.out.dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(manta4Combine, by: [0,1,2]).set{ dellyMantaCombineChannel }
+
+    // --- Process Delly and Manta VCFs 
+    // Merge VCFs, Delly and Manta
+    SomaticMergeDellyAndManta(dellyMantaCombineChannel)
 
 }
 
@@ -433,8 +496,9 @@ workflow snv_wf
 
     SomaticFacetsAnnotation(facetsMafFileSomatic)
 
-
-  //emit:
+  emit:
+    mafFile = SomaticAnnotateMaf.out.mafFile
+    maf4MetaDataParser = SomaticFacetsAnnotation.out.maf4MetaDataParser
 }
 
 workflow sampleQC_wf
@@ -482,6 +546,79 @@ workflow sampleQC_wf
 
     SampleRunMultiQC(sampleMetrics4MultiQC, 
                      Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]))
+}
+
+workflow samplePairingQC_wf
+{
+  take:
+    inputChannel
+    inputPairing
+    runConpairAll
+
+  main:
+    QcPileup(inputChannel, Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    QcPileup.out.pileupOutput.combine(inputPairing)
+            .filter { item ->
+              def idSample = item[0]
+              def samplePileup = item[1]
+              def idTumor = item[2]
+              def idNormal = item[3]
+              idSample == idTumor
+            }.map { item ->
+              def idTumor = item[2]
+              def idNormal = item[3]
+              def tumorPileup = item[1]
+              return [ idTumor, idNormal, tumorPileup ]
+            }
+            .unique()
+            .set{ pileupT }
+
+    QcPileup.out.pileupOutput.combine(inputPairing)
+            .filter { item ->
+              def idSample = item[0]
+              def samplePileup = item[1]
+              def idTumor = item[2]
+              def idNormal = item[3]
+              idSample == idNormal
+            }.map { item ->
+              def idTumor = item[2]
+              def idNormal = item[3]
+              def normalPileup = item[1]
+              return [ idTumor, idNormal, normalPileup ]
+            }
+            .unique()
+            .set{ pileupN }
+
+    pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
+
+    QcConpair(pileupConpair, Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    if(runConpairAll){
+      pileupT.combine(pileupN).unique().set{ pileupConpairAll }
+
+      QcConpairAll(pileupConpairAll,
+                    Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+    }
+
+    // -- Run based on QcConpairAll channels or the single QcConpair channels
+    conpairConcord4Aggregate = (!runConpairAll ? QcConpair.out.conpairConcord : QcConpairAll.out.conpairAllConcord)
+    conpairContami4Aggregate = (!runConpairAll ? QcConpair.out.conpairContami : QcConpairAll.out.conpairAllContami)
+
+
+  emit:
+    conpairConcord4Aggregate = conpairConcord4Aggregate
+    conpairContami4Aggregate = conpairContami4Aggregate
+    conpairOutput = QcConpair.out.conpairOutput
+}
+
+workflow somaticMultiQC_wf
+{
+  take:
+    somaticMultiQCinput
+
+  main:
+    SomaticRunMultiQC(somaticMultiQCinput, Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo]))
 }
 
 workflow scatter_wf
@@ -698,34 +835,82 @@ workflow {
   } // End of "if (pairingQc) {}"
 
 
-  if (params.mantaWF || params.snvWF)
+  if (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF)
   {
     manta_wf(bamFiles)
   }
 
-  if (params.scatterWF || params.snvWF)
+  if (params.scatterWF || params.snvWF || params.mutsigWF)
   {
     scatter_wf()
   }
 
-  if(params.lohWF || params.facetsWF || params.snvWF)
+  if(params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF)
   {
     facets_wf(bamFiles)
   }
 
-  if(params.lohWF || params.snvWF)
+  if(params.svWF)
+  {
+    sv_wf(bamFiles, manta_wf.out.manta4Combine)
+  }
+
+  if(params.lohWF || params.snvWF || params.mutsigWF || params.mdParseWF)
   {
     loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
   }
 
-  if(params.snvWF)
+  if(params.snvWF || params.mutsigWF || params.mdParseWF)
   {
     snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
   }
 
-  if(params.sampleQCWF)
+  if(params.sampleQCWF || params.samplePairingQCWF)
   {
     sampleQC_wf(inputChannel, fastPJson)
+  }
+
+  if(params.msiWF || params.mdParseWF)
+  {
+    msiSensor_wf(bamFiles)
+  }
+
+  if(params.mutsigWF || params.mdParseWF)
+  {
+    mutSig_wf(snv_wf.out.mafFile)
+  }
+
+  if(params.mdParseWF)
+  {
+        facets_wf.out.facetsPurity.combine(snv_wf.out.maf4MetaDataParser, by: [0,1,2])
+			   .combine(facets_wf.out.FacetsQC4MetaDataParser, by: [0,1,2])
+			   .combine(msiSensor_wf.out.msi4MetaDataParser, by: [0,1,2])
+			   .combine(mutSig_wf.out.mutSig4MetaDataParser, by: [0,1,2])
+			   .combine(loh_wf.out.hlaOutput, by: [1,2])
+			   .unique()
+         .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
+          [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
+         }.set{ mergedChannelMetaDataParser }
+
+    mdParse_wf(mergedChannelMetaDataParser)
+  }
+
+  if(params.samplePairingQCWF)
+  {
+    samplePairingQC_wf(inputChannel, inputPairing, runConpairAll)
+
+    if (params.snvWF) {
+      samplePairingQC_wf.out.conpairOutput
+        .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
+        .join(facets_wf.out.FacetsQC4SomaticMultiQC, by:[0,1])
+        .set{ somaticMultiQCinput }
+    } else {
+      samplePairingQC_wf.out.conpairOutput
+        .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles, "", ""]}
+        .set{ somaticMultiQCinput }
+    }
+
+    somaticMultiQC_wf(somaticMultiQCinput)
   }
 
   /*

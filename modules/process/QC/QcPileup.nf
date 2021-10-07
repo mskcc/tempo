@@ -6,13 +6,9 @@ process QcPileup {
   input:
     tuple val(idSample), val(target), path(bam), path(bai)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(tools)
-    val(runQC)
 
   output:
     tuple val(idSample), path("${idSample}.pileup"), emit: pileupOutput
-
-  when: "pileup" in tools && runQC
 
   script:
   gatkPath = "/usr/bin/GenomeAnalysisTK.jar"

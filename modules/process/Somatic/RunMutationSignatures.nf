@@ -3,13 +3,9 @@ process RunMutationSignatures {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(maf)
-    val(tools)
-    val(runSomatic)
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.mutsig.txt"), emit: mutSig4MetaDataParser
-
-  when: tools.containsAll(["mutect2", "manta", "strelka2", "mutsig"]) && runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
