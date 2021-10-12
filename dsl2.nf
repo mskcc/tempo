@@ -99,6 +99,51 @@ pairingQc = params.pairing
 referenceMap = defineReferenceMap()
 targetsMap   = loadTargetReferences()
 
+
+workflow validate_wf
+{
+  main:
+    TempoUtils.checkAssayType(params.assayType)
+    if (params.watch == false) {
+      keySet = targetsMap.keySet()
+      mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
+      inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
+    }
+    else if (params.watch == true) {
+      mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
+      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
+      epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
+    }
+    else{}
+    if(params.pairing){
+      if(runQC){
+        pairingQc = true
+      }
+      if (params.watch == false) {
+        pairingFile = file(params.pairing, checkIfExists: true)
+        inputPairing  = TempoUtils.extractPairing(pairingFile)
+        TempoUtils.crossValidateTargets(inputMapping, inputPairing)
+
+        samplesInMapping = inputMapping.flatMap{[it[0]]}.unique().toSortedList()
+        samplesInPairing = inputPairing.flatten().unique().toSortedList()
+        CrossValidateSamples(samplesInMapping, samplesInPairing)
+        if(!CrossValidateSamples.out.isValid) {exit 1}
+      }
+      else if (params.watch == true) {
+        pairingFile = file(params.pairing, checkIfExists: false)
+        inputPairing  = watchPairing(pairingFile)
+        epochMap[params.pairing] = 0 
+      }
+      else{}
+    }
+
+  emit:
+    inputMapping = inputMapping
+    inputPairing = inputPairing
+    epochMap     = epochMap
+}
+
+
 workflow alignment_wf
 {
   main:
@@ -639,59 +684,6 @@ workflow scatter_wf
 
 
 workflow {
-  if (params.mapping || params.bamMapping) {
-    TempoUtils.checkAssayType(params.assayType)
-    if (params.watch == false) {
-      keySet = targetsMap.keySet()
-      mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
-      inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
-    }
-    else if (params.watch == true) {
-      mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
-      epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
-    }
-    else{}
-    if(params.pairing){
-      if(runQC){
-        pairingQc = true
-      }
-      if (params.watch == false) {
-        pairingFile = file(params.pairing, checkIfExists: true)
-        inputPairing  = TempoUtils.extractPairing(pairingFile)
-        TempoUtils.crossValidateTargets(inputMapping, inputPairing)
-
-        samplesInMapping = inputMapping.flatMap{[it[0]]}.unique().toSortedList()
-        samplesInPairing = inputPairing.flatten().unique().toSortedList()
-        CrossValidateSamples(samplesInMapping, samplesInPairing)
-        if(!CrossValidateSamples.out.isValid) {exit 1}
-      }
-      else if (params.watch == true) {
-        pairingFile = file(params.pairing, checkIfExists: false)
-        inputPairing  = watchPairing(pairingFile)
-        epochMap[params.pairing] = 0 
-      }
-      else{}
-      /*if (!runSomatic && !runGermline && !runQC){
-        println "ERROR: --pairing [tsv] is not used because none of --somatic/--germline/--QC was enabled. If you only need to do BAM QC and/or BAM generation, remove --pairing [tsv]."
-        exit 1
-      }
-      */
-    }
-    else{
-      if (runSomatic || runGermline){
-        println "ERROR: --pairing [tsv] needed when using --mapping/--bamMapping [tsv] with --somatic/--germline"
-        exit 1
-      }
-    }
-  }
-  else{
-    if(params.pairing){
-      println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
-      exit 1
-    }
-  }
-
   if (!runSomatic && runGermline) {
     println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
     runSomatic = true
@@ -734,6 +726,20 @@ workflow {
   }
 
 
+
+  //Run validation workflow when appropriate.
+  if (params.mapping || params.bamMapping) {
+    validate_wf()
+    inputMapping = validate_wf.out.inputMapping
+    inputPairing = validate_wf.out.inputPairing
+    epochMap     = validate_wf.out.epochMap
+  }
+  else{
+    if(params.pairing){
+      println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
+      exit 1
+    }
+  }
   // Skip these processes if starting from aligned BAM files
   if (params.alignWF)
   {
@@ -741,17 +747,15 @@ workflow {
   }
 
 
-
   /*
   ================================================================================
   =                                PAIRING TUMOR and NORMAL                      =
   ================================================================================
   */
-  // If starting with BAM files, parse BAM pairing input
- 
+  // If starting with BAM files, parse BAM pairing input.
   if (params.bamMapping) {
     inputChannel = inputMapping
-    if (runQC){
+    if (runQC || params.sampleQCWF || params.samplePairingQCWF){
       inputMapping.map{idSample, target, bam, bai ->
         [ idSample,target, bam.getParent() ]
       }.set{ locateFastP4MultiQC }
@@ -832,7 +836,7 @@ workflow {
       }
       .set{ bamFiles }
 
-  } // End of "if (pairingQc) {}"
+  } 
 
 
   if (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF)
@@ -909,7 +913,6 @@ workflow {
         .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles, "", ""]}
         .set{ somaticMultiQCinput }
     }
-
     somaticMultiQC_wf(somaticMultiQCinput)
   }
 
