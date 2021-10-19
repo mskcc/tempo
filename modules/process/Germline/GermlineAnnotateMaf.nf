@@ -6,14 +6,10 @@ process GermlineAnnotateMaf {
   input:
     tuple val(idTumor), val(idNormal), val(target), path(vcfMerged)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict), path(vepCache), path(isoforms)
-    val(tools)
-    val(runGermline)
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.maf"), emit: mafFileGermline
     path("${outputPrefix}.unfiltered.maf"), emit: unfilteredMafOutputGermline
-
-  when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
   script:
   outputPrefix = "${idTumor}__${idNormal}.germline"

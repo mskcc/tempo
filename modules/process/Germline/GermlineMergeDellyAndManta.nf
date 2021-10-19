@@ -6,15 +6,11 @@ process GermlineMergeDellyAndManta {
   input:
     tuple val(idNormal), val(target), path(dellyVcf), path(dellyVcfIndex), path(mantaVcf), path(mantaVcfIndex)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(tools)
-    val(runGermline)
 
   output:
     tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz*"), emit: dellyMantaCombinedOutputGermline
     tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz"), emit: dellyMantaCombined4AggregateGermline
     tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz.tbi"), emit: dellyMantaCombinedTbi4AggregateGermline
-
-  when: tools.containsAll(["manta", "delly"]) && runGermline
 
   script:
   """ 

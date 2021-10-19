@@ -10,8 +10,6 @@ process GermlineCombineChannel {
     tuple path(genomeFile), path(genomeIndex)
     tuple path(repeatMasker), path(repeatMaskerIndex), path(mapabilityBlacklist), path(mapabilityBlacklistIndex)
     tuple path(gnomadWesVcf), path(gnomadWesVcfIndex), path(gnomadWgsVcf), path(gnomadWgsVcfIndex)
-    val(tools)
-    val(runGermline)
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${idTumor}__${idNormal}.germline.vcf"), emit: mutationMergedGermline
@@ -21,8 +19,6 @@ process GermlineCombineChannel {
     path("${idNormal}.union.pass.vcf.gz.tbi")
     path("${idTumor}__${idNormal}.germline.vcf.gz")
     path("${idTumor}__${idNormal}.germline.vcf.gz.tbi")
-
-  when: tools.containsAll(["strelka2", "haplotypecaller"]) && runGermline
 
   script:  
   isecDir = "${idNormal}.isec"

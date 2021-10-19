@@ -6,13 +6,9 @@ process GermlineRunStrelka2 {
   input:
     tuple val(idNormal), val(target), path(bamNormal), path(baiNormal), path(targets), path(targetsIndex)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(tools)
-    val(runGermline)
     
   output:
     tuple val("placeHolder"), val(idNormal), val(target), path("${idNormal}.strelka2.vcf.gz"), path("${idNormal}.strelka2.vcf.gz.tbi"), emit: strelkaOutputGermline
-
-  when: 'strelka2' in tools && runGermline
   
   script:
   options = ""
