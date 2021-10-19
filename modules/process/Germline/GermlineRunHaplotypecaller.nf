@@ -4,13 +4,9 @@ process GermlineRunHaplotypecaller {
   input:
     tuple val(id), val(idNormal), val(target), path(bamNormal), path(baiNormal), path(intervalBed)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
-    val(tools)
-    val(runGermline)
 
   output:
     tuple val(id), val(idNormal), val(target), path("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz"), path("${idNormal}_${intervalBed.baseName}.snps.filter.vcf.gz.tbi"), path("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz"), path("${idNormal}_${intervalBed.baseName}.indels.filter.vcf.gz.tbi"), emit: haplotypecaller4Combine
-
-  when: 'haplotypecaller' in tools && runGermline
 
   script:
   """

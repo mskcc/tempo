@@ -7,14 +7,10 @@ process GermlineDellyCall {
     each svType
     tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
     tuple path(genomeFile), path(genomeIndex), path(svCallingExcludeRegions)
-    val(tools)
-    val(runGermline)
 
   output:
     tuple val(idNormal), val(target), path("${idNormal}_${svType}.delly.vcf.gz"), path("${idNormal}_${svType}.delly.vcf.gz.tbi"), emit: dellyFilter4CombineGermline
     tuple path("*delly.vcf.gz"), path("*delly.vcf.gz.tbi"), emit: dellyOutputGermline
-
-  when: 'delly' in tools && runGermline
 
   script:
   """

@@ -7,13 +7,10 @@ process GermlineRunManta {
     tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
     tuple path(genomeFile), path(genomeIndex)
     tuple path(svCallingIncludeRegions), path(svCallingIncludeRegionsIndex)
-    val(tools)
-    val(runGermline)
 
   output:
     tuple val(idNormal), val(target), path("${idNormal}.manta.vcf.gz"), path("${idNormal}.manta.vcf.gz.tbi"), emit: mantaOutputGermline
 
-  when: 'manta' in tools && runGermline
 
   // flag with --exome if exome
   script:

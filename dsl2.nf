@@ -682,6 +682,108 @@ workflow scatter_wf
     mergedIList = CreateScatteredIntervals.out.mergedIList
 }
 
+workflow germlineSNV_wf
+{
+  take:
+    bams
+    bamsTumor
+    mergedIList
+
+  main:
+    bams.combine(mergedIList, by: 1)
+      .map{
+        item ->
+          def idNormal = item[1]
+          def target = item[0]
+          def normalBam = item[2]
+          def normalBai = item[3]
+          def intervalBed = item[4]
+          def key = idNormal+"@"+target // adding one unique key
+          return [ key, idNormal, target, normalBam, normalBai, intervalBed ]
+      }.map{
+        key, idNormal, target, normalBam, normalBai, intervalBed ->
+        tuple (
+            groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
+            idNormal, target, normalBam, normalBai, intervalBed
+        )
+      }
+      .transpose()
+      .set{ mergedChannelGermline }
+
+
+    GermlineRunHaplotypecaller(mergedChannelGermline,
+                              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    GermlineRunHaplotypecaller.out.haplotypecaller4Combine.groupTuple().set{ haplotypecaller4Combine }
+
+    GermlineCombineHaplotypecallerVcf(haplotypecaller4Combine,
+                                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    bams.map{ idNormal, target, bamNormal, baiNormal -> 
+              [idNormal, target, bamNormal, baiNormal, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
+            }.set{ bamsForStrelkaGermline }
+
+    GermlineRunStrelka2(bamsForStrelkaGermline, 
+                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+    // Join HaploTypeCaller and Strelka outputs, bcftools.
+    GermlineCombineHaplotypecallerVcf.out.haplotypecallerCombinedVcfOutput.combine(GermlineRunStrelka2.out.strelkaOutputGermline, by: [0,1,2])
+            .combine(bamsTumor, by: [1,2])
+            .set{ mergedChannelVcfCombine }
+
+    GermlineCombineChannel(mergedChannelVcfCombine,
+                          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex,]),
+                          Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
+                          Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex, referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]))
+
+    GermlineAnnotateMaf(GermlineCombineChannel.out.mutationMergedGermline,
+                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
+                                       referenceMap.vepCache, referenceMap.isoforms]))
+    
+  emit:
+    mafFileGermline = GermlineAnnotateMaf.out.mafFileGermline        
+}
+
+workflow germlineSNV_facets
+{
+  take:
+    facetsForMafAnno
+    mafFileGermline
+
+  main:
+    DoFacets.out.facetsForMafAnno.combine(GermlineAnnotateMaf.out.mafFileGermline, by: [0,1,2])
+        .set{ facetsMafFileGermline }
+
+    GermlineFacetsAnnotation(facetsMafFileGermline,
+                             tools,
+                             runGermline)
+}
+
+workflow germlineSV_wf
+{
+  take:
+    bams
+
+  main:
+    Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
+
+    GermlineDellyCall(svTypesGermline,
+                      bams,
+                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]))
+
+    GermlineRunManta(bams,
+                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+                     Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]))
+
+    GermlineDellyCall.out.dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5)
+            .combine(GermlineRunManta.out.mantaOutputGermline, by: [0,1])
+            .set{ dellyMantaChannelGermline }
+
+    GermlineMergeDellyAndManta(dellyMantaChannelGermline,
+                               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+
+}
+
 
 workflow {
   if (!runSomatic && runGermline) {
@@ -725,7 +827,9 @@ workflow {
     exit 1
   }
 
-
+  //Get all of our subworkflow parameters from wf flag.
+  //Currently not implemented, but leaving a marker here in case we want to go that way.
+  wf = params.wf ? params.wf.split(',').collect{it.trim().toLowerCase()} : []
 
   //Run validation workflow when appropriate.
   if (params.mapping || params.bamMapping) {
@@ -838,20 +942,33 @@ workflow {
 
   } 
 
-
-  if (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF)
+  if(params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF)
   {
     manta_wf(bamFiles)
   }
 
-  if (params.scatterWF || params.snvWF || params.mutsigWF)
+  if(params.scatterWF || params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV)
   {
     scatter_wf()
+  }
+
+  if(params.germSNV)
+  {
+    germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList)
+  }
+
+  if(params.germSV)
+  {
+    germlineSV_wf(bams)
   }
 
   if(params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF)
   {
     facets_wf(bamFiles)
+    if(params.germSNV in wf)
+    {
+      germlineSNV_facets(facets_wf.out.facetsForMafAnno, germlineSNV_wf.out.mafFileGermline)
+    }
   }
 
   if(params.svWF)
@@ -886,15 +1003,15 @@ workflow {
 
   if(params.mdParseWF)
   {
-        facets_wf.out.facetsPurity.combine(snv_wf.out.maf4MetaDataParser, by: [0,1,2])
-			   .combine(facets_wf.out.FacetsQC4MetaDataParser, by: [0,1,2])
-			   .combine(msiSensor_wf.out.msi4MetaDataParser, by: [0,1,2])
-			   .combine(mutSig_wf.out.mutSig4MetaDataParser, by: [0,1,2])
-			   .combine(loh_wf.out.hlaOutput, by: [1,2])
-			   .unique()
-         .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
-          [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
-         }.set{ mergedChannelMetaDataParser }
+    facets_wf.out.facetsPurity.combine(snv_wf.out.maf4MetaDataParser, by: [0,1,2])
+      .combine(facets_wf.out.FacetsQC4MetaDataParser, by: [0,1,2])
+      .combine(msiSensor_wf.out.msi4MetaDataParser, by: [0,1,2])
+      .combine(mutSig_wf.out.mutSig4MetaDataParser, by: [0,1,2])
+      .combine(loh_wf.out.hlaOutput, by: [1,2])
+      .unique()
+      .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
+      [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
+    }.set{ mergedChannelMetaDataParser }
 
     mdParse_wf(mergedChannelMetaDataParser)
   }
@@ -915,6 +1032,14 @@ workflow {
     }
     somaticMultiQC_wf(somaticMultiQCinput)
   }
+  else
+  {
+    inputPairing.map{ idTumor, idNormal -> 
+      ["placeHolder",idTumor, idNormal,"",""]
+    }.set{ FacetsQC4Aggregate }
+  }
+
+
 
   /*
   ================================================================================
@@ -1154,82 +1279,6 @@ workflow {
   } //End of 'if runSomatic'
 
 
-/*
-================================================================================
-=                                GERMLINE PIPELINE                              =
-================================================================================
-*/
-  if (runGermline){
-    GermlineRunHaplotypecaller(mergedChannelGermline,
-                              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                              tools,
-                              runGermline)
-
-    GermlineRunHaplotypecaller.out.haplotypecaller4Combine.groupTuple().set{ haplotypecaller4Combine }
-
-    GermlineCombineHaplotypecallerVcf(haplotypecaller4Combine,
-                                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                                      tools,
-                                      runGermline)
-
-    bams.map{ idNormal, target, bamNormal, baiNormal -> 
-              [idNormal, target, bamNormal, baiNormal, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
-            }.set{bamsForStrelkaGermline}
-
-    GermlineRunStrelka2(bamsForStrelkaGermline, 
-                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                        tools,
-                        runGermline)
-
-    // Join HaploTypeCaller and Strelka outputs, bcftools.
-    GermlineCombineHaplotypecallerVcf.out.haplotypecallerCombinedVcfOutput.combine(GermlineRunStrelka2.out.strelkaOutputGermline, by: [0,1,2])
-            .combine(bamsTumor, by: [1,2])
-            .set{ mergedChannelVcfCombine }
-
-    GermlineCombineChannel(mergedChannelVcfCombine,
-                          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex,]),
-                          Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
-                          Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex, referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
-                          tools,
-                          runGermline)
-
-    GermlineAnnotateMaf(GermlineCombineChannel.out.mutationMergedGermline,
-                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
-                                       referenceMap.vepCache, referenceMap.isoforms]),
-                                       tools,
-                                       runGermline)
-    
-    DoFacets.out.facetsForMafAnno.combine(GermlineAnnotateMaf.out.mafFileGermline, by: [0,1,2])
-            .set{ facetsMafFileGermline }
-
-    GermlineFacetsAnnotation(facetsMafFileGermline,
-                             tools,
-                             runGermline)
-
-    Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
-
-    GermlineDellyCall(svTypesGermline,
-                      bams,
-                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]),
-                      tools,
-                      runGermline)
-
-    GermlineRunManta(bams,
-                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
-                     Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]),
-                     tools,
-                     runGermline)
-
-    GermlineDellyCall.out.dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5)
-            .combine(GermlineRunManta.out.mantaOutputGermline, by: [0,1])
-            .set{ dellyMantaChannelGermline }
-
-    GermlineMergeDellyAndManta(dellyMantaChannelGermline,
-                               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                               tools,
-                               runGermline)
-
-  } //End of 'if runGermline'
 
 
 /*
@@ -1420,7 +1469,7 @@ workflow {
     inputPurity4Aggregate = aggregateList.FacetsPurity4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputHisens4Aggregate = aggregateList.FacetsHisens4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputOutLog4Aggregate = aggregateList.FacetsOutLog4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
-    inputArmLev4Aggregate = aggregateList.FacetsArmLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    finalMaf4Aggregate = aggregateList.FacetsArmLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputGeneLev4Aggregate = aggregateList.FacetsGeneLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputFacetsQC4CohortMultiQC = aggregateList.FacetsQC4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     inputSomaticAggregateSv = aggregateList.dellyMantaCombined4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}

@@ -6,13 +6,9 @@ process GermlineCombineHaplotypecallerVcf {
   input:
     tuple val(id), val(idNormal), val(target), path(haplotypecallerSnpVcf), path(haplotypecallerSnpVcfIndex), path(haplotypecallerIndelVcf), path(haplotypecallerIndelVcfIndex)
     tuple file(genomeFile), file(genomeIndex), file(genomeDict)
-    val(tools)
-    val(runGermline)
 
   output:
     tuple val("placeHolder"), val(idNormal), val(target), path("${outfile}"), path("${outfile}.tbi"), emit: haplotypecallerCombinedVcfOutput
-
-  when: 'haplotypecaller' in tools && runGermline 
 
   script: 
   idNormal = id.toString().split("@")[0]
