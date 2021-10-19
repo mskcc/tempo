@@ -92,7 +92,7 @@ correctMutations <- function(this_sample){
   this_snv<-this_mutations[!this_mutations$Variant_Type %in% c("DEL", "DNP", "INS", "TNP"),]
   print(table(rbind(this_indels, this_snv)$Variant_Type))
   write.table(file = paste0("tmp/", this_sample, ".indels"), x = this_indels, quote = F, row.names = F, col.names = T, sep = "\t")
-  write.table(file = paste0("tmp/", this_sample, ".snv"), x = this_indels, quote = F, row.names = F, col.names = T, sep = "\t")
+  write.table(file = paste0("tmp/", this_sample, ".snv"), x = this_snv, quote = F, row.names = F, col.names = T, sep = "\t")
 }
 message("")
 message("========= Preprocessing Indels and SNV inputs =========")
