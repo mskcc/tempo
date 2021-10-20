@@ -7,14 +7,10 @@ process GermlineFacetsAnnotation {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(purity_rdata), path(purity_cncf), path(hisens_cncf), val(facetsPath), path(maf)
-    val(tools)
-    val(runGermline)
     
   output:
     path("${outputPrefix}.final.maf"), emit: mafFileOutputGermline
     tuple val("placeHolder"), val(idTumor), val(idNormal), file("${outputPrefix}.final.maf"), emit: mafFile4AggregateGermline
-
-  when: tools.containsAll(["facets", "haplotypecaller", "strelka2"]) && runGermline
 
   script:
   outputPrefix = "${idTumor}__${idNormal}.germline"
