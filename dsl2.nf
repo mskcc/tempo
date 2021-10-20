@@ -30,66 +30,84 @@ if (params.watch == true) {
   touchInputs(chunkSizeLimit, startEpoch, epochMap)
 }
 
-//Alignment
-include { SplitLanesR1; SplitLanesR2 } from './modules/process/Alignment/SplitLanes' 
-include { AlignReads }                 from './modules/process/Alignment/AlignReads'
-include { MergeBamsAndMarkDuplicates } from './modules/process/Alignment/MergeBamsAndMarkDuplicates'
-include { RunBQSR }                    from './modules/process/Alignment/RunBQSR' 
-include { CrossValidateSamples }       from './modules/process/QC/SampleValidation'
+//Sample Validation:
+include { CrossValidateSamples }       from './modules/workflows/SampleValidation/CrossValidateSamples'
 
-//Somatic
-include { CreateScatteredIntervals }   from './modules/process/Somatic/CreateScatteredIntervals'
-include { RunMutect2 }                 from './modules/process/Somatic/RunMutect2'
-include { SomaticCombineMutect2Vcf }   from './modules/process/Somatic/SomaticCombineMutect2Vcf' 
-include { SomaticDellyCall }           from './modules/process/Somatic/SomaticDellyCall' 
-include { SomaticRunManta }            from './modules/process/Somatic/SomaticRunManta' 
-include { SomaticMergeDellyAndManta }  from './modules/process/Somatic/SomaticMergeDellyAndManta' 
-include { SomaticRunStrelka2 }         from './modules/process/Somatic/SomaticRunStrelka2' 
-include { SomaticCombineChannel }      from './modules/process/Somatic/SomaticCombineChannel' 
-include { SomaticAnnotateMaf }         from './modules/process/Somatic/SomaticAnnotateMaf' 
-include { RunMutationSignatures }      from './modules/process/Somatic/RunMutationSignatures'
-include { DoFacets }                   from './modules/process/Somatic/DoFacets' 
-include { DoFacetsPreviewQC }          from './modules/process/Somatic/DoFacetsPreviewQC' 
-include { RunPolysolver }              from './modules/process/Somatic/RunPolysolver'
-include { RunLOHHLA }                  from './modules/process/Somatic/RunLOHHLA' 
-include { RunNeoantigen }              from './modules/process/Somatic/RunNeoantigen' 
-include { SomaticFacetsAnnotation }    from './modules/process/Somatic/SomaticFacetsAnnotation' 
-include { RunMsiSensor }               from './modules/process/Somatic/RunMsiSensor'
-include { MetaDataParser }             from './modules/process/Somatic/MetaDataParser' 
+//Alignment:
+include { SplitLanesR1; SplitLanesR2 } from './modules/workflows/Alignment/SplitLanes' 
+include { AlignReads }                 from './modules/workflows/Alignment/AlignReads'
+include { MergeBamsAndMarkDuplicates } from './modules/workflows/Alignment/MergeBamsAndMarkDuplicates'
+include { RunBQSR }                    from './modules/workflows/Alignment/RunBQSR' 
 
-//Germline
-include { GermlineRunHaplotypecaller }        from './modules/process/Germline/GermlineRunHaplotypecaller'
-include { GermlineCombineHaplotypecallerVcf } from './modules/process/Germline/GermlineCombineHaplotypecallerVcf' 
-include { GermlineRunStrelka2 }               from './modules/process/Germline/GermlineRunStrelka2' 
-include { GermlineCombineChannel }            from './modules/process/Germline/GermlineCombineChannel' 
-include { GermlineAnnotateMaf }               from './modules/process/Germline/GermlineAnnotateMaf' 
-include { GermlineFacetsAnnotation }          from './modules/process/Germline/GermlineFacetsAnnotation' 
-include { GermlineDellyCall }                 from './modules/process/Germline/GermlineDellyCall' 
-include { GermlineRunManta }                  from './modules/process/Germline/GermlineRunManta' 
-include { GermlineMergeDellyAndManta }        from './modules/process/Germline/GermlineMergeDellyAndManta'
+//Structural Variant (SV):
+include { SomaticRunManta }            from './modules/workflows/SV/SomaticRunManta' 
+include { SomaticDellyCall }           from './modules/workflows/SV/SomaticDellyCall' 
+include { SomaticMergeDellyAndManta }  from './modules/workflows/SV/SomaticMergeDellyAndManta' 
+
+//Single Nucleotide Variation (SNV):
+include { SomaticRunStrelka2 }         from './modules/workflows/SNV/SomaticRunStrelka2' 
+include { RunMutect2 }                 from './modules/workflows/SNV/RunMutect2'
+include { SomaticCombineMutect2Vcf }   from './modules/workflows/SNV/SomaticCombineMutect2Vcf' 
+include { SomaticCombineChannel }      from './modules/workflows/SNV/SomaticCombineChannel' 
+include { SomaticAnnotateMaf }         from './modules/workflows/SNV/SomaticAnnotateMaf' 
+include { RunNeoantigen }              from './modules/workflows/SNV/RunNeoantigen' 
+include { SomaticFacetsAnnotation }    from './modules/workflows/SNV/SomaticFacetsAnnotation' 
+
+//Facets:
+include { DoFacets }                   from './modules/workflows/Facets/DoFacets' 
+include { DoFacetsPreviewQC }          from './modules/workflows/Facets/DoFacetsPreviewQC' 
+
+//MSI:
+include { RunMsiSensor }               from './modules/workflows/MSI/RunMsiSensor'
+
+//Mutational Signatures:
+include { RunMutationSignatures }      from './modules/workflows/MutSig/RunMutationSignatures'
+
+//Scatter Intervals:
+include { CreateScatteredIntervals }   from './modules/workflows/Scatter/CreateScatteredIntervals'
+
+//Loss of Heterozygosity (LoH):
+include { RunPolysolver }              from './modules/workflows/LoH/RunPolysolver'
+include { RunLOHHLA }                  from './modules/workflows/LoH/RunLOHHLA' 
+
+//Metadata Parser:
+include { MetaDataParser }             from './modules/workflows/MetaParse/MetaDataParser' 
+
+//Germline Structural Variants (germSV):
+include { GermlineDellyCall }                 from './modules/workflows/GermSV/GermlineDellyCall' 
+include { GermlineRunManta }                  from './modules/workflows/GermSV/GermlineRunManta' 
+include { GermlineMergeDellyAndManta }        from './modules/workflows/GermSV/GermlineMergeDellyAndManta'
+
+//Germline Single Nucleotide Variation (germSNV):
+include { GermlineRunHaplotypecaller }        from './modules/workflows/GermSNV/GermlineRunHaplotypecaller'
+include { GermlineCombineHaplotypecallerVcf } from './modules/workflows/GermSNV/GermlineCombineHaplotypecallerVcf' 
+include { GermlineRunStrelka2 }               from './modules/workflows/GermSNV/GermlineRunStrelka2' 
+include { GermlineCombineChannel }            from './modules/workflows/GermSNV/GermlineCombineChannel' 
+include { GermlineAnnotateMaf }               from './modules/workflows/GermSNV/GermlineAnnotateMaf' 
+include { GermlineFacetsAnnotation }          from './modules/workflows/GermSNV/GermlineFacetsAnnotation' 
 
 //QC
-include { QcCollectHsMetrics }                 from './modules/process/QC/QcCollectHsMetrics' 
-include { QcQualimap }                         from './modules/process/QC/QcQualimap' 
-include { QcAlfred }                           from './modules/process/QC/QcAlfred'
-include { SampleRunMultiQC }                   from './modules/process/QC/SampleRunMultiQC'
-include { QcPileup }                           from './modules/process/QC/QcPileup'
-include { QcConpair }                          from './modules/process/QC/QcConpair'
-include { SomaticRunMultiQC }                  from './modules/process/QC/SomaticRunMultiQC'
-include { QcConpairAll }                       from './modules/process/QC/QcConpairAll'
-include { CohortRunMultiQC }                   from './modules/process/QC/CohortRunMultiQC'
+include { QcCollectHsMetrics }                 from './modules/workflows/QC/QcCollectHsMetrics' 
+include { QcQualimap }                         from './modules/workflows/QC/QcQualimap' 
+include { QcAlfred }                           from './modules/workflows/QC/QcAlfred'
+include { SampleRunMultiQC }                   from './modules/workflows/QC/SampleRunMultiQC'
+include { QcPileup }                           from './modules/workflows/QC/QcPileup'
+include { QcConpair }                          from './modules/workflows/QC/QcConpair'
+include { SomaticRunMultiQC }                  from './modules/workflows/QC/SomaticRunMultiQC'
+include { QcConpairAll }                       from './modules/workflows/QC/QcConpairAll'
+include { CohortRunMultiQC }                   from './modules/workflows/QC/CohortRunMultiQC'
 
 //Aggregate
-include { GermlineAggregateMaf }               from './modules/process/Aggregate/GermlineAggregateMaf'
-include { GermlineAggregateSv }                from './modules/process/Aggregate/GermlineAggregateSv'
-include { QcBamAggregate }                     from './modules/process/Aggregate/QcBamAggregate'
-include { QcConpairAggregate }                 from './modules/process/Aggregate/QcConpairAggregate'
-include { SomaticAggregateFacets }             from './modules/process/Aggregate/SomaticAggregateFacets'
-include { SomaticAggregateLOHHLA }             from './modules/process/Aggregate/SomaticAggregateLOHHLA'
-include { SomaticAggregateMaf }                from './modules/process/Aggregate/SomaticAggregateMaf'
-include { SomaticAggregateMetadata }           from './modules/process/Aggregate/SomaticAggregateMetadata'
-include { SomaticAggregateNetMHC }             from './modules/process/Aggregate/SomaticAggregateNetMHC'
-include { SomaticAggregateSv }                 from './modules/process/Aggregate/SomaticAggregateSv'
+include { GermlineAggregateMaf }               from './modules/workflows/Aggregate/GermlineAggregateMaf'
+include { GermlineAggregateSv }                from './modules/workflows/Aggregate/GermlineAggregateSv'
+include { QcBamAggregate }                     from './modules/workflows/Aggregate/QcBamAggregate'
+include { QcConpairAggregate }                 from './modules/workflows/Aggregate/QcConpairAggregate'
+include { SomaticAggregateFacets }             from './modules/workflows/Aggregate/SomaticAggregateFacets'
+include { SomaticAggregateLOHHLA }             from './modules/workflows/Aggregate/SomaticAggregateLOHHLA'
+include { SomaticAggregateMaf }                from './modules/workflows/Aggregate/SomaticAggregateMaf'
+include { SomaticAggregateMetadata }           from './modules/workflows/Aggregate/SomaticAggregateMetadata'
+include { SomaticAggregateNetMHC }             from './modules/workflows/Aggregate/SomaticAggregateNetMHC'
+include { SomaticAggregateSv }                 from './modules/workflows/Aggregate/SomaticAggregateSv'
 
 
 println ''
@@ -751,12 +769,10 @@ workflow germlineSNV_facets
     mafFileGermline
 
   main:
-    DoFacets.out.facetsForMafAnno.combine(GermlineAnnotateMaf.out.mafFileGermline, by: [0,1,2])
+    facetsForMafAnno.combine(mafFileGermline, by: [0,1,2])
         .set{ facetsMafFileGermline }
 
-    GermlineFacetsAnnotation(facetsMafFileGermline,
-                             tools,
-                             runGermline)
+    GermlineFacetsAnnotation(facetsMafFileGermline)
 }
 
 workflow germlineSV_wf
@@ -827,12 +843,26 @@ workflow {
     exit 1
   }
 
-  //Get all of our subworkflow parameters from wf flag.
-  //Currently not implemented, but leaving a marker here in case we want to go that way.
-  wf = params.wf ? params.wf.split(',').collect{it.trim().toLowerCase()} : []
+  //Set flags for when each pipeline is required to run.
+  doWF_validate = (params.mapping || params.bamMapping) ? true : false
+  doWF_align    = (params.alignWF) ? true : false
+  doWF_manta    = (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_scatter  = (params.scatterWF || params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
+  doWF_germSNV  = (params.germSNV) ? true : false
+  doWF_germSV   = (params.germSV) ? true : false
+  doWF_facets   = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_SV       = (params.svWF) ? true : false
+  doWF_loh      = (params.lohWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_SNV      = (params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_sampleQC = (params.sampleQCWF || params.samplePairingQCWF) ? true : false
+  doWF_msiSensor = (params.msiWF || params.mdParseWF) ? true : false
+  doWF_mutSig    = (params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_mdParse   = (params.mdParseWF) ? true : false
+  doWF_samplePairingQC = (params.samplePairingQCWF) ? true : false
+
 
   //Run validation workflow when appropriate.
-  if (params.mapping || params.bamMapping) {
+  if (doWF_validate) {
     validate_wf()
     inputMapping = validate_wf.out.inputMapping
     inputPairing = validate_wf.out.inputPairing
@@ -845,11 +875,10 @@ workflow {
     }
   }
   // Skip these processes if starting from aligned BAM files
-  if (params.alignWF)
+  if (doWF_align)
   {
     alignment_wf()
   }
-
 
   /*
   ================================================================================
@@ -859,7 +888,7 @@ workflow {
   // If starting with BAM files, parse BAM pairing input.
   if (params.bamMapping) {
     inputChannel = inputMapping
-    if (runQC || params.sampleQCWF || params.samplePairingQCWF){
+    if (doWF_sampleQC || doWF_samplePairingQC){
       inputMapping.map{idSample, target, bam, bai ->
         [ idSample,target, bam.getParent() ]
       }.set{ locateFastP4MultiQC }
@@ -939,69 +968,69 @@ workflow {
         return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
       }
       .set{ bamFiles }
-
   } 
 
-  if(params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF)
+
+  if(doWF_manta)
   {
     manta_wf(bamFiles)
   }
 
-  if(params.scatterWF || params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV)
+  if(doWF_scatter)
   {
     scatter_wf()
   }
 
-  if(params.germSNV)
+  if(doWF_germSNV)
   {
     germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList)
   }
 
-  if(params.germSV)
+  if(doWF_germSV)
   {
     germlineSV_wf(bams)
   }
 
-  if(params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF)
+  if(doWF_facets)
   {
     facets_wf(bamFiles)
-    if(params.germSNV in wf)
+    if(doWF_germSNV)
     {
       germlineSNV_facets(facets_wf.out.facetsForMafAnno, germlineSNV_wf.out.mafFileGermline)
     }
   }
 
-  if(params.svWF)
+  if(doWF_SV)
   {
     sv_wf(bamFiles, manta_wf.out.manta4Combine)
   }
 
-  if(params.lohWF || params.snvWF || params.mutsigWF || params.mdParseWF)
+  if(doWF_loh)
   {
     loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
   }
 
-  if(params.snvWF || params.mutsigWF || params.mdParseWF)
+  if(doWF_SNV)
   {
     snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
   }
 
-  if(params.sampleQCWF || params.samplePairingQCWF)
+  if(doWF_sampleQC)
   {
     sampleQC_wf(inputChannel, fastPJson)
   }
 
-  if(params.msiWF || params.mdParseWF)
+  if(doWF_msiSensor)
   {
     msiSensor_wf(bamFiles)
   }
 
-  if(params.mutsigWF || params.mdParseWF)
+  if(doWF_mutSig)
   {
     mutSig_wf(snv_wf.out.mafFile)
   }
 
-  if(params.mdParseWF)
+  if(doWF_mdParse)
   {
     facets_wf.out.facetsPurity.combine(snv_wf.out.maf4MetaDataParser, by: [0,1,2])
       .combine(facets_wf.out.FacetsQC4MetaDataParser, by: [0,1,2])
@@ -1016,11 +1045,11 @@ workflow {
     mdParse_wf(mergedChannelMetaDataParser)
   }
 
-  if(params.samplePairingQCWF)
+  if(doWF_samplePairingQC)
   {
     samplePairingQC_wf(inputChannel, inputPairing, runConpairAll)
 
-    if (params.snvWF) {
+    if (doWF_SNV) {
       samplePairingQC_wf.out.conpairOutput
         .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
         .join(facets_wf.out.FacetsQC4SomaticMultiQC, by:[0,1])
@@ -1039,375 +1068,6 @@ workflow {
     }.set{ FacetsQC4Aggregate }
   }
 
-
-
-  /*
-  ================================================================================
-  =                                SOMATIC PIPELINE                              =
-  ================================================================================
-  */
-  if (runSomatic || runGermline || runQC) {
-    // parse --tools parameter for downstream 'when' conditionals, e.g. when: 'delly ' in tools
-    tools = params.tools ? params.tools.split(',').collect{it.trim().toLowerCase()} : []
-
-    // Allow shorter names
-    if ("mutect" in tools) {
-      tools.add("mutect2")
-    }
-    if ("strelka" in tools) {
-      tools.add("strelka2")
-    }
-
-    // If using Strelka2, run Manta as well to generate candidate indels
-    if ("strelka2" in tools) {
-      tools.add("manta")
-    }
-
-    // If using running either conpair or conpairAll, run pileup as well to generate pileups
-    if ("conpair" in tools) {
-      tools.add("pileup")
-    }
-    if ("conpairall" in tools) {
-      runConpairAll = true
-      tools.add("pileup")
-    }
-  }
-
-  if (runSomatic || runGermline) {
-    targets4Intervals = Channel.from(targetsMap.keySet())
-      .map{ targetId ->
-        [ targetId, targetsMap[targetId].targetsBedGz, targetsMap[targetId].targetsBedGzTbi ]
-      }
-
-    targets4Intervals = Channel.from(targetsMap.keySet())
-      .map{ targetId ->
-        [ targetId, targetsMap."${targetId}".targetsBedGz, targetsMap."${targetId}".targetsBedGzTbi ]
-      }
-
-    CreateScatteredIntervals(Channel.value([referenceMap.genomeFile, 
-                                            referenceMap.genomeIndex, 
-                                            referenceMap.genomeDict]), 
-                                            targets4Intervals,
-                                            runSomatic, runGermline)
-
-    //Associating interval_list files with BAM files, putting them into one channel
-    bamFiles.combine(CreateScatteredIntervals.out.mergedIList, by: 2)
-      .map{
-        item ->
-          def idTumor = item[1]
-          def idNormal = item[2]
-          def target = item[0]
-          def tumorBam = item[3]
-          def normalBam = item[4]
-          def tumorBai = item[5]
-          def normalBai = item[6]
-          def intervalBed = item[7]
-          def key = idTumor+"__"+idNormal+"@"+target // adding one unique key
-
-          return [ key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed ]
-      }.map{ 
-        key, idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed -> 
-        tuple ( 
-            groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
-            idTumor, idNormal, target, tumorBam, normalBam, tumorBai, normalBai, intervalBed
-        )
-    }
-    .transpose()
-    .set{ mergedChannelSomatic }
-
-    bams.combine(CreateScatteredIntervals.out.mergedIList, by: 1)
-      .map{
-        item ->
-          def idNormal = item[1]
-          def target = item[0]
-          def normalBam = item[2]
-          def normalBai = item[3]
-          def intervalBed = item[4]
-          def key = idNormal+"@"+target // adding one unique key
-
-          return [ key, idNormal, target, normalBam, normalBai, intervalBed ]
-      }.map{
-        key, idNormal, target, normalBam, normalBai, intervalBed ->
-        tuple (
-            groupKey(key, intervalBed.size()), // adding numbers so that each sample only wait for it's own children processes
-            idNormal, target, normalBam, normalBai, intervalBed
-        )
-    }
-    .transpose()
-    .set{ mergedChannelGermline }
-  } //end if (runSomatic || runGermline)
-
-
-  if (runSomatic){
-    RunMutect2(mergedChannelSomatic, 
-              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-              tools,
-              runSomatic)
-
-    //Formatting the channel to be keyed by idTumor, idNormal, and target
-    // group by groupKey(key, intervalBed.size())
-    RunMutect2.out.forMutect2Combine.groupTuple().set{ forMutect2Combine }
-    SomaticCombineMutect2Vcf(forMutect2Combine, 
-                             Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                             tools,
-                             runSomatic)
-
-    Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
-    SomaticDellyCall(svTypes,
-                     bamFiles,
-                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]),
-                     tools,
-                     runSomatic)
-
-
-    SomaticRunManta(bamFiles, 
-                  Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
-                  Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]),
-                  tools,
-                  runSomatic)
-
-
-    // Put manta output and delly output into the same channel so they can be processed together in the group key
-    // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
-    SomaticDellyCall.out.dellyFilter4Combine.groupTuple(by: [0,1,2], size: 5).combine(SomaticRunManta.out.manta4Combine, by: [0,1,2]).set{ dellyMantaCombineChannel }
-
-    // --- Process Delly and Manta VCFs 
-    // Merge VCFs, Delly and Manta
-    SomaticMergeDellyAndManta(dellyMantaCombineChannel,
-                              tools,
-                              runSomatic)
-
-    bamFiles.combine(SomaticRunManta.out.mantaToStrelka, by: [0, 1, 2])
-        .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
-              [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
-        }.set{ input4Strelka }
-
-    SomaticRunStrelka2(input4Strelka,
-                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                        tools,
-                        runSomatic)
-
-    SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(SomaticRunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
-
-    SomaticCombineChannel(mutectStrelkaChannel,
-                          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
-                          Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
-                          Channel.value([referenceMap.exomePoN, referenceMap.wgsPoN,referenceMap.exomePoNIndex, referenceMap.wgsPoNIndex,]),
-                          Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]),
-                          tools,
-                          runSomatic)
-
-    SomaticAnnotateMaf(SomaticCombineChannel.out.mutationMergedVcf,
-                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
-                                        referenceMap.vepCache, referenceMap.isoforms
-                                      ]),
-                        tools,
-                        runSomatic
-                      )
-
-    RunMutationSignatures(SomaticAnnotateMaf.out.mafFile, 
-                          tools,
-                          runSomatic)
-
-
-    DoFacets(bamFiles,
-              Channel.value([referenceMap.facetsVcf]),
-              tools,
-              runSomatic)
-
-    DoFacetsPreviewQC(DoFacets.out.Facets4FacetsPreview,
-                      tools,
-                      runSomatic)
-
-    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4Aggregate } // idTumor, idNormal, summaryFiles, qcFiles
-    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4SomaticMultiQC } // idTumor, idNormal, summaryFiles, qcFiles
-    FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
-      ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
-    }.set{FacetsQC4Aggregate}
-
-    RunPolysolver(bams,
-                  tools,
-                  runSomatic)
-
-    bamFiles.combine(DoFacets.out.facetsPurity, by: [0,1,2])
-      .combine(RunPolysolver.out.hlaOutput, by: [1,2])
-      .set{ mergedChannelLOHHLA }
-
-    RunLOHHLA(mergedChannelLOHHLA, 
-              Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat]),
-              tools,
-              runSomatic)
-
-    RunPolysolver.out.hlaOutput.combine(SomaticAnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }
-
-    RunNeoantigen(input4Neoantigen,
-                  Channel.value([referenceMap.neoantigenCDNA, referenceMap.neoantigenCDS]),
-                  tools,
-                  runSomatic)
-
-    DoFacets.out.facetsForMafAnno.combine(RunNeoantigen.out.mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
-
-    SomaticFacetsAnnotation(facetsMafFileSomatic,
-                            tools,
-                            runSomatic)
-
-    RunMsiSensor(bamFiles,
-                 Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict, referenceMap.msiSensorList]),
-                 tools,
-                 runSomatic)
-
-    DoFacets.out.facetsPurity.combine(SomaticFacetsAnnotation.out.maf4MetaDataParser, by: [0,1,2])
-			   .combine(DoFacets.out.FacetsQC4MetaDataParser, by: [0,1,2])
-			   .combine(RunMsiSensor.out.msi4MetaDataParser, by: [0,1,2])
-			   .combine(RunMutationSignatures.out.mutSig4MetaDataParser, by: [0,1,2])
-			   .combine(RunPolysolver.out.hlaOutput, by: [1,2])
-			   .unique()
-         .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
-          [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
-         }.set{ mergedChannelMetaDataParser }
-
-    MetaDataParser(mergedChannelMetaDataParser,
-                   runSomatic)
-
-  }
-  else { 
-    if (params.pairing) {
-      inputPairing.map{ idTumor, idNormal -> 
-        ["placeHolder",idTumor, idNormal,"",""]
-      }.set{ FacetsQC4Aggregate }
-    }
-  } //End of 'if runSomatic'
-
-
-
-
-/*
-================================================================================
-=                              Quality Control                                 =
-================================================================================
-*/
-
-  if (runQC) {
-
-    inputChannel.map{ idSample, target, bam, bai ->
-        [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
-    }.set{ bamsBQSR4HsMetrics }
-
-    QcCollectHsMetrics(bamsBQSR4HsMetrics,
-                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                       params.assayType,
-                       runQC)
-
-    if (runQC && params.assayType != "exome"){
-      QcCollectHsMetrics.out.collectHsMetricsOutput
-        .map{ idSample, target, bam, bai, targetList, baitList -> [idSample, ""]}
-        .set{ collectHsMetricsOutput }
-    }
-
-    inputChannel
-      .map{ idSample, target, bam, bai -> [ idSample, target, bam, bai, file(targetsMap."$target".targetsBed) ]}
-      .set{ bamsBQSR4Qualimap }
-
-    QcQualimap(bamsBQSR4Qualimap,
-               runQC)
-
-    Channel.from(true, false).set{ ignore_read_groups }
-    inputChannel
-      .map{ idSample, target, bam, bai -> 
-        [ idSample, target, bam, bai, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi ]
-      }.set{ bamsBQSR4Alfred }
-
-    QcAlfred(ignore_read_groups, 
-             bamsBQSR4Alfred,
-             Channel.value([referenceMap.genomeFile]),
-             runQC)
-
-    QcAlfred.out.alfredOutput
-      .groupTuple(size:2, by:0)
-      .join(fastPJson, by:0)
-      .join(QcQualimap.out.qualimap4Process, by:0)
-      .join(QcCollectHsMetrics.out.collectHsMetricsOutput, by:0)
-      .set{ sampleMetrics4MultiQC }
-
-    SampleRunMultiQC(sampleMetrics4MultiQC, 
-                     Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]))
-
-
-    if (pairingQc) {
-      QcPileup(inputChannel,
-               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-               tools,
-               runQC)
-
-      QcPileup.out.pileupOutput.combine(inputPairing)
-              .filter { item ->
-                def idSample = item[0]
-                def samplePileup = item[1]
-                def idTumor = item[2]
-                def idNormal = item[3]
-                idSample == idTumor
-              }.map { item ->
-                def idTumor = item[2]
-                def idNormal = item[3]
-                def tumorPileup = item[1]
-                return [ idTumor, idNormal, tumorPileup ]
-              }
-              .unique()
-              .set{ pileupT }
-
-      QcPileup.out.pileupOutput.combine(inputPairing)
-              .filter { item ->
-                def idSample = item[0]
-                def samplePileup = item[1]
-                def idTumor = item[2]
-                def idNormal = item[3]
-                idSample == idNormal
-              }.map { item ->
-                def idTumor = item[2]
-                def idNormal = item[3]
-                def normalPileup = item[1]
-                return [ idTumor, idNormal, normalPileup ]
-              }
-              .unique()
-              .set{ pileupN }
-
-      pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
-
-      QcConpair(pileupConpair,
-                Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                tools,
-                runQC)
-
-      if (runSomatic) {
-        QcConpair.out.conpairOutput
-          .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
-          .join(FacetsQC4SomaticMultiQC, by:[0,1])
-          .set{ somaticMultiQCinput }
-      } else {
-        QcConpair.out.conpairOutput
-          .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles, "", ""]}
-          .set{ somaticMultiQCinput }
-      }
-
-      SomaticRunMultiQC(somaticMultiQCinput,
-                        Channel.value([multiqcWesConfig,multiqcWgsConfig,multiqcTempoLogo]))
-
-      if(runConpairAll){
-        pileupT.combine(pileupN).unique().set{ pileupConpairAll }
-
-        QcConpairAll(pileupConpairAll,
-                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
-                     runConpairAll,
-                     runQC)
-      }
-
-      // -- Run based on QcConpairAll channels or the single QcConpair channels
-      conpairConcord4Aggregate = (!runConpairAll ? QcConpair.out.conpairConcord : QcConpairAll.out.conpairAllConcord)
-      conpairContami4Aggregate = (!runConpairAll ? QcConpair.out.conpairContami : QcConpairAll.out.conpairAllContami)
-
-    } // End of "if (pairingQc)". Doing QcPileup or QcConpair/QcConpairAll only when --pairing [tsv] is given
-
-  } // End of "if (runQc)" 
 
 
 
@@ -1512,6 +1172,7 @@ workflow {
           .set{ inputAggregate }
     }
     else{}
+
               
     if (runSomatic){
       inputSomaticAggregateMaf = inputAggregate.combine(SomaticFacetsAnnotation.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
