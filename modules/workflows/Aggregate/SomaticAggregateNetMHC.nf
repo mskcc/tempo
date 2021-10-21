@@ -5,12 +5,9 @@ process SomaticAggregateNetMHC {
 
   input:
     tuple val(idTumors), val(idNormals), val(cohort), val(placeHolder), path(netmhcCombinedFile)
-    val(runSomatic)
 
   output:
     path("mut_somatic_neoantigens.txt"), emit: NetMhcAggregatedOutput
-
-  when: runSomatic
 
   script:
   """

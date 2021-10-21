@@ -5,12 +5,9 @@ process GermlineAggregateSv {
 
   input:
     tuple val(cohort), path(dellyMantaVcf), path(dellyMantaVcfTbi)
-    val(runGermline)
     
   output:
     path("sv_germline.vcf.{gz,gz.tbi}"), emit: svAggregatedGermlineOutput
-
-  when: runGermline
 
   script:
   """

@@ -5,13 +5,10 @@ process SomaticAggregateLOHHLA {
 
   input:
     tuple val(cohort), path(preditHLA), path(intCPN)
-    val(runSomatic)
 
   output:
     path("DNA.IntegerCPN_CI.txt"), emit: lohhlaDNAIntegerCPNOutput
     path("HLAlossPrediction_CI.txt"), emit: lohhlaHLAlossPredictionAggregatedOutput
-
-  when: runSomatic
 
   script:
   """

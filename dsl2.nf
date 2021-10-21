@@ -86,7 +86,7 @@ include { GermlineCombineChannel }            from './modules/workflows/GermSNV/
 include { GermlineAnnotateMaf }               from './modules/workflows/GermSNV/GermlineAnnotateMaf' 
 include { GermlineFacetsAnnotation }          from './modules/workflows/GermSNV/GermlineFacetsAnnotation' 
 
-//QC
+//QC:
 include { QcCollectHsMetrics }                 from './modules/workflows/QC/QcCollectHsMetrics' 
 include { QcQualimap }                         from './modules/workflows/QC/QcQualimap' 
 include { QcAlfred }                           from './modules/workflows/QC/QcAlfred'
@@ -97,7 +97,7 @@ include { SomaticRunMultiQC }                  from './modules/workflows/QC/Soma
 include { QcConpairAll }                       from './modules/workflows/QC/QcConpairAll'
 include { CohortRunMultiQC }                   from './modules/workflows/QC/CohortRunMultiQC'
 
-//Aggregate
+//Aggregate:
 include { GermlineAggregateMaf }               from './modules/workflows/Aggregate/GermlineAggregateMaf'
 include { GermlineAggregateSv }                from './modules/workflows/Aggregate/GermlineAggregateSv'
 include { QcBamAggregate }                     from './modules/workflows/Aggregate/QcBamAggregate'
@@ -109,11 +109,9 @@ include { SomaticAggregateMetadata }           from './modules/workflows/Aggrega
 include { SomaticAggregateNetMHC }             from './modules/workflows/Aggregate/SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from './modules/workflows/Aggregate/SomaticAggregateSv'
 
-
 println ''
 
 pairingQc = params.pairing
-
 referenceMap = defineReferenceMap()
 targetsMap   = loadTargetReferences()
 
@@ -409,6 +407,9 @@ workflow mdParse_wf
 
   main:
     MetaDataParser(mergedChannelMetaDataParser)
+
+  emit:
+    MetaData4Aggregate = MetaDataParser.out.MetaData4Aggregate
 }
 
 workflow loh_wf
@@ -429,7 +430,9 @@ workflow loh_wf
                 Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat]))
 
   emit:
-    hlaOutput = RunPolysolver.out.hlaOutput
+    hlaOutput            = RunPolysolver.out.hlaOutput
+    predictHLA4Aggregate = RunLOHHLA.out.predictHLA4Aggregate
+    intCPN4Aggregate     = RunLOHHLA.out.intCPN4Aggregate
 }
 
 workflow facets_wf
@@ -486,6 +489,9 @@ workflow sv_wf
     // Merge VCFs, Delly and Manta
     SomaticMergeDellyAndManta(dellyMantaCombineChannel)
 
+  emit:
+    dellyMantaCombined4Aggregate    = SomaticMergeDellyAndManta.out.dellyMantaCombined4Aggregate
+    dellyMantaCombinedTbi4Aggregate = SomaticMergeDellyAndManta.out.dellyMantaCombinedTbi4Aggregate
 }
 
 workflow snv_wf
@@ -560,8 +566,10 @@ workflow snv_wf
     SomaticFacetsAnnotation(facetsMafFileSomatic)
 
   emit:
-    mafFile = SomaticAnnotateMaf.out.mafFile
-    maf4MetaDataParser = SomaticFacetsAnnotation.out.maf4MetaDataParser
+    mafFile               = SomaticAnnotateMaf.out.mafFile
+    maf4MetaDataParser    = SomaticFacetsAnnotation.out.maf4MetaDataParser
+    NetMhcStats4Aggregate = RunNeoantigen.out.NetMhcStats4Aggregate
+    finalMaf4Aggregate    = SomaticFacetsAnnotation.out.finalMaf4Aggregate
 }
 
 workflow sampleQC_wf
@@ -609,6 +617,11 @@ workflow sampleQC_wf
 
     SampleRunMultiQC(sampleMetrics4MultiQC, 
                      Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]))
+
+  emit:
+    bamsQcStats4Aggregate  = QcAlfred.out.bamsQcStats4Aggregate
+    collectHsMetricsOutput = QcCollectHsMetrics.out.collectHsMetricsOutput
+    qualimap4Process       = QcQualimap.out.qualimap4Process
 }
 
 workflow samplePairingQC_wf
@@ -773,6 +786,9 @@ workflow germlineSNV_facets
         .set{ facetsMafFileGermline }
 
     GermlineFacetsAnnotation(facetsMafFileGermline)
+
+  emit:
+    mafFile4AggregateGermline = GermlineFacetsAnnotation.out.mafFile4AggregateGermline
 }
 
 workflow germlineSV_wf
@@ -798,14 +814,13 @@ workflow germlineSV_wf
     GermlineMergeDellyAndManta(dellyMantaChannelGermline,
                                Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
+  emit:
+    dellyMantaCombined4AggregateGermline    = GermlineMergeDellyAndManta.out.dellyMantaCombined4AggregateGermline
+    dellyMantaCombinedTbi4AggregateGermline = GermlineMergeDellyAndManta.out.dellyMantaCombinedTbi4AggregateGermline
 }
 
 
 workflow {
-  if (!runSomatic && runGermline) {
-    println "WARNING: You can't run GERMLINE section without running SOMATIC section. Activating SOMATIC section automatically"
-    runSomatic = true
-  }
   if (runAggregate == false) {
     if (!params.mapping && !params.bamMapping) {
       println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
@@ -879,6 +894,7 @@ workflow {
   {
     alignment_wf()
   }
+
 
   /*
   ================================================================================
@@ -1054,10 +1070,16 @@ workflow {
         .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
         .join(facets_wf.out.FacetsQC4SomaticMultiQC, by:[0,1])
         .set{ somaticMultiQCinput }
+      
+      FacetsQC4Aggregate = facets_wf.out.FacetsQC4Aggregate
     } else {
       samplePairingQC_wf.out.conpairOutput
         .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles, "", ""]}
         .set{ somaticMultiQCinput }
+
+      inputPairing.map{ idTumor, idNormal -> 
+        ["placeHolder",idTumor, idNormal,"",""]
+      }.set{ FacetsQC4Aggregate }
     }
     somaticMultiQC_wf(somaticMultiQCinput)
   }
@@ -1067,9 +1089,6 @@ workflow {
       ["placeHolder",idTumor, idNormal,"",""]
     }.set{ FacetsQC4Aggregate }
   }
-
-
-
 
 
 /*
@@ -1173,31 +1192,39 @@ workflow {
     }
     else{}
 
-              
-    if (runSomatic){
-      inputSomaticAggregateMaf = inputAggregate.combine(SomaticFacetsAnnotation.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
-      inputSomaticAggregateNetMHC = inputAggregate.combine(RunNeoantigen.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
-      inputPurity4Aggregate = inputAggregate.combine(DoFacets.out.FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputHisens4Aggregate = inputAggregate.combine(DoFacets.out.FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputOutLog4Aggregate = inputAggregate.combine(DoFacets.out.FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputArmLev4Aggregate = inputAggregate.combine(DoFacets.out.FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputGeneLev4Aggregate = inputAggregate.combine(DoFacets.out.FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputSomaticAggregateSv = inputAggregate.combine(SomaticMergeDellyAndManta.out.dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputSomaticAggregateSvTbi = inputAggregate.combine(SomaticMergeDellyAndManta.out.dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputPredictHLA4Aggregate = inputAggregate.combine(RunLOHHLA.out.predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputIntCPN4Aggregate = inputAggregate.combine(RunLOHHLA.out.intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputSomaticAggregateMetadata = inputAggregate.combine(MetaDataParser.out.MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
-
-      if (runGermline){
-        inputGermlineAggregateMaf = inputAggregate.combine(GermlineFacetsAnnotation.out.mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
-        inputGermlineAggregateSv = inputAggregate.combine(GermlineMergeDellyAndManta.out.dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
-        inputGermlineAggregateSvTbi = inputAggregate.combine(GermlineMergeDellyAndManta.out.dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
-      }
+    if (doWF_facets){
+      inputPurity4Aggregate    = inputAggregate.combine(facets_wf.out.FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputHisens4Aggregate    = inputAggregate.combine(facets_wf.out.FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputOutLog4Aggregate    = inputAggregate.combine(facets_wf.out.FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputArmLev4Aggregate    = inputAggregate.combine(facets_wf.out.FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputGeneLev4Aggregate   = inputAggregate.combine(facets_wf.out.FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    }
+    if (doWF_SV){
+      inputSomaticAggregateSv    = inputAggregate.combine(sv_wf.out.dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputSomaticAggregateSvTbi = inputAggregate.combine(sv_wf.out.dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    }
+    if (doWF_SNV){
+      inputSomaticAggregateNetMHC = inputAggregate.combine(snv_wf.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputSomaticAggregateMaf    = inputAggregate.combine(snv_wf.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+    }
+    if (doWF_loh){
+      inputPredictHLA4Aggregate = inputAggregate.combine(loh_wf.out.predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputIntCPN4Aggregate     = inputAggregate.combine(loh_wf.out.intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    }
+    if (doWF_mdParse){
+      inputSomaticAggregateMetadata = inputAggregate.combine(mdParse_wf.out.MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
+    }
+    if (doWF_facets && doWF_germSNV){
+      inputGermlineAggregateMaf = inputAggregate.combine(germlineSNV_facets.out.mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
+    }
+    if (doWF_germSV)
+    {
+      inputGermlineAggregateSv    = inputAggregate.combine(germlineSV_wf.out.dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+      inputGermlineAggregateSvTbi = inputAggregate.combine(germlineSV_wf.out.dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
     }
 
-
-    if (runQC){
-      QcAlfred.out.bamsQcStats4Aggregate.branch{ item ->
+    if (doWF_sampleQC){
+      sampleQC_wf.out.bamsQcStats4Aggregate.branch{ item ->
             def idSample = item[0]
             def alfred = item[1]
       
@@ -1262,7 +1289,7 @@ workflow {
             .unique()
             .set{ alfredIgnoreN }
       
-      inputPairing.combine(QcCollectHsMetrics.out.collectHsMetricsOutput)
+      inputPairing.combine(sampleQC_wf.out.collectHsMetricsOutput)
             .branch { item ->
               def idTumor = item[0]
               def idNormal = item[1]
@@ -1319,7 +1346,7 @@ workflow {
               .unique()
               .set{ fastPMetrics }
 
-      inputPairing.combine(QcQualimap.out.qualimap4Process)
+      inputPairing.combine(sampleQC_wf.out.qualimap4Process)
         .branch { idTumor, idNormal, idSample, qualimapDir ->
           tumor:  idSample == idTumor
           normal: idSample == idNormal
@@ -1340,96 +1367,88 @@ workflow {
       inputAlfredIgnoreN = alfredIgnoreN
       inputFastP4MultiQC = fastPMetrics
 
-      if (pairingQc){
-        inputAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairConcord4Aggregate }
-        inputAggregate.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairContami4Aggregate }
+      if (doWF_samplePairingQC){
+        inputAggregate.combine(samplePairingQC_wf.out.conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairConcord4Aggregate }
+        inputAggregate.combine(samplePairingQC_wf.out.conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairContami4Aggregate }
         inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{ inputFacetsQC4CohortMultiQC }
       }
-    } //end 'if (runQC)'
-  }//end 'else if(!(runAggregate == false))'
+    }
+  }
   else{}
 
 
-  if (runAggregate && runSomatic) {
-    SomaticAggregateMaf(inputSomaticAggregateMaf,
-                        runSomatic)
+  if (runAggregate) {
+    if (doWF_facets){
+      SomaticAggregateMaf(inputSomaticAggregateMaf)
 
-    SomaticAggregateNetMHC(inputSomaticAggregateNetMHC,
-                           runSomatic)
-
-    inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
+      inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
 		     .join(inputOutLog4Aggregate, by:[0])
 		     .join(inputArmLev4Aggregate, by:[0])
 		     .join(inputGeneLev4Aggregate, by:[0])
 		     .set{ inputSomaticAggregateFacets }
 
-    SomaticAggregateFacets(inputSomaticAggregateFacets, 
-                           runSomatic)
+      SomaticAggregateFacets(inputSomaticAggregateFacets)
+    }
+    if (doWF_SNV){
+      SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
+    }
+    if (doWF_SV){
+      inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
+            .set{ inputSomaticAggregateSv }
 
-    inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
-		      .set{ inputSomaticAggregateSv }
+      SomaticAggregateSv(inputSomaticAggregateSv)
+    }
+    if (doWF_loh){
+      inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
+            .set{ inputSomaticAggregateLOHHLA }
 
-    SomaticAggregateSv(inputSomaticAggregateSv,
-                       runSomatic)
+      SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA)
+    }
+    if(doWF_mdParse)
+    {
+      SomaticAggregateMetadata(inputSomaticAggregateMetadata)
+    }
+    if (doWF_facets && doWF_germSNV){
+      GermlineAggregateMaf(inputGermlineAggregateMaf)
+    }
+    if (doWF_germSV){
+      // --- Aggregate per-sample germline data, SVs
+      inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
+            .set{ inputGermlineAggregateSv }
 
-    inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
-          .set{ inputSomaticAggregateLOHHLA }
+      GermlineAggregateSv(inputGermlineAggregateSv)
+    }
 
-    SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA,
-                           runSomatic)
+    if (doWF_sampleQC){
+      inputAlfredIgnoreY.join(inputAlfredIgnoreN)
+                .join(inputHsMetrics)
+                .set{ inputQcBamAggregate }
 
-    SomaticAggregateMetadata(inputSomaticAggregateMetadata,
-                             runSomatic)
+      QcBamAggregate(inputQcBamAggregate)
 
-  } //end 'if (runAggregate && runSomatic)'
-
-
-  if (runAggregate && runGermline) {
-    GermlineAggregateMaf(inputGermlineAggregateMaf,
-                         runGermline)
-
-    // --- Aggregate per-sample germline data, SVs
-    inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
-          .set{ inputGermlineAggregateSv }
-
-    GermlineAggregateSv(inputGermlineAggregateSv,
-                        runGermline)
-                        
-  } 
-
-
-  if (runAggregate && runQC) {
-    inputAlfredIgnoreY.join(inputAlfredIgnoreN)
-          .join(inputHsMetrics)
-          .set{ inputQcBamAggregate }
-
-    QcBamAggregate(inputQcBamAggregate,
-                   runQC)
-
-    if (pairingQc){
-      inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
+      if(doWF_samplePairingQC)
+      {
+        inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
 			     .set{ inputQcConpairAggregate }
 
-      QcConpairAggregate(inputQcConpairAggregate,
-                         runQC)
-      
-      inputFastP4MultiQC
-        .join(inputAlfredIgnoreY,by:0)
-        .join(inputAlfredIgnoreN,by:0)
-        .join(inputConpairConcord4Aggregate,by:0)
-        .join(inputConpairContami4Aggregate,by:0)
-        .join(inputFacetsQC4CohortMultiQC,by:0)
-        .join(inputQualimap4CohortMultiQC,by:0)
-        .join(inputHsMetrics, by:0)
-        .set{ inputCohortRunMultiQC }
+        QcConpairAggregate(inputQcConpairAggregate)
+        
+        inputFastP4MultiQC
+          .join(inputAlfredIgnoreY,by:0)
+          .join(inputAlfredIgnoreN,by:0)
+          .join(inputConpairConcord4Aggregate,by:0)
+          .join(inputConpairContami4Aggregate,by:0)
+          .join(inputFacetsQC4CohortMultiQC,by:0)
+          .join(inputQualimap4CohortMultiQC,by:0)
+          .join(inputHsMetrics, by:0)
+          .set{ inputCohortRunMultiQC }
 
-      CohortRunMultiQC(inputCohortRunMultiQC,
-                       Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]),
-                       runQC)
+        CohortRunMultiQC(inputCohortRunMultiQC,
+                         Channel.value([multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo]))
+      }
     }
-  }
+  } 
 }
-
 workflow.onComplete {
   file(params.fileTracking).text = ""
   file(outDir).eachFileRecurse{
