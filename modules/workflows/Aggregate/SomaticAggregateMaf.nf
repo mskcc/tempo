@@ -5,12 +5,9 @@ process SomaticAggregateMaf {
 
   input:
     tuple val(idTumors), val(idNormals), val(cohort), val(placeHolder), path(mafFile)
-    val(runSomatic)
 
   output:
     path("mut_somatic.maf"), emit: mutationAggregatedOutput
-
-  when: runSomatic
 
   script:
   """

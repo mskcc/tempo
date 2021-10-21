@@ -5,12 +5,9 @@ process QcBamAggregate {
 
   input:
     tuple val(cohort), path(alfredIgnoreYTumor), path(alfredIgnoreYNormal), path(alfredIgnoreNTumor), path(alfredIgnoreNNormal), path(hsMetricsTumor), path(hsMetricsNormal)
-    val(runQC)
     
   output:
     path('alignment_qc.txt'), emit: alignmentQcAggregatedOutput
-
-  when: runQC
 
   script:
   if (params.assayType == "exome") {
