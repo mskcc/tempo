@@ -5,12 +5,9 @@ process QcConpairAggregate {
 
   input:
     tuple val(cohort), path(concordFile), path(contamiFile)
-    val(runQC)
     
   output:
     tuple path('concordance_qc.txt'), path('contamination_qc.txt'), emit: conpairAggregatedOutput
-
-  when: runQC
 
   script:
   """

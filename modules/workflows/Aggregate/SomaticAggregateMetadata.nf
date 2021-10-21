@@ -5,12 +5,9 @@ process SomaticAggregateMetadata {
 
   input:
     tuple val(idTumors), val(idNormals), val(cohort), val(placeHolder), path(metaDataFile)
-    val(runSomatic)
     
   output:
     path("sample_data.txt"), emit: MetaDataAggregatedOutput
-
-  when: runSomatic
 
   script:
   """

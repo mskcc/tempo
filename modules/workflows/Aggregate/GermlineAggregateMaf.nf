@@ -5,12 +5,9 @@ process GermlineAggregateMaf {
 
   input:
     tuple val(idTumors), val(idNormals), val(cohort), val(placeHolder), path(mafFile)
-    val(runGermline)
 
   output:
     path("mut_germline.maf"), emit: mutationAggregatedGermlineOutput
-
-  when: runGermline
 
   script:
   """
