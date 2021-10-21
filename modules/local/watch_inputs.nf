@@ -12,7 +12,7 @@ def touchInputs(chunkSizeLimit, startEpoch, epochMap) {
 } as TimerTask, 1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
 }
 
-def watchMapping(tsvFile, assayType) {
+def watchMapping(tsvFile, assayType, validTargetsList) {
   def index = 1 
   Channel.watchPath( tsvFile, 'create, modify' )
 	 .map{ row -> 
@@ -22,7 +22,7 @@ def watchMapping(tsvFile, assayType) {
 	 .map{ row -> 
 	      [index++] + row
 	 }.filter{ row ->
-	      if (chunkSizeLimit > 0 ){
+	      if (params.chunkSizeLimit > 0 ){
 	      	row[0] < limitInputLines
 	      } else { 1 }
 	 }.map{ row ->
@@ -35,7 +35,7 @@ def watchMapping(tsvFile, assayType) {
               def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: false)
               def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: false)
               def numOfPairs = row.NUM_OF_PAIRS.toInteger()
-              if(!TempoUtils.checkTarget(target, assayType, targetsMap.keySet())){}
+              if(!TempoUtils.checkTarget(target, assayType, validTargetsList)){}
               if(!TempoUtils.checkNumberOfItem(row, 5, tsvFile)){}
 
               [idSample, numOfPairs, target, fastqFile1, fastqFile2]
@@ -47,7 +47,7 @@ def watchMapping(tsvFile, assayType) {
       .unique()
 }
 
-def watchBamMapping(tsvFile, assayType){
+def watchBamMapping(tsvFile, assayType, validTargetsList){
   def index = 1
   Channel.watchPath( tsvFile, 'create, modify' )
 	 .map{ row -> 
@@ -57,7 +57,7 @@ def watchBamMapping(tsvFile, assayType){
 	 .map{ row -> 
 	      [index++] + row
 	 }.filter{ row ->
-	      if (chunkSizeLimit > 0 ){
+	      if (params.chunkSizeLimit > 0 ){
 	      	row[0] < limitInputLines
 	      } else { 1 }
 	 }.map{ row ->
@@ -68,7 +68,7 @@ def watchBamMapping(tsvFile, assayType){
               def target = row.TARGET
               def bam = file(row.BAM, checkIfExists: false)
               def bai = file(row.BAI, checkIfExists: false)
-              if(!TempoUtils.checkTarget(target, assayType, targetsMap.keySet())){}
+              if(!TempoUtils.checkTarget(target, assayType, validTargetsList)){}
               if(!TempoUtils.checkNumberOfItem(row, 4, tsvFile)){}
 
               [idSample, target, bam, bai]
@@ -104,7 +104,7 @@ def watchAggregateWithPath(tsvFile) {
 	 .map{ row -> 
 	      [index++] + row
 	 }.filter{ row ->
-	      if (chunkSizeLimit > 0 ){
+	      if (params.chunkSizeLimit > 0 ){
 	      	row[0] < limitInputLines
 	      } else { 1 }
 	 }.map{ row ->

@@ -129,7 +129,7 @@ workflow validate_wf
     }
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
+      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
       epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
     }
     else{}
@@ -180,7 +180,7 @@ workflow alignment_wf
       }
       else if (params.watch == true) {
         mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-        inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType) : watchBamMapping(mappingFile, params.assayType)
+        inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
         epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
       }
       else{}
