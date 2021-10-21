@@ -5,12 +5,9 @@ process SomaticAggregateFacets {
 
   input:
     tuple val(cohort), path(purity), path(Hisens), path(outLog), path(armLev), path(geneLev)
-    val(runSomatic)
 
   output:
     tuple path("cna_hisens_run_segmentation.seg"), path("cna_purity_run_segmentation.seg"), path("cna_armlevel.txt"), path("cna_genelevel.txt"), path("cna_facets_run_info.txt"), emit: FacetsAnnotationAggregatedOutput
-
-  when: runSomatic
 
   script:
   """

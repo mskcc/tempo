@@ -7,12 +7,9 @@ process CohortRunMultiQC {
   input:
     tuple val(cohort), path(fastPTumor), path(fastPNormal), path(alfredIgnoreYTumor), path(alfredIgnoreYNormal), path(alfredIgnoreNTumor), path(alfredIgnoreNNormal), path(concordFile), path(contamiFile), path(FacetsSummaryFile), path(FacetsQCFile), path(qualimapFolderTumor), path(qualimapFolderNormal), path(hsMetricsTumor), path(hsMetricsNormal)
     tuple path("exome_multiqc_config.yaml"), path("wgs_multiqc_config.yaml"), path("tempoLogo.png")
-    val(runQC)
     
   output:
     tuple val(cohort), path("*multiqc_report*.html"), path("*multiqc_data*.zip"), emit: cohort_multiqc_report
-
-  when: runQC 
 
   script:
   if (params.assayType == "exome") {

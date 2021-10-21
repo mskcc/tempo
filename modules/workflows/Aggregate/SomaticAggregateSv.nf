@@ -5,12 +5,9 @@ process SomaticAggregateSv {
 
   input:
     tuple val(cohort), path(dellyMantaVcf), path(dellyMantaVcfTbi) 
-    val(runSomatic)
     
   output:
     path("sv_somatic.vcf.{gz,gz.tbi}"), emit: svAggregatedOutput
-
-  when: runSomatic
 
   script:
   """
