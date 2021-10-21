@@ -1920,16 +1920,16 @@ process MetaDataParser {
   mv ${idTumor}__${idNormal}_metadata.txt ${idTumor}__${idNormal}.sample_data.txt
   """
 }
-} else { 
-  if (params.pairing) {
-    pairing4QC.into{FacetsQC4SomaticMultiQC; FacetsQC4Aggregate}
-    FacetsQC4Aggregate.map{ idTumor, idNormal -> 
-      ["placeHolder",idTumor, idNormal,"",""]
-    }.set{FacetsQC4Aggregate}
-    FacetsQC4SomaticMultiQC.map{ idTumor, idNormal -> 
-      [idTumor, idNormal,"",""]
-    }.set{FacetsQC4SomaticMultiQC}
-  }
+} else {}
+
+if (params.pairing && (!runSomatic || !("facets" in tools) )) {
+  pairing4QC.into{FacetsQC4SomaticMultiQC; FacetsQC4Aggregate}
+  FacetsQC4Aggregate.map{ idTumor, idNormal -> 
+    ["placeHolder",idTumor, idNormal,"",""]
+  }.set{FacetsQC4Aggregate}
+  FacetsQC4SomaticMultiQC.map{ idTumor, idNormal -> 
+    [idTumor, idNormal,"",""]
+  }.set{FacetsQC4SomaticMultiQC}
 }
 
 /*
@@ -2929,11 +2929,13 @@ process SomaticRunMultiQC {
   mkdir -p ignoreFolder ; mv conpair.tsv ignoreFolder
   cp ${assay}_multiqc_config.yaml multiqc_config.yaml
   
-  multiqc . -x ignoreFolder
+  echo -e "metric\tpass\twarn\tfail\ndummy\tdummy\tdummy\tdummy" > CriteriaTable.txt
+  multiqc . -x ignoreFolder -x qualimap
+  rm -f CriteriaTable.txt
   general_stats_parse.py --print-criteria 
   rm -rf multiqc_report.html multiqc_data
 
-  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z -x ignoreFolder
+  multiqc . --cl_config "title: \\"Somatic MultiQC Report\\"" --cl_config "subtitle: \\"${outPrefix} QC\\"" --cl_config "intro_text: \\"Aggregate results from Tempo QC analysis\\"" --cl_config "report_comment: \\"This report includes QC statistics related to the Tumor/Normal pair ${outPrefix}.<br/>This report does not include FASTQ or alignment QC of either ${idTumor} or ${idNormal}. To review FASTQ and alignment QC, please refer to the multiqc_report.html from the bam-level folder.<br/>To review qc from all samples and Tumor/Normal pairs from a cohort in a single report, please refer to the multiqc_report.html from the cohort-level folder.\\"" -z -x ignoreFolder -x qualimap
   mv genstats-QC_Status.txt ${outPrefix}.QC_Status.txt
 
   """
