@@ -991,6 +991,7 @@ process SomaticDellyCall {
 
   output:
     set idTumor, idNormal, target, file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyFilter4Combine
+    set idTumor, idNormal, target, svType, file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz") into delly4cdna
     set file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz"), file("${idTumor}__${idNormal}_${svType}.delly.vcf.gz.tbi") into dellyOutput
 
   when: "delly" in tools && runSomatic
@@ -1017,6 +1018,12 @@ process SomaticDellyCall {
   tabix --preset vcf ${idTumor}__${idNormal}_${svType}.delly.vcf.gz
   """
 }
+
+delly4cdna.filter{ idTumor, idNormal, target, svType, vcf ->
+    svType == "DEL"
+  }.map{idTumor, idNormal, target, svType, vcf -> 
+    [idTumor, idNormal, target, vcf] 
+  }.set{dellyDel4cdna}
 
 // --- Run Manta
 process SomaticRunManta {
@@ -1128,6 +1135,51 @@ process SomaticMergeDellyAndManta {
 
   tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz 
   """
+}
+
+process CreateCDNAContam {
+  tag {idTumor + "__" + idNormal}
+
+  publishDir "${outDir}/somatic/${outputPrefix}/cDNA", mode: params.publishDirMode, pattern: "*_cdna_contamination.txt"
+
+  input:
+  set idTumor, idNormal, target, file(vcfGz) from dellyDel4cdna
+  set file(genomeFile), file(genomeIndex), file(genomeDict), file(vepCache), file(isoforms) from Channel.value([
+      referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
+      referenceMap.vepCache, referenceMap.isoforms
+    ])
+  file(cdna_script) from Channel.value([file(workflow.projectDir + "/lib/scripts/create_cdna_contam.py")])
+
+  output: 
+  set idTumor, idNormal, target, file("*_cdna_contamination.txt")
+
+  when: "delly" in tools && runSomatic && runQC
+
+  script:
+  outputPrefix = "${idTumor}__${idNormal}"
+  vcf = "${vcfGz}".replaceFirst(".vcf.gz",".vcf")
+  """
+  zcat ${vcfGz} > ${vcf}
+  perl /opt/vcf2maf.pl \\
+    --maf-center MSKCC-CMO \\
+    --vep-path /usr/bin/vep \\
+    --vep-data ${vepCache} \\
+    --vep-forks 10 \\
+    --tumor-id ${idTumor} \\
+    --normal-id ${idNormal} \\
+    --vcf-tumor-id ${idTumor} \\
+    --vcf-normal-id ${idNormal} \\
+    --input-vcf ${vcf} \\
+    --ref-fasta ${genomeFile} \\
+    --custom-enst ${isoforms} \\
+    --output-maf ${outputPrefix}.raw.maf \\
+    --filter-vcf 0
+  
+  python ${cdna_script} \\
+    --input_mafs ${outputPrefix}.raw.maf \\
+    --project_prefix ${outputPrefix}
+  """
+
 }
 
 
