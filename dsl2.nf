@@ -26,9 +26,7 @@ chunkSizeLimit = params.chunkSizeLimit
 include { defineReferenceMap; loadTargetReferences } from './modules/local/define_maps'
 include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/local/watch_inputs'
 
-if (params.watch == true) {
-  touchInputs(chunkSizeLimit, startEpoch, epochMap)
-}
+
 
 //Sample Validation:
 include { CrossValidateSamples }       from './modules/workflows/SampleValidation/CrossValidateSamples'
@@ -122,8 +120,10 @@ workflow validate_wf
     TempoUtils.checkAssayType(params.assayType)
     if (params.watch == false) {
       keySet = targetsMap.keySet()
-      mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
+      mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)      
       inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
+
+      //inputMapping.view()
     }
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
@@ -132,18 +132,20 @@ workflow validate_wf
     }
     else{}
     if(params.pairing){
-      if(runQC){
-        pairingQc = true
-      }
       if (params.watch == false) {
         pairingFile = file(params.pairing, checkIfExists: true)
         inputPairing  = TempoUtils.extractPairing(pairingFile)
+        //inputPairing.view()
         TempoUtils.crossValidateTargets(inputMapping, inputPairing)
 
         samplesInMapping = inputMapping.flatMap{[it[0]]}.unique().toSortedList()
         samplesInPairing = inputPairing.flatten().unique().toSortedList()
-        CrossValidateSamples(samplesInMapping, samplesInPairing)
-        if(!CrossValidateSamples.out.isValid) {exit 1}
+
+        //CrossValidateSamples(samplesInMapping, samplesInPairing, inputMapping, inputPairing)
+        //inputMapping = CrossValidateSamples.out.validSamples
+        //inputPairing = CrossValidateSamples.out.pairingSamples
+        //inputPairing.view()
+        //if(!CrossValidateSamples.out.isValid) {exit 1}
       }
       else if (params.watch == true) {
         pairingFile = file(params.pairing, checkIfExists: false)
@@ -151,6 +153,9 @@ workflow validate_wf
         epochMap[params.pairing] = 0 
       }
       else{}
+    }
+    else {
+      inputPairing = Channel.empty()
     }
 
   emit:
@@ -162,6 +167,9 @@ workflow validate_wf
 
 workflow alignment_wf
 {
+  take:
+    inputMapping
+
   main:
     if (params.bamMapping)
     {
@@ -170,19 +178,6 @@ workflow alignment_wf
     }
     if(params.mapping)
     {
-      TempoUtils.checkAssayType(params.assayType)
-      if (params.watch == false) {
-        keySet = targetsMap.keySet()
-        mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)
-        inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
-      }
-      else if (params.watch == true) {
-        mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-        inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
-        epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
-      }
-      else{}
-
       // Parse input FASTQ mapping
       if (params.watch != true) {
         inputMapping.groupTuple(by: [0])
@@ -862,7 +857,7 @@ workflow {
   doWF_validate = (params.mapping || params.bamMapping) ? true : false
   doWF_align    = (params.alignWF) ? true : false
   doWF_manta    = (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_scatter  = (params.scatterWF || params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
+  doWF_scatter  = (params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
   doWF_germSNV  = (params.germSNV) ? true : false
   doWF_germSV   = (params.germSV) ? true : false
   doWF_facets   = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
@@ -892,7 +887,7 @@ workflow {
   // Skip these processes if starting from aligned BAM files
   if (doWF_align)
   {
-    alignment_wf()
+    alignment_wf(inputMapping)
   }
 
 
@@ -1376,6 +1371,9 @@ workflow {
   }
   else{}
 
+  if (params.watch == true) {
+    touchInputs(chunkSizeLimit, startEpoch, epochMap)
+  }
 
   if (runAggregate) {
     if (doWF_facets){
