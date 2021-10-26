@@ -117,6 +117,7 @@ targetsMap   = loadTargetReferences()
 workflow validate_wf
 {
   main:
+    epochMap_local = [:]
     TempoUtils.checkAssayType(params.assayType)
     if (params.watch == false) {
       keySet = targetsMap.keySet()
@@ -128,7 +129,7 @@ workflow validate_wf
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
       inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
-      epochMap[params.mapping ? params.mapping : params.bamMapping ] = 0
+      epochMap_local[params.mapping ? params.mapping : params.bamMapping ] = 0
     }
     else{}
     if(params.pairing){
@@ -150,7 +151,7 @@ workflow validate_wf
       else if (params.watch == true) {
         pairingFile = file(params.pairing, checkIfExists: false)
         inputPairing  = watchPairing(pairingFile)
-        epochMap[params.pairing] = 0 
+        epochMap_local[params.pairing] = 0 
       }
       else{}
     }
@@ -161,7 +162,7 @@ workflow validate_wf
   emit:
     inputMapping = inputMapping
     inputPairing = inputPairing
-    epochMap     = epochMap
+    epochMap     = epochMap_local
 }
 
 
@@ -876,7 +877,10 @@ workflow {
     validate_wf()
     inputMapping = validate_wf.out.inputMapping
     inputPairing = validate_wf.out.inputPairing
-    epochMap     = validate_wf.out.epochMap
+    validate_wf.out.epochMap
+      .subscribe{ validated -> 
+	epochMap += validated
+      }
   }
   else{
     if(params.pairing){
