@@ -136,17 +136,11 @@ workflow validate_wf
       if (params.watch == false) {
         pairingFile = file(params.pairing, checkIfExists: true)
         inputPairing  = TempoUtils.extractPairing(pairingFile)
-        //inputPairing.view()
         TempoUtils.crossValidateTargets(inputMapping, inputPairing)
 
-        samplesInMapping = inputMapping.flatMap{[it[0]]}.unique().toSortedList()
-        samplesInPairing = inputPairing.flatten().unique().toSortedList()
-
-        //CrossValidateSamples(samplesInMapping, samplesInPairing, inputMapping, inputPairing)
-        //inputMapping = CrossValidateSamples.out.validSamples
-        //inputPairing = CrossValidateSamples.out.pairingSamples
-        //inputPairing.view()
-        //if(!CrossValidateSamples.out.isValid) {exit 1}
+        CrossValidateSamples(inputMapping.collect(), inputPairing.collect())
+        inputMapping = CrossValidateSamples.out.validSamples.flatten().collate(4)
+        inputPairing = CrossValidateSamples.out.validPairings.flatten().collate(2)
       }
       else if (params.watch == true) {
         pairingFile = file(params.pairing, checkIfExists: false)

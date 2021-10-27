@@ -1,57 +1,83 @@
 process CrossValidateSamples {
   input:
-    val(samplesInMapping)
-    val(samplesInPairing)
     val(inputMapping)
     val(inputPairing)
-
+    
   output:
-    val(isValid), emit: isValid
-    val(mappingList), emit: validSamples
-    val(pairingList), emit: pairingSamples
+    val(validSamples), emit: validSamples
+    val(invalidSamples), emit: invalidSamples
+    val(validPairings), emit: validPairings
 
   exec:
-    mappingOnly = samplesInMapping - samplesInPairing
-    pairingOnly = samplesInPairing - samplesInMapping
-    extraSamples = mappingOnly + pairingOnly
-    setDiff = (samplesInMapping + samplesInPairing ) - samplesInMapping.intersect(samplesInPairing)
-
-    //println inputMapping[0]
-
-    if(setDiff.size == 0)
+    //Restructure pairs.
+    pairsList = []
+    curPair = []
+    mod = 0
+    for(String pairItem : inputPairing)
     {
-      mappingList = inputMapping
-      pairingList = inputPairing
-    }
-    else{
-      validList  = []
-      validPairs = []
-      for(item in inputMapping)
+      curPair.add(pairItem)
+      if(mod == 1)
       {
-        if(!setDiff.contains(item[0]))
-        {
-          validList.add(item)
-        }
+        pairsList.add(curPair)
+        mod = 0
+        curPair = []
+        continue
       }
-      for(item in inputPairing)
+      mod = mod + 1
+    } 
+
+    //Restructure mappings.
+    mappingsList = []
+    curMapping = []
+    mod = 0
+    for(String mapItem : inputMapping)
+    {
+      curMapping.add(mapItem)
+      if(mod == 3)
       {
-        if(!setDiff.contains(item[0]) || !setDiff.contains(item[1]))
-        {
-          validPairs.add(item)
-        }
+        mappingsList.add(curMapping)
+        mod = 0
+        curMapping = []
+        continue
       }
-      mappingList = validList
-      pairingList = validPairs
+      mod = mod + 1
+    } 
+
+    //Identify samples where both pairing ids have valid mappings.
+    validSamplesList = []
+    validPairings    = []
+    for(i in 0..pairsList.size()-1)
+    {
+      if (inputMapping.toString().contains(pairsList[i][0]) && inputMapping.toString().contains(pairsList[i][1]))
+      {
+        validSamplesList.add(pairsList[i][0])
+        validSamplesList.add(pairsList[i][1])
+        validPairings.add([pairsList[i][0],pairsList[i][1]])
+      }
+    }
+    
+    //If nothing is valid throw and error and stop execution.
+    if(validSamplesList.size() == 0)
+    {
+      println "Error: CrossValidateSamples - No valid samples identified between pairing and mapping files."
+      sleep(500)
+      exit 1
     }
 
-    if(extraSamples == [])
+    //Create valid inputMappings.
+    validInputMappings = []
+    invalidInputMappings = []
+    for(i in 0..mappingsList.size()-1)
     {
-      isValid = true
+      if(validSamplesList.toString().contains(mappingsList[i][0]))
+      {
+        validInputMappings.add(mappingsList[i])
+      }
+      else{
+        invalidInputMappings.add(mappingsList[i])
+      }
     }
-    else
-    {
-      //println "Mapping: ${mappingOnly}"
-      //println "Pairing: ${pairingOnly}"
-      isValid = false
-    }
+    validSamples   = validInputMappings
+    invalidSamples = invalidInputMappings
+
 }
