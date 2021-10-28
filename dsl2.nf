@@ -123,8 +123,6 @@ workflow validate_wf
       keySet = targetsMap.keySet()
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)      
       inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
-
-      //inputMapping.view()
     }
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
@@ -139,8 +137,14 @@ workflow validate_wf
         TempoUtils.crossValidateTargets(inputMapping, inputPairing)
 
         CrossValidateSamples(inputMapping.collect(), inputPairing.collect())
-        inputMapping = CrossValidateSamples.out.validSamples.flatten().collate(4)
-        inputPairing = CrossValidateSamples.out.validPairings.flatten().collate(2)
+        CrossValidateSamples.out.validSamples
+          .flatten()
+          .collate(4)
+          .map { idSample, target, file_pe1, file_pe2 ->
+            [idSample, target, file(file_pe1), file(file_pe2)]
+          }
+          .set { inputMapping }
+        CrossValidateSamples.out.validPairings.flatten().collate(2).set{ inputPairing }
       }
       else if (params.watch == true) {
         pairingFile = file(params.pairing, checkIfExists: false)
@@ -184,9 +188,9 @@ workflow alignment_wf
       }
 
       inputMapping.map { idSample, target, file_pe1, file_pe2 ->
-                      [idSample, target, file_pe1, file_pe2, idSample + '@' + file_pe1.getSimpleName(), file_pe1.getSimpleName()]
-      }
-                  .set { inputFastqs }
+            [idSample, target, file_pe1, file_pe2, idSample + '@' + file_pe1.getSimpleName(), file_pe2.getSimpleName()]
+        }
+        .set { inputFastqs }
 
       if (params.splitLanes) {
         inputFastqs.set { fastqsNeedSplit }
@@ -849,22 +853,43 @@ workflow {
   }
 
   //Set flags for when each pipeline is required to run.
-  doWF_validate = (params.mapping || params.bamMapping) ? true : false
-  doWF_align    = (params.alignWF) ? true : false
-  doWF_manta    = (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_scatter  = (params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
-  doWF_germSNV  = (params.germSNV) ? true : false
-  doWF_germSV   = (params.germSV) ? true : false
-  doWF_facets   = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_SV       = (params.svWF) ? true : false
-  doWF_loh      = (params.lohWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_SNV      = (params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_sampleQC = (params.sampleQCWF || params.samplePairingQCWF) ? true : false
-  doWF_msiSensor = (params.msiWF || params.mdParseWF) ? true : false
-  doWF_mutSig    = (params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_mdParse   = (params.mdParseWF) ? true : false
+  doWF_validate        = (params.pairing || params.bamMapping) ? true : false
+  doWF_align           = (params.alignWF || params.mapping) ? true : false
+  doWF_manta           = (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_scatter         = (params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
+  doWF_germSNV         = (params.germSNV) ? true : false
+  doWF_germSV          = (params.germSV) ? true : false
+  doWF_facets          = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_SV              = (params.svWF) ? true : false
+  doWF_loh             = (params.lohWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_SNV             = (params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_sampleQC        = (params.sampleQCWF || params.samplePairingQCWF) ? true : false
+  doWF_msiSensor       = (params.msiWF || params.mdParseWF) ? true : false
+  doWF_mutSig          = (params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_mdParse         = (params.mdParseWF) ? true : false
   doWF_samplePairingQC = (params.samplePairingQCWF) ? true : false
 
+  //Align can run without pairing/cross validate, but only if nothing else is running.
+  if(doWF_align && (doWF_validate || doWF_manta || doWF_scatter || doWF_germSNV || doWF_germSV 
+                    || doWF_facets || doWF_SV || doWF_loh || doWF_SNV || doWF_sampleQC 
+                    || doWF_msiSensor || doWF_mutSig || doWF_mdParse || doWF_samplePairingQC))
+  {
+    println "ERROR: Alignment without pairing cannot be performed simultaniously with other sub-workflows."
+    println "\tProvide a --pairing file, or disable other sub-workflows to proceed."
+    exit 1
+  }
+  else
+  {
+    if (params.watch == false) {
+      keySet = targetsMap.keySet()
+      mappingFile = file(params.mapping, checkIfExists: true)  
+      inputMapping = TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet())
+    }
+    else if (params.watch == true) {
+      mappingFile = file(params.mapping, checkIfExists: false)
+      inputMapping  = watchMapping(mappingFile, params.assayType, targetsMap.keySet())
+    }
+  }
 
   //Run validation workflow when appropriate.
   if (doWF_validate) {
@@ -873,7 +898,7 @@ workflow {
     inputPairing = validate_wf.out.inputPairing
     validate_wf.out.epochMap
       .subscribe{ validated -> 
-	epochMap += validated
+	      epochMap += validated
       }
   }
   else{
@@ -1078,10 +1103,20 @@ workflow {
   }
   else
   {
-    inputPairing.map{ idTumor, idNormal -> 
-      ["placeHolder",idTumor, idNormal,"",""]
-    }.set{ FacetsQC4Aggregate }
+    if(!doWF_validate)
+    {
+      inputPairing = Channel.empty()
+      inputPairing.map{ idTumor, idNormal -> 
+        ["placeHolder","", "","",""]
+      }.set{ FacetsQC4Aggregate }
+    }
+    else{
+      inputPairing.map{ idTumor, idNormal -> 
+        ["placeHolder",idTumor, idNormal,"",""]
+      }.set{ FacetsQC4Aggregate }
+    }
   }
+  
 
 
 /*
