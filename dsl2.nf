@@ -882,12 +882,13 @@ workflow {
   {
     if (params.watch == false) {
       keySet = targetsMap.keySet()
-      mappingFile = file(params.mapping, checkIfExists: true)  
-      inputMapping = TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet())
+      mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)      
+      inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
     }
     else if (params.watch == true) {
-      mappingFile = file(params.mapping, checkIfExists: false)
-      inputMapping  = watchMapping(mappingFile, params.assayType, targetsMap.keySet())
+      mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
+      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
+      epochMap_local[params.mapping ? params.mapping : params.bamMapping ] = 0
     }
   }
 
