@@ -18,8 +18,6 @@ wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').
 multiqcWesConfig = workflow.projectDir + '/lib/multiqc_config/exome_multiqc_config.yaml'
 multiqcWgsConfig = workflow.projectDir + '/lib/multiqc_config/wgs_multiqc_config.yaml'
 multiqcTempoLogo = workflow.projectDir + '/docs/tempoLogo.png'
-epochMap = [:]
-startEpoch = new Date().getTime()
 limitInputLines = 0
 chunkSizeLimit = params.chunkSizeLimit
 
@@ -117,7 +115,6 @@ targetsMap   = loadTargetReferences()
 workflow validate_wf
 {
   main:
-    epochMap_local = [:]
     TempoUtils.checkAssayType(params.assayType)
     if (params.watch == false) {
       keySet = targetsMap.keySet()
@@ -127,7 +124,6 @@ workflow validate_wf
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
       inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
-      epochMap_local[params.mapping ? params.mapping : params.bamMapping ] = 0
     }
     else{}
     if(params.pairing){
@@ -149,7 +145,6 @@ workflow validate_wf
       else if (params.watch == true) {
         pairingFile = file(params.pairing, checkIfExists: false)
         inputPairing  = watchPairing(pairingFile)
-        epochMap_local[params.pairing] = 0 
       }
       else{}
     }
@@ -160,7 +155,6 @@ workflow validate_wf
   emit:
     inputMapping = inputMapping
     inputPairing = inputPairing
-    epochMap     = epochMap_local
 }
 
 
@@ -888,7 +882,6 @@ workflow {
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
       inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
-      epochMap_local[params.mapping ? params.mapping : params.bamMapping ] = 0
     }
   }
 
@@ -897,10 +890,6 @@ workflow {
     validate_wf()
     inputMapping = validate_wf.out.inputMapping
     inputPairing = validate_wf.out.inputPairing
-    validate_wf.out.epochMap
-      .subscribe{ validated -> 
-	      epochMap += validated
-      }
   }
   else{
     if(params.pairing){
@@ -1137,7 +1126,6 @@ workflow {
     else{
       watchAggregateWithPath(file(runAggregate, checkIfExists: true))
         .set{ inputAggregate }
-      epochMap[runAggregate] = 0
     }
 
     inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->
@@ -1211,7 +1199,6 @@ workflow {
       else{
         watchAggregate(file(runAggregate, checkIfExists: false))
           .set{ inputAggregate }
-        epochMap[runAggregate] = 0
       }
     }
     else if(runAggregate == true){
@@ -1406,6 +1393,11 @@ workflow {
   else{}
 
   if (params.watch == true) {
+    epochMap = [:]
+    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
+      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
+    }
+    startEpoch = new Date().getTime()
     touchInputs(chunkSizeLimit, startEpoch, epochMap)
   }
 
