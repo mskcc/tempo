@@ -117,13 +117,13 @@ workflow validate_wf
   main:
     TempoUtils.checkAssayType(params.assayType)
     if (params.watch == false) {
-      keySet = targetsMap.keySet()
+      target_id_list = targetsMap.keySet()
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)      
-      inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
+      inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, target_id_list) : TempoUtils.extractBAM(mappingFile, params.assayType, target_id_list)
     }
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
+      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, target_id_list) : watchBamMapping(mappingFile, params.assayType, target_id_list)
     }
     else{}
     if(params.pairing){
@@ -848,7 +848,7 @@ workflow {
 
   //Set flags for when each pipeline is required to run.
   doWF_validate        = (params.pairing || params.bamMapping) ? true : false
-  doWF_align           = (params.alignWF || params.mapping) ? true : false
+  doWF_align           = (params.mapping) ? true : false
   doWF_manta           = (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF) ? true : false
   doWF_scatter         = (params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
   doWF_germSNV         = (params.germSNV) ? true : false
