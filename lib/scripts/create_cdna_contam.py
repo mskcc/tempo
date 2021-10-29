@@ -2,6 +2,11 @@
 import pandas as pd
 import argparse, sys, os
 
+__author__  = "DMP"
+__contributor__  = "Anne Marie Noronha"
+__email__   = "noronhaa@mskcc.org"
+__version__ = "0.0.1"
+#__status__  = "Dev"
 
 
 def usage():
@@ -60,3 +65,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
