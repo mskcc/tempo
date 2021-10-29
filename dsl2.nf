@@ -859,7 +859,7 @@ workflow {
   doWF_scatter         = (params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
   doWF_germSNV         = (params.germSNV) ? true : false
   doWF_germSV          = (params.germSV) ? true : false
-  doWF_facets          = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_facets          = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
   doWF_SV              = (params.svWF) ? true : false
   doWF_loh             = (params.lohWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
   doWF_SNV             = (params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
