@@ -864,11 +864,11 @@ workflow {
   doWF_samplePairingQC = (params.samplePairingQCWF) ? true : false
 
   //Align can run without pairing/cross validate, but only if nothing else is running.
-  if(doWF_align && (doWF_validate || doWF_manta || doWF_scatter || doWF_germSNV || doWF_germSV 
+  if((!params.pairing) && (doWF_validate || doWF_manta || doWF_scatter || doWF_germSNV || doWF_germSV 
                     || doWF_facets || doWF_SV || doWF_loh || doWF_SNV || doWF_sampleQC 
                     || doWF_msiSensor || doWF_mutSig || doWF_mdParse || doWF_samplePairingQC))
   {
-    println "ERROR: Alignment without pairing cannot be performed simultaniously with other sub-workflows."
+    println "ERROR: Certain workflows cannot be performed without pairing information."
     println "\tProvide a --pairing file, or disable other sub-workflows to proceed."
     exit 1
   }
