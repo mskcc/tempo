@@ -63,38 +63,6 @@ include { PairTumorNormal }    from './modules/workflows/WorkflowControls/PairTu
 
 
 workflow {
-  if (runAggregate == false) {
-    if (!params.mapping && !params.bamMapping) {
-      println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
-      exit 1
-    }
-  }
-  else if (runAggregate == true) {
-    if ((params.mapping || params.bamMapping) && params.pairing) {
-      if (!(runSomatic || runGermline || runQC)) {
-        println 'ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate'
-      }
-    }
-    else if ((params.mapping || params.bamMapping) && !params.pairing) {
-      if (!runQC) {
-        println 'ERROR: Nothing to be aggregated. --QC need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true.'
-        exit 1
-      }
-    }
-    else {
-      println 'ERROR: (--mapping/--bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true'
-      println '       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual'
-      exit 1
-    }
-  }
-  else {
-    if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping) {
-      println 'ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!'
-      println "       If you want to run aggregate somatic/germline/qc, just include an additianl colum PATH in the [tsv] and no need to use --QC/--somatic/--germline flag, since it's auto detected. See manual"
-      exit 1
-    }
-  }
-
   //Set flags for when each pipeline is required to run.
   doWF_validate        = (params.pairing || params.bamMapping) ? true : false
   doWF_align           = (params.mapping) ? true : false
@@ -111,6 +79,39 @@ workflow {
   doWF_mutSig          = (params.mutsigWF) ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
   doWF_samplePairingQC = (params.samplePairingQCWF) ? true : false
+
+  //Handle specific invalid conditions.
+  if (runAggregate == false) {
+    if (!params.mapping && !params.bamMapping) {
+      println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
+      exit 1
+    }
+  }
+  else if (runAggregate == true) {
+    if ((params.mapping || params.bamMapping) && params.pairing) {
+      if (!(runSomatic || runGermline || runQC)) {
+        println 'ERROR: Nothing to be aggregated. One or more of the option --somatic/--germline/--QC need to be enabled when using --aggregate'
+      }
+    }
+    else if ((params.mapping || params.bamMapping) && !params.pairing) {
+      if (!params.sampleQCWF || params.samplePairingQCWF) {
+        println 'ERROR: Nothing to be aggregated. --sampleQCWF or samplePairingQCWF need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true.'
+        exit 1
+      }
+    }
+    else {
+      println 'ERROR: (--mapping/--bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv]) or (--aggregate [tsv]) need to be provided when using --aggregate true'
+      println '       If you want to run aggregate only, you need to use --aggregate [tsv]. See manual'
+      exit 1
+    }
+  }
+  else {
+    if ((runSomatic || runGermline || runQC) && !params.mapping && !params.bamMapping) {
+      println 'ERROR: Conflict input! When running --aggregate [tsv] with --mapping/--bamMapping/--pairing [tsv] disabled, --QC/--somatic/--germline all need to be disabled!'
+      println "       If you want to run aggregate somatic/germline/qc, just include an additianl colum PATH in the [tsv] and no need to use --QC/--somatic/--germline flag, since it's auto detected. See manual"
+      exit 1
+    }
+  }
 
   //Align can run without pairing/cross validate, but only if nothing else is running.
   if((!params.pairing) && (doWF_validate || doWF_manta || doWF_scatter || doWF_germSNV || doWF_germSV 
@@ -134,7 +135,7 @@ workflow {
     }
   }
 
-
+  //Being executing modules for the run.
   if (doWF_validate) {
     validate_wf()
     inputMapping = validate_wf.out.inputMapping
@@ -171,6 +172,7 @@ workflow {
     fastPJson = alignment_wf.out.fastPJson
   }
 
+  //Generate several channels for tumor/normal pairing required for downstream processes.
   if (params.pairing) {
     PairTumorNormal(inputBam, inputPairing)
     bamFiles   = PairTumorNormal.out.bamFiles
@@ -275,6 +277,7 @@ workflow {
     }
     somaticMultiQC_wf(somaticMultiQCinput)
   }
+  //This needs to be done so that 'FacetsQC4Aggregate' exists during aggregation for any circumstance.
   else
   {
     if(!doWF_validate)
