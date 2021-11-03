@@ -95,7 +95,7 @@ workflow {
     }
     else if ((params.mapping || params.bamMapping) && !params.pairing) {
       if (!params.sampleQCWF || params.samplePairingQCWF) {
-        println 'ERROR: Nothing to be aggregated. --sampleQCWF or samplePairingQCWF need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true.'
+        println 'ERROR: Nothing to be aggregated. --sampleQCWF or --samplePairingQCWF need to be enabled when using --mapping/--bamMapping [tsv], --pairing false and --aggregate true.'
         exit 1
       }
     }
@@ -135,7 +135,7 @@ workflow {
     }
   }
 
-  //Being executing modules for the run.
+  //Begin executing modules for the run.
   if (doWF_validate) {
     validate_wf()
     inputMapping = validate_wf.out.inputMapping
