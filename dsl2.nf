@@ -7,20 +7,21 @@ if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_si
 }
 
 // User-set runtime parameters
-outDir     = file(params.outDir).toAbsolutePath()
-outname = params.outname
-runGermline = params.germline
-runSomatic = params.somatic
-runQC = params.QC
-runAggregate = params.aggregate
-runConpairAll = false
+outDir           = file(params.outDir).toAbsolutePath()
+outname          = params.outname
+runGermline      = params.germline
+runSomatic       = params.somatic
+runQC            = params.QC
+runAggregate     = params.aggregate
+runConpairAll    = false
 wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').collect { it.trim().toLowerCase() } : []
 multiqcWesConfig = workflow.projectDir + '/lib/multiqc_config/exome_multiqc_config.yaml'
 multiqcWgsConfig = workflow.projectDir + '/lib/multiqc_config/wgs_multiqc_config.yaml'
 multiqcTempoLogo = workflow.projectDir + '/docs/tempoLogo.png'
-limitInputLines = 0
-chunkSizeLimit = params.chunkSizeLimit
+limitInputLines  = 0
+chunkSizeLimit   = params.chunkSizeLimit
 
+//Utility Includes
 include { defineReferenceMap; loadTargetReferences } from './modules/local/define_maps'
 include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/local/watch_inputs'
 
@@ -36,10 +37,11 @@ include { SomaticAggregateMetadata }           from './modules/workflows/Aggrega
 include { SomaticAggregateNetMHC }             from './modules/workflows/Aggregate/SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from './modules/workflows/Aggregate/SomaticAggregateSv'
 
-pairingQc = params.pairing
+pairingQc    = params.pairing
 referenceMap = defineReferenceMap()
 targetsMap   = loadTargetReferences()
 
+//Sub-workflow Includes
 include { validate_wf }        from './modules/workflows/WorkflowControls/validate_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { alignment_wf }       from './modules/workflows/WorkflowControls/alignment_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { manta_wf }           from './modules/workflows/WorkflowControls/manta_wf'            addParams(referenceMap: referenceMap, targetsMap: targetsMap)
@@ -57,7 +59,7 @@ include { scatter_wf }         from './modules/workflows/WorkflowControls/scatte
 include { germlineSNV_wf }     from './modules/workflows/WorkflowControls/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSNV_facets } from './modules/workflows/WorkflowControls/germlineSNV_facets' 
 include { germlineSV_wf }      from './modules/workflows/WorkflowControls/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-
+include { PairTumorNormal }    from './modules/workflows/WorkflowControls/PairTumorNormal' 
 
 
 workflow {
@@ -93,26 +95,21 @@ workflow {
     }
   }
 
-  if (!(params.cosmic in ['v2', 'v3'])) {
-    println "ERROR: Possible values of mutational signature reference --cosmic is 'v2', 'v3'"
-    exit 1
-  }
-
   //Set flags for when each pipeline is required to run.
   doWF_validate        = (params.pairing || params.bamMapping) ? true : false
   doWF_align           = (params.mapping) ? true : false
-  doWF_manta           = (params.mantaWF || params.snvWF || params.svWF || params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_scatter         = (params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
+  doWF_manta           = (params.snvWF || params.svWF || params.mutsigWF ) ? true : false
+  doWF_scatter         = (params.snvWF || params.mutsigWF || params.germSNV) ? true : false
   doWF_germSNV         = (params.germSNV) ? true : false
   doWF_germSV          = (params.germSV) ? true : false
-  doWF_facets          = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.mdParseWF || params.germSNV) ? true : false
+  doWF_facets          = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.germSNV) ? true : false
   doWF_SV              = (params.svWF) ? true : false
-  doWF_loh             = (params.lohWF || params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_SNV             = (params.snvWF || params.mutsigWF || params.mdParseWF) ? true : false
+  doWF_loh             = (params.lohWF || params.snvWF || params.mutsigWF) ? true : false
+  doWF_SNV             = (params.snvWF || params.mutsigWF) ? true : false
   doWF_sampleQC        = (params.sampleQCWF || params.samplePairingQCWF) ? true : false
-  doWF_msiSensor       = (params.msiWF || params.mdParseWF) ? true : false
-  doWF_mutSig          = (params.mutsigWF || params.mdParseWF) ? true : false
-  doWF_mdParse         = (params.mdParseWF) ? true : false
+  doWF_msiSensor       = (params.msiWF) ? true : false
+  doWF_mutSig          = (params.mutsigWF) ? true : false
+  doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
   doWF_samplePairingQC = (params.samplePairingQCWF) ? true : false
 
   //Align can run without pairing/cross validate, but only if nothing else is running.
@@ -137,7 +134,7 @@ workflow {
     }
   }
 
-  //Run validation workflow when appropriate.
+
   if (doWF_validate) {
     validate_wf()
     inputMapping = validate_wf.out.inputMapping
@@ -149,21 +146,15 @@ workflow {
       exit 1
     }
   }
-  // Skip these processes if starting from aligned BAM files
+
   if (doWF_align)
   {
     alignment_wf(inputMapping)
   }
 
-
-  /*
-  ================================================================================
-  =                                PAIRING TUMOR and NORMAL                      =
-  ================================================================================
-  */
-  // If starting with BAM files, parse BAM pairing input.
+  //Handle input bams as coming originally from bams, or from an alignment this run.
   if (params.bamMapping) {
-    inputChannel = inputMapping
+    inputBam = inputMapping
     if (doWF_sampleQC || doWF_samplePairingQC){
       inputMapping.map{idSample, target, bam, bai ->
         [ idSample,target, bam.getParent() ]
@@ -176,76 +167,17 @@ workflow {
   }
   else
   {
-    inputChannel = alignment_wf.out.RunBQSR_bamsBQSR
+    inputBam = alignment_wf.out.RunBQSR_bamsBQSR
     fastPJson = alignment_wf.out.fastPJson
   }
 
   if (params.pairing) {
-    // Parse input FASTQ mapping
-    inputChannel.combine(inputPairing)
-      .filter { item ->
-        def idSample = item[0]
-        def target = item[1]
-        def sampleBam = item[2]
-        def sampleBai = item[3]
-        def idTumor = item[4]
-        def idNormal = item[5]
-        idSample == idTumor
-      }.map { item ->
-        def idTumor = item[4]
-        def idNormal = item[5]
-        def tumorBam = item[2]
-        def tumorBai = item[3]
-        def target = item[1]
-        return [ idTumor, idNormal, target, tumorBam, tumorBai ]
-      }
-      .unique()
-      .set{ bamsTumor }
-
-    inputChannel.combine(inputPairing)
-      .filter { item ->
-        def idSample = item[0]
-        def target = item[1]
-        def sampleBam = item[2]
-        def sampleBai = item[3]
-        def idTumor = item[4]
-        def idNormal = item[5]
-        idSample == idNormal
-      }.map { item ->
-        def idTumor = item[4]
-        def idNormal = item[5]
-        def normalBam = item[2]
-        def normalBai = item[3]
-        def target = item[1]
-        return [ idTumor, idNormal, target, normalBam, normalBai ]
-      }
-      .unique()
-      .set{ bamsNormal }
-
-    bamsNormal.map { item ->
-      def idNormal = item[1]
-      def target = item[2]
-      def normalBam = item[3]
-      def normalBai = item[4]
-      return [ idNormal, target, normalBam, normalBai ] }
-      .unique()
-      .set{ bams }
-
-    bamsTumor.combine(bamsNormal, by: [0,1,2])
-      .map { item -> // re-order the elements
-        def idTumor = item[0]
-        def idNormal = item[1]
-        def target = item[2]
-        def bamTumor = item[3]
-        def baiTumor = item[4]
-        def bamNormal = item[5]
-        def baiNormal = item[6]
-
-        return [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ]
-      }
-      .set{ bamFiles }
+    PairTumorNormal(inputBam, inputPairing)
+    bamFiles   = PairTumorNormal.out.bamFiles
+    bams       = PairTumorNormal.out.bams
+    bamsNormal = PairTumorNormal.out.bamsNormal
+    bamsTumor  = PairTumorNormal.out.bamsTumor
   } 
-
 
   if(doWF_manta)
   {
@@ -293,7 +225,7 @@ workflow {
 
   if(doWF_sampleQC)
   {
-    sampleQC_wf(inputChannel, fastPJson)
+    sampleQC_wf(inputBam, fastPJson)
   }
 
   if(doWF_msiSensor)
@@ -323,7 +255,7 @@ workflow {
 
   if(doWF_samplePairingQC)
   {
-    samplePairingQC_wf(inputChannel, inputPairing, runConpairAll)
+    samplePairingQC_wf(inputBam, inputPairing, runConpairAll)
 
     if (doWF_SNV) {
       samplePairingQC_wf.out.conpairOutput
