@@ -102,25 +102,35 @@ def assessDataPoint(dataPoint,PF_metrics):
         if i in PF_metrics:
             for j in PF_metrics[i]:
                 for k in j:
+                    cleanDP = equalize_var_type(dataPoint,j[k])
                     if k in ["s_eq", "eq"]:
-                        if dataPoint == j[k]:
+                        if cleanDP == j[k]:
                             truth.append(i)
                     elif k in ["s_ne","ne"]:
-                        if dataPoint != j[k]:
+                        if cleanDP != j[k]:
                             truth.append(i)
                     elif k in ["s_contains"]:
-                        if j[k] in dataPoint:
+                        if j[k] in cleanDP:
                             truth.append(i) 
                     elif k in ["gt"]:
-                        if dataPoint > j[k]:
+                        if cleanDP > j[k]:
                             truth.append(i)
                     else: 
-                        if dataPoint < j[k]:
+                        if cleanDP < j[k]:
                             truth.append(i)
     for p in ["fail","warn"]:
         if p in truth:
             return p
     return "pass"
+
+
+def equalize_var_type(var,base):
+    if isinstance(base,str):
+        return str(var)
+    if isinstance(base,(float,int)):
+        if isinstance(var,str):
+            return float(var.replace(",","").replace(" ","")) 
+        else: return float(var)
 
 def genCriteriaTable(criteriaJson, suffixDictionary):
     tab = pd.DataFrame(columns=["pass","warn","fail"])
