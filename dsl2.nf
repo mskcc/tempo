@@ -257,14 +257,20 @@ workflow {
       FacetsQC4SomaticMultiQC = doWF_facets ? facets_wf.out.FacetsQC4SomaticMultiQC : inputPairing.map{ t_id, n_id -> [t_id, n_id,"",""]}
 
       qualimap4Pairing = sampleQC_wf.out.qualimap4Process
-      	.combine(sampleQC_wf.out.qualimap4Process)
-	.map{ sample1,sample1qualimap, sample2, sample2qualimap ->
-		[sample1, sample2, sample1qualimap, sample2qualimap]
-	}
+      	.map{ idSample, qualimapFile -> [idSample.toString(),qualimapFile] }
+
+      qualimap4SomaticMultiQC = inputPairing
+      	.join(qualimap4Pairing, by:[0])
+	.join( inputPairing
+		.map{ idTumor, idNormal -> [idNormal, idTumor] }
+		.combine(qualimap4Pairing, by:[0]) 
+		.map{ idNormal, idTumor, qualimapNormal -> [idTumor, idNormal, qualimapNormal]},
+		by:[0,1]
+	)
 
       samplePairingQC_wf.out.conpairOutput
         .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
-	.join(qualimap4Pairing, by:[0,1])
+	.join(qualimap4SomaticMultiQC, by:[0,1])
         .join(FacetsQC4SomaticMultiQC, by:[0,1])
         .set{ somaticMultiQCinput }
         
