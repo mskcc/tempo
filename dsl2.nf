@@ -254,39 +254,22 @@ workflow {
     {
       samplePairingQC_wf(inputBam, inputPairing, runConpairAll)
 
-      if (doWF_SNV) {
-        samplePairingQC_wf.out.conpairOutput
-          .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
-          .join(facets_wf.out.FacetsQC4SomaticMultiQC, by:[0,1])
-          .set{ somaticMultiQCinput }
-        
-        FacetsQC4Aggregate = facets_wf.out.FacetsQC4Aggregate
-      } else {
-        samplePairingQC_wf.out.conpairOutput
-          .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles, "", ""]}
-          .set{ somaticMultiQCinput }
+      FacetsQC4SomaticMultiQC = doWF_facets ? facets_wf.out.FacetsQC4SomaticMultiQC : inputPairing.map{ t_id, n_id -> [t_id, n_id,"",""]}
 
-        inputPairing.map{ idTumor, idNormal -> 
-          ["placeHolder",idTumor, idNormal,"",""]
-        }.set{ FacetsQC4Aggregate }
+      qualimap4Pairing = sampleQC_wf.out.qualimap4Process
+      	.combine(sampleQC_wf.out.qualimap4Process)
+	.map{ sample1,sample1qualimap, sample2, sample2qualimap ->
+		[sample1, sample2, sample1qualimap, sample2qualimap]
+	}
+
+      samplePairingQC_wf.out.conpairOutput
+        .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
+	.join(qualimap4Pairing, by:[0,1])
+        .join(FacetsQC4SomaticMultiQC, by:[0,1])
+        .set{ somaticMultiQCinput }
+        
       }
       somaticMultiQC_wf(somaticMultiQCinput)
-    }
-    //This needs to be done so that 'FacetsQC4Aggregate' exists during aggregation for any circumstance.
-    else
-    {
-      if(!doWF_validate)
-      {
-        inputPairing = Channel.empty()
-        inputPairing.map{ idTumor, idNormal -> 
-          ["placeHolder","", "","",""]
-        }.set{ FacetsQC4Aggregate }
-      }
-      else{
-        inputPairing.map{ idTumor, idNormal -> 
-          ["placeHolder",idTumor, idNormal,"",""]
-        }.set{ FacetsQC4Aggregate }
-      }
     }
 
     if(doWF_AggregateFromProcessOnly)
@@ -328,6 +311,7 @@ workflow {
       //Sample/Pairing QC
       conpairConcord4Aggregate = doWF_samplePairingQC ? samplePairingQC_wf.out.conpairConcord4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
       conpairContami4Aggregate = doWF_samplePairingQC ? samplePairingQC_wf.out.conpairContami4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      FacetsQC4Aggregate = doWF_facets ? facets_wf.out.FacetsQC4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       aggregateFromProcess(
         inputPairing,
