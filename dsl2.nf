@@ -351,6 +351,14 @@ workflow {
         )
     }
   }
+  if (params.watch == true) {
+    epochMap = [:]
+    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
+      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
+    }
+    startEpoch = new Date().getTime()
+    touchInputs(chunkSizeLimit, startEpoch, epochMap)
+  }
 }
 workflow.onComplete {
   file(params.fileTracking).text = ""

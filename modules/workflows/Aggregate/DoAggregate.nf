@@ -100,15 +100,6 @@ workflow aggregateFromFile
     aggregateList.conpairContami4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}.set{inputConpairContami4Aggregate}
     aggregateList.fastpTumor.unique().combine(aggregateList.fastpNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}.set{inputFastP4MultiQC}
 
-    if (params.watch == true) {
-      epochMap = [:]
-      for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-        if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
-      }
-      startEpoch = new Date().getTime()
-      touchInputs(chunkSizeLimit, startEpoch, epochMap)
-    }
-
     SomaticAggregateMaf(inputSomaticAggregateMaf)
 
     inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
@@ -373,16 +364,6 @@ workflow aggregateFromProcess
         inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{ inputFacetsQC4CohortMultiQC }
       }
     }
-
-
-  if (params.watch == true) {
-    epochMap = [:]
-    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
-    }
-    startEpoch = new Date().getTime()
-    touchInputs(chunkSizeLimit, startEpoch, epochMap)
-  }
 
   if (doWF_SNV){
     SomaticAggregateMaf(inputSomaticAggregateMaf)
