@@ -268,7 +268,6 @@ workflow {
         .join(FacetsQC4SomaticMultiQC, by:[0,1])
         .set{ somaticMultiQCinput }
         
-      }
       somaticMultiQC_wf(somaticMultiQCinput)
     }
 
