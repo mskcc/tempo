@@ -1,4 +1,4 @@
-process SomaticRunManta {
+process RunManta {
   tag {idTumor + "__" + idNormal}
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/manta", mode: params.publishDirMode, pattern: "*.manta.vcf.{gz,gz.tbi}"
