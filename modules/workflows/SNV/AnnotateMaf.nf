@@ -1,4 +1,4 @@
-process SomaticAnnotateMaf {
+process AnnotateMaf {
   tag {idTumor + "__" + idNormal}
 
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.unfiltered.maf"

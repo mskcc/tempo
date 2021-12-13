@@ -1,4 +1,4 @@
-process SomaticCombineMutect2Vcf {
+process CombineMutect2Vcf {
   tag {idTumor + "__" + idNormal}
 
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/mutect2", mode: params.publishDirMode
