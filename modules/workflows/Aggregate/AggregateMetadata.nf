@@ -1,4 +1,4 @@
-process SomaticAggregateMetadata {
+process AggregateMetadata {
   tag {cohort}
 
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode

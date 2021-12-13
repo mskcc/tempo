@@ -261,16 +261,16 @@ workflow {
 
       qualimap4SomaticMultiQC = inputPairing
       	.join(qualimap4Pairing, by:[0])
-	.join( inputPairing
-		.map{ idTumor, idNormal -> [idNormal, idTumor] }
-		.combine(qualimap4Pairing, by:[0]) 
-		.map{ idNormal, idTumor, qualimapNormal -> [idTumor, idNormal, qualimapNormal]},
-		by:[0,1]
-	)
+        .join( inputPairing
+          .map{ idTumor, idNormal -> [idNormal, idTumor] }
+          .combine(qualimap4Pairing, by:[0]) 
+          .map{ idNormal, idTumor, qualimapNormal -> [idTumor, idNormal, qualimapNormal]},
+          by:[0,1]
+	      )
 
       samplePairingQC_wf.out.conpairOutput
         .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
-	.join(qualimap4SomaticMultiQC, by:[0,1])
+	      .join(qualimap4SomaticMultiQC, by:[0,1])
         .join(FacetsQC4SomaticMultiQC, by:[0,1])
         .set{ somaticMultiQCinput }
         
