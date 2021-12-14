@@ -1119,7 +1119,12 @@ process SomaticMergeDellyAndManta {
   cat ${outputPrefix}.delly.manta.raw.vcf | \\
     awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \
   bcftools sort --temp-dir ./ \
-    > ${outputPrefix}.delly.manta.clean.vcf
+    > ${outputPrefix}.delly.manta.clean.anon.vcf
+
+  bcftools annotate \\
+    --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
+    -o ${outputPrefix}.delly.manta.clean.vcf \\
+    ${outputPrefix}.delly.manta.clean.anon.vcf
 
   bcftools view \\
     --samples ${idTumor},${idNormal} \\
@@ -1236,22 +1241,65 @@ process SomaticSVVcf2Bedpe {
 
   input:
     set idTumor, idNormal, target, file(vcfFile) from SVCombinedVcf4Bedpe
+    set file(repeatMasker), file(mapabilityBlacklist) from Channel.value(
+      [referenceMap.repeatMasker,referenceMap.mapabilityBlacklist])
+    file(vepCache) from Channel.value([referenceMap.vepCache])
+    file(custom_scripts) from Channel.value([workflow.projectDir + "/lib/scripts/filter_sv"])
+    file(annotSVref) from Channel.value([file("/juno/work/ccs/noronhaa/tools/annot_sv_source/new_human/annotsv_dl/share/AnnotSV")])
+    file(ccdsBed) from Channel.value([file("/juno/work/ccs/noronhaa/tempo_dev/ccds/ccdsGene2.bed")])
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
+    file("${outputPrefix}.combined.filtered.bedpe")
 
   when: runSomatic
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
+  genomeBuild = "GRCh37"
   """
+  export LC_ALL=C
+  /opt/annotsv/bin/AnnotSV \\
+    -annotationsDir ${annotSVref} \\
+    -SVinputFile ${vcfFile} \\
+    -bcftools \$(which bcftools) \\
+    -genomeBuild ${genomeBuild} \\
+    -includeCI 0 \\
+    -outputFile ${idTumor}__${idNormal}.annotsv
+    
   svtools vcftobedpe \\
     -i ${vcfFile} \\
     -o ${outputPrefix}.combined.bedpe \\
     -t ${outputPrefix}_tmp
+
   if [ ! -s ${outputPrefix}.combined.bedpe ] ; then 
     echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\t${idNormal}\\t${idTumor}" >> ${outputPrefix}.combined.bedpe
   fi
+
+  python ${custom_scripts}/pair_to_bed_annot.py \\
+    --blacklist-regions ${mapabilityBlacklist} \\
+    --bedpe ${outputPrefix}.combined.bedpe \\
+    --tag mappability \\
+    --output ${outputPrefix}.combined.dac.bedpe \\
+    --match-type either 
+  
+  python ${custom_scripts}/pair_to_bed_annot.py \\
+    --blacklist-regions ${repeatMasker} \\
+    --bedpe ${outputPrefix}.combined.dac.bedpe \\
+    --tag repeat_masker \\
+    --output ${outputPrefix}.combined.dac.rm.bedpe \\
+    --match-type either 
+  
+  python ${custom_scripts}/filter_cdna.py \\
+    --exon-junct ${ccdsBed} \\
+    --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
+    --output ${outputPrefix}.combined.dac.rm.cdna.bedpe 
+
+  svtools bedpesort \\
+    ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
+    ${outputPrefix}.combined.filtered.bedpe
+
+  
   """
 
 }
@@ -2625,8 +2673,11 @@ process GermlineMergeDellyAndManta {
     ${idNormal}.delly.vcf.gz ${mantaVcf}
 
   cat ${idNormal}.delly.manta.raw.vcf | \\
-    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' \\
-    > ${idNormal}.delly.manta.clean.vcf
+    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \\
+    bcftools sort --temp-dir ./ \\
+    > ${idNormal}.delly.manta.clean.anon.vcf
+
+  bcftools annotate --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' -o ${idNormal}.delly.manta.clean.vcf ${idNormal}.delly.manta.clean.anon.vcf
 
   bcftools view \\
     --output-type z \\
