@@ -31,13 +31,16 @@ def run_pair_to_bed(bedpe,regions,match_type):
 	#return [intersect, outersect]
 
 def bedtool_to_df(bt,header_list):
-	df = bt.to_dataframe(header=None)
+	df = bt.to_dataframe(header=None, comment="#")
 	if df.shape[0] > 0:
 		df = df[df.columns[:len(header_list)]]
 		df.columns = header_list
 	else:
 		df = pd.DataFrame(columns = header_list)
 	df = df.astype({i:int for i in "START_A|END_A|START_B|END_B".split("|")})
+	for j in ["#CHROM_A","CHROM_B"]:
+		if df[j].dtype == 'float64':
+			df = df.astype({j:int}).astype({j:str})
 	return df
 
 def get_bedpe_header(bedpe):
