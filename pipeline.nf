@@ -1245,8 +1245,8 @@ process SomaticSVVcf2Bedpe {
       [referenceMap.repeatMasker,referenceMap.mapabilityBlacklist])
     file(vepCache) from Channel.value([referenceMap.vepCache])
     file(custom_scripts) from Channel.value([workflow.projectDir + "/lib/scripts/filter_sv"])
-    file(annotSVref) from Channel.value([file("/juno/work/ccs/noronhaa/tools/annot_sv_source/new_human/annotsv_dl/share/AnnotSV")])
-    file(ccdsBed) from Channel.value([file("/juno/work/ccs/noronhaa/tempo_dev/ccds/ccdsGene2.bed")])
+    file(annotSVref) from Channel.value([referenceMap.annotSVref])
+    file(spliceSites) from Channel.value([referenceMap.spliceSites])
 
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
@@ -1291,7 +1291,7 @@ process SomaticSVVcf2Bedpe {
     --match-type either 
   
   python ${custom_scripts}/filter_cdna.py \\
-    --exon-junct ${ccdsBed} \\
+    --exon-junct ${spliceSites} \\
     --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
     --output ${outputPrefix}.combined.dac.rm.cdna.bedpe 
 
@@ -4100,6 +4100,9 @@ def defineReferenceMap() {
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
+    // splice sites for locating cDNA contam
+    result_array << ['spliceSites' : checkParamReturnFile('spliceSites')]
+    result_array << ['annotSVref' : checkParamReturnFile('annotSVref')]
   }
   return result_array
 }
