@@ -65,8 +65,7 @@ def main():
 	artefact_calls = get_artefact_calls(exon_del_df.drop_duplicates(keep='first'))
 
 	cdna_filter = pybedtools.BedTool(args.bedpe)
-	cdna_filter = cdna_filter.to_dataframe(header=None, comment="#")
-	cdna_filter.columns = bedpe_header_list
+	cdna_filter = bedtool_to_df(cdna_filter,bedpe_header_list)
 	cdna_filter = cdna_filter.apply(lambda x: update_filter(x,"cdna") if x["ID"] in artefact_calls else x, axis=1)
 	
 	with open(args.outfile, "w") as fw:
