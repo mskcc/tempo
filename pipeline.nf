@@ -1252,7 +1252,7 @@ process SomaticSVVcf2Bedpe {
     set idTumor, idNormal, target, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
     file("${outputPrefix}.combined.filtered.bedpe")
 
-  when: runSomatic
+  when: runSomatic && workflow.profile != "test" 
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
@@ -2699,7 +2699,7 @@ process GermlineSVVcf2Bedpe {
   output:
     set idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into GermlineSVCombinedBedpe
 
-  when: runGermline
+  when: runGermline && workflow.profile != "test"
 
   script:
   outputPrefix = "${idNormal}"
