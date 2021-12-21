@@ -4,7 +4,7 @@ LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
     version.image="0.0.3" 
 
 RUN mkdir -p /tmp \
-    && apt-get update \ 
+    && apt-get update \
     && apt-get install -y \
     procps \
     gcc \
