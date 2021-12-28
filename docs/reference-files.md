@@ -15,9 +15,10 @@ Part of the [GATK bundle](https://software.broadinstitute.org/gatk/download/bund
 BED files that specify the regions of the genome to consider for variant calling are specified in the [input files](running-the-pipeline.md#input-files).
 
 ### Exome Capture Platforms
-For exomes, use BED file corresponding to the platform used for target capture. Currently, Tempo supports:
+For exomes, use BED file corresponding to the platform used for target capture. Currently, Juno reference files are configured to support:
 - __AgilentExon_51MB__: SureSelectXT Human All Exon V4 from Agilent.
 - __IDT_Exome__: xGen Exome Research Panel v1.0 from IDT.
+- __IDT_Exome_v2__: xGen Exome Research Panel v2.0 from IDT.
 
 ::: tip Note
 Contact us if you are interested in support for other sequencing assays or capture kits.
@@ -42,6 +43,43 @@ gatk IntervalListToBed \
     --INPUT b37_wgs_calling_regions.v1.interval_list \
     --OUTPUT b37_wgs_calling_regions.v1.bed
 ```
+
+## Custom target files
+
+Required target files have already been built for Agilent and IDT exome baits and can be used readily with Tempo. Read this section if you have a different target design in mind. 
+
+### Required files
+
+* `targets.bed`: The targets file can be obtained from the provider of the baitset. If you only have the file in gzipped format, please run `zcat <targets>.bed.gz > <targets>.bed`. In practice, we alter this file to have 5 bp padding on each region in both directions. Padding can be added using the `slop` subcommand of `bedtools`. 
+* `targets.bed.gz`: You also need a gzipped copy of the `targets.bed` file. Create with `bgzip`
+* `targets.bed.gz.tbi`: The above file will need to be indexed with `tabix`.
+* `targets.interval_list`: The bed file can be used as input to create the interval list. Create using the `BedToIntervalList` tools from gatk.
+* `baits.interval_list`: The baits file can also be obtained from the provider of the baitset, typically as a bed file. Create the interval list using the `BedToIntervalList` tool from gatk. If a bait bed file is not provided, you can copy or link to `targets.interval_list` instead.
+* `coding.bed`: This file will be used to calculate TMB. The known coding regions of the reference should first be downloaded (ex: [EnsGene for hg19](https://genome.ucsc.edu/cgi-bin/hgTables?hgsid=1138949195_54NfeOmJerLbPvAdqAA6vaGWonRr&clade=mammal&org=Human&db=hg19&hgta_group=genes&hgta_track=ensGene&hgta_table=0&hgta_regionType=genome&position=chrX%3A15%2C578%2C261-15%2C621%2C068&hgta_outputType=bed&hgta_outFileName=)) and then be intersected with the targets file using `bedtools`. The result should subsequently be sorted and merged with `bedtools`. 
+
+### Input to Tempo
+
+You should designate a folder just for the required file. This folder will be input as a parameter called `targets_base`, and all of your targets should be placed there. The folder structure should looks as follows:
+``` shell
+<targets_base folder>
+├── <target name 1>
+├── <target name 2>
+└── <target name 3>
+```
+You can have as many targets as you like. Under each folder are the 6 target files previously described. For example:
+``` shell
+<targets_base folder>/agilent/
+├── baits.interval_list -> ../../baits/AgilentExon_51MB_b37_v3_baits.interval_list
+├── coding.bed -> ../../coding_regions/AgilentExon_51MB_b37_v3_baits.coding.sorted.merged.bed
+├── targets.bed -> ../../targets/AgilentExon_51MB_b37_v3_targets.plus5bp.bed
+├── targets.bed.gz -> ../../targets/AgilentExon_51MB_b37_v3_targets.plus5bp.bed.gz
+├── targets.bed.gz.tbi -> ../../targets/AgilentExon_51MB_b37_v3_targets.plus5bp.bed.gz.tbi
+└── targets.interval_list -> ../../targets/AgilentExon_51MB_b37_v3_targets.interval_list
+```
+In this case, the files are symbolically linked to the original. Whether soft links or hard links are used, the files in this folder should strictly match the names `coding.bed`, `baits.interval_list`, `targets.interval_list`, `targets.bed`, `targets.bed.gz`, `targets.bed.gz.tbi`. 
+
+When running Tempo, use the parameter `--targets_base <targets_base folder>` so that Nextflow will know where to find your target files. 
+When running with `--assayType genome`, only the `<targets_base>/wgs` target folder will be available. Conversely, the `<targets_base>/wgs` target folder will not be available when `--assayType genome` is not set.
 
 ## RepeatMasker and Mappability Blacklist
 BED files with genomic repeat and mappability information are used to annotate the VCFs with somatic and germline SNV/indels. These data are from [RepeatMasker](http://www.repeatmasker.org/) and the [ENCODE consortium](http://rohsdb.cmb.usc.edu/GBshape/ENCODE/index.html), and the files are retrieved from the [UCSC Genome Browser](https://genome.ucsc.edu) and parsed as such:
