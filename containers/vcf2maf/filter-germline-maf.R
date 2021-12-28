@@ -3,7 +3,7 @@
 # __author__  = "Philip Jonsson"
 # __email__   = "jonssonp@mskcc.org"
 # __contributor__ = "Anne Marie Noronha (noronhaa@mskcc.org)"
-# __version__ = "0.2.1"
+# __version__ = "0.2.2"
 # __status__  = "Dev"
 
 suppressPackageStartupMessages({
@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
     library(argparse)
 })
 
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 3)
 args = commandArgs(TRUE)
 
 if (is.null(args) | length(args)<1) {
@@ -37,10 +38,10 @@ normal_depth_cutoff = args$normal_depth
 normal_vaf_cutoff = args$normal_vaf
 
 add_tag = function(filter, tag) {
-    split_filter = unlist(strsplit(filter,";"))
-    ifelse(filter == 'PASS',
-           tag,
-           paste(paste0(split_filter[!split_filter %in% tag],collapse=';'), tag, sep = ';'))
+  split_filter <- strsplit(filter,";")
+  split_filter.add <- lapply(lapply(split_filter,append,tag),unique)
+  split_filter.add.paste <- lapply(lapply(split_filter.add,function(x){x[!x %in% 'PASS']}),paste, collapse=";")
+  return(as.character(split_filter.add.paste))
 }
 
 ch_genes = c("ASXL1", "ATM", "BCOR", "CALR", "CBL", "CEBPA", "CREBBP", "DNMT3A", "ETV6", "EZH2", "FLT3", "GNAS",
