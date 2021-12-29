@@ -2,13 +2,14 @@ import argparse
 import numpy as np
 import pandas as pd
 import pybedtools
+
 def add_tag(val,tag ):
 	"""
 	update FILTER value 
 	"""
 	newTag = tag
 	if val not in [".",None,"PASS",np.nan]:
-		newTag = "{},{}".format(val,tag)
+		newTag = "{};{}".format(val,tag)
 	return newTag
 
 def update_filter(row, tag):
@@ -18,17 +19,19 @@ def update_filter(row, tag):
 	row["FILTER"] = add_tag(row["FILTER"], tag)
 	return row
 
-
 def run_pair_to_bed(bedpe,regions,match_type):
-	a = pybedtools.BedTool(bedpe)
+	"""
+	use pybedtools to run bedtools pairtobed
+	a length of 1 base must be artificially added to each end with a length of 0, otherwise no overlap
+	"""
+	[meta_header, bedpe_header_list] = get_bedpe_header(bedpe)
+	a = bedtool_to_df(pybedtools.BedTool(bedpe), bedpe_header_list)
+	a["END_A"] = a.apply(lambda row: row["END_A"] + 1 if row["START_A"] == row["END_A"] else row["END_A"],axis=1)
+	a["END_B"] = a.apply(lambda row: row["END_B"] + 1 if row["START_B"] == row["END_B"] else row["END_B"],axis=1)
+	a = pybedtools.BedTool.from_dataframe(a)
 	b = pybedtools.BedTool(regions)
 	result = a.pair_to_bed(b, **{'type': match_type})
 	return result
-	#in_type = match_type
-	#out_type = "notboth" if match_type == "both" else "neither"
-	#intersect = a.pair_to_bed(b, **{'type': in_type})
-	#outersect = a.pair_to_bed(b,**{'type': out_type})
-	#return [intersect, outersect]
 
 def bedtool_to_df(bt,header_list):
 	df = bt.to_dataframe(header=None, comment="#")
