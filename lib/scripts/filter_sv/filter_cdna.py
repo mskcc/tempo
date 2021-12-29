@@ -48,17 +48,18 @@ def main():
 	intersect = run_pair_to_bed(args.bedpe,args.regions,match_type="both")
 	exon_del_df = pd.DataFrame(columns=["var_id","exon","exon_number","gene","ss_type","strand"])
 	for i in intersect:
-		if show_value(i[svtype_col]) != "DEL":
+		if i[svtype_col] != "DEL":
 			continue
+		print(i)
 		data_dict = dict()
-		data_dict["var_id"] = i[7]
+		data_dict["var_id"] = i[6]
 		data_dict["exon"] = i[ (len(bedpe_header_list) - 1) + 4 ].split(":")[0]
 		data_dict["exon_number"] = data_dict["exon"].split(".")[-1]
 		data_dict["gene"] = ".".join(data_dict["exon"].split(".")[:-1])
 		# acceptor or donor
 		data_dict["ss_type"] = i[ (len(bedpe_header_list) - 1) + 4 ].split(":")[1] 
 		data_dict["strand"] = i[ (len(bedpe_header_list) - 1) + 6 ]
-		exon_del_df = pd.concat([exon_del_df,pd.DataFrame.from_dict(data_dict)])
+		exon_del_df = pd.concat([ exon_del_df, pd.DataFrame([data_dict]) ])
 
 	exon_del_df.to_csv("debug.tsv",sep="\t",header=True, index=False)
 
