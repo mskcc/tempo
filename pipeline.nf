@@ -1244,7 +1244,7 @@ process SomaticSVVcf2Bedpe {
     set file(repeatMasker), file(mapabilityBlacklist) from Channel.value(
       [referenceMap.repeatMasker,referenceMap.mapabilityBlacklist])
     file(vepCache) from Channel.value([referenceMap.vepCache])
-    file(custom_scripts) from Channel.value([workflow.projectDir + "/lib/scripts/filter_sv"])
+    file(custom_scripts) from Channel.value([workflow.projectDir + "/containers/svtools"])
     file(annotSVref) from Channel.value([referenceMap.annotSVref])
     file(spliceSites) from Channel.value([referenceMap.spliceSites])
 
