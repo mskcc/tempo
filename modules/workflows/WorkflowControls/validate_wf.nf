@@ -7,8 +7,8 @@ workflow validate_wf
     targetsMap   = params.targetsMap
     
     TempoUtils.checkAssayType(params.assayType)
+    target_id_list = targetsMap.keySet()
     if (params.watch == false) {
-      target_id_list = targetsMap.keySet()
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)      
       inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, target_id_list) : TempoUtils.extractBAM(mappingFile, params.assayType, target_id_list)
     }
