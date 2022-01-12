@@ -1238,6 +1238,7 @@ process SomaticSVVcf2Bedpe {
   tag {idTumor + "__" + idNormal}
 
   publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.bedpe"
+  publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.annotsv.tsv"
 
   input:
     set idTumor, idNormal, target, file(vcfFile) from SVCombinedVcf4Bedpe
@@ -1247,10 +1248,11 @@ process SomaticSVVcf2Bedpe {
     file(custom_scripts) from Channel.value([workflow.projectDir + "/containers/svtools"])
     file(annotSVref) from Channel.value([referenceMap.annotSVref])
     file(spliceSites) from Channel.value([referenceMap.spliceSites])
-
+    
   output:
     set idTumor, idNormal, target, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
     file("${outputPrefix}.combined.filtered.bedpe")
+    file("${idTumor}__${idNormal}.annotsv.tsv")
 
   when: runSomatic && workflow.profile != "test" 
 
@@ -1266,6 +1268,8 @@ process SomaticSVVcf2Bedpe {
     -genomeBuild ${genomeBuild} \\
     -includeCI 0 \\
     -outputFile ${idTumor}__${idNormal}.annotsv
+
+  cp *_AnnotSV/${idTumor}__${idNormal}.annotsv.tsv . 
     
   svtools vcftobedpe \\
     -i ${vcfFile} \\
@@ -1291,9 +1295,11 @@ process SomaticSVVcf2Bedpe {
     --match-type either 
   
   python ${custom_scripts}/filter_cdna.py \\
+    --intermediate \\
     --exon-junct ${spliceSites} \\
     --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
-    --output ${outputPrefix}.combined.dac.rm.cdna.bedpe 
+    --out-bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
+    --out ${outputPrefix}.contamination.tsv
 
   svtools bedpesort \\
     ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
