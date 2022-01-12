@@ -48,23 +48,24 @@ include { PairTumorNormal }      from './modules/workflows/WorkflowControls/Pair
 include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
 include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFromProcess'
 
+WFs = params.pairing ? params.workflows.split(',').collect{it.trim().toLowerCase()} : params.workflows.equals('qc') ? 'qc' : []
+
 workflow {
   //Set flags for when each pipeline is required to run.
   doWF_validate        = (params.pairing || params.bamMapping) ? true : false
   doWF_align           = (params.mapping) ? true : false
-  doWF_manta           = (params.snvWF || params.svWF || params.mutsigWF ) ? true : false
-  doWF_scatter         = (params.snvWF || params.mutsigWF || params.germSNV) ? true : false
-  doWF_germSNV         = (params.germSNV) ? true : false
-  doWF_germSV          = (params.germSV) ? true : false
-  doWF_facets          = (params.lohWF || params.facetsWF || params.snvWF || params.mutsigWF || params.germSNV) ? true : false
-  doWF_SV              = (params.svWF) ? true : false
-  doWF_loh             = (params.lohWF || params.snvWF || params.mutsigWF) ? true : false
-  doWF_SNV             = (params.snvWF || params.mutsigWF) ? true : false
-  doWF_sampleQC        = (params.sampleQCWF || params.samplePairingQCWF) ? true : false
-  doWF_msiSensor       = (params.msiWF) ? true : false
-  doWF_mutSig          = (params.mutsigWF) ? true : false
+  doWF_manta           = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
+  doWF_scatter         = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
+  doWF_germSNV         = 'germSNV' in WFs ? true : false
+  doWF_germSV          = 'germSV' in WFs ? true : false
+  doWF_facets          = ['lohhla', 'facets', 'SNV', 'mutsig', 'germSNV'].any(it -> it in WFs) ? true : false
+  doWF_SV              = 'sv' in WFs ? true : false
+  doWF_loh             = ['lohhla', 'SNV', 'mutsig'].any(it -> it in WFs) ? true : false
+  doWF_SNV             = ['SNV', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
+  doWF_QC	       = 'qc' in WFs ? true : false
+  doWF_msiSensor       = 'msisensor' in WFs ? true : false
+  doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
-  doWF_samplePairingQC = (params.samplePairingQCWF) ? true : false
   
   //Handle aggregation conditions.
   doWF_AggregateFromFileOnly    = false
@@ -77,11 +78,11 @@ workflow {
   }
   else if (runAggregate == true) {
     if (!doWF_validate && !doWF_align && !doWF_manta && !doWF_scatter && !doWF_germSNV && !doWF_germSV && !doWF_facets &&
-           !doWF_SV && !doWF_loh && !doWF_SNV && !doWF_sampleQC && !doWF_msiSensor && !doWF_mutSig && !doWF_mdParse && !doWF_samplePairingQC){
+           !doWF_SV && !doWF_loh && !doWF_SNV && !doWF_QC && !doWF_msiSensor && !doWF_mutSig && !doWF_mdParse){
           println "ERROR: Nothing to aggregate when no sub-workflows are specified and --aggregate is true.  Provide aggregate filename or specify sub-workflow flags."
           exit 1
     }
-    else if (!doWF_facets && !doWF_SV && !doWF_SNV && !doWF_loh && !doWF_mdParse && !doWF_germSNV && !doWF_germSV && !doWF_sampleQC && !doWF_samplePairingQC) {
+    else if (!doWF_facets && !doWF_SV && !doWF_SNV && !doWF_loh && !doWF_mdParse && !doWF_germSNV && !doWF_germSV && !doWF_QC) {
       println 'ERROR: No provided sub-workflows provide data to be aggregated. Enable sub-workflow or provide aggregate data from file.'
       exit 1
     }
@@ -91,7 +92,7 @@ workflow {
   }
   else if (!(runAggregate == true) && !(runAggregate == false) ){
     if (!params.mapping && !params.bamMapping && !doWF_validate && !doWF_align && !doWF_manta && !doWF_scatter && !doWF_germSNV && !doWF_germSV && !doWF_facets &&
-        !doWF_SV && !doWF_loh && !doWF_SNV && !doWF_sampleQC && !doWF_msiSensor && !doWF_mutSig && !doWF_mdParse && !doWF_samplePairingQC){
+        !doWF_SV && !doWF_loh && !doWF_SNV && !doWF_QC && !doWF_msiSensor && !doWF_mutSig && !doWF_mdParse){
           doWF_AggregateFromFileOnly = true
     }
     else {
@@ -103,8 +104,8 @@ workflow {
 
   //Align can run without pairing/cross validate, but only if nothing else is running.
   if((!params.pairing) && (doWF_validate || doWF_manta || doWF_scatter || doWF_germSNV || doWF_germSV 
-                    || doWF_facets || doWF_SV || doWF_loh || doWF_SNV || doWF_sampleQC 
-                    || doWF_msiSensor || doWF_mutSig || doWF_mdParse || doWF_samplePairingQC))
+                    || doWF_facets || doWF_SV || doWF_loh || doWF_SNV
+                    || doWF_msiSensor || doWF_mutSig || doWF_mdParse))
   {
     println "ERROR: Certain workflows cannot be performed without pairing information."
     println "\tProvide a --pairing file, or disable other sub-workflows to proceed."
@@ -151,7 +152,7 @@ workflow {
     //Handle input bams as coming originally from bams, or from an alignment this run.
     if (params.bamMapping) {
       inputBam = inputMapping
-      if (doWF_sampleQC || doWF_samplePairingQC){
+      if (doWF_QC){
         inputMapping.map{idSample, target, bam, bai ->
           [ idSample,target, bam.getParent() ]
         }.set{ locateFastP4MultiQC }
@@ -220,7 +221,7 @@ workflow {
       snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
     }
 
-    if(doWF_sampleQC)
+    if(doWF_QC)
     {
       sampleQC_wf(inputBam, fastPJson)
     }
@@ -250,7 +251,7 @@ workflow {
       mdParse_wf(mergedChannelMetaDataParser)
     }
 
-    if(doWF_samplePairingQC)
+    if(doWF_QC)
     {
       samplePairingQC_wf(inputBam, inputPairing, runConpairAll)
 
@@ -309,13 +310,13 @@ workflow {
       dellyMantaCombinedTbi4AggregateGermline = doWF_germSV ? germlineSV_wf.out.dellyMantaCombinedTbi4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       //Sample QC
-      bamsQcStats4Aggregate  = doWF_sampleQC ? sampleQC_wf.out.bamsQcStats4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      collectHsMetricsOutput = doWF_sampleQC ? sampleQC_wf.out.collectHsMetricsOutput : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      qualimap4Process       = doWF_sampleQC ? sampleQC_wf.out.qualimap4Process       : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      bamsQcStats4Aggregate  = doWF_QC ? sampleQC_wf.out.bamsQcStats4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      collectHsMetricsOutput = doWF_QC ? sampleQC_wf.out.collectHsMetricsOutput : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      qualimap4Process       = doWF_QC ? sampleQC_wf.out.qualimap4Process       : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       //Sample/Pairing QC
-      conpairConcord4Aggregate = doWF_samplePairingQC ? samplePairingQC_wf.out.conpairConcord4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      conpairContami4Aggregate = doWF_samplePairingQC ? samplePairingQC_wf.out.conpairContami4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      conpairConcord4Aggregate = doWF_QC && params.pairing ? samplePairingQC_wf.out.conpairConcord4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      conpairContami4Aggregate = doWF_QC && params.pairing? samplePairingQC_wf.out.conpairContami4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
       FacetsQC4Aggregate = doWF_facets ? facets_wf.out.FacetsQC4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       aggregateFromProcess(
@@ -347,9 +348,9 @@ workflow {
         doWF_loh,
         doWF_mdParse,
         doWF_germSV,
-        doWF_sampleQC,
+        doWF_QC,
         doWF_germSNV,
-        doWF_samplePairingQC,
+        params.pairing,
         fastPJson,
         multiqcWesConfig, 
         multiqcWgsConfig, 
