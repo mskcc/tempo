@@ -41,9 +41,9 @@ workflow aggregateFromProcess
     doWF_loh
     doWF_mdParse
     doWF_germSV
-    doWF_sampleQC
+    doWF_QC
     doWF_germSNV
-    doWF_samplePairingQC
+    pairingParam
     fastPJson
     multiqcWesConfig
     multiqcWgsConfig
@@ -85,7 +85,7 @@ workflow aggregateFromProcess
       inputGermlineAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
     }
 
-    if (doWF_sampleQC){
+    if (doWF_QC){
       bamsQcStats4Aggregate.branch{ item ->
             def idSample = item[0]
             def alfred = item[1]
@@ -220,7 +220,7 @@ workflow aggregateFromProcess
       inputAlfredIgnoreN = alfredIgnoreN
       inputFastP4MultiQC = fastPMetrics
 
-      if (doWF_samplePairingQC){
+      if (doWF_QC && pairingParam){
         inputAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairConcord4Aggregate }
         inputAggregate.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairContami4Aggregate }
         inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{ inputFacetsQC4CohortMultiQC }
@@ -266,14 +266,14 @@ workflow aggregateFromProcess
     GermlineAggregateSv(inputGermlineAggregateSv)
   }
 
-  if (doWF_sampleQC){
+  if (doWF_QC){
     inputAlfredIgnoreY.join(inputAlfredIgnoreN)
               .join(inputHsMetrics)
               .set{ inputQcBamAggregate }
 
     QcBamAggregate(inputQcBamAggregate)
 
-    if(doWF_samplePairingQC)
+    if(doWF_QC && pairingParam)
     {
       inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
           .set{ inputQcConpairAggregate }
