@@ -48,7 +48,7 @@ include { PairTumorNormal }      from './modules/workflows/WorkflowControls/Pair
 include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
 include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFromProcess'
 
-WFs = params.pairing ? params.workflows.split(',').collect{it.trim().toLowerCase()} : params.workflows.equals('qc') ? 'qc' : []
+WFs = params.pairing ? params.workflows.split(',').collect{it.trim().toLowerCase()} : params.workflows.contains('qc') ? 'qc' : []
 
 workflow {
   //Set flags for when each pipeline is required to run.
@@ -75,24 +75,23 @@ workflow {
       println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
       exit 1
     }
+    else if ((params.mapping || params.bamMapping) && WFs == []) {
+        println 'ERROR: No provided sub-workflows or missing "--pairing [tsv]". Enable sub-workflow or provide a pairing file.\nNote: Only sample QC can be run without a pairing file. If this is what you want, please use "--workflows qc"'
+	exit 1
+    }
+    else{}
   }
   else if (runAggregate == true) {
-    if (!doWF_validate && !doWF_align && !doWF_manta && !doWF_scatter && !doWF_germSNV && !doWF_germSV && !doWF_facets &&
-           !doWF_SV && !doWF_loh && !doWF_SNV && !doWF_QC && !doWF_msiSensor && !doWF_mutSig && !doWF_mdParse){
-          println "ERROR: Nothing to aggregate when no sub-workflows are specified and --aggregate is true.  Provide aggregate filename or specify sub-workflow flags."
+    if ( WFs == [] ) {
+          println 'ERROR: Nothing to aggregate when no sub-workflows are specified and "--aggregate true"'
           exit 1
-    }
-    else if (!doWF_facets && !doWF_SV && !doWF_SNV && !doWF_loh && !doWF_mdParse && !doWF_germSNV && !doWF_germSV && !doWF_QC) {
-      println 'ERROR: No provided sub-workflows provide data to be aggregated. Enable sub-workflow or provide aggregate data from file.'
-      exit 1
     }
     else{
       doWF_AggregateFromProcessOnly = true
     }
   }
-  else if (!(runAggregate == true) && !(runAggregate == false) ){
-    if (!params.mapping && !params.bamMapping && !doWF_validate && !doWF_align && !doWF_manta && !doWF_scatter && !doWF_germSNV && !doWF_germSV && !doWF_facets &&
-        !doWF_SV && !doWF_loh && !doWF_SNV && !doWF_QC && !doWF_msiSensor && !doWF_mutSig && !doWF_mdParse){
+  else {
+    if (!params.mapping && !params.bamMapping && WFs == []) {
           doWF_AggregateFromFileOnly = true
     }
     else {
@@ -100,31 +99,16 @@ workflow {
       exit 1
     }
   }
-  else {}
 
   //Align can run without pairing/cross validate, but only if nothing else is running.
-  if((!params.pairing) && (doWF_validate || doWF_manta || doWF_scatter || doWF_germSNV || doWF_germSV 
-                    || doWF_facets || doWF_SV || doWF_loh || doWF_SNV
-                    || doWF_msiSensor || doWF_mutSig || doWF_mdParse))
-  {
+  if((!params.pairing) && WFs != [] && WFs != 'qc') {
     println "ERROR: Certain workflows cannot be performed without pairing information."
     println "\tProvide a --pairing file, or disable other sub-workflows to proceed."
     exit 1
   }
-  else
-  {
-    if (params.watch == false) {
-      if((params.aggregate != true && params.aggregate != false) && (params.mapping || params.bamMapping))
-      {
-        keySet = targetsMap.keySet()
-        mappingFile = params.mapping ? file(params.mapping, checkIfExists: true) : file(params.bamMapping, checkIfExists: true)      
-        inputMapping = params.mapping ? TempoUtils.extractFastq(mappingFile, params.assayType, targetsMap.keySet()) : TempoUtils.extractBAM(mappingFile, params.assayType, targetsMap.keySet())
-      }
-    }
-    else if (params.watch == true) {
-      mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, targetsMap.keySet()) : watchBamMapping(mappingFile, params.assayType, targetsMap.keySet())
-    }
+  if(params.pairing && !params.mapping && !params.bamMapping){
+    println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
+    exit 1
   }
 
   if (doWF_AggregateFromFileOnly){
@@ -132,17 +116,9 @@ workflow {
   }
   else{
     //Begin executing modules for the run.
-    if (doWF_validate) {
-      validate_wf()
-      inputMapping = validate_wf.out.inputMapping
-      inputPairing = validate_wf.out.inputPairing
-    }
-    else{
-      if(params.pairing){
-        println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
-        exit 1
-      }
-    }
+    validate_wf()
+    inputMapping = validate_wf.out.inputMapping
+    inputPairing = validate_wf.out.inputPairing
 
     if (doWF_align)
     {
