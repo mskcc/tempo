@@ -52,16 +52,15 @@ WFs = params.pairing ? params.workflows.split(',').collect{it.trim().toLowerCase
 
 workflow {
   //Set flags for when each pipeline is required to run.
-  doWF_validate        = (params.pairing || params.bamMapping) ? true : false
   doWF_align           = (params.mapping) ? true : false
   doWF_manta           = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_scatter         = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_germSNV         = 'germSNV' in WFs ? true : false
   doWF_germSV          = 'germSV' in WFs ? true : false
-  doWF_facets          = ['lohhla', 'facets', 'SNV', 'mutsig', 'germSNV'].any(it -> it in WFs) ? true : false
+  doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germSNV'].any(it -> it in WFs) ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
-  doWF_loh             = ['lohhla', 'SNV', 'mutsig'].any(it -> it in WFs) ? true : false
-  doWF_SNV             = ['SNV', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
+  doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
+  doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
   doWF_QC	       = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
