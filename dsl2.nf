@@ -81,6 +81,8 @@ workflow {
     exit 1
   }
 
+  doWF_AggregateFromFileOnly = false
+  doWF_AggregateFromProcessOnly = false
   if (!params.mapping && !params.bamMapping) {
       if (aggregateParamIsFile) { doWF_AggregateFromFileOnly = true }
       else {
@@ -102,7 +104,6 @@ workflow {
 //      4. --mapping/bamMapping [tsv] and no pairing [tsv], and --aggregate true/[tsv] and WFs.contains('qc'). This allows not having a pairing file but have QC process which only run on sample level to be able to aggregate. But so far no such process yet
       doWF_AggregateFromProcessOnly = runAggregate ? true : false
   }
-
 
   if (doWF_AggregateFromFileOnly){
     aggregateFromFile(runAggregate, multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo)
