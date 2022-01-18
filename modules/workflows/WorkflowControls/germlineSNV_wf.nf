@@ -3,6 +3,7 @@ include { GermlineCombineHaplotypecallerVcf } from '../GermSNV/GermlineCombineHa
 include { GermlineRunStrelka2 }               from '../GermSNV/GermlineRunStrelka2' 
 include { GermlineCombineChannel }            from '../GermSNV/GermlineCombineChannel' 
 include { GermlineAnnotateMaf }               from '../GermSNV/GermlineAnnotateMaf' 
+include { GermlineFacetsAnnotation }          from '../GermSNV/GermlineFacetsAnnotation' 
 
 workflow germlineSNV_wf
 {
@@ -10,6 +11,7 @@ workflow germlineSNV_wf
     bams
     bamsTumor
     mergedIList
+    facetsForMafAnno
 
   main:
     referenceMap = params.referenceMap
@@ -64,7 +66,12 @@ workflow germlineSNV_wf
     GermlineAnnotateMaf(GermlineCombineChannel.out.mutationMergedGermline,
                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
                                        referenceMap.vepCache, referenceMap.isoforms]))
+
+    facetsForMafAnno.combine(GermlineAnnotateMaf.out.mafFileGermline, by: [0,1,2])
+      .set{ facetsMafFileGermline }
+
+    GermlineFacetsAnnotation(facetsMafFileGermline)
     
   emit:
-    mafFileGermline = GermlineAnnotateMaf.out.mafFileGermline        
+    mafFile4AggregateGermline = GermlineFacetsAnnotation.out.mafFile4AggregateGermline      
 }
