@@ -194,11 +194,6 @@ workflow {
     if(doWF_facets)
     {
       facets_wf(bamFiles)
-    /*  if(doWF_germSNV)
-      {
-        germlineSNV_facets(facets_wf.out.facetsForMafAnno, germlineSNV_wf.out.mafFileGermline)
-      }
-      */
     }
 
     if(doWF_germSNV)
