@@ -14,11 +14,7 @@ workflow aggregateFromProcess
 {
   take:
     inputPairing
-    FacetsPurity4Aggregate
-    FacetsHisens4Aggregate
-    FacetsOutLog4Aggregate
-    FacetsArmLev4Aggregate
-    FacetsGeneLev4Aggregate
+    facets4Aggregate
     dellyMantaCombined4Aggregate
     dellyMantaCombinedTbi4Aggregate
     NetMhcStats4Aggregate
@@ -53,12 +49,8 @@ workflow aggregateFromProcess
     cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
         .set{ inputAggregate }
 
-    if (doWF_facets){
-      inputPurity4Aggregate    = inputAggregate.combine(FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputHisens4Aggregate    = inputAggregate.combine(FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputOutLog4Aggregate    = inputAggregate.combine(FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputArmLev4Aggregate    = inputAggregate.combine(FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputGeneLev4Aggregate   = inputAggregate.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    if (facets4Aggregate){
+      input4AggregateFacets = inputAggregate.combine(facets4Aggregate.out.facets4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2],it[4],it[5],it[6],it[7],it[8]]}
     }
     if (doWF_SV){
       inputAggregateSv    = inputAggregate.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
@@ -229,13 +221,7 @@ workflow aggregateFromProcess
   if (doWF_SNV){
     AggregateMaf(inputAggregateMaf)
 
-    inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
-        .join(inputOutLog4Aggregate, by:[0])
-        .join(inputArmLev4Aggregate, by:[0])
-        .join(inputGeneLev4Aggregate, by:[0])
-        .set{ inputAggregateFacets }
-
-    AggregateFacets(inputAggregateFacets)
+    AggregateFacets(input4AggregateFacets)
     AggregateNetMHC(inputAggregateNetMHC)
   }
   if (doWF_SV){

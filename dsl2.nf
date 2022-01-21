@@ -42,7 +42,6 @@ include { samplePairingQC_wf }   from './modules/workflows/WorkflowControls/samp
 include { multiQC_wf }           from './modules/workflows/WorkflowControls/multiQC_wf'          addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { scatter_wf }           from './modules/workflows/WorkflowControls/scatter_wf'          addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSNV_wf }       from './modules/workflows/WorkflowControls/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { germlineSNV_facets }   from './modules/workflows/WorkflowControls/germlineSNV_facets' 
 include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { PairTumorNormal }      from './modules/workflows/WorkflowControls/PairTumorNormal' 
 include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
@@ -249,12 +248,7 @@ workflow {
 
     if(doWF_AggregateFromProcessOnly)
     {
-      //Facets
-      FacetsPurity4Aggregate  = doWF_facets ? facets_wf.out.FacetsPurity4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsHisens4Aggregate  = doWF_facets ? facets_wf.out.FacetsHisens4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsOutLog4Aggregate  = doWF_facets ? facets_wf.out.FacetsOutLog4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsArmLev4Aggregate  = doWF_facets ? facets_wf.out.FacetsArmLev4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsGeneLev4Aggregate = doWF_facets ? facets_wf.out.FacetsGeneLev4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      facets4Aggregate  = doWF_facets ? facets_wf : false
     
       //SV
       dellyMantaCombined4Aggregate    = doWF_SV ? sv_wf.out.dellyMantaCombined4Aggregate    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
@@ -290,11 +284,7 @@ workflow {
 
       aggregateFromProcess(
         inputPairing,
-        FacetsPurity4Aggregate,
-        FacetsHisens4Aggregate,
-        FacetsOutLog4Aggregate,
-        FacetsArmLev4Aggregate,
-        FacetsGeneLev4Aggregate,
+        facets4Aggregate,
         dellyMantaCombined4Aggregate,
         dellyMantaCombinedTbi4Aggregate,
         NetMhcStats4Aggregate,
