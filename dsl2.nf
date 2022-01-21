@@ -42,7 +42,6 @@ include { samplePairingQC_wf }   from './modules/workflows/WorkflowControls/samp
 include { multiQC_wf }           from './modules/workflows/WorkflowControls/multiQC_wf'          addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { scatter_wf }           from './modules/workflows/WorkflowControls/scatter_wf'          addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSNV_wf }       from './modules/workflows/WorkflowControls/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { germlineSNV_facets }   from './modules/workflows/WorkflowControls/germlineSNV_facets' 
 include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { PairTumorNormal }      from './modules/workflows/WorkflowControls/PairTumorNormal' 
 include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
