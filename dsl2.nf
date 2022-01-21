@@ -249,10 +249,7 @@ workflow {
     if(doWF_AggregateFromProcessOnly)
     {
       facets4Aggregate  = doWF_facets ? facets_wf : false
-    
-      //SV
-      dellyMantaCombined4Aggregate    = doWF_SV ? sv_wf.out.dellyMantaCombined4Aggregate    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      dellyMantaCombinedTbi4Aggregate = doWF_SV ? sv_wf.out.dellyMantaCombinedTbi4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      sv4Aggregate    = doWF_SV ? sv_wf : false
 
       //SNV
       NetMhcStats4Aggregate = doWF_SNV ? snv_wf.out.NetMhcStats4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
@@ -285,8 +282,7 @@ workflow {
       aggregateFromProcess(
         inputPairing,
         facets4Aggregate,
-        dellyMantaCombined4Aggregate,
-        dellyMantaCombinedTbi4Aggregate,
+        sv4Aggregate,
         NetMhcStats4Aggregate,
         finalMaf4Aggregate,
         predictHLA4Aggregate,

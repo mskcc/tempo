@@ -15,8 +15,7 @@ workflow aggregateFromProcess
   take:
     inputPairing
     facets4Aggregate
-    dellyMantaCombined4Aggregate
-    dellyMantaCombinedTbi4Aggregate
+    sv4Aggregate
     NetMhcStats4Aggregate
     finalMaf4Aggregate
     predictHLA4Aggregate
@@ -53,8 +52,7 @@ workflow aggregateFromProcess
       input4AggregateFacets = inputAggregate.combine(facets4Aggregate.out.facets4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2],it[4],it[5],it[6],it[7],it[8]]}
     }
     if (doWF_SV){
-      inputAggregateSv    = inputAggregate.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputAggregateSv    = inputAggregate.combine(sv4Aggregate.out.sv4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
     if (doWF_SNV){
       inputAggregateNetMHC = inputAggregate.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -225,9 +223,6 @@ workflow aggregateFromProcess
     AggregateNetMHC(inputAggregateNetMHC)
   }
   if (doWF_SV){
-    inputAggregateSv.join(inputAggregateSvTbi)
-          .set{ inputAggregateSv }
-
     AggregateSv(inputAggregateSv)
   }
   if (doWF_loh){
