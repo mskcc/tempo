@@ -160,11 +160,6 @@ workflow {
       scatter_wf()
     }
 
-    if(doWF_germSNV)
-    {
-      germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList)
-    }
-
     if(doWF_germSV)
     {
       germlineSV_wf(bams)
@@ -173,10 +168,11 @@ workflow {
     if(doWF_facets)
     {
       facets_wf(bamFiles)
-      if(doWF_germSNV)
-      {
-        germlineSNV_facets(facets_wf.out.facetsForMafAnno, germlineSNV_wf.out.mafFileGermline)
-      }
+    }
+
+    if(doWF_germSNV)
+    {
+      germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno)
     }
 
     if(doWF_SV)
@@ -276,7 +272,7 @@ workflow {
       MetaData4Aggregate = doWF_mdParse ? mdParse_wf.out.MetaData4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       //Germline & Facets
-      mafFile4AggregateGermline = (doWF_facets && doWF_germSNV) ? germlineSNV_facets.out.mafFile4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      mafFile4AggregateGermline = (doWF_facets && doWF_germSNV) ? germlineSNV_wf.out.mafFile4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       //Germline SV
       dellyMantaCombined4AggregateGermline    = doWF_germSV ? germlineSV_wf.out.dellyMantaCombined4AggregateGermline    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
