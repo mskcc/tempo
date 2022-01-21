@@ -51,14 +51,11 @@ include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFr
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
 
-WFs = params.workflows instanceof Boolean ? " " : params.workflows.split(',').collect{it.trim().toLowerCase()}
-// if --workflows "", it will be read as false, which is a Boolean. Here we ignore "--workflows true" since there is no reason to do that
+WFs = params.workflows instanceof Boolean ? '' : params.workflows
 
-WFs = params.pairing ? WFs : WFs.contains('qc') ? 'qc' : []
-// if pairing file not provided, automatically remove all sub-workflows which can't run. If "qc" is also explicitly ecluded here by specifying --workflow ""which means disabling sample QC as well.
+WFs = WFs.split(',').collect{it.trim().toLowerCase()}.unique()
 
 WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','sv','mutsig','germSNV','germSV','lohhla','facets','qc','msisensor'] : WFs
-// if no mapping/bamMapping file is provided and --aggregate received a tsv file, enable every sub-workflow to let pipline search for everything in the aggregate tsv path. Otherwise keep previous --workflows setting
 
 workflow {
   //Set flags for when each pipeline is required to run.
@@ -75,14 +72,27 @@ workflow {
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
-  
+
+  doWF_AggregateFromFileOnly = false
+  doWF_AggregateFromProcessOnly = false
+
+  if (!params.pairing && WFs != ['qc'] && WFs != ['']){
+      println "ERROR: Certain workflows cannot be performed without pairing information."
+      println "\tProvide a --pairing [tsv], or disable other sub-workflows to proceed."
+      exit 1
+  }
+
+  if (params.bamMapping && WFs == ['']){
+      println "ERROR: No sub-workflows to run.."
+      println "\tPlease provide sub-workflows using --workflow parameters."
+      exit 1
+  }
+
   if(params.pairing && !params.mapping && !params.bamMapping){
     println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
     exit 1
   }
 
-  doWF_AggregateFromFileOnly = false
-  doWF_AggregateFromProcessOnly = false
   if (!params.mapping && !params.bamMapping) {
       if (aggregateParamIsFile) { doWF_AggregateFromFileOnly = true }
       else {
@@ -90,18 +100,11 @@ workflow {
         exit 1
       }
   }
-  else if (WFs == []) {
-      if (!runAggregate) {}
-//      1. --mapping/bamMapping [tsv] and no pairing [tsv], and --workflow "" and --aggregate false, which means only run alignment
-      else {
-//      2. --mapping/bamMapping [tsv] --pairing [tsv] and --workflow "" and --aggregate true/[tsv], whch means having pairing file but no sub-workflow is enabled
-//      3. --mapping/bamMapping [tsv] and no pairing [tsv], and --aggregate true/[tsv] and !WFs.contains('qc'), which means sub-workflows specified need pairing file
-        println 'ERROR: No provided sub-workflows or missing "--pairing [tsv]". Enable sub-workflow or provide a pairing file.\nNote: Only alignment and sample QC can be run without a pairing file. If this is what you want, please use "--workflows qc"'
+  else if (WFs == [''] && runAggregate) {
+        println 'ERROR: No provided sub-workflows enabled to aggregate. Remove --aggregate or add sub-workflows"'
         exit 1
-      }
   }
   else{
-//      4. --mapping/bamMapping [tsv] and no pairing [tsv], and --aggregate true/[tsv] and WFs.contains('qc'). This allows not having a pairing file but have QC process which only run on sample level to be able to aggregate. But so far no such process yet
       doWF_AggregateFromProcessOnly = runAggregate ? true : false
   }
 
