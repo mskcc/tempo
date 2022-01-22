@@ -60,7 +60,7 @@ workflow {
   //Set flags for when each pipeline is required to run.
   doWF_align           = (params.mapping) ? true : false
   doWF_manta           = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
-  doWF_scatter         = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
+  doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
   doWF_germSNV         = 'germsnv' in WFs ? true : false
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
