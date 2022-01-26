@@ -1090,6 +1090,7 @@ process SomaticMergeDellyAndManta {
 
   input:
     set idTumor, idNormal, target, file(dellyVcfs), file(dellyVcfsIndex), file(mantaFile) from dellyMantaCombineChannel
+    file(custom_scripts) from Channel.value([workflow.projectDir + "/containers/bcftools-vt-mergesvvcf"])
 
   output:
     set val("placeHolder"), idTumor, idNormal, file("${outputPrefix}.delly.manta.vcf.gz*") into dellyMantaCombinedOutput
@@ -1121,10 +1122,15 @@ process SomaticMergeDellyAndManta {
   bcftools sort --temp-dir ./ \
     > ${outputPrefix}.delly.manta.clean.anon.vcf
 
+  python ${custom_scripts}/filter-sv-vcf.py \\
+    --input ${outputPrefix}.delly.manta.clean.anon.vcf \\
+    --output ${outputPrefix}.delly.manta.clean.anon.corrected.vcf \\
+    --min 1 
+
   bcftools annotate \\
     --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
     -o ${outputPrefix}.delly.manta.clean.vcf \\
-    ${outputPrefix}.delly.manta.clean.anon.vcf
+    ${outputPrefix}.delly.manta.clean.anon.corrected.vcf
 
   bcftools view \\
     --samples ${idTumor},${idNormal} \\
@@ -1151,6 +1157,7 @@ process runAscatAlleleCount {
   each ascatIndex from ascatAlleleCountSegments
   set idTumor, idNormal, target, file(tumorBam), file(tumorBai), file(normalBam), file(normalBai) from bamsForAlleleCountAscatNGS
   set file(genomeFile), file(genomeIndex), file(snpGcCorrections) from Channel.value([file(referenceMap.genomeFile), file(referenceMap.genomeIndex), file(referenceMap.snpGcCorrections)])
+  val(genome) from Channel.value([params.genome])
 
   output:
   set idTumor, idNormal, target, file("ascat_alleleCount_${ascatIndex}.tar.gz") into ascatAlleleCount4Ascat
@@ -1159,13 +1166,13 @@ process runAscatAlleleCount {
   when: runSomatic && params.assayType == "genome" && "hrdetect" in tools
 
   script:
-  if (params.genome in ["GRCh37","smallGRCh37","GRCh38"]){
+  if (genome in ["GRCh37","smallGRCh37","GRCh38"]){
     species = "HUMAN"
     assembly = 37
-    if (params.genome in ["GRCh38"]) { assembly = 38 }
+    if (genome in ["GRCh38"]) { assembly = 38 }
   } else { // not sure if run will complete with these params. 
-    species = params.genome 
-    assembly = params.genome
+    species = genome 
+    assembly = genome
   }
   if (ascatAlleleCountLimit == 1 ) { 
     indexParam = ""
@@ -1294,15 +1301,46 @@ process SomaticSVVcf2Bedpe {
     --output ${outputPrefix}.combined.dac.rm.bedpe \\
     --match-type either 
   
-  python ${custom_scripts}/filter_cdna.py \\
+  python ${custom_scripts}/detect_cdna.py \\
     --intermediate \\
     --exon-junct ${spliceSites} \\
     --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
     --out-bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
     --out ${outputPrefix}.contamination.tsv
 
+  grep -v "^##" ${outputPrefix}.combined.bedpe | \\
+    cut -f 1-3,7,11 > ${outputPrefix}.combined.bp1.bed
+  
+  echo -n "#" > ${outputPrefix}.combined.bp2.bed
+  grep -v "^##" ${outputPrefix}.combined.bedpe | \\
+    cut -f 4-6,7,11 >> ${outputPrefix}.combined.bp2.bed
+  
+  /opt/annotsv/bin/AnnotSV \\
+    -annotationsDir ${annotSVref} \\
+    -SVinputFile ${outputPrefix}.combined.bp1.bed \\
+    -bcftools \$(which bcftools) \\
+    -genomeBuild ${genomeBuild} \\
+    -includeCI 0 \\
+    -svtBEDcol 5 \\
+    -outputFile ${idTumor}__${idNormal}.bp1.annotsv
+
+  /opt/annotsv/bin/AnnotSV \\
+    -annotationsDir ${annotSVref} \\
+    -SVinputFile ${outputPrefix}.combined.bp2.bed \\
+    -bcftools \$(which bcftools) \\
+    -genomeBuild ${genomeBuild} \\
+    -includeCI 0 \\
+    -svtBEDcol 7 \\
+    -outputFile ${idTumor}__${idNormal}.bp2.annotsv
+
+  python ${custom_scripts}/annotate_bedpe.py \\
+    --bp1 *_AnnotSV/${idTumor}__${idNormal}.bp1.annotsv.tsv \\
+    --bp2 *_AnnotSV/${idTumor}__${idNormal}.bp2.annotsv.tsv \\
+    --bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
+    --out ${outputPrefix}.combined.dac.rm.cdna.annot.bedpe
+
   svtools bedpesort \\
-    ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
+    ${outputPrefix}.combined.dac.rm.cdna.annot.bedpe \\
     ${outputPrefix}.combined.filtered.bedpe
 
   
