@@ -1257,8 +1257,9 @@ process SomaticSVVcf2Bedpe {
     file(spliceSites) from Channel.value([referenceMap.spliceSites])
     
   output:
-    set idTumor, idNormal, target, file("${outputPrefix}.combined.bedpe") into SVCombinedBedpe
-    file("${outputPrefix}.combined.filtered.bedpe")
+    set idTumor, idNormal, target, file("${outputPrefix}.combined.filtered.bedpe") into SVCombinedBedpe
+    set idTumor, idNormal, target, file("${outputPrefix}.combined.filtered.pass.bedpe") into SVCombinedBedpePass
+    file("${outputPrefix}.combined.bedpe")
     file("${idTumor}__${idNormal}.annotsv.tsv")
 
   when: runSomatic && workflow.profile != "test" 
@@ -1342,6 +1343,9 @@ process SomaticSVVcf2Bedpe {
   svtools bedpesort \\
     ${outputPrefix}.combined.dac.rm.cdna.annot.bedpe \\
     ${outputPrefix}.combined.filtered.bedpe
+
+  awk -F"\\t" '\$1 ~ /#/ || \$12 == "PASS"' ${outputPrefix}.combined.filtered.bedpe > \\
+    ${outputPrefix}.combined.filtered.pass.bedpe
 
   
   """
