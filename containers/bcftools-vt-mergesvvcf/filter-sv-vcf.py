@@ -45,7 +45,7 @@ def usage():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--input', help = 'input file', required = True)
 	parser.add_argument('--output', help = 'output file', required = True)
-	parser.add_argument('--min',default = 1, help = 'minimum number of PASS callers needed to PASS final variant' , required = True)
+	parser.add_argument('--min',type=int, default = 1, help = 'minimum number of PASS callers needed to PASS final variant' , required = True)
 	return parser.parse_args()
 
 def main():
@@ -88,7 +88,7 @@ def filter_by_pass_callers(input,output,min_pass):
 			vcf_rec.info.__setitem__(i + "_filters",",".join(flag_sources[i]))
 			
 		#adjust filter based on passing callers
-		if num_callers_pass > min_pass:
+		if num_callers_pass >= min_pass:
 			vcf_rec.filter.add("PASS")
 
 		# change TRA to BND for svtools
