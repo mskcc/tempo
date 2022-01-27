@@ -699,7 +699,7 @@ if (params.pairing) {
 
   // Parse input FASTQ mapping
 
-  inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing}
+  inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing; pairing4Qualimap}
   bamsBQSR4Tumor.combine(pairing4T)
                           .filter { item ->
                             def idSample = item[0]
@@ -2607,10 +2607,13 @@ process QcQualimap {
   """
 }
 
-qualimap4Tumor.combine(qualimap4Normal)
-  .map{ idTumor,  qualimapTumor, idNormal, qualimapNormal ->
-    [idTumor, idNormal, qualimapTumor, qualimapNormal]
-  }.set{qualimap4Pairing}
+pairing4Qualimap.join(qualimap4Tumor, by:[0])
+  .map{ idTumor, idNormal, qualimapTumor ->
+    [idNormal, idTumor, qualimapTumor]
+  }.combine(qualimap4Normal, by:[0])
+  .map{ idNormal, idTumor, qualimapTumor, qualimapNormal ->
+    [idTumor.toString(), idNormal.toString(), qualimapTumor, qualimapNormal]
+  }.set{qualimap4SomaticMultiQC}
 
 Channel.from(true, false).set{ ignore_read_groups }
 bamsBQSR4Alfred
@@ -2874,7 +2877,7 @@ process QcConpair {
 
 conpairOutput
   .map{ placeholder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles] }
-  .join(qualimap4Pairing, by:[0,1]) 
+  .join(qualimap4SomaticMultiQC, by:[0,1]) 
   .join(FacetsQC4SomaticMultiQC, by:[0,1]) // idTumor, idNormal, conpairFiles, qualimapTumor, qualimapNormal, facetsSummaryFiles, facetsQcFiles 
   .set{somaticMultiQCinput}
 
