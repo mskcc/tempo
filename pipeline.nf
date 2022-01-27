@@ -1251,7 +1251,6 @@ process SomaticSVVcf2Bedpe {
     set idTumor, idNormal, target, file(vcfFile) from SVCombinedVcf4Bedpe
     set file(repeatMasker), file(mapabilityBlacklist) from Channel.value(
       [referenceMap.repeatMasker,referenceMap.mapabilityBlacklist])
-    file(vepCache) from Channel.value([referenceMap.vepCache])
     file(custom_scripts) from Channel.value([workflow.projectDir + "/containers/svtools"])
     file(annotSVref) from Channel.value([referenceMap.annotSVref])
     file(spliceSites) from Channel.value([referenceMap.spliceSites])
@@ -1260,7 +1259,7 @@ process SomaticSVVcf2Bedpe {
     set idTumor, idNormal, target, file("${outputPrefix}.combined.filtered.bedpe") into SVCombinedBedpe
     set idTumor, idNormal, target, file("${outputPrefix}.combined.filtered.pass.bedpe") into SVCombinedBedpePass
     file("${outputPrefix}.combined.bedpe")
-    file("${idTumor}__${idNormal}.annotsv.tsv")
+    file("${outputPrefix}.annotsv.tsv")
 
   when: runSomatic && workflow.profile != "test" 
 
@@ -1275,9 +1274,9 @@ process SomaticSVVcf2Bedpe {
     -bcftools \$(which bcftools) \\
     -genomeBuild ${genomeBuild} \\
     -includeCI 0 \\
-    -outputFile ${idTumor}__${idNormal}.annotsv
+    -outputFile ${outputPrefix}.annotsv
 
-  cp *_AnnotSV/${idTumor}__${idNormal}.annotsv.tsv . 
+  cp *_AnnotSV/${outputPrefix}.annotsv.tsv . 
     
   svtools vcftobedpe \\
     -i ${vcfFile} \\
@@ -1323,7 +1322,7 @@ process SomaticSVVcf2Bedpe {
     -genomeBuild ${genomeBuild} \\
     -includeCI 0 \\
     -svtBEDcol 5 \\
-    -outputFile ${idTumor}__${idNormal}.bp1.annotsv
+    -outputFile ${outputPrefix}.bp1.annotsv
 
   /opt/annotsv/bin/AnnotSV \\
     -annotationsDir ${annotSVref} \\
@@ -1332,11 +1331,11 @@ process SomaticSVVcf2Bedpe {
     -genomeBuild ${genomeBuild} \\
     -includeCI 0 \\
     -svtBEDcol 7 \\
-    -outputFile ${idTumor}__${idNormal}.bp2.annotsv
+    -outputFile ${outputPrefix}.bp2.annotsv
 
   python ${custom_scripts}/annotate_bedpe.py \\
-    --bp1 *_AnnotSV/${idTumor}__${idNormal}.bp1.annotsv.tsv \\
-    --bp2 *_AnnotSV/${idTumor}__${idNormal}.bp2.annotsv.tsv \\
+    --bp1 *_AnnotSV/${outputPrefix}.bp1.annotsv.tsv \\
+    --bp2 *_AnnotSV/${outputPrefix}.bp2.annotsv.tsv \\
     --bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
     --out ${outputPrefix}.combined.dac.rm.cdna.annot.bedpe
 
@@ -1346,7 +1345,6 @@ process SomaticSVVcf2Bedpe {
 
   awk -F"\\t" '\$1 ~ /#/ || \$12 == "PASS"' ${outputPrefix}.combined.filtered.bedpe > \\
     ${outputPrefix}.combined.filtered.pass.bedpe
-
   
   """
 
@@ -2722,10 +2720,18 @@ process GermlineMergeDellyAndManta {
 
   cat ${idNormal}.delly.manta.raw.vcf | \\
     awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \\
-    bcftools sort --temp-dir ./ \\
+  bcftools sort --temp-dir ./ \\
     > ${idNormal}.delly.manta.clean.anon.vcf
 
-  bcftools annotate --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' -o ${idNormal}.delly.manta.clean.vcf ${idNormal}.delly.manta.clean.anon.vcf
+  python ${custom_scripts}/filter-sv-vcf.py \\
+    --input ${outputPrefix}.delly.manta.clean.anon.vcf \\
+    --output ${outputPrefix}.delly.manta.clean.anon.corrected.vcf \\
+    --min 1 
+
+  bcftools annotate \\
+    --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
+    -o ${outputPrefix}.delly.manta.clean.vcf \\
+    ${outputPrefix}.delly.manta.clean.anon.corrected.vcf
 
   bcftools view \\
     --output-type z \\
@@ -2739,19 +2745,40 @@ process GermlineMergeDellyAndManta {
 process GermlineSVVcf2Bedpe {
   tag {idNormal}
 
-  publishDir "${outDir}/germline/${idNormal}/combined_svs", mode: params.publishDirMode, pattern: "*.bedpe"
+  publishDir "${outDir}/germline/${idNormal}/combined_svs", mode: params.publishDirMode, pattern: ".combined.filtered.bedpe"
+  publishDir "${outDir}/germline/${idNormal}/combined_svs", mode: params.publishDirMode, pattern: "*.annotsv.tsv"
 
   input:
     set val("placeHolder"), idTumor, idNormal, file(vcfFile) from GermlineSVCombinedVcf4Bedpe
+    set file(repeatMasker), file(mapabilityBlacklist) from Channel.value(
+      [referenceMap.repeatMasker,referenceMap.mapabilityBlacklist])
+    file(custom_scripts) from Channel.value([workflow.projectDir + "/containers/svtools"])
+    file(annotSVref) from Channel.value([referenceMap.annotSVref])
+    file(spliceSites) from Channel.value([referenceMap.spliceSites])
 
   output:
-    set idTumor, idNormal, file("${outputPrefix}.combined.bedpe") into GermlineSVCombinedBedpe
+    set idTumor, idNormal, file("${outputPrefix}.combined.filtered.bedpe") into GermlineSVCombinedBedpe
+    set idTumor, idNormal, file("${outputPrefix}.combined.filtered.pass.bedpe") into GermlineSVCombinedBedpePass
+    file("${outputPrefix}.combined.bedpe")
+    file("${outputPrefix}.annotsv.tsv")
 
   when: runGermline && workflow.profile != "test"
 
   script:
   outputPrefix = "${idNormal}"
+  genomeBuild = "GRCh37"
   """
+  export LC_ALL=C
+  /opt/annotsv/bin/AnnotSV \\
+    -annotationsDir ${annotSVref} \\
+    -SVinputFile ${vcfFile} \\
+    -bcftools \$(which bcftools) \\
+    -genomeBuild ${genomeBuild} \\
+    -includeCI 0 \\
+    -outputFile ${outputPrefix}.annotsv
+
+  cp *_AnnotSV/${outputPrefix}.annotsv.tsv . 
+
   svtools vcftobedpe \\
     -i ${vcfFile} \\
     -o ${outputPrefix}.combined.bedpe \\
@@ -2760,6 +2787,66 @@ process GermlineSVVcf2Bedpe {
   if [ ! -s ${outputPrefix}.combined.bedpe ] ; then 
     echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\t${idNormal}" >> ${outputPrefix}.combined.bedpe
   fi
+  
+  python ${custom_scripts}/pair_to_bed_annot.py \\
+    --blacklist-regions ${mapabilityBlacklist} \\
+    --bedpe ${outputPrefix}.combined.bedpe \\
+    --tag mappability \\
+    --output ${outputPrefix}.combined.dac.bedpe \\
+    --match-type either 
+  
+  python ${custom_scripts}/pair_to_bed_annot.py \\
+    --blacklist-regions ${repeatMasker} \\
+    --bedpe ${outputPrefix}.combined.dac.bedpe \\
+    --tag repeat_masker \\
+    --output ${outputPrefix}.combined.dac.rm.bedpe \\
+    --match-type either 
+  
+  python ${custom_scripts}/detect_cdna.py \\
+    --intermediate \\
+    --exon-junct ${spliceSites} \\
+    --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
+    --out-bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
+    --out ${outputPrefix}.contamination.tsv
+
+  grep -v "^##" ${outputPrefix}.combined.bedpe | \\
+    cut -f 1-3,7,11 > ${outputPrefix}.combined.bp1.bed
+  
+  echo -n "#" > ${outputPrefix}.combined.bp2.bed
+  grep -v "^##" ${outputPrefix}.combined.bedpe | \\
+    cut -f 4-6,7,11 >> ${outputPrefix}.combined.bp2.bed
+  
+  /opt/annotsv/bin/AnnotSV \\
+    -annotationsDir ${annotSVref} \\
+    -SVinputFile ${outputPrefix}.combined.bp1.bed \\
+    -bcftools \$(which bcftools) \\
+    -genomeBuild ${genomeBuild} \\
+    -includeCI 0 \\
+    -svtBEDcol 5 \\
+    -outputFile ${outputPrefix}.bp1.annotsv
+
+  /opt/annotsv/bin/AnnotSV \\
+    -annotationsDir ${annotSVref} \\
+    -SVinputFile ${outputPrefix}.combined.bp2.bed \\
+    -bcftools \$(which bcftools) \\
+    -genomeBuild ${genomeBuild} \\
+    -includeCI 0 \\
+    -svtBEDcol 7 \\
+    -outputFile ${outputPrefix}.bp2.annotsv
+
+  python ${custom_scripts}/annotate_bedpe.py \\
+    --bp1 *_AnnotSV/${outputPrefix}.bp1.annotsv.tsv \\
+    --bp2 *_AnnotSV/${outputPrefix}.bp2.annotsv.tsv \\
+    --bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
+    --out ${outputPrefix}.combined.dac.rm.cdna.annot.bedpe
+
+  svtools bedpesort \\
+    ${outputPrefix}.combined.dac.rm.cdna.annot.bedpe \\
+    ${outputPrefix}.combined.filtered.bedpe
+
+  awk -F"\\t" '\$1 ~ /#/ || \$12 == "PASS"' ${outputPrefix}.combined.filtered.bedpe > \\
+    ${outputPrefix}.combined.filtered.pass.bedpe
+
   """
 }
 }
