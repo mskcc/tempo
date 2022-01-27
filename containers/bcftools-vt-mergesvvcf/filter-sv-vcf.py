@@ -4,20 +4,13 @@ from __future__ import print_function
 import argparse
 
 """
-Perform custom filtering/annotation of variants in VCF file, after merging SVs with mergesvvcf
+Perform custom filtering/annotation of variants in 
+VCF file, after merging SVs with mergesvvcf. Variants
+with a minimum of PASSing callers should be filtered 
+as PASS with all non-PASS filters recorded in INFO.
+Additionally, TRA is converted to BND because svtools
+will not correctly handle TRA.
 Usage: filter-sv-vcf.py -h 
-
-Justification:
-Mergesvvcf will retain all variants that are present in a minimum of callers, but 
-does not have special handling for filters from the individual callers. For example:
-1       88333444        .       N       N]1:88335187]   .       manta_MinSomaticScore   END=88335187;Callers=brass,manta,svaba,delly;NumCallers=4 ...
-This is called as FAILED even though 1 caller filtered it and it is pass in the other 3. 
-Similarly:
-7       48677419        .       N       N[7:48677548[   .       manta_MinSomaticScore   END=48677548;Callers=manta,svaba;NumCallers=2 ...
-This is retained because it is present in two callers, but it is only PASS in one caller.
-
-We need to mark calls as PASS if they are PASS in a minimum number of individual callers,
-while retaining their original filter information as annotation.
 """
 
 __author__  = "Anne Marie Noronha"
