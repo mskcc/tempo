@@ -1244,7 +1244,7 @@ process runAscat {
 process SomaticSVVcf2Bedpe {
   tag {idTumor + "__" + idNormal}
 
-  publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.bedpe"
+  publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: ".combined.filtered.bedpe"
   publishDir "${outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.annotsv.tsv"
 
   input:
