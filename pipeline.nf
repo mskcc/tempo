@@ -2562,7 +2562,7 @@ process QcQualimap {
     set idSample, target, file(bam), file(bai), file(targetsBed) from bamsBQSR4Qualimap
 
   output:
-    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Tumor, qualimap4Normal, qualimap4Aggregate
+    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4MultiQC2, qualimap4Aggregate
     set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
   
   when: runQC   
@@ -2607,12 +2607,18 @@ process QcQualimap {
   """
 }
 
-pairing4Qualimap.join(qualimap4Tumor, by:[0])
-  .map{ idTumor, idNormal, qualimapTumor ->
-    [idNormal, idTumor, qualimapTumor]
-  }.combine(qualimap4Normal, by:[0])
-  .map{ idNormal, idTumor, qualimapTumor, qualimapNormal ->
-    [idTumor.toString(), idNormal.toString(), qualimapTumor, qualimapNormal]
+pairing4Qualimap
+  .combine(qualimap4MultiQC2)
+  .branch{ idTumor, idNormal, idSample, qualimapDir ->
+    tumor:  idSample == idTumor
+    normal: idSample == idNormal
+  }
+  .set{qualimap4PairedTN}
+
+qualimap4PairedTN.tumor.combine(qualimap4PairedTN.normal, by:[0,1])
+  .view()
+  .map{ idTumor,idNormal, idSample1, qualimapDir1, idSample2, qualimapDir2 ->
+    [idTumor,idNormal,qualimapDir1,qualimapDir2]
   }.set{qualimap4SomaticMultiQC}
 
 Channel.from(true, false).set{ ignore_read_groups }
