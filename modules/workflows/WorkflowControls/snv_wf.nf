@@ -1,10 +1,10 @@
-include { RunStrelka2 }                from '../SNV/RunStrelka2' 
+include { SomaticRunStrelka2 }         from '../SNV/SomaticRunStrelka2' 
 include { RunMutect2 }                 from '../SNV/RunMutect2'
-include { CombineMutect2Vcf }          from '../SNV/CombineMutect2Vcf' 
-include { CombineChannel }             from '../SNV/CombineChannel' 
-include { AnnotateMaf }                from '../SNV/AnnotateMaf' 
+include { SomaticCombineMutect2Vcf }   from '../SNV/SomaticCombineMutect2Vcf' 
+include { SomaticCombineChannel }      from '../SNV/SomaticCombineChannel' 
+include { SomaticAnnotateMaf }         from '../SNV/SomaticAnnotateMaf' 
 include { RunNeoantigen }              from '../SNV/RunNeoantigen' 
-include { FacetsAnnotation }           from '../SNV/FacetsAnnotation' 
+include { SomaticFacetsAnnotation }    from '../SNV/SomaticFacetsAnnotation' 
 
 workflow snv_wf
 {
@@ -48,7 +48,7 @@ workflow snv_wf
 
     RunMutect2.out.forMutect2Combine.groupTuple().set{ forMutect2Combine }
 
-    CombineMutect2Vcf(forMutect2Combine, 
+    SomaticCombineMutect2Vcf(forMutect2Combine, 
                              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
     bamFiles.combine(mantaToStrelka, by: [0, 1, 2])
@@ -56,33 +56,33 @@ workflow snv_wf
               [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
         }.set{ input4Strelka }
 
-    RunStrelka2(input4Strelka,
+    SomaticRunStrelka2(input4Strelka,
                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
-    CombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(RunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
+    SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(SomaticRunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
 
-    CombineChannel(mutectStrelkaChannel,
+    SomaticCombineChannel(mutectStrelkaChannel,
                           Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
                           Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
                           Channel.value([referenceMap.exomePoN, referenceMap.wgsPoN,referenceMap.exomePoNIndex, referenceMap.wgsPoNIndex,]),
                           Channel.value([referenceMap.gnomadWesVcf, referenceMap.gnomadWesVcfIndex,referenceMap.gnomadWgsVcf, referenceMap.gnomadWgsVcfIndex]))
 
-    AnnotateMaf(CombineChannel.out.mutationMergedVcf,
+    SomaticAnnotateMaf(SomaticCombineChannel.out.mutationMergedVcf,
                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
                                         referenceMap.vepCache, referenceMap.isoforms]))
 
 
-    hlaOutput.combine(AnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }
+    hlaOutput.combine(SomaticAnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }
 
     RunNeoantigen(input4Neoantigen, Channel.value([referenceMap.neoantigenCDNA, referenceMap.neoantigenCDS]))
 
     facetsForMafAnno.combine(RunNeoantigen.out.mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
 
-    FacetsAnnotation(facetsMafFileSomatic)
+    SomaticFacetsAnnotation(facetsMafFileSomatic)
 
   emit:
-    mafFile               = AnnotateMaf.out.mafFile
-    maf4MetaDataParser    = FacetsAnnotation.out.maf4MetaDataParser
+    mafFile               = SomaticAnnotateMaf.out.mafFile
+    maf4MetaDataParser    = SomaticFacetsAnnotation.out.maf4MetaDataParser
     NetMhcStats4Aggregate = RunNeoantigen.out.NetMhcStats4Aggregate
-    finalMaf4Aggregate    = FacetsAnnotation.out.finalMaf4Aggregate
+    finalMaf4Aggregate    = SomaticFacetsAnnotation.out.finalMaf4Aggregate
 }
