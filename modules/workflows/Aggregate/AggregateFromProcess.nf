@@ -2,12 +2,12 @@ include { GermlineAggregateMaf }               from './GermlineAggregateMaf'
 include { GermlineAggregateSv }                from './GermlineAggregateSv'
 include { QcBamAggregate }                     from './QcBamAggregate'
 include { QcConpairAggregate }                 from './QcConpairAggregate'
-include { AggregateFacets }                    from './AggregateFacets'
-include { AggregateLOHHLA }                    from './AggregateLOHHLA'
-include { AggregateMaf }                       from './AggregateMaf'
-include { AggregateMetadata }                  from './AggregateMetadata'
-include { AggregateNetMHC }                    from './AggregateNetMHC'
-include { AggregateSv }                        from './AggregateSv'
+include { SomaticAggregateFacets }             from './SomaticAggregateFacets'
+include { SomaticAggregateLOHHLA }             from './SomaticAggregateLOHHLA'
+include { SomaticAggregateMaf }                from './SomaticAggregateMaf'
+include { SomaticAggregateMetadata }           from './SomaticAggregateMetadata'
+include { SomaticAggregateNetMHC }             from './SomaticAggregateNetMHC'
+include { SomaticAggregateSv }                 from './SomaticAggregateSv'
 include { CohortRunMultiQC }                   from '../QC/CohortRunMultiQC'
 
 workflow aggregateFromProcess
@@ -61,19 +61,19 @@ workflow aggregateFromProcess
       inputGeneLev4Aggregate   = inputAggregate.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
     }
     if (doWF_SV){
-      inputAggregateSv    = inputAggregate.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputSomaticAggregateSv    = inputAggregate.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+      inputSomaticAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
     }
     if (doWF_SNV){
-      inputAggregateNetMHC = inputAggregate.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
-      inputAggregateMaf    = inputAggregate.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputSomaticAggregateNetMHC = inputAggregate.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputSomaticAggregateMaf    = inputAggregate.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
     if (doWF_loh){
       inputPredictHLA4Aggregate = inputAggregate.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
       inputIntCPN4Aggregate     = inputAggregate.combine(intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
     }
     if (doWF_mdParse){
-      inputAggregateMetadata = inputAggregate.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputSomaticAggregateMetadata = inputAggregate.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
     if (doWF_facets && doWF_germSNV){
       inputGermlineAggregateMaf = inputAggregate.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
@@ -227,32 +227,32 @@ workflow aggregateFromProcess
     }
 
   if (doWF_SNV){
-    AggregateMaf(inputAggregateMaf)
+    SomaticAggregateMaf(inputSomaticAggregateMaf)
 
     inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
         .join(inputOutLog4Aggregate, by:[0])
         .join(inputArmLev4Aggregate, by:[0])
         .join(inputGeneLev4Aggregate, by:[0])
-        .set{ inputAggregateFacets }
+        .set{ inputSomaticAggregateFacets }
 
-    AggregateFacets(inputAggregateFacets)
-    AggregateNetMHC(inputAggregateNetMHC)
+    SomaticAggregateFacets(inputSomaticAggregateFacets)
+    SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
   }
   if (doWF_SV){
-    inputAggregateSv.join(inputAggregateSvTbi)
-          .set{ inputAggregateSv }
+    inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
+          .set{ inputSomaticAggregateSv }
 
-    AggregateSv(inputAggregateSv)
+    SomaticAggregateSv(inputSomaticAggregateSv)
   }
   if (doWF_loh){
     inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
-          .set{ inputAggregateLOHHLA }
+          .set{ inputSomaticAggregateLOHHLA }
 
-    AggregateLOHHLA(inputAggregateLOHHLA)
+    SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA)
   }
   if(doWF_mdParse)
   {
-    AggregateMetadata(inputAggregateMetadata)
+    SomaticAggregateMetadata(inputSomaticAggregateMetadata)
   }
   if (doWF_facets && doWF_germSNV){
     GermlineAggregateMaf(inputGermlineAggregateMaf)
