@@ -1,4 +1,4 @@
-include { RunManta }            from '../SV/RunManta' 
+include { SomaticRunManta }            from '../SV/SomaticRunManta' 
 
 workflow manta_wf
 {
@@ -8,11 +8,11 @@ workflow manta_wf
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
 
-    RunManta(bamFiles, 
-            Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
-            Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]))
+    SomaticRunManta(bamFiles, 
+              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+              Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]))
   emit:
-    manta4Combine    = RunManta.out.manta4Combine
-    mantaOutput      = RunManta.out.mantaOutput
-    mantaToStrelka   = RunManta.out.mantaToStrelka
+    manta4Combine    = SomaticRunManta.out.manta4Combine
+    mantaOutput      = SomaticRunManta.out.mantaOutput
+    mantaToStrelka   = SomaticRunManta.out.mantaToStrelka
 }
