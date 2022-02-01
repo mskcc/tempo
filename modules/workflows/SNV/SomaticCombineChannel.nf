@@ -1,4 +1,4 @@
-process CombineChannel {
+process SomaticCombineChannel {
   tag {idTumor + "__" + idNormal}
 
   // 3 intermidiate files (plus 3 index files) output for step by step filter check (2 filter steps involved here)
