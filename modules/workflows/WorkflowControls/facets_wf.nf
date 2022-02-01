@@ -9,13 +9,13 @@ workflow facets_wf
   main:
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
-
+    
     DoFacets(bamFiles, Channel.value([referenceMap.facetsVcf]))
 
     DoFacetsPreviewQC(DoFacets.out.Facets4FacetsPreview)
 
     DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4Aggregate }      // idTumor, idNormal, summaryFiles, qcFiles
-    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4MultiQC } // idTumor, idNormal, summaryFiles, qcFiles
+    DoFacets.out.FacetsRunSummary.combine(DoFacetsPreviewQC.out.FacetsPreviewOut, by:[0,1]).set{ FacetsQC4SomaticMultiQC } // idTumor, idNormal, summaryFiles, qcFiles
     FacetsQC4Aggregate.map{ idTumor, idNormal, summaryFiles, qcFiles ->
       ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
     }.set{ FacetsQC4Aggregate }
@@ -36,5 +36,5 @@ workflow facets_wf
     FacetsRunSummary        = DoFacets.out.FacetsRunSummary
     FacetsPreviewOut        = DoFacetsPreviewQC.out.FacetsPreviewOut
     FacetsQC4Aggregate      = FacetsQC4Aggregate
-    FacetsQC4MultiQC        = FacetsQC4MultiQC
+    FacetsQC4SomaticMultiQC = FacetsQC4SomaticMultiQC
 }
