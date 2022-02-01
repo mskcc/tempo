@@ -1,4 +1,4 @@
-process MergeDellyAndManta {
+process SomaticMergeDellyAndManta {
   tag {idTumor + "__" + idNormal}
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
