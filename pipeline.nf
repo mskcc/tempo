@@ -699,7 +699,7 @@ if (params.pairing) {
 
   // Parse input FASTQ mapping
 
-  inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing}
+  inputPairing.into{pairing4T; pairing4N; pairingTN; pairing4QC; inputPairing; pairing4Qualimap}
   bamsBQSR4Tumor.combine(pairing4T)
                           .filter { item ->
                             def idSample = item[0]
@@ -1472,6 +1472,7 @@ process SomaticAnnotateMaf {
     --filter-vcf 0
     
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
+    -u "https://legacy.oncokb.org/api/v1" \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
 
@@ -2561,7 +2562,7 @@ process QcQualimap {
     set idSample, target, file(bam), file(bai), file(targetsBed) from bamsBQSR4Qualimap
 
   output:
-    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4Tumor, qualimap4Normal, qualimap4Aggregate
+    set idSample, file("${idSample}_qualimap_rawdata.tar.gz") into qualimap4MultiQC, qualimap4MultiQC2, qualimap4Aggregate
     set idSample, file("*.html"), file("css/*"), file("images_qualimapReport/*") into qualimapOutput
   
   when: runQC   
@@ -2606,10 +2607,19 @@ process QcQualimap {
   """
 }
 
-qualimap4Tumor.combine(qualimap4Normal)
-  .map{ idTumor,  qualimapTumor, idNormal, qualimapNormal ->
-    [idTumor, idNormal, qualimapTumor, qualimapNormal]
-  }.set{qualimap4Pairing}
+pairing4Qualimap
+  .combine(qualimap4MultiQC2)
+  .branch{ idTumor, idNormal, idSample, qualimapDir ->
+    tumor:  idSample == idTumor
+    normal: idSample == idNormal
+  }
+  .set{qualimap4PairedTN}
+
+qualimap4PairedTN.tumor.combine(qualimap4PairedTN.normal, by:[0,1])
+  .view()
+  .map{ idTumor,idNormal, idSample1, qualimapDir1, idSample2, qualimapDir2 ->
+    [idTumor,idNormal,qualimapDir1,qualimapDir2]
+  }.set{qualimap4SomaticMultiQC}
 
 Channel.from(true, false).set{ ignore_read_groups }
 bamsBQSR4Alfred
@@ -2873,7 +2883,7 @@ process QcConpair {
 
 conpairOutput
   .map{ placeholder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles] }
-  .join(qualimap4Pairing, by:[0,1]) 
+  .join(qualimap4SomaticMultiQC, by:[0,1]) 
   .join(FacetsQC4SomaticMultiQC, by:[0,1]) // idTumor, idNormal, conpairFiles, qualimapTumor, qualimapNormal, facetsSummaryFiles, facetsQcFiles 
   .set{somaticMultiQCinput}
 
