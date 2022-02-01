@@ -4,7 +4,7 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
       contributor="Anne Marie Noronha (noronhaa@mskcc.org)" \
-      version.image="1.2.5" \
+      version.image="1.2.7" \
       version.vcf2maf="1.6.17" \
       version.vep="88" \
       version.htslib="1.9" \
@@ -15,7 +15,7 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       version.oncokb_annotator="1.1.0" \
       version.filter_somatic_maf="0.6.2" \
       version.filter_germline_maf="0.2.2" \
-      version.annotateMaf="1.0.1" \
+      version.annotateMaf="1.0.2" \
       source.vcf2maf="https://github.com/mskcc/vcf2maf/releases/tag/v1.6.17" \
       source.vep="http://dec2016.archive.ensembl.org/info/docs/tools/vep/script/vep_download.html#versions" \
       source.htslib="https://github.com/samtools/htslib/releases/tag/1.9" \
@@ -30,7 +30,7 @@ ENV HTSLIB_VERSION 1.9
 ENV SAMTOOLS_VERSION 1.9
 ENV BCFTOOLS_VERSION 1.9
 ENV ONCOKB_VERSION 1.1.0
-ENV ANNOTATE_MAF 1.0.1
+ENV ANNOTATE_MAF 1.0.2
 
 RUN apt-get update --fix-missing && apt-get install -y \
     tcsh \
