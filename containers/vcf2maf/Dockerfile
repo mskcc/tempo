@@ -131,7 +131,12 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     r-base-core r-base-dev
 
-RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools', 'argparse'), repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}')"
+# versioning R packages for reproducibility and compatibility
+RUN R -e "install.packages('remotes')"
+COPY r_versions.txt /
+RUN R -e "require(remotes) ; x <- read.table('/r_versions.txt',sep='\t',header=T) ; for (i in 1:dim(x)[[1]]){ install_version(as.character(x\$package[i]), version = as.character(x\$version[i]), repos = 'http://cran.us.r-project.org') }" 
+
+RUN R -e "devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}', upgrade = 'never')"
 
 # install oncokb-annotator
 RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \
@@ -145,3 +150,4 @@ COPY filter-somatic-maf.R /usr/bin
 COPY filter-germline-maf.R /usr/bin
 RUN chmod 755 /usr/bin/filter-somatic-maf.R
 RUN chmod 755 /usr/bin/filter-germline-maf.R
+
