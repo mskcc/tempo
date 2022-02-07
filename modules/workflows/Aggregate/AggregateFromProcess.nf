@@ -16,8 +16,7 @@ workflow aggregateFromProcess
     inputPairing
     facets4Aggregate
     sv4Aggregate
-    NetMhcStats4Aggregate
-    finalMaf4Aggregate
+    snv4Aggregate
     lohhla4Aggregate
     MetaData4Aggregate
     mafFile4AggregateGermline
@@ -51,9 +50,9 @@ workflow aggregateFromProcess
     if (sv4Aggregate){
       inputSomaticAggregateSv = inputAggregate.combine(sv4Aggregate.out.sv4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
-    if (doWF_SNV){
-      inputSomaticAggregateNetMHC = inputAggregate.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
-      inputSomaticAggregateMaf    = inputAggregate.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+    if (snv4Aggregate){
+      inputSomaticAggregateNetMHC = inputAggregate.combine(snv4Aggregate.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputSomaticAggregateMaf    = inputAggregate.combine(snv4Aggregate.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
     if (lohhla4Aggregate){
       inputSomaticAggregateLOHHLA = inputAggregate.combine(lohhla4Aggregate.out.lohhla4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
