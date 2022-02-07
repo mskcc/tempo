@@ -21,11 +21,8 @@ workflow aggregateFromProcess
     MetaData4Aggregate
     snv4AggregateGermline
     sv4AggregateGermline
-    bamsQcStats4Aggregate
-    collectHsMetricsOutput
-    qualimap4Process
+    sampleQC4Aggregate
     conpair4Aggregate
-    FacetsQC4Aggregate
     doWF_facets
     doWF_SV
     doWF_SNV
@@ -68,8 +65,8 @@ workflow aggregateFromProcess
       inputGermlineAggregateSv    = inputAggregate.combine(sv4AggregateGermline.out.sv4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique(), it[6].unique()]}
     }
 
-    if (doWF_QC){
-      bamsQcStats4Aggregate.branch{ item ->
+    if (sampleQC4Aggregate){
+      sampleQC4Aggregate.out.bamsQcStats4Aggregate.branch{ item ->
             def idSample = item[0]
             def alfred = item[1]
             ignoreY: alfred =~ /.+\.alfred\.tsv\.gz/
@@ -129,7 +126,7 @@ workflow aggregateFromProcess
             .unique()
             .set{ alfredIgnoreN }
       
-      inputPairing.combine(collectHsMetricsOutput)
+      inputPairing.combine(sampleQC4Aggregate.out.collectHsMetricsOutput)
             .branch { item ->
               def idTumor = item[0]
               def idNormal = item[1]
@@ -182,7 +179,7 @@ workflow aggregateFromProcess
               .unique()
               .set{ fastPMetrics }
 
-      inputPairing.combine(qualimap4Process)
+      inputPairing.combine(sampleQC4Aggregate.out.qualimap4Process)
         .branch { idTumor, idNormal, idSample, qualimapDir ->
           tumor:  idSample == idTumor
           normal: idSample == idNormal
@@ -202,11 +199,11 @@ workflow aggregateFromProcess
       inputAlfredIgnoreY = alfredIgnoreY
       inputAlfredIgnoreN = alfredIgnoreN
       inputFastP4MultiQC = fastPMetrics
+    }
 
-      if (doWF_QC && params.pairing){
-        inputQcConpairAggregate = inputAggregate.combine(conpair4Aggregate.out.conpair4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
-        inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{ inputFacetsQC4CohortMultiQC }
-      }
+    if (conpair4Aggregate){
+      inputQcConpairAggregate = inputAggregate.combine(conpair4Aggregate.out.conpair4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+      inputFacetsQC4CohortMultiQC = inputAggregate.combine(facets4Aggregate.out.FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
 
   if (doWF_SNV){
