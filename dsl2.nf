@@ -64,7 +64,6 @@ workflow {
   doWF_germSNV         = 'germsnv' in WFs ? true : false
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
-  doWF_facets          = 'qc' in WFs && params.pairing ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
