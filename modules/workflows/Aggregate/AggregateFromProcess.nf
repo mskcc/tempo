@@ -15,8 +15,7 @@ workflow aggregateFromProcess
   take:
     inputPairing
     facets4Aggregate
-    dellyMantaCombined4Aggregate
-    dellyMantaCombinedTbi4Aggregate
+    sv4Aggregate
     NetMhcStats4Aggregate
     finalMaf4Aggregate
     predictHLA4Aggregate
@@ -52,9 +51,8 @@ workflow aggregateFromProcess
     if (facets4Aggregate){
       input4AggregateFacets = inputAggregate.combine(facets4Aggregate.out.facets4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2],it[4],it[5],it[6],it[7],it[8]]}
     }
-    if (doWF_SV){
-      inputSomaticAggregateSv    = inputAggregate.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputSomaticAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    if (sv4Aggregate){
+      inputSomaticAggregateSv = inputAggregate.combine(sv4Aggregate.out.sv4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
     if (doWF_SNV){
       inputSomaticAggregateNetMHC = inputAggregate.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -224,9 +222,6 @@ workflow aggregateFromProcess
     SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
   }
   if (doWF_SV){
-    inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
-          .set{ inputSomaticAggregateSv }
-
     SomaticAggregateSv(inputSomaticAggregateSv)
   }
   if (doWF_loh){

@@ -24,6 +24,5 @@ workflow sv_wf
     SomaticMergeDellyAndManta(dellyMantaCombineChannel)
 
   emit:
-    dellyMantaCombined4Aggregate    = SomaticMergeDellyAndManta.out.dellyMantaCombined4Aggregate
-    dellyMantaCombinedTbi4Aggregate = SomaticMergeDellyAndManta.out.dellyMantaCombinedTbi4Aggregate
+    sv4Aggregate    = SomaticMergeDellyAndManta.out.sv4Aggregate
 }
