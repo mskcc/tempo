@@ -255,10 +255,7 @@ workflow {
       snv4Aggregate = doWF_SNV ? snv_wf : flase
       lohhla4Aggregate    = doWF_loh ? loh_wf : false
       MetaData4Aggregate = doWF_mdParse ? mdParse_wf : false
-
-      //Germline & Facets
-      mafFile4AggregateGermline = (doWF_facets && doWF_germSNV) ? germlineSNV_wf.out.mafFile4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
+      snv4AggregateGermline = doWF_facets && doWF_germSNV ? germlineSNV_wf : false
       sv4AggregateGermline    = doWF_germSV ? germlineSV_wf : false
 
       //Sample QC
@@ -277,7 +274,7 @@ workflow {
         snv4Aggregate,
         lohhla4Aggregate,
         MetaData4Aggregate,
-        mafFile4AggregateGermline,
+        snv4AggregateGermline,
         sv4AggregateGermline,
         bamsQcStats4Aggregate,
         collectHsMetricsOutput,

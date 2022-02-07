@@ -19,7 +19,7 @@ workflow aggregateFromProcess
     snv4Aggregate
     lohhla4Aggregate
     MetaData4Aggregate
-    mafFile4AggregateGermline
+    snv4AggregateGermline
     sv4AggregateGermline
     bamsQcStats4Aggregate
     collectHsMetricsOutput
@@ -60,8 +60,8 @@ workflow aggregateFromProcess
     if (MetaData4Aggregate){
       inputSomaticAggregateMetadata = inputAggregate.combine(MetaData4Aggregate.out.MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
-    if (doWF_facets && doWF_germSNV){
-      inputGermlineAggregateMaf = inputAggregate.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
+    if (snv4AggregateGermline){
+      inputGermlineAggregateMaf = inputAggregate.combine(snv4AggregateGermline.out.snv4AggregateGermline, by:[1,2]).groupTuple(by:[2])
     }
     if (sv4AggregateGermline)
     {
