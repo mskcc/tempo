@@ -1,5 +1,6 @@
 include { SomaticDellyCall }           from '../SV/SomaticDellyCall' 
 include { SomaticMergeDellyAndManta }  from '../SV/SomaticMergeDellyAndManta' 
+include { SomaticSVVcf2Bedpe }  from '../SV/SomaticSVVcf2Bedpe' 
 
 workflow sv_wf
 {
@@ -21,9 +22,23 @@ workflow sv_wf
 
     // --- Process Delly and Manta VCFs 
     // Merge VCFs, Delly and Manta
-    SomaticMergeDellyAndManta(dellyMantaCombineChannel)
+    SomaticMergeDellyAndManta(
+      dellyMantaCombineChannel,
+      workflow.projectDir + "/containers/bcftools-vt-mergesvvcf"
+    )
+
+    SomaticSVVcf2Bedpe(
+      SomaticMergeDellyAndManta.out.dellyMantaCombined,
+      referenceMap.repeatMasker,
+      referenceMap.mapabilityBlacklist,
+      referenceMap.annotSVref, 
+      referenceMap.spliceSites, 
+      workflow.projectDir + "/containers/svtools" 
+    )
 
   emit:
     dellyMantaCombined4Aggregate    = SomaticMergeDellyAndManta.out.dellyMantaCombined4Aggregate
     dellyMantaCombinedTbi4Aggregate = SomaticMergeDellyAndManta.out.dellyMantaCombinedTbi4Aggregate
+    dellyMantaCombinedBedpe         = SomaticSVVcf2Bedpe.out.SVCombinedBedpe
+    dellyMantaCombinedBedpePass     = SomaticSVVcf2Bedpe.out.SVCombinedBedpePass
 }
