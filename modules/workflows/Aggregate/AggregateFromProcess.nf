@@ -21,8 +21,7 @@ workflow aggregateFromProcess
     lohhla4Aggregate
     MetaData4Aggregate
     mafFile4AggregateGermline
-    dellyMantaCombined4AggregateGermline
-    dellyMantaCombinedTbi4AggregateGermline
+    sv4AggregateGermline
     bamsQcStats4Aggregate
     collectHsMetricsOutput
     qualimap4Process
@@ -66,10 +65,9 @@ workflow aggregateFromProcess
     if (doWF_facets && doWF_germSNV){
       inputGermlineAggregateMaf = inputAggregate.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
     }
-    if (doWF_germSV)
+    if (sv4AggregateGermline)
     {
-      inputGermlineAggregateSv    = inputAggregate.combine(dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
-      inputGermlineAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+      inputGermlineAggregateSv    = inputAggregate.combine(sv4AggregateGermline.out.sv4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique(), it[6].unique()]}
     }
 
     if (doWF_QC){
@@ -233,10 +231,6 @@ workflow aggregateFromProcess
     GermlineAggregateMaf(inputGermlineAggregateMaf)
   }
   if (doWF_germSV){
-    // --- Aggregate per-sample germline data, SVs
-    inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
-          .set{ inputGermlineAggregateSv }
-
     GermlineAggregateSv(inputGermlineAggregateSv)
   }
 

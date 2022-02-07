@@ -265,9 +265,7 @@ workflow {
       //Germline & Facets
       mafFile4AggregateGermline = (doWF_facets && doWF_germSNV) ? germlineSNV_wf.out.mafFile4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
-      //Germline SV
-      dellyMantaCombined4AggregateGermline    = doWF_germSV ? germlineSV_wf.out.dellyMantaCombined4AggregateGermline    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      dellyMantaCombinedTbi4AggregateGermline = doWF_germSV ? germlineSV_wf.out.dellyMantaCombinedTbi4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      sv4AggregateGermline    = doWF_germSV ? germlineSV_wf : false
 
       //Sample QC
       bamsQcStats4Aggregate  = doWF_QC ? sampleQC_wf.out.bamsQcStats4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
@@ -288,8 +286,7 @@ workflow {
         lohhla4Aggregate,
         MetaData4Aggregate,
         mafFile4AggregateGermline,
-        dellyMantaCombined4AggregateGermline,
-        dellyMantaCombinedTbi4AggregateGermline,
+        sv4AggregateGermline,
         bamsQcStats4Aggregate,
         collectHsMetricsOutput,
         qualimap4Process,
