@@ -252,11 +252,7 @@ workflow {
     {
       facets4Aggregate  = doWF_facets ? facets_wf : false
       sv4Aggregate    = doWF_SV ? sv_wf : false
-
-      //SNV
-      NetMhcStats4Aggregate = doWF_SNV ? snv_wf.out.NetMhcStats4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      finalMaf4Aggregate    = doWF_SNV ? snv_wf.out.finalMaf4Aggregate    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
+      snv4Aggregate = doWF_SNV ? snv_wf : flase
       lohhla4Aggregate    = doWF_loh ? loh_wf : false
 
       //Metadata Parser
@@ -280,8 +276,7 @@ workflow {
         inputPairing,
 	facets4Aggregate,
 	sv4Aggregate,
-        NetMhcStats4Aggregate,
-        finalMaf4Aggregate,
+        snv4Aggregate,
         lohhla4Aggregate,
         MetaData4Aggregate,
         mafFile4AggregateGermline,
