@@ -23,14 +23,6 @@ workflow aggregateFromProcess
     sv4AggregateGermline
     sampleQC4Aggregate
     conpair4Aggregate
-    doWF_facets
-    doWF_SV
-    doWF_SNV
-    doWF_loh
-    doWF_mdParse
-    doWF_germSV
-    doWF_QC
-    doWF_germSNV
     fastPJson
     multiqcWesConfig
     multiqcWgsConfig
@@ -206,34 +198,39 @@ workflow aggregateFromProcess
       inputFacetsQC4CohortMultiQC = inputAggregate.combine(facets4Aggregate.out.FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
 
-  if (doWF_SNV){
-    SomaticAggregateMaf(inputSomaticAggregateMaf)
+  if (facets4Aggregate){
     SomaticAggregateFacets(input4AggregateFacets)
+  }
+  if (snv4Aggregate){
+    SomaticAggregateMaf(inputSomaticAggregateMaf)
     SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
   }
-  if (doWF_SV){
+  if (sv4Aggregate){
     SomaticAggregateSv(inputSomaticAggregateSv)
   }
-  if (doWF_loh){
+  if (lohhla4Aggregate){
     SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA)
   }
-  if(doWF_mdParse)
+  if(MetaData4Aggregate)
   {
     SomaticAggregateMetadata(inputSomaticAggregateMetadata)
   }
-  if (doWF_facets && doWF_germSNV){
+  if (snv4AggregateGermline){
     GermlineAggregateMaf(inputGermlineAggregateMaf)
   }
-  if (doWF_germSV){
+  if (sv4AggregateGermline){
     GermlineAggregateSv(inputGermlineAggregateSv)
   }
 
-  if (doWF_QC && params.pairing){
+  if (sampleQC4Aggregate){
     inputAlfredIgnoreY.join(inputAlfredIgnoreN)
               .join(inputHsMetrics)
               .set{ inputQcBamAggregate }
 
     QcBamAggregate(inputQcBamAggregate)
+  }
+
+  if (conpair4Aggregate) {
     QcConpairAggregate(inputQcConpairAggregate)
 
     inputFastP4MultiQC
