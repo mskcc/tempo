@@ -9,8 +9,7 @@ process QcConpair {
 
   output:
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.{concordance,contamination}.txt"), emit: conpairOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.concordance.txt"), emit: conpairConcord
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.contamination.txt"), emit: conpairContami
+    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.concordance.txt"), path("${outPrefix}.contamination.txt"), emit: conpair4Aggregate
 
   script:
   outPrefix = "${idTumor}__${idNormal}"

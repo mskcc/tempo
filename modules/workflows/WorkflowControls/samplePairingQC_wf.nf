@@ -57,13 +57,8 @@ workflow samplePairingQC_wf
                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
     }
 
-    // -- Run based on QcConpairAll channels or the single QcConpair channels
-    conpairConcord4Aggregate = (!runConpairAll ? QcConpair.out.conpairConcord : QcConpairAll.out.conpairAllConcord)
-    conpairContami4Aggregate = (!runConpairAll ? QcConpair.out.conpairContami : QcConpairAll.out.conpairAllContami)
-
-
   emit:
-    conpairConcord4Aggregate = conpairConcord4Aggregate
-    conpairContami4Aggregate = conpairContami4Aggregate
+    // -- Run based on QcConpairAll channels or the single QcConpair channels
+    conpair4Aggregate = (!runConpairAll ? QcConpair.out.conpair4Aggregate : QcConpairAll.out.conpairAll4Aggregate)
     conpairOutput = QcConpair.out.conpairOutput
 }

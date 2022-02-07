@@ -273,8 +273,7 @@ workflow {
       qualimap4Process       = doWF_QC ? sampleQC_wf.out.qualimap4Process       : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       //Sample/Pairing QC
-      conpairConcord4Aggregate = doWF_QC && params.pairing ? samplePairingQC_wf.out.conpairConcord4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      conpairContami4Aggregate = doWF_QC && params.pairing? samplePairingQC_wf.out.conpairContami4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      conpair4Aggregate = doWF_QC && params.pairing ? samplePairingQC_wf : false
       FacetsQC4Aggregate = doWF_facets ? facets_wf.out.FacetsQC4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       aggregateFromProcess(
@@ -290,8 +289,7 @@ workflow {
         bamsQcStats4Aggregate,
         collectHsMetricsOutput,
         qualimap4Process,
-        conpairConcord4Aggregate,
-        conpairContami4Aggregate,
+        conpair4Aggregate,
         FacetsQC4Aggregate,
         doWF_facets,
         doWF_SV,
