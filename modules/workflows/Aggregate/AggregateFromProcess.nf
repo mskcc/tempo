@@ -195,7 +195,8 @@ workflow aggregateFromProcess
 
     if (conpair4Aggregate){
       inputQcConpairAggregate = inputAggregate.combine(conpair4Aggregate.out.conpair4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
-      inputFacetsQC4CohortMultiQC = inputAggregate.combine(facets4Aggregate.out.FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+      FacetsQC4Aggregate = facets4Aggregate ? facets4Aggregate.out.FacetsQC4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      inputFacetsQC4CohortMultiQC = inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
 
   if (facets4Aggregate){
