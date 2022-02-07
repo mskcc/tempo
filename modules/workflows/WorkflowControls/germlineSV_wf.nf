@@ -29,6 +29,5 @@ workflow germlineSV_wf
                                Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
   emit:
-    dellyMantaCombined4AggregateGermline    = GermlineMergeDellyAndManta.out.dellyMantaCombined4AggregateGermline
-    dellyMantaCombinedTbi4AggregateGermline = GermlineMergeDellyAndManta.out.dellyMantaCombinedTbi4AggregateGermline
+    sv4AggregateGermline    = GermlineMergeDellyAndManta.out.sv4AggregateGermline
 }

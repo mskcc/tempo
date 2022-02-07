@@ -9,8 +9,7 @@ process GermlineMergeDellyAndManta {
 
   output:
     tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz*"), emit: dellyMantaCombinedOutputGermline
-    tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz"), emit: dellyMantaCombined4AggregateGermline
-    tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz.tbi"), emit: dellyMantaCombinedTbi4AggregateGermline
+    tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz"), path("${idNormal}.delly.manta.vcf.gz.tbi"), emit: sv4AggregateGermline
 
   script:
   """ 
