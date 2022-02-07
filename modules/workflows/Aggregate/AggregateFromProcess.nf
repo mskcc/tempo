@@ -57,8 +57,8 @@ workflow aggregateFromProcess
     if (lohhla4Aggregate){
       inputSomaticAggregateLOHHLA = inputAggregate.combine(lohhla4Aggregate.out.lohhla4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
-    if (doWF_mdParse){
-      inputSomaticAggregateMetadata = inputAggregate.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
+    if (MetaData4Aggregate){
+      inputSomaticAggregateMetadata = inputAggregate.combine(MetaData4Aggregate.out.MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
     if (doWF_facets && doWF_germSNV){
       inputGermlineAggregateMaf = inputAggregate.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
