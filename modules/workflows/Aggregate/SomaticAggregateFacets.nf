@@ -1,4 +1,4 @@
-process AggregateFacets {
+process SomaticAggregateFacets {
   tag {cohort}
 
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
@@ -9,7 +9,6 @@ process AggregateFacets {
   output:
     tuple path("cna_hisens_run_segmentation.seg"), path("cna_purity_run_segmentation.seg"), path("cna_armlevel.txt"), path("cna_genelevel.txt"), path("cna_facets_run_info.txt"), emit: FacetsAnnotationAggregatedOutput
 
-  
   script:
   """
   # Collect and merge FACETS outputs

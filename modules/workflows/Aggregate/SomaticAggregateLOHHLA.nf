@@ -1,4 +1,4 @@
-process AggregateLOHHLA {
+process SomaticAggregateLOHHLA {
   tag {cohort}
 
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode

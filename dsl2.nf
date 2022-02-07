@@ -39,7 +39,7 @@ include { sv_wf }                from './modules/workflows/WorkflowControls/sv_w
 include { snv_wf }               from './modules/workflows/WorkflowControls/snv_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { sampleQC_wf }          from './modules/workflows/WorkflowControls/sampleQC_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap, multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { samplePairingQC_wf }   from './modules/workflows/WorkflowControls/samplePairingQC_wf'  addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { multiQC_wf }           from './modules/workflows/WorkflowControls/multiQC_wf'          addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
+include { somaticMultiQC_wf }    from './modules/workflows/WorkflowControls/somaticMultiQC_wf'   addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { scatter_wf }           from './modules/workflows/WorkflowControls/scatter_wf'          addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSNV_wf }       from './modules/workflows/WorkflowControls/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
@@ -223,27 +223,29 @@ workflow {
     {
       samplePairingQC_wf(inputBam, inputPairing, runConpairAll)
 
-      FacetsQC4MultiQC = doWF_facets ? facets_wf.out.FacetsQC4MultiQC : inputPairing.map{ t_id, n_id -> [t_id, n_id,"",""]}
+      FacetsQC4SomaticMultiQC = doWF_facets ? facets_wf.out.FacetsQC4SomaticMultiQC : inputPairing.map{ t_id, n_id -> [t_id, n_id,"",""]}
 
-      qualimap4Pairing = sampleQC_wf.out.qualimap4Process
-      	.map{ idSample, qualimapFile -> [idSample.toString(),qualimapFile] }
+      qualimap4PairedTN = inputPairing
+        .combine(sampleQC_wf.out.qualimap4Process)
+        .branch{ idTumor, idNormal, idSample, qualimapDir ->
+          tumor: idSample == idTumor
+          normal: idSample == idNormal
+        }
 
-      qualimap4MultiQC = inputPairing
-      	.join(qualimap4Pairing, by:[0])
-        .join( inputPairing
-          .map{ idTumor, idNormal -> [idNormal, idTumor] }
-          .combine(qualimap4Pairing, by:[0]) 
-          .map{ idNormal, idTumor, qualimapNormal -> [idTumor, idNormal, qualimapNormal]},
-          by:[0,1]
-	      )
+      qualimap4PairedTN.tumor
+        .combine(qualimap4PairedTN.normal, by:[0,1])
+        .map{ idTumor,idNormal, idSample1, qualimapDir1, idSample2, qualimapDir2 ->
+          [idTumor,idNormal,qualimapDir1,qualimapDir2]
+        }.set{qualimap4SomaticMultiQC}
+
 
       samplePairingQC_wf.out.conpairOutput
         .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
-	      .join(qualimap4MultiQC, by:[0,1])
-        .join(FacetsQC4MultiQC, by:[0,1])
-        .set{ multiQCinput }
+        .join(qualimap4SomaticMultiQC, by:[0,1])
+        .join(FacetsQC4SomaticMultiQC, by:[0,1])
+        .set{ somaticMultiQCinput }
         
-      multiQC_wf(multiQCinput)
+      somaticMultiQC_wf(somaticMultiQCinput)
     }
 
     if(doWF_AggregateFromProcessOnly)
