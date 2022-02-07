@@ -254,9 +254,7 @@ workflow {
       sv4Aggregate    = doWF_SV ? sv_wf : false
       snv4Aggregate = doWF_SNV ? snv_wf : flase
       lohhla4Aggregate    = doWF_loh ? loh_wf : false
-
-      //Metadata Parser
-      MetaData4Aggregate = doWF_mdParse ? mdParse_wf.out.MetaData4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      MetaData4Aggregate = doWF_mdParse ? mdParse_wf : false
 
       //Germline & Facets
       mafFile4AggregateGermline = (doWF_facets && doWF_germSNV) ? germlineSNV_wf.out.mafFile4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
