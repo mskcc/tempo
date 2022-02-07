@@ -45,6 +45,7 @@ process SomaticAnnotateMaf {
     --filter-vcf 0
     
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
+    -u "https://legacy.oncokb.org/api/v1" \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
 
