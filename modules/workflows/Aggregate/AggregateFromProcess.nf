@@ -18,8 +18,7 @@ workflow aggregateFromProcess
     sv4Aggregate
     NetMhcStats4Aggregate
     finalMaf4Aggregate
-    predictHLA4Aggregate
-    intCPN4Aggregate
+    lohhla4Aggregate
     MetaData4Aggregate
     mafFile4AggregateGermline
     dellyMantaCombined4AggregateGermline
@@ -58,9 +57,8 @@ workflow aggregateFromProcess
       inputSomaticAggregateNetMHC = inputAggregate.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
       inputSomaticAggregateMaf    = inputAggregate.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
-    if (doWF_loh){
-      inputPredictHLA4Aggregate = inputAggregate.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputIntCPN4Aggregate     = inputAggregate.combine(intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    if (lohhla4Aggregate){
+      inputSomaticAggregateLOHHLA = inputAggregate.combine(lohhla4Aggregate.out.lohhla4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
     if (doWF_mdParse){
       inputSomaticAggregateMetadata = inputAggregate.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
@@ -225,9 +223,6 @@ workflow aggregateFromProcess
     SomaticAggregateSv(inputSomaticAggregateSv)
   }
   if (doWF_loh){
-    inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
-          .set{ inputSomaticAggregateLOHHLA }
-
     SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA)
   }
   if(doWF_mdParse)
