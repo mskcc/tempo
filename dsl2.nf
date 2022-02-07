@@ -250,13 +250,7 @@ workflow {
 
     if(doWF_AggregateFromProcessOnly)
     {
-      //Facets
-      FacetsPurity4Aggregate  = doWF_facets ? facets_wf.out.FacetsPurity4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsHisens4Aggregate  = doWF_facets ? facets_wf.out.FacetsHisens4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsOutLog4Aggregate  = doWF_facets ? facets_wf.out.FacetsOutLog4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsArmLev4Aggregate  = doWF_facets ? facets_wf.out.FacetsArmLev4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsGeneLev4Aggregate = doWF_facets ? facets_wf.out.FacetsGeneLev4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-    
+      facets4Aggregate  = doWF_facets ? facets_wf : false
       //SV
       dellyMantaCombined4Aggregate    = doWF_SV ? sv_wf.out.dellyMantaCombined4Aggregate    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
       dellyMantaCombinedTbi4Aggregate = doWF_SV ? sv_wf.out.dellyMantaCombinedTbi4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
@@ -291,11 +285,7 @@ workflow {
 
       aggregateFromProcess(
         inputPairing,
-        FacetsPurity4Aggregate,
-        FacetsHisens4Aggregate,
-        FacetsOutLog4Aggregate,
-        FacetsArmLev4Aggregate,
-        FacetsGeneLev4Aggregate,
+	facets4Aggregate,
         dellyMantaCombined4Aggregate,
         dellyMantaCombinedTbi4Aggregate,
         NetMhcStats4Aggregate,
