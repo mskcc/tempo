@@ -257,9 +257,7 @@ workflow {
       NetMhcStats4Aggregate = doWF_SNV ? snv_wf.out.NetMhcStats4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
       finalMaf4Aggregate    = doWF_SNV ? snv_wf.out.finalMaf4Aggregate    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
-      //LoH
-      predictHLA4Aggregate = doWF_loh ? loh_wf.out.predictHLA4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      intCPN4Aggregate     = doWF_loh ? loh_wf.out.intCPN4Aggregate     : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      lohhla4Aggregate    = doWF_loh ? loh_wf : false
 
       //Metadata Parser
       MetaData4Aggregate = doWF_mdParse ? mdParse_wf.out.MetaData4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
@@ -287,8 +285,7 @@ workflow {
 	sv4Aggregate,
         NetMhcStats4Aggregate,
         finalMaf4Aggregate,
-        predictHLA4Aggregate,
-        intCPN4Aggregate,
+        lohhla4Aggregate,
         MetaData4Aggregate,
         mafFile4AggregateGermline,
         dellyMantaCombined4AggregateGermline,
