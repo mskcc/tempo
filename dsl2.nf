@@ -255,7 +255,7 @@ workflow {
         inputPairing,
         doWF_facets ? facets_wf : false,
         doWF_SV ? sv_wf : false,
-        doWF_SNV ? snv_wf : flase,
+        doWF_SNV ? snv_wf : false,
         doWF_loh ? loh_wf : false,
         doWF_mdParse ? mdParse_wf : false,
         doWF_germSNV ? germlineSNV_wf : false,
