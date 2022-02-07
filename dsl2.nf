@@ -64,7 +64,7 @@ workflow {
   doWF_germSNV         = 'germsnv' in WFs ? true : false
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
-  doWF_facets          = ('qc' in WFs && params.pairing) ? true : false
+  doWF_facets          = 'qc' in WFs && params.pairing ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
@@ -251,32 +251,22 @@ workflow {
 
     if(doWF_AggregateFromProcessOnly)
     {
-      facets4Aggregate  = doWF_facets ? facets_wf : false
-      sv4Aggregate    = doWF_SV ? sv_wf : false
-      snv4Aggregate = doWF_SNV ? snv_wf : flase
-      lohhla4Aggregate    = doWF_loh ? loh_wf : false
-      MetaData4Aggregate = doWF_mdParse ? mdParse_wf : false
-      snv4AggregateGermline = doWF_facets && doWF_germSNV ? germlineSNV_wf : false
-      sv4AggregateGermline    = doWF_germSV ? germlineSV_wf : false
-      sampleQC4Aggregate  = doWF_QC ? sampleQC_wf : false
-      conpair4Aggregate = doWF_QC && params.pairing ? samplePairingQC_wf : false
-
       aggregateFromProcess(
         inputPairing,
-	facets4Aggregate,
-	sv4Aggregate,
-        snv4Aggregate,
-        lohhla4Aggregate,
-        MetaData4Aggregate,
-        snv4AggregateGermline,
-        sv4AggregateGermline,
-        sampleQC4Aggregate,
-        conpair4Aggregate,
+        doWF_facets ? facets_wf : false,
+        doWF_SV ? sv_wf : false,
+        doWF_SNV ? snv_wf : flase,
+        doWF_loh ? loh_wf : false,
+        doWF_mdParse ? mdParse_wf : false,
+        doWF_germSNV ? germlineSNV_wf : false,
+        doWF_germSV ? germlineSV_wf : false,
+        doWF_QC ? sampleQC_wf : false,
+        doWF_QC && params.pairing ? samplePairingQC_wf : false,
         fastPJson,
         multiqcWesConfig, 
         multiqcWgsConfig, 
         multiqcTempoLogo
-        )
+      )
     }
   }
   if (params.watch == true) {
