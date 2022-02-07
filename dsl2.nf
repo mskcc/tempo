@@ -64,6 +64,7 @@ workflow {
   doWF_germSNV         = 'germsnv' in WFs ? true : false
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
+  doWF_facets          = ('qc' in WFs && params.pairing) ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
@@ -257,15 +258,8 @@ workflow {
       MetaData4Aggregate = doWF_mdParse ? mdParse_wf : false
       snv4AggregateGermline = doWF_facets && doWF_germSNV ? germlineSNV_wf : false
       sv4AggregateGermline    = doWF_germSV ? germlineSV_wf : false
-
-      //Sample QC
-      bamsQcStats4Aggregate  = doWF_QC ? sampleQC_wf.out.bamsQcStats4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      collectHsMetricsOutput = doWF_QC ? sampleQC_wf.out.collectHsMetricsOutput : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      qualimap4Process       = doWF_QC ? sampleQC_wf.out.qualimap4Process       : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //Sample/Pairing QC
+      sampleQC4Aggregate  = doWF_QC ? sampleQC_wf : false
       conpair4Aggregate = doWF_QC && params.pairing ? samplePairingQC_wf : false
-      FacetsQC4Aggregate = doWF_facets ? facets_wf.out.FacetsQC4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
 
       aggregateFromProcess(
         inputPairing,
@@ -276,11 +270,8 @@ workflow {
         MetaData4Aggregate,
         snv4AggregateGermline,
         sv4AggregateGermline,
-        bamsQcStats4Aggregate,
-        collectHsMetricsOutput,
-        qualimap4Process,
+        sampleQC4Aggregate,
         conpair4Aggregate,
-        FacetsQC4Aggregate,
         doWF_facets,
         doWF_SV,
         doWF_SNV,
