@@ -1,9 +1,9 @@
-include { GermlineRunHaplotypecaller }        from '../GermSNV/GermlineRunHaplotypecaller'
-include { GermlineCombineHaplotypecallerVcf } from '../GermSNV/GermlineCombineHaplotypecallerVcf' 
-include { GermlineRunStrelka2 }               from '../GermSNV/GermlineRunStrelka2' 
-include { GermlineCombineChannel }            from '../GermSNV/GermlineCombineChannel' 
-include { GermlineAnnotateMaf }               from '../GermSNV/GermlineAnnotateMaf' 
-include { GermlineFacetsAnnotation }          from '../GermSNV/GermlineFacetsAnnotation' 
+include { GermlineRunHaplotypecaller }        from '../process/GermSNV/GermlineRunHaplotypecaller'
+include { GermlineCombineHaplotypecallerVcf } from '../process/GermSNV/GermlineCombineHaplotypecallerVcf' 
+include { GermlineRunStrelka2 }               from '../process/GermSNV/GermlineRunStrelka2' 
+include { GermlineCombineChannel }            from '../process/GermSNV/GermlineCombineChannel' 
+include { GermlineAnnotateMaf }               from '../process/GermSNV/GermlineAnnotateMaf' 
+include { GermlineFacetsAnnotation }          from '../process/GermSNV/GermlineFacetsAnnotation' 
 
 workflow germlineSNV_wf
 {

@@ -1,6 +1,6 @@
-include { GermlineDellyCall }                 from '../GermSV/GermlineDellyCall' 
-include { GermlineRunManta }                  from '../GermSV/GermlineRunManta' 
-include { GermlineMergeDellyAndManta }        from '../GermSV/GermlineMergeDellyAndManta'
+include { GermlineDellyCall }                 from '../process/GermSV/GermlineDellyCall' 
+include { GermlineRunManta }                  from '../process/GermSV/GermlineRunManta' 
+include { GermlineMergeDellyAndManta }        from '../process/GermSV/GermlineMergeDellyAndManta'
 
 workflow germlineSV_wf
 {

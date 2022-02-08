@@ -1,4 +1,4 @@
-include { RunMutationSignatures }      from '../MutSig/RunMutationSignatures'
+include { RunMutationSignatures }      from '../process/MutSig/RunMutationSignatures'
 
 workflow mutSig_wf
 {

@@ -1,4 +1,4 @@
-include { SomaticRunMultiQC }                  from '../QC/SomaticRunMultiQC'
+include { SomaticRunMultiQC }                  from '../process/QC/SomaticRunMultiQC'
 
 workflow somaticMultiQC_wf
 {

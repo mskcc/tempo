@@ -1,5 +1,5 @@
-include { DoFacets }                   from '../Facets/DoFacets' 
-include { DoFacetsPreviewQC }          from '../Facets/DoFacetsPreviewQC' 
+include { DoFacets }                   from '../process/Facets/DoFacets' 
+include { DoFacetsPreviewQC }          from '../process/Facets/DoFacetsPreviewQC' 
 
 workflow facets_wf
 {

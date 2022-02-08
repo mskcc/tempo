@@ -1,5 +1,5 @@
-include { CrossValidateSamples }       from '../SampleValidation/CrossValidateSamples'
-include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from '../../local/watch_inputs.nf'
+include { CrossValidateSamples }       from '../process/SampleValidation/CrossValidateSamples'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from '../function/watch_inputs.nf'
 
 workflow validate_wf
 {

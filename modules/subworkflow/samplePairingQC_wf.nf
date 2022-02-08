@@ -1,5 +1,5 @@
-include { QcPileup }                           from '../QC/QcPileup'
-include { QcConpair }                          from '../QC/QcConpair'
+include { QcPileup }                           from '../process/QC/QcPileup'
+include { QcConpair }                          from '../process/QC/QcConpair'
 
 workflow samplePairingQC_wf
 {
