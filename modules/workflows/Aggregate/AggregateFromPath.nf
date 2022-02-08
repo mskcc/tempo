@@ -10,7 +10,7 @@ include { SomaticAggregateNetMHC }             from './SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from './SomaticAggregateSv'
 include { CohortRunMultiQC }                   from '../QC/CohortRunMultiQC'
 
-workflow aggregateFromFile
+workflow aggregateFromPath
 {
   take:
     aggregateFile
