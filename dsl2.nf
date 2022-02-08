@@ -44,7 +44,7 @@ include { scatter_wf }           from './modules/workflows/WorkflowControls/scat
 include { germlineSNV_wf }       from './modules/workflows/WorkflowControls/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { PairTumorNormal }      from './modules/workflows/WorkflowControls/PairTumorNormal' 
-include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
+include { aggregateFromPath }    from './modules/workflows/Aggregate/AggregateFromPath'
 include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFromProcess'
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
@@ -72,7 +72,7 @@ workflow {
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
 
-  doWF_AggregateFromFileOnly = false
+  doWF_AggregateFromPathOnly = false
   doWF_AggregateFromProcessOnly = false
 
   if (!params.pairing && WFs != ['qc'] && WFs != ['']){
@@ -93,7 +93,7 @@ workflow {
   }
 
   if (!params.mapping && !params.bamMapping) {
-      if (aggregateParamIsFile) { doWF_AggregateFromFileOnly = true }
+      if (aggregateParamIsFile) { doWF_AggregateFromPathOnly = true }
       else {
         println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
         exit 1
@@ -107,8 +107,8 @@ workflow {
       doWF_AggregateFromProcessOnly = runAggregate ? true : false
   }
 
-  if (doWF_AggregateFromFileOnly){
-    aggregateFromFile(runAggregate, multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo)
+  if (doWF_AggregateFromPathOnly){
+    aggregateFromPath(runAggregate, multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo)
   }
   else{
     //Begin executing modules for the run.
