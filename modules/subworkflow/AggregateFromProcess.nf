@@ -8,7 +8,7 @@ include { SomaticAggregateMaf }                from '../process/Aggregate/Somati
 include { SomaticAggregateMetadata }           from '../process/Aggregate/SomaticAggregateMetadata'
 include { SomaticAggregateNetMHC }             from '../process/Aggregate/SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
-include { CohortRunMultiQC }                from '../process/Aggregate/CohortRunMultiQC'
+include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
 
 workflow aggregateFromProcess
 {
