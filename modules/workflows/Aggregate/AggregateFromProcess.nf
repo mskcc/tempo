@@ -31,8 +31,6 @@ workflow aggregateFromProcess
     multiqcTempoLogo
 
   main:
-  print runAggregate
-  print watchOption
     if (runAggregate != true){
       if (!watchOption){
         TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
