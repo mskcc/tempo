@@ -14,6 +14,8 @@ workflow aggregateFromProcess
 {
   take:
     inputPairing
+    runAggregate
+    watchOption
     facets4Aggregate
     sv4Aggregate
     snv4Aggregate
@@ -29,9 +31,29 @@ workflow aggregateFromProcess
     multiqcTempoLogo
 
   main:
-    inputPairing.set{ cohortTable }
-    cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
-        .set{ inputAggregate }
+  print runAggregate
+  print watchOption
+    if (runAggregate != true){
+      if (!watchOption){
+        TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
+	          .groupTuple()
+		  .map{ cohort, idTumor, idNormal, pathNoUse
+		        -> tuple( groupKey(cohort, idTumor instanceof Collection ? idTumor.size() : 1), idTumor, idNormal)
+		  }
+		  .transpose()
+		  .set{inputAggregate}
+      }
+      else{
+        watchAggregate(file(runAggregate, checkIfExists: false))
+	              .set{inputAggregate}
+	epochMap[runAggregate] = 0
+      }
+    }
+    else {
+      inputPairing.set{ cohortTable }
+      cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
+                 .set{ inputAggregate }
+    }
 
     if (facets4Aggregate){
       input4AggregateFacets = inputAggregate.combine(facets4Aggregate.out.facets4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2],it[4],it[5],it[6],it[7],it[8]]}
