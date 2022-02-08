@@ -1,10 +1,10 @@
-include { SomaticRunStrelka2 }         from '../SNV/SomaticRunStrelka2' 
-include { RunMutect2 }                 from '../SNV/RunMutect2'
-include { SomaticCombineMutect2Vcf }   from '../SNV/SomaticCombineMutect2Vcf' 
-include { SomaticCombineChannel }      from '../SNV/SomaticCombineChannel' 
-include { SomaticAnnotateMaf }         from '../SNV/SomaticAnnotateMaf' 
-include { RunNeoantigen }              from '../SNV/RunNeoantigen' 
-include { SomaticFacetsAnnotation }    from '../SNV/SomaticFacetsAnnotation' 
+include { SomaticRunStrelka2 }         from '../process/SNV/SomaticRunStrelka2' 
+include { RunMutect2 }                 from '../process/SNV/RunMutect2'
+include { SomaticCombineMutect2Vcf }   from '../process/SNV/SomaticCombineMutect2Vcf' 
+include { SomaticCombineChannel }      from '../process/SNV/SomaticCombineChannel' 
+include { SomaticAnnotateMaf }         from '../process/SNV/SomaticAnnotateMaf' 
+include { RunNeoantigen }              from '../process/SNV/RunNeoantigen' 
+include { SomaticFacetsAnnotation }    from '../process/SNV/SomaticFacetsAnnotation' 
 
 workflow snv_wf
 {

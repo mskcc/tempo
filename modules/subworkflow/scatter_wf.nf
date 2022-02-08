@@ -1,4 +1,4 @@
-include { CreateScatteredIntervals }   from '../Scatter/CreateScatteredIntervals'
+include { CreateScatteredIntervals }   from '../process/Scatter/CreateScatteredIntervals'
 
 workflow scatter_wf
 {

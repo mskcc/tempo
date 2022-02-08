@@ -1,5 +1,5 @@
-include { SomaticDellyCall }           from '../SV/SomaticDellyCall' 
-include { SomaticMergeDellyAndManta }  from '../SV/SomaticMergeDellyAndManta' 
+include { SomaticDellyCall }           from '../process/SV/SomaticDellyCall' 
+include { SomaticMergeDellyAndManta }  from '../process/SV/SomaticMergeDellyAndManta' 
 
 workflow sv_wf
 {

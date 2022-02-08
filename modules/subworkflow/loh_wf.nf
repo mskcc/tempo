@@ -1,5 +1,5 @@
-include { RunPolysolver }              from '../LoH/RunPolysolver'
-include { RunLOHHLA }                  from '../LoH/RunLOHHLA' 
+include { RunPolysolver }              from '../process/LoH/RunPolysolver'
+include { RunLOHHLA }                  from '../process/LoH/RunLOHHLA' 
 
 workflow loh_wf
 {

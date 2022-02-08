@@ -1,7 +1,7 @@
-include { SplitLanesR1; SplitLanesR2 } from '../Alignment/SplitLanes' 
-include { AlignReads }                 from '../Alignment/AlignReads'
-include { MergeBamsAndMarkDuplicates } from '../Alignment/MergeBamsAndMarkDuplicates'
-include { RunBQSR }                    from '../Alignment/RunBQSR' 
+include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
+include { AlignReads }                 from '../process/Alignment/AlignReads'
+include { MergeBamsAndMarkDuplicates } from '../process/Alignment/MergeBamsAndMarkDuplicates'
+include { RunBQSR }                    from '../process/Alignment/RunBQSR' 
 
 workflow alignment_wf
 {

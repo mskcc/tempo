@@ -19,33 +19,33 @@ limitInputLines  = 0
 chunkSizeLimit   = params.chunkSizeLimit
 
 //Utility Includes
-include { defineReferenceMap; loadTargetReferences } from './modules/local/define_maps'
-include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/local/watch_inputs'
+include { defineReferenceMap; loadTargetReferences } from './modules/function/define_maps'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/function/watch_inputs'
 
 pairingQc    = params.pairing
 referenceMap = defineReferenceMap()
 targetsMap   = loadTargetReferences()
 
 //Sub-workflow Includes
-include { validate_wf }          from './modules/workflows/WorkflowControls/validate_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { alignment_wf }         from './modules/workflows/WorkflowControls/alignment_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { manta_wf }             from './modules/workflows/WorkflowControls/manta_wf'            addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { msiSensor_wf }         from './modules/workflows/WorkflowControls/msiSensor_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { mutSig_wf }            from './modules/workflows/WorkflowControls/mutSig_wf' 
-include { mdParse_wf }           from './modules/workflows/WorkflowControls/mdParse_wf' 
-include { loh_wf }               from './modules/workflows/WorkflowControls/loh_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { facets_wf }            from './modules/workflows/WorkflowControls/facets_wf'           addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { sv_wf }                from './modules/workflows/WorkflowControls/sv_wf'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { snv_wf }               from './modules/workflows/WorkflowControls/snv_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { sampleQC_wf }          from './modules/workflows/WorkflowControls/sampleQC_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap, multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
-include { samplePairingQC_wf }   from './modules/workflows/WorkflowControls/samplePairingQC_wf'  addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { somaticMultiQC_wf }    from './modules/workflows/WorkflowControls/somaticMultiQC_wf'   addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
-include { scatter_wf }           from './modules/workflows/WorkflowControls/scatter_wf'          addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { germlineSNV_wf }       from './modules/workflows/WorkflowControls/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { PairTumorNormal }      from './modules/workflows/WorkflowControls/PairTumorNormal' 
-include { aggregateFromPath }    from './modules/workflows/Aggregate/AggregateFromPath'
-include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFromProcess'
+include { validate_wf }          from './modules/subworkflow/validate_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { alignment_wf }         from './modules/subworkflow/alignment_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { manta_wf }             from './modules/subworkflow/manta_wf'            addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { msiSensor_wf }         from './modules/subworkflow/msiSensor_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { mutSig_wf }            from './modules/subworkflow/mutSig_wf'
+include { mdParse_wf }           from './modules/subworkflow/mdParse_wf'
+include { loh_wf }               from './modules/subworkflow/loh_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { facets_wf }            from './modules/subworkflow/facets_wf'           addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { sv_wf }                from './modules/subworkflow/sv_wf'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { snv_wf }               from './modules/subworkflow/snv_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { sampleQC_wf }          from './modules/subworkflow/sampleQC_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap, multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
+include { samplePairingQC_wf }   from './modules/subworkflow/samplePairingQC_wf'  addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { somaticMultiQC_wf }    from './modules/subworkflow/somaticMultiQC_wf'   addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
+include { scatter_wf }           from './modules/subworkflow/scatter_wf'          addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { germlineSNV_wf }       from './modules/subworkflow/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { germlineSV_wf }        from './modules/subworkflow/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { PairTumorNormal }      from './modules/subworkflow/PairTumorNormal'
+include { aggregateFromPath }    from './modules/subworkflow/AggregateFromPath'
+include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProcess'
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
