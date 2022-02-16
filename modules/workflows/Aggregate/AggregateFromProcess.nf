@@ -15,7 +15,6 @@ workflow aggregateFromProcess
   take:
     inputPairing
     runAggregate
-    watchOption
     facets4Aggregate
     sv4Aggregate
     snv4Aggregate
@@ -32,7 +31,7 @@ workflow aggregateFromProcess
 
   main:
     if (runAggregate != true){
-      if (!watchOption){
+      if (!params.watch){
         TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
 	          .groupTuple()
 		  .map{ cohort, idTumor, idNormal, pathNoUse

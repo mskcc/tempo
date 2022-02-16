@@ -253,7 +253,6 @@ workflow {
       aggregateFromProcess(
         inputPairing,
 	runAggregate,
-	params.watch,
         doWF_facets ? facets_wf : false,
         doWF_SV ? sv_wf : false,
         doWF_SNV ? snv_wf : false,
