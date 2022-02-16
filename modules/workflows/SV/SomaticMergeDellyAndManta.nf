@@ -4,7 +4,7 @@ process SomaticMergeDellyAndManta {
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
-    tuple val(idTumor), val(idNormal), val(target), path(dellyVcfs), path(dellyVcfsIndex), path(mantaFile)
+    tuple val(idTumor), val(idNormal), val(target), path(dellyVcfs), path(dellyVcfsIndex), path(mantaFile), file(svabaFile)
 
   output:
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz*"), emit: dellyMantaCombinedOutput
