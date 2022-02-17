@@ -9,8 +9,6 @@ process SomaticRunSvABA {
 	path(genomeDict)
 	path(bwaIndex)
 
-    when: params.assayType == "genome"
-
     output:
     tuple val(idTumor), val(idNormal), val(target), path("*.svaba.somatic.sv.vcf.gz*") , emit: SvABA4Combine
 	path("*.vcf.gz*"), emit: allVcfs
