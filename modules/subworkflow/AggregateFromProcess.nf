@@ -9,13 +9,14 @@ include { SomaticAggregateMetadata }           from '../process/Aggregate/Somati
 include { SomaticAggregateNetMHC }             from '../process/Aggregate/SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
 
 workflow aggregateFromProcess
 {
   take:
+    epochMap
     inputPairing
     runAggregate
-    watchOption
     facets4Aggregate
     sv4Aggregate
     snv4Aggregate
@@ -32,7 +33,7 @@ workflow aggregateFromProcess
 
   main:
     if (runAggregate != true){
-      if (!watchOption){
+      if (!params.watch){
         TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
 	          .groupTuple()
 		  .map{ cohort, idTumor, idNormal, pathNoUse

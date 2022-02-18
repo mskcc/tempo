@@ -1,16 +1,17 @@
-include { GermlineAggregateMaf }               from '../process/Aggregate/GermlineAggregateMaf'
-include { GermlineAggregateSv }                from '../process/Aggregate/GermlineAggregateSv'
-include { QcBamAggregate }                     from '../process/Aggregate/QcBamAggregate'
-include { QcConpairAggregate }                 from '../process/Aggregate/QcConpairAggregate'
-include { SomaticAggregateFacets }             from '../process/Aggregate/SomaticAggregateFacets'
-include { SomaticAggregateLOHHLA }             from '../process/Aggregate/SomaticAggregateLOHHLA'
-include { SomaticAggregateMaf }                from '../process/Aggregate/SomaticAggregateMaf'
-include { SomaticAggregateMetadata }           from '../process/Aggregate/SomaticAggregateMetadata'
-include { SomaticAggregateNetMHC }             from '../process/Aggregate/SomaticAggregateNetMHC'
-include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
-include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
+include { GermlineAggregateMaf }               from './GermlineAggregateMaf'
+include { GermlineAggregateSv }                from './GermlineAggregateSv'
+include { QcBamAggregate }                     from './QcBamAggregate'
+include { QcConpairAggregate }                 from './QcConpairAggregate'
+include { SomaticAggregateFacets }             from './SomaticAggregateFacets'
+include { SomaticAggregateLOHHLA }             from './SomaticAggregateLOHHLA'
+include { SomaticAggregateMaf }                from './SomaticAggregateMaf'
+include { SomaticAggregateMetadata }           from './SomaticAggregateMetadata'
+include { SomaticAggregateNetMHC }             from './SomaticAggregateNetMHC'
+include { SomaticAggregateSv }                 from './SomaticAggregateSv'
+include { CohortRunMultiQC }                   from '../QC/CohortRunMultiQC'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../../local/watch_inputs.nf'
 
-workflow aggregateFromPath
+workflow aggregateFromResult
 {
   take:
     aggregateFile
@@ -40,7 +41,7 @@ workflow aggregateFromPath
         .set{ inputAggregate }
     }
     else{
-      watchAggregateWithPath(file(aggregateFile, checkIfExists: true))
+      watchAggregateWithResult(file(aggregateFile, checkIfExists: true))
         .set{ inputAggregate }
     }
 
