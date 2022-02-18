@@ -9,10 +9,12 @@ include { SomaticAggregateMetadata }           from './SomaticAggregateMetadata'
 include { SomaticAggregateNetMHC }             from './SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from './SomaticAggregateSv'
 include { CohortRunMultiQC }                   from '../QC/CohortRunMultiQC'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../../local/watch_inputs.nf'
 
 workflow aggregateFromProcess
 {
   take:
+    epochMap
     inputPairing
     runAggregate
     facets4Aggregate

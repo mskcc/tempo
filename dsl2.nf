@@ -20,7 +20,7 @@ chunkSizeLimit   = params.chunkSizeLimit
 
 //Utility Includes
 include { defineReferenceMap; loadTargetReferences } from './modules/local/define_maps'
-include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/local/watch_inputs'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from './modules/local/watch_inputs'
 
 pairingQc    = params.pairing
 referenceMap = defineReferenceMap()
@@ -75,7 +75,22 @@ workflow {
   doWF_AggregateFromResult = false
   doWF_AggregateFromProcess = false
 
-  if (!params.pairing && WFs != ['qc'] && WFs != ['']){
+  if (!params.mapping && !params.bamMapping) {
+      if (aggregateParamIsFile) { doWF_AggregateFromResult = true }
+      else {
+        println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
+        exit 1
+      }
+  }
+  else if (WFs == [''] && runAggregate) {
+        println 'ERROR: No provided sub-workflows enabled to aggregate. Remove --aggregate or add sub-workflows"'
+        exit 1
+  }
+  else{
+      doWF_AggregateFromProcess = runAggregate ? true : false
+  }
+
+  if (!params.pairing && WFs != ['qc'] && WFs != [''] && !doWF_AggregateFromResult){
       println "ERROR: Certain workflows cannot be performed without pairing information."
       println "\tProvide a --pairing [tsv], or disable other sub-workflows to proceed."
       exit 1
@@ -92,19 +107,13 @@ workflow {
     exit 1
   }
 
-  if (!params.mapping && !params.bamMapping) {
-      if (aggregateParamIsFile) { doWF_AggregateFromResult = true }
-      else {
-        println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
-        exit 1
-      }
-  }
-  else if (WFs == [''] && runAggregate) {
-        println 'ERROR: No provided sub-workflows enabled to aggregate. Remove --aggregate or add sub-workflows"'
-        exit 1
-  }
-  else{
-      doWF_AggregateFromProcess = runAggregate ? true : false
+  if (params.watch == true) {
+    epochMap = [:]
+    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
+      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
+    }
+    startEpoch = new Date().getTime()
+    touchInputs(chunkSizeLimit, startEpoch, epochMap)
   }
 
   if (doWF_AggregateFromResult){
@@ -251,6 +260,7 @@ workflow {
     if(doWF_AggregateFromProcess)
     {
       aggregateFromProcess(
+        epochMap,
         inputPairing,
 	runAggregate,
         doWF_facets ? facets_wf : false,
@@ -268,14 +278,6 @@ workflow {
         multiqcTempoLogo
       )
     }
-  }
-  if (params.watch == true) {
-    epochMap = [:]
-    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
-    }
-    startEpoch = new Date().getTime()
-    touchInputs(chunkSizeLimit, startEpoch, epochMap)
   }
 }
 workflow.onComplete {

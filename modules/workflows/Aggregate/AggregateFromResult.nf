@@ -9,6 +9,7 @@ include { SomaticAggregateMetadata }           from './SomaticAggregateMetadata'
 include { SomaticAggregateNetMHC }             from './SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from './SomaticAggregateSv'
 include { CohortRunMultiQC }                   from '../QC/CohortRunMultiQC'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../../local/watch_inputs.nf'
 
 workflow aggregateFromResult
 {
@@ -40,7 +41,7 @@ workflow aggregateFromResult
         .set{ inputAggregate }
     }
     else{
-      watchAggregateWithPath(file(aggregateFile, checkIfExists: true))
+      watchAggregateWithResult(file(aggregateFile, checkIfExists: true))
         .set{ inputAggregate }
     }
 

@@ -94,7 +94,7 @@ def watchPairing(tsvFile){
 	 .unique()
 }
 
-def watchAggregateWithPath(tsvFile) {
+def watchAggregateWithResult(tsvFile) {
   def index = 1 
   Channel.watchPath(tsvFile, 'create, modify')
      .map{ row -> 
@@ -128,7 +128,7 @@ def watchAggregateWithPath(tsvFile) {
 }
 
 def watchAggregate(tsvFile) {
-  Channel.watchPath(file(runAggregate), 'create, modify')
+  Channel.watchPath(tsvFile, 'create, modify')
      .splitCsv(sep: '\t', header: true)
 	 .unique()
          .map{ row ->
@@ -136,7 +136,7 @@ def watchAggregate(tsvFile) {
               def idTumor = row.TUMOR_ID
               def cohort = row.COHORT
               def cohortSize = row.COHORT_SIZE.toInteger()
-              if(!TempoUtils.checkNumberOfItem(row, 4, file(runAggregate))){}
+              if(!TempoUtils.checkNumberOfItem(row, 4, tsvFile)){}
 
               [cohort, cohortSize, idTumor, idNormal]
          }
