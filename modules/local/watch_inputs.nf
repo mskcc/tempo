@@ -9,7 +9,7 @@ def touchInputs(chunkSizeLimit, startEpoch, epochMap) {
       "touch -ca ${i}".execute()
     }
   }
-} as TimerTask, 1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
+} as TimerTask, 15*1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
 }
 
 def watchMapping(tsvFile, assayType, validTargetsList) {
