@@ -262,7 +262,6 @@ workflow {
     if(doWF_AggregateFromProcess)
     {
       aggregateFromProcess(
-        epochMap,
         inputPairing,
 	runAggregate,
         doWF_facets ? facets_wf : false,
