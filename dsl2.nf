@@ -110,7 +110,9 @@ workflow {
   if (params.watch == true) {
     epochMap = [:]
     for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
+      if (file(params."${i}".toString()).exists()){ 
+	epochMap[file(params."${i}").toRealPath()] = 0 
+      }
     }
     startEpoch = new Date().getTime()
     touchInputs(chunkSizeLimit, startEpoch, epochMap)
