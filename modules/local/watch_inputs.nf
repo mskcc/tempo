@@ -28,7 +28,6 @@ def watchMapping(tsvFile, assayType, validTargetsList) {
 	 }.map{ row ->
 	      row[1]
 	 }.unique()
-	 .view()
 	 .map{ row ->
               def idSample = row.SAMPLE
               def target = row.TARGET
