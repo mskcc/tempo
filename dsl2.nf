@@ -44,7 +44,7 @@ include { scatter_wf }           from './modules/subworkflow/scatter_wf'        
 include { germlineSNV_wf }       from './modules/subworkflow/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSV_wf }        from './modules/subworkflow/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { PairTumorNormal }      from './modules/subworkflow/PairTumorNormal'
-include { aggregateFromPath }    from './modules/subworkflow/AggregateFromPath'
+include { aggregateFromResult }  from './modules/subworkflow/AggregateFromResult'
 include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProcess'
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
@@ -72,10 +72,25 @@ workflow {
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
 
-  doWF_AggregateFromPathOnly = false
-  doWF_AggregateFromProcessOnly = false
+  doWF_AggregateFromResult = false
+  doWF_AggregateFromProcess = false
 
-  if (!params.pairing && WFs != ['qc'] && WFs != ['']){
+  if (!params.mapping && !params.bamMapping) {
+      if (aggregateParamIsFile) { doWF_AggregateFromResult = true }
+      else {
+        println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
+        exit 1
+      }
+  }
+  else if (WFs == [''] && runAggregate) {
+        println 'ERROR: No provided sub-workflows enabled to aggregate. Remove --aggregate or add sub-workflows"'
+        exit 1
+  }
+  else{
+      doWF_AggregateFromProcess = runAggregate ? true : false
+  }
+
+  if (!params.pairing && WFs != ['qc'] && WFs != [''] && !doWF_AggregateFromResult){
       println "ERROR: Certain workflows cannot be performed without pairing information."
       println "\tProvide a --pairing [tsv], or disable other sub-workflows to proceed."
       exit 1
@@ -92,23 +107,17 @@ workflow {
     exit 1
   }
 
-  if (!params.mapping && !params.bamMapping) {
-      if (aggregateParamIsFile) { doWF_AggregateFromPathOnly = true }
-      else {
-        println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
-        exit 1
-      }
-  }
-  else if (WFs == [''] && runAggregate) {
-        println 'ERROR: No provided sub-workflows enabled to aggregate. Remove --aggregate or add sub-workflows"'
-        exit 1
-  }
-  else{
-      doWF_AggregateFromProcessOnly = runAggregate ? true : false
+  if (params.watch == true) {
+    epochMap = [:]
+    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
+      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
+    }
+    startEpoch = new Date().getTime()
+    touchInputs(chunkSizeLimit, startEpoch, epochMap)
   }
 
-  if (doWF_AggregateFromPathOnly){
-    aggregateFromPath(runAggregate, multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo)
+  if (doWF_AggregateFromResult){
+    aggregateFromResult(runAggregate, multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo)
   }
   else{
     //Begin executing modules for the run.
@@ -248,12 +257,12 @@ workflow {
       somaticMultiQC_wf(somaticMultiQCinput)
     }
 
-    if(doWF_AggregateFromProcessOnly)
+    if(doWF_AggregateFromProcess)
     {
       aggregateFromProcess(
+        epochMap,
         inputPairing,
 	runAggregate,
-	params.watch,
         doWF_facets ? facets_wf : false,
         doWF_SV ? sv_wf : false,
         doWF_SNV ? snv_wf : false,
@@ -269,14 +278,6 @@ workflow {
         multiqcTempoLogo
       )
     }
-  }
-  if (params.watch == true) {
-    epochMap = [:]
-    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
-    }
-    startEpoch = new Date().getTime()
-    touchInputs(chunkSizeLimit, startEpoch, epochMap)
   }
 }
 workflow.onComplete {
