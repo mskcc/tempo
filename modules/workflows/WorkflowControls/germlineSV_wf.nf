@@ -28,6 +28,15 @@ workflow germlineSV_wf
     GermlineMergeDellyAndManta(dellyMantaChannelGermline,
                                Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
+    GermlineSVVcf2Bedpe(
+      GermlineMergeDellyAndManta.out.dellyMantaCombinedOutputGermline,
+      referenceMap.repeatMasker,
+      referenceMap.mapabilityBlacklist,
+      referenceMap.annotSVref, 
+      referenceMap.spliceSites, 
+      workflow.projectDir + "/containers/svtools" 
+    )
+
   emit:
     dellyMantaCombined4AggregateGermline    = GermlineMergeDellyAndManta.out.dellyMantaCombined4AggregateGermline
     dellyMantaCombinedTbi4AggregateGermline = GermlineMergeDellyAndManta.out.dellyMantaCombinedTbi4AggregateGermline
