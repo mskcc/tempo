@@ -1,7 +1,8 @@
 include { SomaticDellyCall }           from '../SV/SomaticDellyCall' 
 include { SomaticRunSvABA }            from '../SV/SomaticRunSvABA' 
 include { SomaticMergeDellyAndManta }  from '../SV/SomaticMergeDellyAndManta' 
-include { SomaticSVVcf2Bedpe }  from '../SV/SomaticSVVcf2Bedpe' 
+include { SomaticSVVcf2Bedpe }         from '../SV/SomaticSVVcf2Bedpe' 
+include { brass_wf }                   from '../WorkflowControls/brass_wf'
 
 workflow sv_wf
 {
@@ -16,7 +17,12 @@ workflow sv_wf
 
     Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypes }
     SomaticDellyCall(svTypes, bamFiles,
-                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]))
+                     Channel.value([
+                       referenceMap.genomeFile, 
+                       referenceMap.genomeIndex, 
+                       referenceMap.svCallingExcludeRegions
+                       ])
+                    )
 
     // Put manta output and delly output into the same channel so they can be processed together in the group key
     // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
@@ -28,34 +34,31 @@ workflow sv_wf
     if (params.assayType == "genome") {
       SomaticRunSvaba(
         bamFiles,
-        Channel.value([
-          referenceMap.genomeFile, 
-          referenceMap.genomeIndex,
-          referenceMap.genomeDict,
-          referenceMap.bwaIndex
-        ])
+        referenceMap.genomeFile, 
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict,
+        referenceMap.bwaIndex
+      )
 
       brass_wf(
         bamFiles, 
-        bamFilesUnpaired,
-        inputPairing,
         sampleStatistics // from ascat
       )
-      )
+      
       dellyMantaCombineChannel
         .combine(SomaticRunSvaba.out.SvABA4Combine, by: [0,1,2])
         .combine(brass_wf.out.brassOutput, by: [0,1,2])
-        .set{dellyMantaCombineChannel}
+        .set{allSvCallsCombineChannel}
     } else {
       dellyMantaCombineChannel
         .map{ it + ["",""]}
-        .set{dellyMantaCombineChannel}
+        .set{allSvCallsCombineChannel}
     }
 
     // --- Process Delly and Manta VCFs 
     // Merge VCFs, Delly and Manta
     SomaticMergeDellyAndManta(
-      dellyMantaCombineChannel,
+      allSvCallsCombineChannel,
       workflow.projectDir + "/containers/bcftools-vt-mergesvvcf"
     )
 
