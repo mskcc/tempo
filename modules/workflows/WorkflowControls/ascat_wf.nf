@@ -1,5 +1,5 @@
-include { runAscatAlleleCount }		from '../HRDetect/runAscatAlleleCount' 
-include { runAscat }				from '../HRDetect/runAscat' 
+include { runAscatAlleleCount }		from '../Ascat/runAscatAlleleCount' 
+include { runAscat }			from '../Ascat/runAscat' 
 
 workflow ascat_wf {
 	take:
