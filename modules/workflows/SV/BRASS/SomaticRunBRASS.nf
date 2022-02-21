@@ -97,7 +97,7 @@ process runBRASSCover {
     species = params.genome 
     assembly = params.genome
   }
-  if (brassCoverLimit == 1 ) { 
+  if (coverLimit == 1 ) { 
     indexParam = ""
   } else {
     indexParam = "-i ${coverIndex} -l ${brassCoverLimit}"
@@ -189,5 +189,4 @@ process runBRASS {
         -ss ${ascatSampleStatistics} \\
         -o brass
     """
-
 }

@@ -2,7 +2,7 @@ include {
 	generateBasFile;
 	runBRASSInput;
 	runBRASSCover;
-	runBRASS } from '../SV/BRASS/SomaticRunBRASS.nf'
+	runBRASS } from '../SV/BRASS/SomaticRunBRASS'
 
 workflow brass_wf
 {
@@ -32,11 +32,14 @@ workflow brass_wf
           normal: idSample == idNormal
         }
 
-	brassInfiles = bamFiles.combine(basPairing.tumor
-		.combine(basPairing.normal, by:[0,1])
-		.map{ idTumor,idNormal, idSample1, target1, basFile1, idSample2, target2, c ->
-          [idTumor,idNormal,target1,basFile1,basFile2]
-        }, by:[0,1,2])
+	brassInfiles = bamFiles
+		.combine(
+			basPairing.tumor
+				.combine(basPairing.normal, by:[0,1])
+				.map{ idTumor,idNormal, idSample1, target1, basFile1, idSample2, target2, c ->
+          			[idTumor,idNormal,target1,basFile1,basFile2]
+        		}, by:[0,1,2]
+		)
 
 	BRASSInputSegments = Channel.from(1..2)
 	runBRASSInput(
@@ -46,7 +49,7 @@ workflow brass_wf
 		referenceMap.genomeIndex, 
 		referenceMap.brassRefDir, 
 		referenceMap.vagrentRefDir
-		)
+	)
 
 	brassCoverLimit = params.genome in ["GRCh37","smallGRCh37","GRCh37"] ? 24 : 1
 	brassCoverSegments = Channel.from(1..brassCoverLimit)
@@ -58,7 +61,7 @@ workflow brass_wf
 		referenceMap.genomeIndex, 
 		referenceMap.brassRefDir, 
 		referenceMap.vagrentRefDir
-		)
+	)
 
 	brassInfilesWithPreprocess = brassInfiles
 		.combine(runBRASSInput.out, by:[0,1,2])
