@@ -8,6 +8,7 @@ workflow sv_wf
   take:
     bamFiles
     manta4Combine
+    sampleStatistics
 
   main:
     referenceMap = params.referenceMap
@@ -33,13 +34,21 @@ workflow sv_wf
           referenceMap.genomeDict,
           referenceMap.bwaIndex
         ])
+
+      brass_wf(
+        bamFiles, 
+        bamFilesUnpaired,
+        inputPairing,
+        sampleStatistics // from ascat
+      )
       )
       dellyMantaCombineChannel
         .combine(SomaticRunSvaba.out.SvABA4Combine, by: [0,1,2])
+        .combine(brass_wf.out.brassOutput, by: [0,1,2])
         .set{dellyMantaCombineChannel}
     } else {
       dellyMantaCombineChannel
-        .map{ it + [""]}
+        .map{ it + ["",""]}
         .set{dellyMantaCombineChannel}
     }
 

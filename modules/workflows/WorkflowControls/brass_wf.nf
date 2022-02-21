@@ -8,12 +8,22 @@ workflow brass_wf
 {
 	take:
 	bamFiles
-	bamFilesPaired
-	inputPairing
 	sampleStatistics // from ascat 
 
 	main:
-	generateBasFile(bamFiles)
+	inputPairing = bamFiles
+		.map{ row -> 
+			[row[0],row[1]]
+		}
+	bamFilesUnpaired = bamFiles
+		.map{ row -> [row[0], row[2], row[3],row[4]]}
+		.mix(
+			bamFiles
+				.map{ row -> [row[1], row[2], row[5],row[6]]}
+				.unique()
+		)
+
+	generateBasFile(bamFilesUnpaired)
 
 	basPairing = inputPairing
 		.combine(generateBasFile.out)
@@ -22,7 +32,7 @@ workflow brass_wf
           normal: idSample == idNormal
         }
 
-	brassInfiles = bamFilesPaired.combine(basPairing.tumor
+	brassInfiles = bamFiles.combine(basPairing.tumor
 		.combine(basPairing.normal, by:[0,1])
 		.map{ idTumor,idNormal, idSample1, target1, basFile1, idSample2, target2, c ->
           [idTumor,idNormal,target1,basFile1,basFile2]
@@ -39,9 +49,10 @@ workflow brass_wf
 		)
 
 	brassCoverLimit = params.genome in ["GRCh37","smallGRCh37","GRCh37"] ? 24 : 1
-	BRASSCoverSegments = Channel.from(1..brassCoverLimit)
+	brassCoverSegments = Channel.from(1..brassCoverLimit)
 	runBRASSCover(
-		BRASSCoverSegments,
+		brassCoverSegments,
+		brassCoverLimit,
 		brassInfiles,
 		referenceMap.genomeFile, 
 		referenceMap.genomeIndex, 
