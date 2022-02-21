@@ -2,7 +2,7 @@ process generateBasFile {
   tag { idSample }
 
   input:
-  set val(idSample), val(target), file(bam), file(bai) 
+  tuple val(idSample), val(target), path(bam), path(bai) 
   path(genomeFile)
   path(genomeIndex)
 
@@ -132,14 +132,23 @@ process runBRASS {
     publishDir "${outDir}/somatic/${outputPrefix}/", mode: params.publishDirMode, pattern: "brass/*.{gz,tbi}"
 
     input:
-    tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(basTumor), path(bamNormal), path(baiNormal), path(basNormal), file(BrassInputTmp), file(BrassInputProgress), file(BrassCoverTmp), file(BrassCoverProgress), file(ascatSampleStatistics) from bamsForBRASSSV
+    tuple val(idTumor), val(idNormal), val(target), 
+      path(bamTumor), path(baiTumor), path(basTumor), 
+      path(bamNormal), path(baiNormal), path(basNormal), 
+      path(BrassInputTmp), 
+      path(BrassInputProgress), 
+      path(BrassCoverTmp), 
+      path(BrassCoverProgress), 
+      path(ascatSampleStatistics) 
     path(genomeFile)
     path(genomeIndex)
 	  path(brassRefDir)
   	path(vagrentRefDir)
 
     output:
-    set idTumor, idNormal, target, file("brass/*.{vcf.gz,vcf.gz.tbi}")
+    tuple val(idTumor), val(idNormal), val(target), path("brass/*.{vcf.gz,vcf.gz.tbi}"), emit: BRASSOutput
+    tuple val(idTumor), val(idNormal), val(target), path("brass/*.vcf.gz"), emit: BRASS4Combine
+
 
     script:
     outputPrefix = "${idTumor}__${idNormal}"

@@ -47,7 +47,7 @@ workflow sv_wf
       
       dellyMantaCombineChannel
         .combine(SomaticRunSvaba.out.SvABA4Combine, by: [0,1,2])
-        .combine(brass_wf.out.brassOutput, by: [0,1,2])
+        .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
         .set{allSvCallsCombineChannel}
     } else {
       dellyMantaCombineChannel

@@ -15,8 +15,8 @@ process SomaticMergeDellyAndManta {
   script:
   outputPrefix = "${idTumor}__${idNormal}"
   labelparam = "delly,manta" 
-  labelparam = svabaFile.toString() == "" ? labelparam : labelparam + ",svaba" 
-  labelparam = brassFile.toString() == "" ? labelparam : labelparam + ",brass" 
+  labelparam = svabaFile.name.endsWith("vcf.gz") ?  labelparam + ",svaba" : labelparam 
+  labelparam = brassFile.name.endsWith("vcf.gz") ?  labelparam + ",brass" : labelparam 
   """
   bcftools concat \\
     --allow-overlaps \\
