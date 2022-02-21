@@ -46,8 +46,8 @@ include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germ
 include { PairTumorNormal }      from './modules/workflows/WorkflowControls/PairTumorNormal' 
 include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
 include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFromProcess'
-include { hrdetect_wf;
-          ascat_wf }             from './modules/workflows/WorkflowControls/hrdetect_wf'
+include { hrdetect_wf }          from './modules/workflows/WorkflowControls/hrdetect_wf'
+include { ascat_wf }             from './modules/workflows/WorkflowControls/ascat_wf'
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
