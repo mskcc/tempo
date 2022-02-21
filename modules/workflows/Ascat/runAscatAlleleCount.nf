@@ -4,6 +4,7 @@ process runAscatAlleleCount {
 
   input: 
   each ascatIndex 
+  val(ascatIndexLimit)
   tuple val(idTumor), val(idNormal), val(target), path(tumorBam), path(tumorBai), path(normalBam), path(normalBai) 
   tuple path(genomeFile), path(genomeIndex), path(snpGcCorrections) 
   
