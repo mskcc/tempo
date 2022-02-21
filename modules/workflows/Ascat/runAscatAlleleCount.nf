@@ -3,8 +3,8 @@ process runAscatAlleleCount {
   label 'ascat' 
 
   input: 
-  each ascatIndex
-  val(ascatIndexLimit) 
+  each ascatIndex 
+  val(ascatIndexLimit)
   tuple val(idTumor), val(idNormal), val(target), path(tumorBam), path(tumorBai), path(normalBam), path(normalBai) 
   path(genomeFile)
   path(genomeIndex)
