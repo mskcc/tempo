@@ -12,6 +12,8 @@ workflow ascat_wf {
 
 	ascatAlleleCountSegments = Channel.from(1..params.ascat.ascatAlleleCountLimit)
 	runAscatAlleleCount(
+		ascatAlleleCountSegments,
+		params.ascat.ascatAlleleCountLimit,
 		paired_bams,
 		Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.snpGcCorrections])
 	)
