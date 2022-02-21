@@ -65,7 +65,7 @@ process runBRASSInput {
         -ss samplestatistics.txt \\
         -o brass \\
         -p input \\
-    -i ${inputIndex} -l 2
+        -i ${inputIndex} -l 2
     """  
 }
 
@@ -75,6 +75,7 @@ process runBRASSCover {
 
   input:
     each coverIndex
+    val(coverLimit)
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(basTumor), path(bamNormal), path(baiNormal), path(basNormal)
     path(genomeFile)
     path(genomeIndex)
@@ -119,7 +120,8 @@ process runBRASSCover {
         -n ${bamNormal} \\
         -ss samplestatistics.txt \\
         -o brass \\
-        -p cover ${indexParam}
+        -p cover \\
+        ${indexParam}
     """
 }
 
@@ -137,7 +139,7 @@ process runBRASS {
   	path(vagrentRefDir)
 
     output:
-    set idTumor, idNormal, target, file("brass/*.{gz,tbi}")
+    set idTumor, idNormal, target, file("brass/*.{vcf.gz,vcf.gz.tbi}")
 
     script:
     outputPrefix = "${idTumor}__${idNormal}"

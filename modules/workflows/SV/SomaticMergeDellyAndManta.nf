@@ -4,7 +4,7 @@ process SomaticMergeDellyAndManta {
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 
   input:
-    tuple val(idTumor), val(idNormal), val(target), path(dellyVcfs), path(dellyVcfsIndex), path(mantaFile), file(svabaFile)
+    tuple val(idTumor), val(idNormal), val(target), path(dellyVcfs), path(dellyVcfsIndex), path(mantaFile), file(svabaFile), file(brassFile)
     path(custom_scripts) 
 
   output:
@@ -14,6 +14,9 @@ process SomaticMergeDellyAndManta {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
+  labelparam = "delly,manta" 
+  labelparam = svabaFile.toString() == "" ? labelparam : labelparam + ",svaba" 
+  labelparam = brassFile.toString() == "" ? labelparam : labelparam + ",brass" 
   """
   bcftools concat \\
     --allow-overlaps \\
@@ -25,10 +28,10 @@ process SomaticMergeDellyAndManta {
 
   mergesvvcf \\
     -n -m 1 \\
-    -l delly,manta \\
+    -l ${labelparam}\\
     -o ${outputPrefix}.delly.manta.raw.vcf \\
     -f -d -s -v \\
-    ${outputPrefix}.delly.vcf.gz ${mantaFile} 
+    ${outputPrefix}.delly.vcf.gz ${mantaFile} ${svabaFile} ${brassFile}
 
   cat ${outputPrefix}.delly.manta.raw.vcf | \\
     awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \\
