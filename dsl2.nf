@@ -192,9 +192,8 @@ workflow {
         ascat_wf(bamFiles)
         sv_wf(bamFiles, manta_wf.out.manta4Combine,ascat_wf.out.ascatSS)
       } else {
-        sv_wf(bamFiles, manta_wf.out.manta4Combine, Channel.Empty())
+        sv_wf(bamFiles, manta_wf.out.manta4Combine, Channel.empty())
       }
-      sv_wf(bamFiles, manta_wf.out.manta4Combine)
       if (doWF_SNV && params.assayType == "genome"){
         hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
       }
