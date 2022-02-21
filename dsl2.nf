@@ -46,8 +46,8 @@ include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germ
 include { PairTumorNormal }      from './modules/workflows/WorkflowControls/PairTumorNormal' 
 include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
 include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFromProcess'
-include { //hrdetect_wf;
-          ascat_wf }             from './modules/workflows/WorkflowControls/hrdetect_wf'
+include { hrdetect_wf }          from './modules/workflows/WorkflowControls/hrdetect_wf'
+include { ascat_wf }             from './modules/workflows/WorkflowControls/ascat_wf'
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
@@ -191,7 +191,7 @@ workflow {
       sv_wf(bamFiles, manta_wf.out.manta4Combine)
       if (doWF_SNV && params.assayType == "genome"){
         ascat_wf(bamFiles)
-        //hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
+        hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
       }
     }
 
