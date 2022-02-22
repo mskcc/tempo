@@ -1,5 +1,5 @@
 include { runAscatAlleleCount }		from '../Ascat/runAscatAlleleCount' 
-include { runAscat }			from '../Ascat/runAscat' 
+include { runAscat }			    from '../Ascat/runAscat' 
 
 workflow ascat_wf {
 	take:
