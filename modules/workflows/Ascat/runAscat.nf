@@ -7,7 +7,9 @@ process runAscat {
   tuple path(genomeFile), path(genomeIndex), path(snpGcCorrections) 
 
   output:
-  tuple val(idTumor), val(idNormal), val(target), file("ascatResults/*.copynumber.caveman.csv") 
+  tuple val(idTumor), val(idNormal), val(target), file("ascatResults/*.copynumber.caveman.csv"), emit: caveman 
+  tuple val(idTumor), val(idNormal), val(target), file("ascatResults/*.samplestatistics.txt"), emit: samplestatistics
+
 
   when: params.assayType == "genome"
 
