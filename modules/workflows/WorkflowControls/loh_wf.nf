@@ -23,6 +23,5 @@ workflow loh_wf
 
   emit:
     hlaOutput            = RunPolysolver.out.hlaOutput
-    predictHLA4Aggregate = RunLOHHLA.out.predictHLA4Aggregate
-    intCPN4Aggregate     = RunLOHHLA.out.intCPN4Aggregate
+    lohhla4Aggregate     = RunLOHHLA.out.lohhla4Aggregate
 }
