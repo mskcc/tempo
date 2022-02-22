@@ -22,7 +22,7 @@ workflow ascat_wf {
 		.groupTuple(by:[0,1,2], size: ascatAlleleCountLimit)
 		.map{idTumor, idNormal, target, ascatTar ->
 			[idTumor, idNormal, target, ascatTar.flatten() ]
-		}.combine(paired_bams, by:[0,1]),
+		}.combine(paired_bams, by:[0,1,2]),
 		Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.snpGcCorrections])
 	)
 
