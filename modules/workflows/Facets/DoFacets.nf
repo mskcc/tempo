@@ -12,15 +12,11 @@ process DoFacets {
   output:
     path("${outfile}"), emit: snpPileupOutput
     path("${outputDir}/*"), emit: FacetsOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*_OUT.txt"), emit: FacetsOutLog4Aggregate
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*_purity.seg"), emit: FacetsPurity4Aggregate
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*_hisens.seg"), emit: FacetsHisens4Aggregate
+    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*_purity.seg"), path("*/*_hisens.seg"), path("*_OUT.txt"), path("*/*.arm_level.txt"), path("*/*.gene_level.txt"), emit: facets4Aggregate
     tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*purity.out"), emit: facetsPurity
     tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*purity.Rdata"), path("${outputDir}/*purity.cncf.txt"), path("${outputDir}/*hisens.cncf.txt"), val("${outputDir}"), emit: facetsForMafAnno
     tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*.{Rdata,png,out,seg,txt}"), path("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}"), emit: Facets4FacetsPreview
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*.*_level.txt"), emit: FacetsArmGeneOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*.arm_level.txt"), emit: FacetsArmLev4Aggregate
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*.gene_level.txt"), emit: FacetsGeneLev4Aggregate
     tuple val(idTumor), val(idNormal), val(target), path("*/*.qc.txt"), emit: FacetsQC4MetaDataParser
     tuple val(idTumor), val(idNormal), path("*_OUT.txt"), emit: FacetsRunSummary
 
