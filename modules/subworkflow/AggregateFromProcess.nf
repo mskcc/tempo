@@ -9,12 +9,11 @@ include { SomaticAggregateMetadata }           from '../process/Aggregate/Somati
 include { SomaticAggregateNetMHC }             from '../process/Aggregate/SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
-include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
+include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
 
 workflow aggregateFromProcess
 {
   take:
-    epochMap
     inputPairing
     runAggregate
     facets4Aggregate
@@ -45,7 +44,6 @@ workflow aggregateFromProcess
       else{
         watchAggregate(file(runAggregate, checkIfExists: false))
 	              .set{inputAggregate}
-	epochMap[runAggregate] = 0
       }
     }
     else {
