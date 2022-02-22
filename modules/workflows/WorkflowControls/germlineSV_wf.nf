@@ -38,6 +38,5 @@ workflow germlineSV_wf
     )
 
   emit:
-    dellyMantaCombined4AggregateGermline    = GermlineMergeDellyAndManta.out.dellyMantaCombined4AggregateGermline
-    dellyMantaCombinedTbi4AggregateGermline = GermlineMergeDellyAndManta.out.dellyMantaCombinedTbi4AggregateGermline
+    sv4AggregateGermline    = GermlineMergeDellyAndManta.out.dellyMantaCombinedOutputGermline
 }

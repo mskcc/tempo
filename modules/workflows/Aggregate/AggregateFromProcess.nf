@@ -9,83 +9,75 @@ include { SomaticAggregateMetadata }           from './SomaticAggregateMetadata'
 include { SomaticAggregateNetMHC }             from './SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from './SomaticAggregateSv'
 include { CohortRunMultiQC }                   from '../QC/CohortRunMultiQC'
+include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../../local/watch_inputs.nf'
 
 workflow aggregateFromProcess
 {
   take:
     inputPairing
-    FacetsPurity4Aggregate
-    FacetsHisens4Aggregate
-    FacetsOutLog4Aggregate
-    FacetsArmLev4Aggregate
-    FacetsGeneLev4Aggregate
-    dellyMantaCombined4Aggregate
-    dellyMantaCombinedTbi4Aggregate
-    NetMhcStats4Aggregate
-    finalMaf4Aggregate
-    predictHLA4Aggregate
-    intCPN4Aggregate
+    runAggregate
+    facets4Aggregate
+    sv4Aggregate
+    snv4Aggregate
+    lohhla4Aggregate
     MetaData4Aggregate
-    mafFile4AggregateGermline
-    dellyMantaCombined4AggregateGermline
-    dellyMantaCombinedTbi4AggregateGermline
-    bamsQcStats4Aggregate
-    collectHsMetricsOutput
-    qualimap4Process
-    conpairConcord4Aggregate
-    conpairContami4Aggregate
-    FacetsQC4Aggregate
-    doWF_facets
-    doWF_SV
-    doWF_SNV
-    doWF_loh
-    doWF_mdParse
-    doWF_germSV
-    doWF_QC
-    doWF_germSNV
+    snv4AggregateGermline
+    sv4AggregateGermline
+    sampleQC4Aggregate
+    conpair4Aggregate
     fastPJson
     multiqcWesConfig
     multiqcWgsConfig
     multiqcTempoLogo
 
   main:
-    inputPairing.set{ cohortTable }
-    cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
-        .set{ inputAggregate }
+    if (runAggregate != true){
+      if (!params.watch){
+        TempoUtils.extractCohort(file(runAggregate, checkIfExists: true))
+	          .groupTuple()
+		  .map{ cohort, idTumor, idNormal, pathNoUse
+		        -> tuple( groupKey(cohort, idTumor instanceof Collection ? idTumor.size() : 1), idTumor, idNormal)
+		  }
+		  .transpose()
+		  .set{inputAggregate}
+      }
+      else{
+        watchAggregate(file(runAggregate, checkIfExists: false))
+	              .set{inputAggregate}
+      }
+    }
+    else {
+      inputPairing.set{ cohortTable }
+      cohortTable.map{ idTumor, idNormal -> ["default_cohort", idTumor, idNormal]}
+                 .set{ inputAggregate }
+    }
 
-    if (doWF_facets){
-      inputPurity4Aggregate    = inputAggregate.combine(FacetsPurity4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputHisens4Aggregate    = inputAggregate.combine(FacetsHisens4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputOutLog4Aggregate    = inputAggregate.combine(FacetsOutLog4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputArmLev4Aggregate    = inputAggregate.combine(FacetsArmLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputGeneLev4Aggregate   = inputAggregate.combine(FacetsGeneLev4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    if (facets4Aggregate){
+      input4AggregateFacets = inputAggregate.combine(facets4Aggregate.out.facets4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2],it[4],it[5],it[6],it[7],it[8]]}
     }
-    if (doWF_SV){
-      inputSomaticAggregateSv    = inputAggregate.combine(dellyMantaCombined4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputSomaticAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    if (sv4Aggregate){
+      inputSomaticAggregateSv = inputAggregate.combine(sv4Aggregate.out.sv4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
-    if (doWF_SNV){
-      inputSomaticAggregateNetMHC = inputAggregate.combine(NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
-      inputSomaticAggregateMaf    = inputAggregate.combine(finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+    if (snv4Aggregate){
+      inputSomaticAggregateNetMHC = inputAggregate.combine(snv4Aggregate.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
+      inputSomaticAggregateMaf    = inputAggregate.combine(snv4Aggregate.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
-    if (doWF_loh){
-      inputPredictHLA4Aggregate = inputAggregate.combine(predictHLA4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
-      inputIntCPN4Aggregate     = inputAggregate.combine(intCPN4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    if (lohhla4Aggregate){
+      inputSomaticAggregateLOHHLA = inputAggregate.combine(lohhla4Aggregate.out.lohhla4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     }
-    if (doWF_mdParse){
-      inputSomaticAggregateMetadata = inputAggregate.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
+    if (MetaData4Aggregate){
+      inputSomaticAggregateMetadata = inputAggregate.combine(MetaData4Aggregate.out.MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
-    if (doWF_facets && doWF_germSNV){
-      inputGermlineAggregateMaf = inputAggregate.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
+    if (snv4AggregateGermline){
+      inputGermlineAggregateMaf = inputAggregate.combine(snv4AggregateGermline.out.snv4AggregateGermline, by:[1,2]).groupTuple(by:[2])
     }
-    if (doWF_germSV)
+    if (sv4AggregateGermline)
     {
-      inputGermlineAggregateSv    = inputAggregate.combine(dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
-      inputGermlineAggregateSvTbi = inputAggregate.combine(dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+      inputGermlineAggregateSv    = inputAggregate.combine(sv4AggregateGermline.out.sv4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique(), it[6].unique()]}
     }
 
-    if (doWF_QC){
-      bamsQcStats4Aggregate.branch{ item ->
+    if (sampleQC4Aggregate){
+      sampleQC4Aggregate.out.bamsQcStats4Aggregate.branch{ item ->
             def idSample = item[0]
             def alfred = item[1]
             ignoreY: alfred =~ /.+\.alfred\.tsv\.gz/
@@ -145,7 +137,7 @@ workflow aggregateFromProcess
             .unique()
             .set{ alfredIgnoreN }
       
-      inputPairing.combine(collectHsMetricsOutput)
+      inputPairing.combine(sampleQC4Aggregate.out.collectHsMetricsOutput)
             .branch { item ->
               def idTumor = item[0]
               def idNormal = item[1]
@@ -198,7 +190,7 @@ workflow aggregateFromProcess
               .unique()
               .set{ fastPMetrics }
 
-      inputPairing.combine(qualimap4Process)
+      inputPairing.combine(sampleQC4Aggregate.out.qualimap4Process)
         .branch { idTumor, idNormal, idSample, qualimapDir ->
           tumor:  idSample == idTumor
           normal: idSample == idNormal
@@ -218,70 +210,53 @@ workflow aggregateFromProcess
       inputAlfredIgnoreY = alfredIgnoreY
       inputAlfredIgnoreN = alfredIgnoreN
       inputFastP4MultiQC = fastPMetrics
-
-      if (doWF_QC && params.pairing){
-        inputAggregate.combine(conpairConcord4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairConcord4Aggregate }
-        inputAggregate.combine(conpairContami4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}.set{ inputConpairContami4Aggregate }
-        inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}.set{ inputFacetsQC4CohortMultiQC }
-      }
     }
 
-  if (doWF_SNV){
+    if (conpair4Aggregate){
+      inputQcConpairAggregate = inputAggregate.combine(conpair4Aggregate.out.conpair4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+      FacetsQC4Aggregate = facets4Aggregate ? facets4Aggregate.out.FacetsQC4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
+      inputFacetsQC4CohortMultiQC = inputAggregate.combine(FacetsQC4Aggregate,by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+    }
+
+  if (facets4Aggregate){
+    SomaticAggregateFacets(input4AggregateFacets)
+  }
+  if (snv4Aggregate){
     SomaticAggregateMaf(inputSomaticAggregateMaf)
-
-    inputPurity4Aggregate.join(inputHisens4Aggregate, by:[0])
-        .join(inputOutLog4Aggregate, by:[0])
-        .join(inputArmLev4Aggregate, by:[0])
-        .join(inputGeneLev4Aggregate, by:[0])
-        .set{ inputSomaticAggregateFacets }
-
-    SomaticAggregateFacets(inputSomaticAggregateFacets)
     SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
   }
-  if (doWF_SV){
-    inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
-          .set{ inputSomaticAggregateSv }
-
+  if (sv4Aggregate){
     SomaticAggregateSv(inputSomaticAggregateSv)
   }
-  if (doWF_loh){
-    inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
-          .set{ inputSomaticAggregateLOHHLA }
-
+  if (lohhla4Aggregate){
     SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA)
   }
-  if(doWF_mdParse)
+  if(MetaData4Aggregate)
   {
     SomaticAggregateMetadata(inputSomaticAggregateMetadata)
   }
-  if (doWF_facets && doWF_germSNV){
+  if (snv4AggregateGermline){
     GermlineAggregateMaf(inputGermlineAggregateMaf)
   }
-  if (doWF_germSV){
-    // --- Aggregate per-sample germline data, SVs
-    inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
-          .set{ inputGermlineAggregateSv }
-
+  if (sv4AggregateGermline){
     GermlineAggregateSv(inputGermlineAggregateSv)
   }
 
-  if (doWF_QC && params.pairing){
+  if (sampleQC4Aggregate){
     inputAlfredIgnoreY.join(inputAlfredIgnoreN)
               .join(inputHsMetrics)
               .set{ inputQcBamAggregate }
 
     QcBamAggregate(inputQcBamAggregate)
+  }
 
-    inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
-        .set{ inputQcConpairAggregate }
-
+  if (conpair4Aggregate) {
     QcConpairAggregate(inputQcConpairAggregate)
 
     inputFastP4MultiQC
       .join(inputAlfredIgnoreY,by:0)
       .join(inputAlfredIgnoreN,by:0)
-      .join(inputConpairConcord4Aggregate,by:0)
-      .join(inputConpairContami4Aggregate,by:0)
+      .join(inputQcConpairAggregate,by:0)
       .join(inputFacetsQC4CohortMultiQC,by:0)
       .join(inputQualimap4CohortMultiQC,by:0)
       .join(inputHsMetrics, by:0)

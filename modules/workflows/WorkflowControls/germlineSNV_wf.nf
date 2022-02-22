@@ -73,5 +73,5 @@ workflow germlineSNV_wf
     GermlineFacetsAnnotation(facetsMafFileGermline)
     
   emit:
-    mafFile4AggregateGermline = GermlineFacetsAnnotation.out.mafFile4AggregateGermline      
+    snv4AggregateGermline = GermlineFacetsAnnotation.out.mafFile4AggregateGermline      
 }

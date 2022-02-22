@@ -23,15 +23,11 @@ workflow facets_wf
   emit:
     snpPileupOutput         = DoFacets.out.snpPileupOutput
     FacetsOutput            = DoFacets.out.FacetsOutput
-    FacetsOutLog4Aggregate  = DoFacets.out.FacetsOutLog4Aggregate
-    FacetsPurity4Aggregate  = DoFacets.out.FacetsPurity4Aggregate
-    FacetsHisens4Aggregate  = DoFacets.out.FacetsHisens4Aggregate
+    facets4Aggregate        = DoFacets.out.facets4Aggregate
     facetsPurity            = DoFacets.out.facetsPurity
     facetsForMafAnno        = DoFacets.out.facetsForMafAnno
     Facets4FacetsPreview    = DoFacets.out.Facets4FacetsPreview
     FacetsArmGeneOutput     = DoFacets.out.FacetsArmGeneOutput
-    FacetsArmLev4Aggregate  = DoFacets.out.FacetsArmLev4Aggregate
-    FacetsGeneLev4Aggregate = DoFacets.out.FacetsGeneLev4Aggregate
     FacetsQC4MetaDataParser = DoFacets.out.FacetsQC4MetaDataParser
     FacetsRunSummary        = DoFacets.out.FacetsRunSummary
     FacetsPreviewOut        = DoFacetsPreviewQC.out.FacetsPreviewOut

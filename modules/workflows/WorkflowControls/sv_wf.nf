@@ -37,8 +37,7 @@ workflow sv_wf
     )
 
   emit:
-    dellyMantaCombined4Aggregate    = SomaticMergeDellyAndManta.out.dellyMantaCombined4Aggregate
-    dellyMantaCombinedTbi4Aggregate = SomaticMergeDellyAndManta.out.dellyMantaCombinedTbi4Aggregate
     dellyMantaCombinedBedpe         = SomaticSVVcf2Bedpe.out.SVCombinedBedpe
     dellyMantaCombinedBedpePass     = SomaticSVVcf2Bedpe.out.SVCombinedBedpePass
+    sv4Aggregate                    = SomaticMergeDellyAndManta.out.dellyMantaCombined
 }

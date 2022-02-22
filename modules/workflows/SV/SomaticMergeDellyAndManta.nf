@@ -8,8 +8,6 @@ process SomaticMergeDellyAndManta {
     path(custom_scripts) 
 
   output:
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz"), emit: dellyMantaCombined4Aggregate
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz.tbi"), emit: dellyMantaCombinedTbi4Aggregate
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.delly.manta.vcf.gz"), path("${outputPrefix}.delly.manta.vcf.gz.tbi"), emit: dellyMantaCombined
 
   script:

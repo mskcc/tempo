@@ -15,12 +15,12 @@ wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').
 multiqcWesConfig = workflow.projectDir + '/lib/multiqc_config/exome_multiqc_config.yaml'
 multiqcWgsConfig = workflow.projectDir + '/lib/multiqc_config/wgs_multiqc_config.yaml'
 multiqcTempoLogo = workflow.projectDir + '/docs/tempoLogo.png'
-limitInputLines  = 0
-chunkSizeLimit   = params.chunkSizeLimit
+params.startEpoch = new Date().getTime() 
+
 
 //Utility Includes
 include { defineReferenceMap; loadTargetReferences } from './modules/local/define_maps'
-include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/local/watch_inputs'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from './modules/local/watch_inputs'
 
 pairingQc    = params.pairing
 referenceMap = defineReferenceMap()
@@ -44,7 +44,7 @@ include { scatter_wf }           from './modules/workflows/WorkflowControls/scat
 include { germlineSNV_wf }       from './modules/workflows/WorkflowControls/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSV_wf }        from './modules/workflows/WorkflowControls/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { PairTumorNormal }      from './modules/workflows/WorkflowControls/PairTumorNormal' 
-include { aggregateFromFile }    from './modules/workflows/Aggregate/AggregateFromFile'
+include { aggregateFromResult }    from './modules/workflows/Aggregate/AggregateFromResult'
 include { aggregateFromProcess } from './modules/workflows/Aggregate/AggregateFromProcess'
 include { hrdetect_wf }          from './modules/workflows/WorkflowControls/hrdetect_wf'
 include { ascat_wf }             from './modules/workflows/WorkflowControls/ascat_wf'            addParams(referenceMap: referenceMap)
@@ -74,10 +74,25 @@ workflow {
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
 
-  doWF_AggregateFromFileOnly = false
-  doWF_AggregateFromProcessOnly = false
+  doWF_AggregateFromResult = false
+  doWF_AggregateFromProcess = false
 
-  if (!params.pairing && WFs != ['qc'] && WFs != ['']){
+  if (!params.mapping && !params.bamMapping) {
+      if (aggregateParamIsFile) { doWF_AggregateFromResult = true }
+      else {
+        println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
+        exit 1
+      }
+  }
+  else if (WFs == [''] && runAggregate) {
+        println 'ERROR: No provided sub-workflows enabled to aggregate. Remove --aggregate or add sub-workflows"'
+        exit 1
+  }
+  else{
+      doWF_AggregateFromProcess = runAggregate ? true : false
+  }
+
+  if (!params.pairing && WFs != ['qc'] && WFs != [''] && !doWF_AggregateFromResult){
       println "ERROR: Certain workflows cannot be performed without pairing information."
       println "\tProvide a --pairing [tsv], or disable other sub-workflows to proceed."
       exit 1
@@ -94,23 +109,18 @@ workflow {
     exit 1
   }
 
-  if (!params.mapping && !params.bamMapping) {
-      if (aggregateParamIsFile) { doWF_AggregateFromFileOnly = true }
-      else {
-        println 'ERROR: (--mapping/-bamMapping [tsv]) or (--mapping/--bamMapping [tsv] & --pairing [tsv] ) or (--aggregate [tsv]) need to be provided, otherwise nothing to be run.'
-        exit 1
+  if (params.watch == true) {
+    epochMap = [:]
+    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
+      if (file(params."${i}".toString()).exists()){ 
+	epochMap[file(params."${i}").toRealPath()] = 0 
       }
-  }
-  else if (WFs == [''] && runAggregate) {
-        println 'ERROR: No provided sub-workflows enabled to aggregate. Remove --aggregate or add sub-workflows"'
-        exit 1
-  }
-  else{
-      doWF_AggregateFromProcessOnly = runAggregate ? true : false
+    }
+    touchInputs(params.chunkSizeLimit, epochMap)
   }
 
-  if (doWF_AggregateFromFileOnly){
-    aggregateFromFile(runAggregate, multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo)
+  if (doWF_AggregateFromResult){
+    aggregateFromResult(runAggregate, multiqcWesConfig, multiqcWgsConfig, multiqcTempoLogo)
   }
   else{
     //Begin executing modules for the run.
@@ -254,92 +264,26 @@ workflow {
       somaticMultiQC_wf(somaticMultiQCinput)
     }
 
-    if(doWF_AggregateFromProcessOnly)
+    if(doWF_AggregateFromProcess)
     {
-      //Facets
-      FacetsPurity4Aggregate  = doWF_facets ? facets_wf.out.FacetsPurity4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsHisens4Aggregate  = doWF_facets ? facets_wf.out.FacetsHisens4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsOutLog4Aggregate  = doWF_facets ? facets_wf.out.FacetsOutLog4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsArmLev4Aggregate  = doWF_facets ? facets_wf.out.FacetsArmLev4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsGeneLev4Aggregate = doWF_facets ? facets_wf.out.FacetsGeneLev4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-    
-      //SV
-      dellyMantaCombined4Aggregate    = doWF_SV ? sv_wf.out.dellyMantaCombined4Aggregate    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      dellyMantaCombinedTbi4Aggregate = doWF_SV ? sv_wf.out.dellyMantaCombinedTbi4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //SNV
-      NetMhcStats4Aggregate = doWF_SNV ? snv_wf.out.NetMhcStats4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      finalMaf4Aggregate    = doWF_SNV ? snv_wf.out.finalMaf4Aggregate    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //LoH
-      predictHLA4Aggregate = doWF_loh ? loh_wf.out.predictHLA4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      intCPN4Aggregate     = doWF_loh ? loh_wf.out.intCPN4Aggregate     : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //Metadata Parser
-      MetaData4Aggregate = doWF_mdParse ? mdParse_wf.out.MetaData4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //Germline & Facets
-      mafFile4AggregateGermline = (doWF_facets && doWF_germSNV) ? germlineSNV_wf.out.mafFile4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //Germline SV
-      dellyMantaCombined4AggregateGermline    = doWF_germSV ? germlineSV_wf.out.dellyMantaCombined4AggregateGermline    : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      dellyMantaCombinedTbi4AggregateGermline = doWF_germSV ? germlineSV_wf.out.dellyMantaCombinedTbi4AggregateGermline : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //Sample QC
-      bamsQcStats4Aggregate  = doWF_QC ? sampleQC_wf.out.bamsQcStats4Aggregate  : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      collectHsMetricsOutput = doWF_QC ? sampleQC_wf.out.collectHsMetricsOutput : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      qualimap4Process       = doWF_QC ? sampleQC_wf.out.qualimap4Process       : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
-      //Sample/Pairing QC
-      conpairConcord4Aggregate = doWF_QC && params.pairing ? samplePairingQC_wf.out.conpairConcord4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      conpairContami4Aggregate = doWF_QC && params.pairing? samplePairingQC_wf.out.conpairContami4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-      FacetsQC4Aggregate = doWF_facets ? facets_wf.out.FacetsQC4Aggregate : inputPairing.map{ idTumor, idNormal -> ["placeHolder",idTumor, idNormal,"",""]}
-
       aggregateFromProcess(
         inputPairing,
-        FacetsPurity4Aggregate,
-        FacetsHisens4Aggregate,
-        FacetsOutLog4Aggregate,
-        FacetsArmLev4Aggregate,
-        FacetsGeneLev4Aggregate,
-        dellyMantaCombined4Aggregate,
-        dellyMantaCombinedTbi4Aggregate,
-        NetMhcStats4Aggregate,
-        finalMaf4Aggregate,
-        predictHLA4Aggregate,
-        intCPN4Aggregate,
-        MetaData4Aggregate,
-        mafFile4AggregateGermline,
-        dellyMantaCombined4AggregateGermline,
-        dellyMantaCombinedTbi4AggregateGermline,
-        bamsQcStats4Aggregate,
-        collectHsMetricsOutput,
-        qualimap4Process,
-        conpairConcord4Aggregate,
-        conpairContami4Aggregate,
-        FacetsQC4Aggregate,
-        doWF_facets,
-        doWF_SV,
-        doWF_SNV,
-        doWF_loh,
-        doWF_mdParse,
-        doWF_germSV,
-        doWF_QC,
-        doWF_germSNV,
+	runAggregate,
+        doWF_facets ? facets_wf : false,
+        doWF_SV ? sv_wf : false,
+        doWF_SNV ? snv_wf : false,
+        doWF_loh ? loh_wf : false,
+        doWF_mdParse ? mdParse_wf : false,
+        doWF_germSNV ? germlineSNV_wf : false,
+        doWF_germSV ? germlineSV_wf : false,
+        doWF_QC ? sampleQC_wf : false,
+        doWF_QC && params.pairing ? samplePairingQC_wf : false,
         fastPJson,
         multiqcWesConfig, 
         multiqcWgsConfig, 
         multiqcTempoLogo
-        )
+      )
     }
-  }
-  if (params.watch == true) {
-    epochMap = [:]
-    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
-    }
-    startEpoch = new Date().getTime()
-    touchInputs(chunkSizeLimit, startEpoch, epochMap)
   }
 }
 workflow.onComplete {

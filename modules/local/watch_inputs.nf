@@ -1,7 +1,5 @@
 def touchInputs(chunkSizeLimit, startEpoch, epochMap) {
   new Timer().schedule({
-  def timeNow = new Date().getTime()
-  limitInputLines = chunkSizeLimit + ( ((timeNow - startEpoch)/60000) * (chunkSizeLimit / params.touchInputsInterval) )
   for ( i in epochMap.keySet() ){
     fileEpoch = file(i).lastModified()
     if (( fileEpoch > epochMap[i]) || (chunkSizeLimit > 0 )) {
@@ -9,26 +7,28 @@ def touchInputs(chunkSizeLimit, startEpoch, epochMap) {
       "touch -ca ${i}".execute()
     }
   }
-} as TimerTask, 1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
+} as TimerTask, 15*1000, params.touchInputsInterval * 60 * 1000 ) // convert minutes to milliseconds
 }
 
 def watchMapping(tsvFile, assayType, validTargetsList) {
-  def index = 1 
+  def index = 0 
+  def limitInputLines = params.chunkSizeLimit 
   Channel.watchPath( tsvFile, 'create, modify' )
 	 .map{ row -> 
-	      index = 1 
+	      def timeNow = new Date().getTime()
+	      limitInputLines = params.chunkSizeLimit + ( ((timeNow - params.startEpoch)/60000) * (params.chunkSizeLimit / params.touchInputsInterval) )
+	      index = 0 
 	      row
 	 }.splitCsv(sep: '\t', header: true)
 	 .map{ row -> 
 	      [index++] + row
 	 }.filter{ row ->
 	      if (params.chunkSizeLimit > 0 ){
-	      	row[0] < limitInputLines
+	      	row[0] <= limitInputLines
 	      } else { 1 }
 	 }.map{ row ->
 	      row[1]
 	 }.unique()
-	 .view()
 	 .map{ row ->
               def idSample = row.SAMPLE
               def target = row.TARGET
@@ -48,17 +48,20 @@ def watchMapping(tsvFile, assayType, validTargetsList) {
 }
 
 def watchBamMapping(tsvFile, assayType, validTargetsList){
-  def index = 1
+  def index = 0
+  def limitInputLines = params.chunkSizeLimit
   Channel.watchPath( tsvFile, 'create, modify' )
 	 .map{ row -> 
-	      index = 1 
+	      def timeNow = new Date().getTime()
+	      limitInputLines = params.chunkSizeLimit + ( ((timeNow - params.startEpoch)/60000) * (params.chunkSizeLimit / params.touchInputsInterval) )
+	      index = 0 
 	      row
 	 }.splitCsv(sep: '\t', header: true)
 	 .map{ row -> 
 	      [index++] + row
 	 }.filter{ row ->
 	      if (params.chunkSizeLimit > 0 ){
-	      	row[0] < limitInputLines
+	      	row[0] <= limitInputLines
 	      } else { 1 }
 	 }.map{ row ->
 	      row[1]
@@ -94,18 +97,21 @@ def watchPairing(tsvFile){
 	 .unique()
 }
 
-def watchAggregateWithPath(tsvFile) {
-  def index = 1 
+def watchAggregateWithResult(tsvFile) {
+  def index = 0 
+  def limitInputLines = params.chunkSizeLimit
   Channel.watchPath(tsvFile, 'create, modify')
      .map{ row -> 
-	      index = 1 
+	      def timeNow = new Date().getTime()
+	      limitInputLines = params.chunkSizeLimit + ( ((timeNow - params.startEpoch)/60000) * (params.chunkSizeLimit / params.touchInputsInterval) )
+	      index = 0 
 	      row
 	 }.splitCsv(sep: '\t', header: true)
 	 .map{ row -> 
 	      [index++] + row
 	 }.filter{ row ->
 	      if (params.chunkSizeLimit > 0 ){
-	      	row[0] < limitInputLines
+	      	row[0] <= limitInputLines
 	      } else { 1 }
 	 }.map{ row ->
 	      row[1]
@@ -128,7 +134,7 @@ def watchAggregateWithPath(tsvFile) {
 }
 
 def watchAggregate(tsvFile) {
-  Channel.watchPath(file(runAggregate), 'create, modify')
+  Channel.watchPath(tsvFile, 'create, modify')
      .splitCsv(sep: '\t', header: true)
 	 .unique()
          .map{ row ->
@@ -136,7 +142,7 @@ def watchAggregate(tsvFile) {
               def idTumor = row.TUMOR_ID
               def cohort = row.COHORT
               def cohortSize = row.COHORT_SIZE.toInteger()
-              if(!TempoUtils.checkNumberOfItem(row, 4, file(runAggregate))){}
+              if(!TempoUtils.checkNumberOfItem(row, 4, tsvFile)){}
 
               [cohort, cohortSize, idTumor, idNormal]
          }
