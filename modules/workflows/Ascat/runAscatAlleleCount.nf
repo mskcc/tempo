@@ -23,10 +23,10 @@ process runAscatAlleleCount {
     species = genome 
     assembly = genome
   }
-  if (params.ascatAlleleCount == 1 ) { 
+  if ( ascatIndexLimit == 1 ) { 
     indexParam = ""
   } else {
-    indexParam = "-i ${ascatIndex} -x ${params.ascatAlleleCount}"
+    indexParam = "-i ${ascatIndex} -x ${ascatIndexLimit}"
   }
   """
   mkdir -p ascatResults
