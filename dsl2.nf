@@ -20,7 +20,7 @@ chunkSizeLimit   = params.chunkSizeLimit
 
 //Utility Includes
 include { defineReferenceMap; loadTargetReferences } from './modules/function/define_maps'
-include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithPath; watchAggregate } from './modules/function/watch_inputs'
+include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from './modules/function/watch_inputs'
 
 pairingQc    = params.pairing
 referenceMap = defineReferenceMap()
