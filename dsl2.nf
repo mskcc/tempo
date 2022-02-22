@@ -15,8 +15,8 @@ wallTimeExitCode = params.wallTimeExitCode ? params.wallTimeExitCode.split(',').
 multiqcWesConfig = workflow.projectDir + '/lib/multiqc_config/exome_multiqc_config.yaml'
 multiqcWgsConfig = workflow.projectDir + '/lib/multiqc_config/wgs_multiqc_config.yaml'
 multiqcTempoLogo = workflow.projectDir + '/docs/tempoLogo.png'
-limitInputLines  = 0
-chunkSizeLimit   = params.chunkSizeLimit
+params.startEpoch = new Date().getTime() 
+
 
 //Utility Includes
 include { defineReferenceMap; loadTargetReferences } from './modules/function/define_maps'
@@ -110,10 +110,11 @@ workflow {
   if (params.watch == true) {
     epochMap = [:]
     for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-      if (params.containsKey(i)){ epochMap[params."${i}"] = 0 }
+      if (file(params."${i}".toString()).exists()){ 
+	epochMap[file(params."${i}").toRealPath()] = 0 
+      }
     }
-    startEpoch = new Date().getTime()
-    touchInputs(chunkSizeLimit, startEpoch, epochMap)
+    touchInputs(params.chunkSizeLimit, epochMap)
   }
 
   if (doWF_AggregateFromResult){
@@ -260,7 +261,6 @@ workflow {
     if(doWF_AggregateFromProcess)
     {
       aggregateFromProcess(
-        epochMap,
         inputPairing,
 	runAggregate,
         doWF_facets ? facets_wf : false,
