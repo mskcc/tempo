@@ -60,6 +60,7 @@ def defineReferenceMap() {
     result_array << ['annotSVref' : checkParamReturnFile('annotSVref')]
     // splice sites for locating cDNA contam
     result_array << ['spliceSites' : checkParamReturnFile('spliceSites')]
+    result_array << ['snpGcCorrections' : checkParamReturnFile('snpGcCorrections')]
     
   }
   return result_array
