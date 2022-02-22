@@ -14,7 +14,9 @@ workflow ascat_wf {
 		ascatAlleleCountSegments,
 		ascatAlleleCountLimit,
 		paired_bams,
-		Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.snpGcCorrections])
+		referenceMap.genomeFile,
+		referenceMap.genomeIndex, 
+		referenceMap.snpGcCorrections
 	)
 
 	runAscat(
@@ -23,7 +25,9 @@ workflow ascat_wf {
 		.map{idTumor, idNormal, target, ascatTar ->
 			[idTumor, idNormal, target, ascatTar.flatten() ]
 		}.combine(paired_bams, by:[0,1]),
-		Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.snpGcCorrections])
+		referenceMap.genomeFile, 
+		referenceMap.genomeIndex, 
+		referenceMap.snpGcCorrections
 	)
 
 	emit:
