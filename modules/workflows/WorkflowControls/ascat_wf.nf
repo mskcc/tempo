@@ -8,17 +8,18 @@ workflow ascat_wf {
 	main:
 	referenceMap = params.referenceMap
 
-	ascatAlleleCountSegments = Channel.from(1..params.ascat.ascatAlleleCountLimit)
+	ascatAlleleCountLimit = ["GRCh37","smallGRCh37","GRCh38"].contains(params.genome) ? 48 : 1 
+	ascatAlleleCountSegments = Channel.from(1..ascatAlleleCountLimit)
 	runAscatAlleleCount(
 		ascatAlleleCountSegments,
-		params.ascat.ascatAlleleCountLimit,
+		ascatAlleleCountLimit,
 		paired_bams,
 		Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.snpGcCorrections])
 	)
 
 	runAscat(
 		runAscatAlleleCount.out
-		.groupTuple(by:[0,1,2], size: params.ascat.ascatAlleleCountLimit)
+		.groupTuple(by:[0,1,2], size: ascatAlleleCountLimit)
 		.map{idTumor, idNormal, target, ascatTar ->
 			[idTumor, idNormal, target, ascatTar.flatten() ]
 		}.combine(paired_bams, by:[0,1]),
