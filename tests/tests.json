@@ -10,5 +10,5 @@
     "test_aggregate_from_result": {
         "command": ["./nextflow", "run", "dsl2.nf", "-profile", "test", "--aggregate", "tests/cohort.tsv"],
         "checks": [{"type": "checkNumberOfLines", "filename": "Results/cohort_level/cohort1/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
-    },
+    }
 }
