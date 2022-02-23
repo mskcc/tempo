@@ -27,7 +27,6 @@ def defineReferenceMap() {
     'svCallingIncludeRegionsIndex' : checkParamReturnFile("svCallingIncludeRegionsIndex"),
   ]
 
-  if (workflow.profile != "test") {
     result_array << ['vepCache' : checkParamReturnFile("vepCache")]
     // for SNP Pileup
     result_array << ['facetsVcf' : checkParamReturnFile("facetsVcf")]
@@ -57,7 +56,6 @@ def defineReferenceMap() {
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
-  }
   return result_array
 }
 
