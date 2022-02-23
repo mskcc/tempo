@@ -7,6 +7,9 @@
         "command": ["./nextflow", "run", "dsl2.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor, germSNV, germSV", "--aggregate", "tests/cohort.tsv", "-resume"],
         "checks": [{"type": "checkNumberOfLines", "filename": "Results/cohort_level/cohort1/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
+    "test_bamMapping": {
+        "command": ["./nextflow", "run", "dsl2.nf", "--bamMapping", "tests/bamMapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor,germSNV,germSV", "--aggregate"],
+        "checks": [{"type": "checkNumberOfLines", "filename": "Results/cohort_level/default_cohort/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     "test_aggregate_from_result": {
         "command": ["./nextflow", "run", "dsl2.nf", "-profile", "test", "--aggregate", "tests/cohort.tsv"],
         "checks": [{"type": "checkNumberOfLines", "filename": "Results/cohort_level/cohort1/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
