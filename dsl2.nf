@@ -272,7 +272,7 @@ workflow {
         doWF_germSV ? germlineSV_wf : false,
         doWF_QC ? sampleQC_wf : false,
         doWF_QC && params.pairing ? samplePairingQC_wf : false,
-        fastPJson,
+        doWF_QC ? fastPJson : false
         multiqcWesConfig, 
         multiqcWgsConfig, 
         multiqcTempoLogo
