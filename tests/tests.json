@@ -1,6 +1,6 @@
 {
     "test_full": {
-        "command": ["./nextflow", "run", "dsl2.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor,germSNV,germSV", "--aggregate"],
+        "command": ["./nextflow", "run", "dsl2.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor,germSNV,germSV", "-resume", "--aggregate"],
         "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/default_cohort/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
     "test_aggregate_different_cohort": {
@@ -17,7 +17,7 @@
     },
 
     "test_pipeline_nf_full": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--somatic", "--germline", "--aggregate"],
+        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--somatic", "--germline", "-resume", "--aggregate"],
         "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/default_cohort/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
     "test_pipeline_nf_aggregate_different_cohort": {
