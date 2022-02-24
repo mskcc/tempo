@@ -1,4 +1,4 @@
-include { SomaticRunManta }            from '../SV/SomaticRunManta' 
+include { SomaticRunManta }            from '../process/SV/SomaticRunManta' 
 
 workflow manta_wf
 {

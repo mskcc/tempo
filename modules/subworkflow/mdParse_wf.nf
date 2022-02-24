@@ -1,4 +1,4 @@
-include { MetaDataParser }             from '../MetaParse/MetaDataParser' 
+include { MetaDataParser }             from '../process/MetaParse/MetaDataParser' 
 
 workflow mdParse_wf
 {

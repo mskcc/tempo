@@ -1,4 +1,4 @@
-include { RunMsiSensor }               from '../MSI/RunMsiSensor'
+include { RunMsiSensor }               from '../process/MSI/RunMsiSensor'
 
 workflow msiSensor_wf
 {
