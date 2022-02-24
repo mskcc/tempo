@@ -1651,7 +1651,7 @@ process RunPolysolver {
   output:
     set val("placeHolder"), idNormal, target, file("${outputPrefix}.hla.txt") into hlaOutput, hlaOutputForLOHHLA, hlaOutputForMetaDataParser
 
-  when: "polysolver" in tools && runSomatic && ["GRCh38","GRCh37"].contains(params.genome)
+  when: "polysolver" in tools && runSomatic && ["GRCh38","GRCh37", "smallGRCh37"].contains(params.genome)
   
   script:
   outputPrefix = "${idNormal}"
