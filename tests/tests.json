@@ -32,5 +32,4 @@
         "command": ["./nextflow", "run", "pipeline.nf", "-profile", "test", "--aggregate", "tests/cohort.tsv"],
         "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/cohort1/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     }
-
 }
