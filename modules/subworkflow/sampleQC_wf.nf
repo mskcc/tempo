@@ -1,9 +1,8 @@
-include { QcCollectHsMetrics }                 from '../QC/QcCollectHsMetrics' 
-include { QcQualimap }                         from '../QC/QcQualimap' 
-include { QcAlfred }                           from '../QC/QcAlfred'
-include { SampleRunMultiQC }                   from '../QC/SampleRunMultiQC'
-include { QcConpairAll }                       from '../QC/QcConpairAll'
-include { CohortRunMultiQC }                   from '../QC/CohortRunMultiQC'
+include { QcCollectHsMetrics }                 from '../process/QC/QcCollectHsMetrics' 
+include { QcQualimap }                         from '../process/QC/QcQualimap' 
+include { QcAlfred }                           from '../process/QC/QcAlfred'
+include { SampleRunMultiQC }                   from '../process/QC/SampleRunMultiQC'
+include { QcConpairAll }                       from '../process/QC/QcConpairAll'
 
 workflow sampleQC_wf
 {
