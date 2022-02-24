@@ -1,2 +1,2 @@
 NORMAL_ID	TUMOR_ID	COHORT	PATH	COHORT_SIZE
-1234N	1234T	cohort1	Results	1
+1234N	1234T	cohort1	test-data/test_results	1
