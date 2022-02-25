@@ -1,4 +1,4 @@
-def touchInputs(chunkSizeLimit, startEpoch, epochMap) {
+def touchInputs(chunkSizeLimit, epochMap) {
   new Timer().schedule({
   for ( i in epochMap.keySet() ){
     fileEpoch = file(i).lastModified()
