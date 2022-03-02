@@ -2,7 +2,7 @@ include { SomaticDellyCall }           from '../SV/SomaticDellyCall'
 include { SomaticRunSvABA }            from '../SV/SomaticRunSvABA' 
 include { SomaticMergeDellyAndManta }  from '../SV/SomaticMergeDellyAndManta' 
 include { SomaticSVVcf2Bedpe }         from '../SV/SomaticSVVcf2Bedpe' 
-include { brass_wf }                   from '../WorkflowControls/brass_wf'
+include { brass_wf }                   from '../WorkflowControls/brass_wf' addParams(referenceMap: params.referenceMap)
 
 workflow sv_wf
 {
@@ -32,7 +32,7 @@ workflow sv_wf
       .set{ dellyMantaCombineChannel }
 
     if (params.assayType == "genome") {
-      SomaticRunSvaba(
+      SomaticRunSvABA(
         bamFiles,
         referenceMap.genomeFile, 
         referenceMap.genomeIndex,
@@ -46,7 +46,7 @@ workflow sv_wf
       )
       
       dellyMantaCombineChannel
-        .combine(SomaticRunSvaba.out.SvABA4Combine, by: [0,1,2])
+        .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
         .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
         .set{allSvCallsCombineChannel}
     } else {
