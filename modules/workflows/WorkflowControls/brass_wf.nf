@@ -11,6 +11,7 @@ workflow brass_wf
 	sampleStatistics // from ascat 
 
 	main:
+	referenceMap = params.referenceMap
 	inputPairing = bamFiles
 		.map{ row -> 
 			[row[0],row[1]]
@@ -23,7 +24,11 @@ workflow brass_wf
 				.unique()
 		)
 
-	generateBasFile(bamFilesUnpaired)
+	generateBasFile(
+		bamFilesUnpaired,
+		referenceMap.genomeFile,
+		referenceMap.genomeIndex
+	)
 
 	basPairing = inputPairing
 		.combine(generateBasFile.out)
@@ -36,10 +41,12 @@ workflow brass_wf
 		.combine(
 			basPairing.tumor
 				.combine(basPairing.normal, by:[0,1])
-				.map{ idTumor,idNormal, idSample1, target1, basFile1, idSample2, target2, c ->
+				.map{ idTumor,idNormal, idSample1, target1, basFile1, idSample2, target2, basFile2 ->
           			[idTumor,idNormal,target1,basFile1,basFile2]
         		}, by:[0,1,2]
-		)
+		).map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, basTumor, basNormal -> 
+			[idTumor, idNormal, target, bamTumor, baiTumor, basTumor, bamNormal, baiNormal, basNormal] 
+		}
 
 	BRASSInputSegments = Channel.from(1..2)
 	runBRASSInput(
@@ -63,9 +70,18 @@ workflow brass_wf
 		referenceMap.vagrentRefDir
 	)
 
+	runBRASSInput_flat = runBRASSInput.out.groupTuple(by:[0,1,2],size:2)
+		.map{ idTumor, idNormal, target, tmp, progress ->
+			[ idTumor, idNormal, target, tmp.flatten(), progress.flatten() ]
+		}
+	runBRASSCover_flat = runBRASSCover.out.groupTuple(by:[0,1,2],size:brassCoverLimit)
+		.map{ idTumor, idNormal, target, tmp, progress ->
+			[ idTumor, idNormal, target, tmp.flatten(), progress.flatten() ]
+		}
+
 	brassInfilesWithPreprocess = brassInfiles
-		.combine(runBRASSInput.out, by:[0,1,2])
-		.combine(runBRASSCover.out, by:[0,1,2])
+		.combine(runBRASSInput_flat, by:[0,1,2])
+		.combine(runBRASSCover_flat, by:[0,1,2])
 		.combine(sampleStatistics, by:[0,1,2])
 
 	runBRASS(
@@ -77,6 +93,7 @@ workflow brass_wf
 	)
 
 	emit:
-	brassOutput = runBRASS.out
+	brassOutput = runBRASS.out.BRASSOutput
+	BRASS4Combine = runBRASS.out.BRASS4Combine
 
 }

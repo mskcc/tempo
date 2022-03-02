@@ -28,7 +28,7 @@ process runBRASSInput {
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(basTumor), path(bamNormal), path(baiNormal), path(basNormal)
     path(genomeFile)
     path(genomeIndex)
-	  path(brassRefDir)
+	  path("brassRefDir")
 	  path(vagrentRefDir)
 
     output:
@@ -50,16 +50,16 @@ process runBRASSInput {
     export TMPDIR=\$(pwd)/tmp ; mkdir -p \$TMPDIR brass
     for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
     brass.pl -j 4 -k 4 -c ${task.cpus} \\
-        -d ${brassRefDir}/HiDepth.bed.gz \\
-        -f ${brassRefDir}/brass_np.groups.gz \\
+        -d brassRefDir/HiDepth.bed.gz \\
+        -f brassRefDir/brass_np.groups.gz \\
         -g ${genomeFile} \\
         -s "${species}" -as "${assembly}" -pr "WGS" \\
         -g_cache ${vagrentRefDir}/vagrent.cache.gz \\
-        -vi ${brassRefDir}/viral.genomic.fa.2bit \\
-        -mi ${brassRefDir}/all_ncbi_bacteria \\
-        -b ${brassRefDir}/500bp_windows.gc.bed.gz \\
-        -ct ${brassRefDir}/CentTelo.tsv \\
-        -cb ${brassRefDir}/cytoband.txt \\
+        -vi brassRefDir/viral.genomic.fa.2bit \\
+        -mi brassRefDir/all_ncbi_bacteria \\
+        -b brassRefDir/500bp_windows.gc.bed.gz \\
+        -ct brassRefDir/CentTelo.tsv \\
+        -cb brassRefDir/cytoband.txt \\
         -t ${bamTumor} \\
         -n ${bamNormal} \\
         -ss samplestatistics.txt \\
@@ -70,16 +70,16 @@ process runBRASSInput {
 }
 
 process runBRASSCover {
-  tag { idTumor + "__" + idNormal + "@" + coverIndex }
+  tag { idTumor + "__" + idNormal + "@" + brassCoverIndex }
   label 'BRASS'
 
   input:
-    each coverIndex
-    val(coverLimit)
+    each brassCoverIndex
+    val(brassCoverLimit)
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(basTumor), path(bamNormal), path(baiNormal), path(basNormal)
     path(genomeFile)
     path(genomeIndex)
-	  path(brassRefDir)
+	  path("brassRefDir")
 	  path(vagrentRefDir)
 
   output:
@@ -97,25 +97,25 @@ process runBRASSCover {
     species = params.genome 
     assembly = params.genome
   }
-  if (coverLimit == 1 ) { 
+  if (brassCoverLimit == 1 ) { 
     indexParam = ""
   } else {
-    indexParam = "-i ${coverIndex} -l ${brassCoverLimit}"
+    indexParam = "-i ${brassCoverIndex} -l ${brassCoverLimit}"
   }
     """
     export TMPDIR=\$(pwd)/tmp ; mkdir -p \$TMPDIR brass
     for i in rho Ploidy GenderChr GenderChrFound ; do echo \$i ;done > samplestatistics.txt
     brass.pl -j 4 -k 4 -c ${task.cpus} \\
-        -d ${brassRefDir}/HiDepth.bed.gz \\
-        -f ${brassRefDir}/brass_np.groups.gz \\
+        -d brassRefDir/HiDepth.bed.gz \\
+        -f brassRefDir/brass_np.groups.gz \\
         -g ${genomeFile} \\
         -s "${species}" -as "${assembly}" -pr "WGS" \\
         -g_cache ${vagrentRefDir}/vagrent.cache.gz \\
-        -vi ${brassRefDir}/viral.genomic.fa.2bit \\
-        -mi ${brassRefDir}/all_ncbi_bacteria \\
-        -b ${brassRefDir}/500bp_windows.gc.bed.gz \\
-        -ct ${brassRefDir}/CentTelo.tsv \\
-        -cb ${brassRefDir}/cytoband.txt \\
+        -vi brassRefDir/viral.genomic.fa.2bit \\
+        -mi brassRefDir/all_ncbi_bacteria \\
+        -b brassRefDir/500bp_windows.gc.bed.gz \\
+        -ct brassRefDir/CentTelo.tsv \\
+        -cb brassRefDir/cytoband.txt \\
         -t ${bamTumor} \\
         -n ${bamNormal} \\
         -ss samplestatistics.txt \\
@@ -142,7 +142,7 @@ process runBRASS {
       path(ascatSampleStatistics) 
     path(genomeFile)
     path(genomeIndex)
-	  path(brassRefDir)
+	  path("brassRefDir")
   	path(vagrentRefDir)
 
     output:
@@ -183,16 +183,16 @@ process runBRASS {
         mv \$i brass/tmpBrass/progress
     done
     brass.pl -j 4 -k 4 -c ${task.cpus} \\
-        -d ${brassRefDir}/HiDepth.bed.gz \\
-        -f ${brassRefDir}/brass_np.groups.gz \\
+        -d brassRefDir/HiDepth.bed.gz \\
+        -f brassRefDir/brass_np.groups.gz \\
         -g ${genomeFile} \\
         -s "${species}" -as "${assembly}" -pr "WGS" \\
         -g_cache ${vagrentRefDir}/vagrent.cache.gz \\
-        -vi ${brassRefDir}/viral.genomic.fa.2bit \\
-        -mi ${brassRefDir}/all_ncbi_bacteria \\
-        -b ${brassRefDir}/500bp_windows.gc.bed.gz \\
-        -ct ${brassRefDir}/CentTelo.tsv \\
-        -cb ${brassRefDir}/cytoband.txt \\
+        -vi brassRefDir/viral.genomic.fa.2bit \\
+        -mi brassRefDir/all_ncbi_bacteria \\
+        -b brassRefDir/500bp_windows.gc.bed.gz \\
+        -ct brassRefDir/CentTelo.tsv \\
+        -cb brassRefDir/cytoband.txt \\
         -t ${bamTumor} \\
         -n ${bamNormal} \\
         -ss ${ascatSampleStatistics} \\
