@@ -61,6 +61,8 @@ def defineReferenceMap() {
     // splice sites for locating cDNA contam
     result_array << ['spliceSites' : checkParamReturnFile('spliceSites')]
     result_array << ['snpGcCorrections' : checkParamReturnFile('snpGcCorrections')]
+    result_array << ['brassRefDir' : checkParamReturnFile('brassRefDir')]
+    result_array << ['vagrentRefDir' : checkParamReturnFile('vagrentRefDir')]
     
   }
   return result_array
