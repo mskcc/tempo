@@ -31,7 +31,8 @@ workflow ascat_wf {
 	)
 
 	emit:
-	ascatCNV = runAscat.out
+	ascatCNV = runAscat.out.caveman
+	ascatSS  = runAscat.out.samplestatistics
 
 }
 
