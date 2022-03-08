@@ -178,7 +178,7 @@ workflow {
 
     if(doWF_facets)
     {
-      facets_wf(bamFiles)
+      	facets_wf(bamFiles)
     }
 
     if(doWF_germSNV)
@@ -200,8 +200,12 @@ workflow {
     {
       sv_wf(bamFiles, manta_wf.out.manta4Combine)
       if (doWF_SNV && params.assayType == "genome"){
-        ascat_wf(bamFiles)
-        hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
+	if (params.use_ascat) {
+        	ascat_wf(bamFiles)
+        	hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
+	} else {
+		hrdetect_wf(facets_wf.out.FacetsCNV4HrDetect, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
+	}
       }
     }
 
