@@ -526,6 +526,10 @@ if (params.mapping) {
       file("size.txt") into sizeOutput
 
     script:
+
+    bamSize = 0
+    bam.each{ bamSize = bamSize + it.size()}
+
     if (workflow.profile == "juno") {
       if(bam.size() > 100.GB) {
         task.time = { params.maxWallTime }
