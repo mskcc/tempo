@@ -1,26 +1,18 @@
 {
-    "test_make_bam_part": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "-profile", "test"],
-        "checks": [{"type": "checkNumberOfLines", "filename": "bamMapping.tsv", "num_lines": 3}, {"type": "checkExitCode", "expected": 0}]
+    "test_full": {
+        "command": ["./nextflow", "run", "dsl2.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor,germSNV,germSV", "-resume", "--aggregate"],
+        "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/default_cohort/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
-    "test_manta_strelka": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bamMapping", "tests/test_somatic.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--tools", "manta,strelka2", "--somatic", "--germline"],
-        "checks": [{"type": "checkExitCode", "expected": 0}]
+    "test_aggregate_different_cohort": {
+        "command": ["./nextflow", "run", "dsl2.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor, germSNV, germSV", "--aggregate", "tests/cohort.tsv", "-resume"],
+        "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/cohort1/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
-    "test_sv": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bamMapping", "tests/test_somatic.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--tools", "delly,manta", "--somatic", "--germline", "--aggregate"],
-        "checks": [{"type": "checkExitCode", "expected": 0}]
+    "test_bamMapping": {
+        "command": ["./nextflow", "run", "dsl2.nf", "--bamMapping", "tests/bamMapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor,germSNV,germSV", "--aggregate"],
+        "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/default_cohort/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
-    "test_msisensor": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--bamMapping", "tests/test_somatic.tsv", "--pairing", "tests/test_make_bam_and_qc_pairing.tsv", "-profile", "test", "--tools", "msisensor", "--somatic"],
-        "checks": [{"type": "checkExitCode", "expected": 0}]
-    },
-    "test_pairing_file_validation_pipeline": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/test_make_bam_and_qc.tsv", "--pairing", "tests/test_pairing_duplicate.tsv", "--somatic", "-profile", "test"],
-        "checks": [{"type": "checkExitCode", "expected": 1}]
-    },
-    "test_nonUnique_sampleLane_validation_pipeline": {
-        "command": ["./nextflow", "run", "pipeline.nf", "--mapping", "tests/duplicate_samplelane_makebamqc.tsv", "-profile", "test"],
-        "checks": [{"type": "checkExitCode", "expected": 1}]
+    "test_aggregate_from_result": {
+        "command": ["./nextflow", "run", "dsl2.nf", "-profile", "test", "--aggregate", "tests/cohort.tsv"],
+        "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/cohort1/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     }
 }
