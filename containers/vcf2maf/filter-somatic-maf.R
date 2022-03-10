@@ -1,9 +1,10 @@
 #!/usr/bin/env Rscript
 
-# __author__  = "Philip Jonsson"
-# __email__   = "jonssonp@mskcc.org"
-# __version__ = "0.6.0"
-# __status__  = "Dev"
+# __author__      = "Philip Jonsson"
+# __email__       = "jonssonp@mskcc.org"
+# __contributor__ = "Anne Marie Noronha (noronhaa@mskcc.org)"
+# __version__     = "0.6.2"
+# __status__      = "Dev"
 
 suppressPackageStartupMessages({
     library(data.table)
@@ -11,6 +12,7 @@ suppressPackageStartupMessages({
     library(argparse)
 })
 
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 3)
 args = commandArgs(TRUE)
 
 if (is.null(args) | length(args)<1) {
@@ -51,9 +53,10 @@ gnomad_af_cutoff = args$gnomad_allele_frequency
 pon_cutoff = args$normal_panel_count
 
 add_tag = function(filter, tag) {
-    ifelse(filter == 'PASS',
-           tag,
-           paste(filter, tag, sep = ';'))
+  split_filter <- strsplit(filter,";")
+  split_filter.add <- lapply(lapply(split_filter,append,tag),unique)
+  split_filter.add.paste <- lapply(lapply(split_filter.add,function(x){x[!x %in% 'PASS']}),paste, collapse=";")
+  return(as.character(split_filter.add.paste))
 }
 
 maf = fread(maf, data.table = TRUE)
@@ -64,11 +67,13 @@ maf[, `:=` (t_var_freq = t_alt_count/(t_alt_count+t_ref_count),
             EncodeDacMapability = ifelse(is.na(EncodeDacMapability), '', EncodeDacMapability),
             RepeatMasker = ifelse(is.na(RepeatMasker), '', RepeatMasker),
             gnomAD_FILTER = ifelse(is.na(gnomAD_FILTER), 0, 1),
+            MuTect2 = ifelse(is.na(MuTect2),0,1),
             Custom_filters = gsub(',', ';', Custom_filters), # note that semi-colons are not allowed in VCF INFO field
-            FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER),
+            #FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER),
             alt_bias = t_depth_raw > 5 & (t_alt_count_raw_fwd == 0 | t_alt_count_raw_rev == 0),
-            ref_bias = t_depth_raw > 5 & (t_depth_raw_fwd == 0 | t_depth_raw_fwd == 0)
+            ref_bias = t_depth_raw > 5 & (t_depth_raw_fwd == 0 | t_depth_raw_rev == 0)
 )]
+maf[, `:=` (FILTER = ifelse(!Custom_filters %in% c(NA, ''), Custom_filters, FILTER) )] # referencing new Custom_filters column
 
 # Apply filters to FILTER column
 maf[t_var_freq < tumor_vaf_cutoff, FILTER := add_tag(FILTER, 'low_vaf')]

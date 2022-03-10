@@ -3,7 +3,8 @@ FROM ubuntu:18.04
 LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       contributor="Nikhil Kumar (kumarn1@mskcc.org)" \
       contributor="Philip Jonsson (jonssonp@mskcc.org)" \
-      version.image="1.2.3" \
+      contributor="Anne Marie Noronha (noronhaa@mskcc.org)" \
+      version.image="1.2.7" \
       version.vcf2maf="1.6.17" \
       version.vep="88" \
       version.htslib="1.9" \
@@ -12,9 +13,9 @@ LABEL maintainer="Christopher Allan Bolipata (bolipatc@mskcc.org)" \
       version.perl="5.26.2-r1" \
       version.alpine="3.8" \
       version.oncokb_annotator="1.1.0" \
-      version.filter_somatic_maf="0.6.0" \
-      version.filter_germline_maf="0.2.0" \
-      version.annotateMaf="1.0.1" \
+      version.filter_somatic_maf="0.6.2" \
+      version.filter_germline_maf="0.2.2" \
+      version.annotateMaf="1.0.2" \
       source.vcf2maf="https://github.com/mskcc/vcf2maf/releases/tag/v1.6.17" \
       source.vep="http://dec2016.archive.ensembl.org/info/docs/tools/vep/script/vep_download.html#versions" \
       source.htslib="https://github.com/samtools/htslib/releases/tag/1.9" \
@@ -29,7 +30,7 @@ ENV HTSLIB_VERSION 1.9
 ENV SAMTOOLS_VERSION 1.9
 ENV BCFTOOLS_VERSION 1.9
 ENV ONCOKB_VERSION 1.1.0
-ENV ANNOTATE_MAF 1.0.1
+ENV ANNOTATE_MAF 1.0.2
 
 RUN apt-get update --fix-missing && apt-get install -y \
     tcsh \
@@ -130,7 +131,12 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
     r-base-core r-base-dev
 
-RUN R -e "install.packages(c('data.table', 'xml2', 'curl', 'Rcurl', 'httr', 'rvest', 'roxygen2', 'rconnect', 'gh', 'whoami', 'rlang', 'devtools', 'argparse'), repos = 'http://cran.r-project.org'); devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}')"
+# versioning R packages for reproducibility and compatibility
+RUN R -e "install.packages('remotes')"
+COPY r_versions.txt /
+RUN R -e "require(remotes) ; x <- read.table('/r_versions.txt',sep='\t',header=T) ; for (i in 1:dim(x)[[1]]){ install_version(as.character(x\$package[i]), version = as.character(x\$version[i]), repos = 'http://cran.us.r-project.org') }" 
+
+RUN R -e "devtools::install_github('taylor-lab/annotateMaf', ref = '${ANNOTATE_MAF}', upgrade = 'never')"
 
 # install oncokb-annotator
 RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/oncokb/oncokb-annotator/archive/v${ONCOKB_VERSION}.zip \
@@ -142,5 +148,6 @@ RUN cd /tmp && wget -O oncokb_annotator-v${ONCOKB_VERSION} https://github.com/on
 # Add filter script
 COPY filter-somatic-maf.R /usr/bin
 COPY filter-germline-maf.R /usr/bin
-RUN chmod +x /usr/bin/filter-somatic-maf.R
-RUN chmod +x /usr/bin/filter-germline-maf.R
+RUN chmod 755 /usr/bin/filter-somatic-maf.R
+RUN chmod 755 /usr/bin/filter-germline-maf.R
+
