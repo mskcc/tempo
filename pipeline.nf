@@ -2660,7 +2660,7 @@ process QcAlfred {
 
   options = ""
   if (params.assayType == "exome") {
-    if (target == "agilent") options = "--bed ${targets}"
+    options = "--bed ${targets}"
   }
   def ignore = ignore_rg ? "--ignore" : ""
   def outfile = ignore_rg ? "${idSample}.alfred.tsv.gz" : "${idSample}.alfred.per_readgroup.tsv.gz"
