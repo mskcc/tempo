@@ -51,7 +51,7 @@ workflow sv_wf
         .set{allSvCallsCombineChannel}
     } else {
       dellyMantaCombineChannel
-        .map{ it + ["",""]}
+        .map{ it + ["","","",""]}
         .set{allSvCallsCombineChannel}
     }
 

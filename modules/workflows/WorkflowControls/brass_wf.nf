@@ -1,8 +1,7 @@
-include { 
-	generateBasFile;
-	runBRASSInput;
-	runBRASSCover;
-	runBRASS } from '../SV/BRASS/SomaticRunBRASS'
+include { generateBasFile }   from '../SV/BRASS/generateBasFile.nf'
+include { runBRASSInput } from '../SV/BRASS/SomaticRunBRASSInput.nf'
+include { runBRASSCover } from '../SV/BRASS/SomaticRunBRASSCover.nf'
+include { runBRASS } from '../SV/BRASS/SomaticRunBRASS.nf'
 
 workflow brass_wf
 {
