@@ -75,13 +75,12 @@ class TempoUtils {
       def target = row.TARGET
       def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: true)
       def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: true)
+      
       if(!checkFileExtension(fastqFile1,".fastq.gz")){System.exit(1)}
       if(!checkFileExtension(fastqFile2,".fastq.gz")){System.exit(1)}
 
-
       [idSample, target, fastqFile1, fastqFile2]
     }
-
   }
 
 
@@ -120,7 +119,7 @@ class TempoUtils {
   // Check file extension
   static def checkFileExtension(it, extension) {
     if (!it.toString().toLowerCase().endsWith(extension.toLowerCase())) {
-    println "File: ${it} has the wrong extension: ${extension}. See manual for more information"
+	println "File: ${it} has the wrong extension: ${extension}. See manual for more information"
         return false
     }
     else{ return true }
@@ -129,8 +128,8 @@ class TempoUtils {
   // Check if a row has the minimal number of item
   static def checkNumberOfItem(row, number, tsv) {
     if (row.size() < number){
-    println "Missing field (null) in the following row from ${tsv}: ${row}"
-    return false
+	println "Missing field (null) in the following row from ${tsv}: ${row}"
+	return false
     }
     else{ return true }
   }
@@ -139,20 +138,19 @@ class TempoUtils {
   static def checkDuplicates(hash, key, value, tsv) {
     if(hash.containsKey(key)){
         println "ERROR: Duplicatd inputs found in ${tsv}"
-    println ""
+	println ""
         println hash.get(key)
-    println "${value}"
-    return false
+	println "${value}"
+	return false
     }
     else{
         hash[key] = value
-    return true
+	return true
     }
   }
 
 
   // Check samples are present both mapping and pairing files
-  // Note: This function is deprecated as of DSL2 update.  See SampleValidation.nf.
   static def crossValidateSamples(mapping, pairing) {
     def samplesInMapping = mapping.map{[it[0]]}.flatten().unique().toSortedList().get()
     def samplesInPairing = pairing.flatten().unique().toSortedList().get()
@@ -161,7 +159,7 @@ class TempoUtils {
     def extraSamples = mappingOnly + pairingOnly
 
     if(extraSamples != []){
-    println "ERROR: The following samples are present in either mapping file or pairing file only. Please ensure all samples are present in both files."
+	println "ERROR: The following samples are present in either mapping file or pairing file only. Please ensure all samples are present in both files."
         println "Mapping: ${mappingOnly}"
         println "Pairing: ${pairingOnly}"
         return false
@@ -176,18 +174,18 @@ class TempoUtils {
       .unique()
       .combine(pairing)
       .filter{ item ->
-    def mappingID = item[0]
-    def target = item[1]
-    def tumorID = item[2]
-    def normalID = item[3]
-    (mappingID == tumorID) || (mappingID == normalID)
+	def mappingID = item[0]
+	def target = item[1]
+	def tumorID = item[2]
+	def normalID = item[3]
+	(mappingID == tumorID) || (mappingID == normalID)
       }
       .groupTuple(by: [2,3])
       .map{ item ->
         if(item[1].unique().size() > 1){
-          println "ERROR: Tumor and Normal pair ${item[0]} used differnt bait sets: ${item[1]}"
-          System.exit(1)
-        }
+	  println "ERROR: Tumor and Normal pair ${item[0]} used differnt bait sets: ${item[1]}"
+	  System.exit(1)
+	}
       }
   }
 
