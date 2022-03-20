@@ -93,7 +93,17 @@ def filter_by_pass_callers(input,output,min_pass):
 
 		# change TRA to BND for svtools
 		if vcf_rec.info["SVTYPE"] == "TRA":
-			 vcf_rec.info.__setitem__("SVTYPE","BND")
+			vcf_rec.info.__setitem__("SVTYPE","BND")
+
+		# The following lines are intended to stop the loss of END= in the output. 
+		# Later versions of pysam will have fixed this, this code should fixed when pysam upgraded.
+		if not vcf_rec.stop or vcf_rec.stop < 1:
+			#vcf_rec.stop = vcf_rec.pos + 1
+			continue
+		if vcf_rec.chrom == vcf_rec.info["CHR2"] and abs(vcf_rec.start - vcf_rec.stop) <= 1 :
+			#vcf_rec.stop = vcf_rec.pos + 1
+			continue
+
 		
 		# print result to tmp file
 		print(vcf_rec, end="", file=out_vcf_recs)
