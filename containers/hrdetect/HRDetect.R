@@ -22,6 +22,7 @@
 library(signature.tools.lib)
 library(data.table)
 library(tools)
+library(stringr)
 
 
 args = commandArgs(trailingOnly=TRUE)
@@ -59,7 +60,10 @@ correctSV <- function(this_sample){
   setnames(this_sv, "END_B", "end2")
   setnames(this_sv, "STRAND_A", "strand1")
   setnames(this_sv, "STRAND_B", "strand2")
-  setnames(this_sv, "TYPE", "svclass")
+  #setnames(this_sv, "TYPE", "svclass")
+  svclass_dict <- c("BND"="translocation","INV"="inversion","DEL"="deletion","DUP"="tandem-duplication") 
+  this_sv$svclass <- stringr::str_replace_all(string = this_sv$TYPE,
+					      pattern= svclass_dict)
   print(table(this_sv$svclass))
   this_sv$sample=this_sample
   filename<-paste0("tmp/",this_sample, ".sv")
