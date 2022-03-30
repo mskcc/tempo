@@ -1,5 +1,5 @@
 process bam2fastq {
-  tag {idSample}
+  tag "${idSample}"
 
   input:
     tuple val(idSample), val(target), file(bam), val(bai)
