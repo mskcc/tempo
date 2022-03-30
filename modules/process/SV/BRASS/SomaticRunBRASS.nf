@@ -15,8 +15,8 @@ process runBRASS {
       path(ascatSampleStatistics) 
     path(genomeFile)
     path(genomeIndex)
-	  path("brassRefDir")
-  	path(vagrentRefDir)
+    path("brassRefDir")
+    path(vagrentRefDir)
 
     output:
     tuple val(idTumor), val(idNormal), val(target), path("brass/*.{vcf.gz,vcf.gz.tbi}"), emit: BRASSOutput
