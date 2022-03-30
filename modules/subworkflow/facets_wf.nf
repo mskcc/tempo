@@ -37,7 +37,11 @@ workflow facets_wf
     FacetsPreviewOut           = DoFacetsPreviewQC.out.FacetsPreviewOut
     FacetsQC4Aggregate         = FacetsQC4Aggregate
     FacetsQC4SomaticMultiQC    = FacetsQC4SomaticMultiQC
-    FacetsCNV4HrDetect         = DoFacets.out.FacetsCNV4HrDetect
-    FacetsCNV4HrDetectFiltered = DoFacets.out.FacetsCNV4HrDetectFiltered
-    FacetsSampleStatistics4BRASS = DoFacets.out.FacetsSampleStatistics4BRASS
+    FacetsHisensCNV4HrDetect            = DoFacets.out.FacetsHisensCNV4HrDetect
+    FacetsHisensCNV4HrDetectFiltered    = DoFacets.out.FacetsHisensCNV4HrDetectFiltered
+    FacetsHisensSampleStatistics4BRASS  = DoFacets.out.FacetsHisensSampleStatistics4BRASS
+    FacetsPurityCNV4HrDetect            = DoFacets.out.FacetsPurityCNV4HrDetect
+    FacetsPurityCNV4HrDetectFiltered    = DoFacets.out.FacetsPurityCNV4HrDetectFiltered
+    FacetsPuritySampleStatistics4BRASS  = DoFacets.out.FacetsPuritySampleStatistics4BRASS
+
 }
