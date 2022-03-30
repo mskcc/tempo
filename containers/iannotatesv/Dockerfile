@@ -1,6 +1,7 @@
 FROM python:2.7.15
 
-LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)"
+LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
+	version.image="0.0.2"
 
 RUN python -m pip install \
 	pandas==0.24.2 \
