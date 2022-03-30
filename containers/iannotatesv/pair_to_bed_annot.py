@@ -20,23 +20,27 @@ def main():
 	if args.type not in ["both","either"]:
 		sys.exit("--match-type must be both or either")
 
-	[meta_header, bedpe_header_list] = get_bedpe_header(args.bedpe)
-	filtered_bed_df = filter_bedpe(args.bedpe,bedpe_header_list,args.regions,args.tag,args.type)
+	[meta_header, bedpe_header_list, bedpe_df] = parse_svtools_bedpe_file(args.bedpe)
+	bedpe_bt = pybedtools.BedTool.from_dataframe(bedpe_df)
+	regions_bt = pybedtools.BedTool(args.regions)
+	intersect,outersect = filter_bedpe(bedpe_bt,regions_bt,args.type)
+	intersect_df = bedtool_to_df(intersect,bedpe_header_list)
+	intersect_df["FILTER"] = intersect_df["FILTER"].apply(lambda x: add_tag(x,args.tag))
+	outersect_df = bedtool_to_df(outersect,bedpe_header_list)
+	filtered_bed_df = pd.concat([intersect_df,outersect_df])
 
 	with open(args.outfile, "w") as fw:
 		fw.write("".join(meta_header))
-	print(filtered_bed_df.head())
 	filtered_bed_df.to_csv(args.outfile, header=True, index=False, sep="\t", mode="a")
 
-def filter_bedpe(bedpe,bedpe_header_list,regions,tag_str,match_type="either"):
-	filter_col = bedpe_header_list.index("FILTER")
-
-	intersect = bedtool_to_df(run_pair_to_bed(bedpe,regions,match_type), bedpe_header_list)
-	outersect = bedtool_to_df(run_pair_to_bed(bedpe,regions, "notboth" if match_type == "both" else "neither"), bedpe_header_list)
+def filter_bedpe(bedpe_bt,regions_bt,match_type="either"):
+	outersect_match_type = "notboth" if match_type == "both" else "neither"
+	intersect = run_pair_to_bed(bedpe_bt,regions_bt,match_type)
+	outersect = run_pair_to_bed(bedpe_bt,regions_bt, outersect_match_type)
+	#intersect["FILTER"] = intersect["FILTER"].apply(lambda x: add_tag(x,tag_str))
 	
-	intersect["FILTER"] = intersect["FILTER"].apply(lambda x: add_tag(x,tag_str))
-	
-	return pd.concat([intersect,outersect])
+	return [intersect,outersect]
+	#return pd.concat([intersect,outersect])
 
 if __name__ == "__main__":
 	main()
