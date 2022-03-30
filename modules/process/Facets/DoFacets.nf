@@ -20,9 +20,12 @@ process DoFacets {
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*.*_level.txt"), emit: FacetsArmGeneOutput
     tuple val(idTumor), val(idNormal), val(target), path("*/*.qc.txt"), emit: FacetsQC4MetaDataParser
     tuple val(idTumor), val(idNormal), path("*_OUT.txt"), emit: FacetsRunSummary
-    tuple val(idTumor), val(idNormal), val(target), path("${tag}.facets.copynumber.csv"), emit: FacetsCNV4HrDetect
-    tuple val(idTumor), val(idNormal), val(target), path("${tag}.facets.filtered.copynumber.csv"), emit: FacetsCNV4HrDetectFiltered
-    tuple val(idTumor), val(idNormal), val(target), path("${tag}.samplestatistics.txt"), emit: FacetsSampleStatistics4BRASS
+    tuple val(idTumor), val(idNormal), val(target), path("${tag}_hisens.facets.copynumber.csv"), emit: FacetsHisensCNV4HrDetect
+    tuple val(idTumor), val(idNormal), val(target), path("${tag}_hisens.facets.filtered.copynumber.csv"), emit: FacetsHisensCNV4HrDetectFiltered
+    tuple val(idTumor), val(idNormal), val(target), path("${tag}_hisens.samplestatistics.txt"), emit: FacetsHisensSampleStatistics4BRASS
+    tuple val(idTumor), val(idNormal), val(target), path("${tag}_purity.facets.copynumber.csv"), emit: FacetsPurityCNV4HrDetect
+    tuple val(idTumor), val(idNormal), val(target), path("${tag}_purity.facets.filtered.copynumber.csv"), emit: FacetsPurityCNV4HrDetectFiltered
+    tuple val(idTumor), val(idNormal), val(target), path("${tag}_purity.samplestatistics.txt"), emit: FacetsPuritySampleStatistics4BRASS
 
   script:
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
@@ -84,6 +87,11 @@ process DoFacets {
 
   Rscript ${custom_scripts}/generate_samplestatistics.R \\
     ${outputDir}/${tag}_hisens.Rdata \\
-    ${tag}
+    ${tag}_hisens
+  
+  Rscript ${custom_scripts}/generate_samplestatistics.R \\
+    ${outputDir}/${tag}_purity.Rdata \\
+    ${tag}_purity
+  
   """
 }
