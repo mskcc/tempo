@@ -1,5 +1,5 @@
 process RunMutect2 {
-  tag {idTumor + "__" + idNormal + "@" + intervalBed.baseName}
+  tag "${idTumor + "__" + idNormal + "@" + intervalBed.baseName}"
 
   input:
     tuple val(id), val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal), path(intervalBed)

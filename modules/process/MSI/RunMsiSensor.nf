@@ -1,5 +1,5 @@
 process RunMsiSensor {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)

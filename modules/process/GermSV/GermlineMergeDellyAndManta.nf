@@ -1,5 +1,5 @@
 process GermlineMergeDellyAndManta {
-  tag {idNormal}
+  tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
 

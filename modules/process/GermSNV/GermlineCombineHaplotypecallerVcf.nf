@@ -1,5 +1,5 @@
 process GermlineCombineHaplotypecallerVcf {
-  tag {idNormal}
+  tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/haplotypecaller", mode: params.publishDirMode
 

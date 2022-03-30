@@ -1,5 +1,5 @@
 process GermlineDellyCall {
-  tag {idNormal + '@' + svType}
+  tag "${idNormal + '@' + svType}"
 
   publishDir "${params.outDir}/germline/${idNormal}/delly", mode: params.publishDirMode, pattern: "*delly.vcf.{gz,gz.tbi}"
 
