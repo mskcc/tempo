@@ -67,10 +67,10 @@ workflow {
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
-  doWF_facets          = doWF_SV && params.assayType == "genome" && ! params.use_ascat ? true : doWF_facets
+  doWF_facets          = doWF_SV && params.assayType == "genome" && ["hisens","purity"].contains(params.svcnv) ? true : doWF_facets
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
-  doWF_QC	       = 'qc' in WFs ? true : false
+  doWF_QC	             = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
@@ -199,26 +199,29 @@ workflow {
 
     if(doWF_SV)
     {
-      if (params.assayType == "genome" && params.use_ascat){
-        ascat_wf(bamFiles)
-        sv_wf(
-          bamFiles, 
-          manta_wf.out.manta4Combine, 
-          ascat_wf.out.ascatSS
-        )
-      } else {
-        sv_wf(
-          bamFiles, 
-          manta_wf.out.manta4Combine, 
-          facets_wf.out.FacetsSampleStatistics4BRASS
-        )
+      if (params.assayType == "genome") {
+        if (params.svcnv == "ascat"){
+          ascat_wf(bamFiles)
+          samplestatistics = ascat_wf.out.ascatSS
+          CNVcalls = ascat_wf.out.ascatCNV
+        } else if(params.svcnv == "hisens") {
+          samplestatistics = facets_wf.out.FacetsHisensSampleStatistics4BRASS
+          CNVcalls = facets_wf.out.FacetsHisensCNV4HrDetectFiltered
+        } else if(params.svcnv == "purity"){
+          samplestatistics = facets_wf.out.FacetsPuritySampleStatistics4BRASS
+          CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
+        }
+      } else { 
+        samplestatistics = Channel.create()
+        CNVcalls = Channel.create()
       }
+      sv_wf(
+        bamFiles, 
+        manta_wf.out.manta4Combine, 
+        samplestatistics
+      )
       if (doWF_SNV && params.assayType == "genome"){
-	      if (params.use_ascat) {
-        	hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.SVCombinedBedpe)
-	      } else {
-        	hrdetect_wf(facets_wf.out.FacetsCNV4HrDetectFiltered, snv_wf.out.mafFile, sv_wf.out.SVCombinedBedpe)
-	      }
+        	hrdetect_wf(CNVcalls, snv_wf.out.mafFile, sv_wf.out.SVAnnotBedpePass)
       }
     }
 
