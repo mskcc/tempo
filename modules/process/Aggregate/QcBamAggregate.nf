@@ -4,7 +4,7 @@ process QcBamAggregate {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    tuple val(cohort), path(alfredIgnoreYTumor), path(alfredIgnoreYNormal), path(alfredIgnoreNTumor), path(alfredIgnoreNNormal), path(hsMetricsTumor), path(hsMetricsNormal)
+    tuple val(cohort), path(alfredIgnoreYTumor), path(alfredIgnoreYNormal), path(alfredIgnoreNTumor), path(alfredIgnoreNNormal), file(hsMetricsTumor), file(hsMetricsNormal)
     
   output:
     path('alignment_qc.txt'), emit: alignmentQcAggregatedOutput

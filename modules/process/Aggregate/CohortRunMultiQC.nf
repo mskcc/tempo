@@ -5,7 +5,7 @@ process CohortRunMultiQC {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    tuple val(cohort), path(fastPTumor), path(fastPNormal), path(alfredIgnoreYTumor), path(alfredIgnoreYNormal), path(alfredIgnoreNTumor), path(alfredIgnoreNNormal), path(concordFile), path(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), path(qualimapFolderTumor), path(qualimapFolderNormal), path(hsMetricsTumor), path(hsMetricsNormal)
+    tuple val(cohort), path(fastPTumor), path(fastPNormal), path(alfredIgnoreYTumor), path(alfredIgnoreYNormal), path(alfredIgnoreNTumor), path(alfredIgnoreNNormal), path(concordFile), path(contamiFile), file(FacetsSummaryFile), file(FacetsQCFile), path(qualimapFolderTumor), path(qualimapFolderNormal), file(hsMetricsTumor), file(hsMetricsNormal)
     tuple path("exome_multiqc_config.yaml"), path("wgs_multiqc_config.yaml"), path("tempoLogo.png")
     
   output:
