@@ -1,5 +1,5 @@
 process MergeBamsAndMarkDuplicates {
-  tag {idSample}
+  tag "${idSample}"
 
   input:
     tuple val(idSample), path(bam), val(target)

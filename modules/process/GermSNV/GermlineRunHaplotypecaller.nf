@@ -1,5 +1,5 @@
 process GermlineRunHaplotypecaller {
-  tag {idNormal + "@" + intervalBed.baseName}
+  tag "${idNormal + "@" + intervalBed.baseName}"
 
   input:
     tuple val(id), val(idNormal), val(target), path(bamNormal), path(baiNormal), path(intervalBed)
