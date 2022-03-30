@@ -13,9 +13,11 @@ cnvfile.filter <- paste0(tag,".facets.filtered.copynumber.csv")
 
 load(rdatafile)
 slice <- out$out[out$out$chrom==23,]
-if (sum(slice$nhet)/sum(slice$num.mark) < .01 ){GenderChrFound <- 'Y'} else {GenderChrFound <- 'N' }
+prop.het <- sum(slice$nhet)/sum(slice$num.mark)
+prop.het <- ifelse(is.na(prop.het),1,prop.het)
+if (prop.het < .01 ){GenderChrFound <- 'Y'} else {GenderChrFound <- 'N' }
 cat(paste('Ploidy',fit$ploidy,"\n"), file=ssfile)
-cat(paste('rho',fit$purity,"\n"), file=ssfile,append = T) # rho = purity
+cat(paste('rho',ifelse(is.na(fit$purity),".3",fit$purity),"\n"), file=ssfile,append = T) # rho = purity
 cat(paste('GenderChr','Y',"\n"), file=ssfile,append = T)
 cat(paste('GenderChrFound',GenderChrFound,"\n"), file=ssfile,append = T)
 
