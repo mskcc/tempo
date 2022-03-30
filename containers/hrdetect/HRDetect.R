@@ -60,12 +60,12 @@ correctSV <- function(this_sample){
   setnames(this_sv, "END_B", "end2")
   setnames(this_sv, "STRAND_A", "strand1")
   setnames(this_sv, "STRAND_B", "strand2")
-  #setnames(this_sv, "TYPE", "svclass")
   svclass_dict <- c("BND"="translocation","INV"="inversion","DEL"="deletion","DUP"="tandem-duplication") 
   this_sv$svclass <- stringr::str_replace_all(string = this_sv$TYPE,
 					      pattern= svclass_dict)
   print(table(this_sv$svclass))
   this_sv$sample=this_sample
+  this_sv <- this_sv[,unlist(strsplit("chrom1,start1,end1,chrom2,start2,end2,strand1,strand2,sample,svclass",split=","))]
   filename<-paste0("tmp/",this_sample, ".sv")
   write.table(file = filename, x = this_sv, quote = F, row.names = F, col.names = T, sep = "\t")
 }
