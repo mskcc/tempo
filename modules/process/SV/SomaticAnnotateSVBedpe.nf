@@ -1,7 +1,5 @@
-process iAnnotateSVBedpe {
+process SomaticAnnotateSVBedpe {
   tag {idTumor + "__" + idNormal}
-
-  container = "cmopipeline/iannotatesv:0.0.1" 
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: ".combined.filtered.bedpe"
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.annotsv.tsv"
@@ -22,8 +20,7 @@ process iAnnotateSVBedpe {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  genomeBuild = "GRCh37"
-  genome_ = genome == "GRCh37" ? "hg19" : genome == "GRCh38" ? "hg38" : "hg18"
+  genome_ = ["GRCh37","smallGRCh37"].contains(genome) ? "hg19" : genome == "GRCh38" ? "hg38" : "hg18"
   """
   python ${custom_scripts}/pair_to_bed_annot.py \\
     --blacklist-regions ${mapabilityBlacklist} \\
@@ -40,7 +37,6 @@ process iAnnotateSVBedpe {
     --match-type either 
   
   python ${custom_scripts}/detect_cdna.py \\
-    --intermediate \\
     --exon-junct ${spliceSites} \\
     --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
     --out-bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
