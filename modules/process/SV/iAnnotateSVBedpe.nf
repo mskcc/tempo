@@ -1,7 +1,7 @@
 process iAnnotateSVBedpe {
   tag {idTumor + "__" + idNormal}
 
-  container = "cmopipeline/iannotatesv:0.0.1" 
+  container = "cmopipeline/iannotatesv:0.0.2" 
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: ".combined.filtered.bedpe"
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.annotsv.tsv"

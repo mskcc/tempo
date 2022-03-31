@@ -81,6 +81,6 @@ process DoFacets {
     -s ${outputDir}/*seg
 
   cat ${outputDir}/${tag}_hisens.cncf.txt | tail -n +2 | awk -F"\\t" '{print \$5,\$2,\$3,\$4,2,1,\$14,\$15}' | tr " " "," > ${tag}.facets.copynumber.csv
-  cat ${tag}.facets.copynumber.csv | grep -v NA > ${tag}.facets.filtered.copynumber.csv
+  cat ${tag}.facets.copynumber.csv | grep -v NA > ${tag}.facets.filtered.copynumber.csv || true
   """
 }

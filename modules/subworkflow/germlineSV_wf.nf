@@ -27,9 +27,12 @@ workflow germlineSV_wf
             .set{ dellyMantaChannelGermline }
 
     GermlineMergeSVs(dellyMantaChannelGermline,
-                               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+                               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]),
+			       workflow.projectDir + "/containers/bcftools-vt-mergesvvcf"
+			       )
 
-    GermlineSVVcf2Bedpe(
+    if (workflow.profile != "test" && workflow.profile != "test_singularity") {
+      GermlineSVVcf2Bedpe(
       GermlineMergeSVs.out.SVsCombinedOutputGermline,
       referenceMap.repeatMasker,
       referenceMap.mapabilityBlacklist,
@@ -37,6 +40,7 @@ workflow germlineSV_wf
       referenceMap.spliceSites, 
       workflow.projectDir + "/containers/svtools" 
     )
+    }
 
   emit:
     sv4AggregateGermline    = GermlineMergeSVs.out.SVsCombinedOutputGermline
