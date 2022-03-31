@@ -1,4 +1,4 @@
-process GermlineMergeDellyAndManta {
+process GermlineMergeSVs {
   tag {idNormal}
 
   publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.delly.manta.vcf.{gz,gz.tbi}"
@@ -8,7 +8,7 @@ process GermlineMergeDellyAndManta {
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
 
   output:
-    tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz"), path("${idNormal}.delly.manta.vcf.gz.tbi"), emit: dellyMantaCombinedOutputGermline
+    tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.delly.manta.vcf.gz"), path("${idNormal}.delly.manta.vcf.gz.tbi"), emit: SVsCombinedOutputGermline
 
   script:
   """ 
