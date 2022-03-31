@@ -56,7 +56,6 @@ def defineReferenceMap() {
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
-    result_array << ['annotSVref' : checkParamReturnFile('annotSVref')]
     // splice sites for locating cDNA contam
     result_array << ['spliceSites' : checkParamReturnFile('spliceSites')]
     result_array << ['snpGcCorrections' : checkParamReturnFile('snpGcCorrections')]
