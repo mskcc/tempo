@@ -1,6 +1,7 @@
 include { GermlineDellyCall }                 from '../process/GermSV/GermlineDellyCall' 
 include { GermlineRunManta }                  from '../process/GermSV/GermlineRunManta' 
-include { GermlineMergeDellyAndManta }        from '../process/GermSV/GermlineMergeDellyAndManta'
+include { GermlineMergeSVs }                  from '../process/GermSV/GermlineMergeSVs'
+include { GermlineSVVcf2Bedpe }               from '../process/GermSV/GermlineSVVcf2Bedpe'
 
 workflow germlineSV_wf
 {
@@ -25,11 +26,11 @@ workflow germlineSV_wf
             .combine(GermlineRunManta.out.mantaOutputGermline, by: [0,1])
             .set{ dellyMantaChannelGermline }
 
-    GermlineMergeDellyAndManta(dellyMantaChannelGermline,
+    GermlineMergeSVs(dellyMantaChannelGermline,
                                Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
     GermlineSVVcf2Bedpe(
-      GermlineMergeDellyAndManta.out.dellyMantaCombinedOutputGermline,
+      GermlineMergeSVs.out.SVsCombinedOutputGermline,
       referenceMap.repeatMasker,
       referenceMap.mapabilityBlacklist,
       referenceMap.annotSVref, 
@@ -38,5 +39,5 @@ workflow germlineSV_wf
     )
 
   emit:
-    sv4AggregateGermline    = GermlineMergeDellyAndManta.out.dellyMantaCombinedOutputGermline
+    sv4AggregateGermline    = GermlineMergeSVs.out.SVsCombinedOutputGermline
 }
