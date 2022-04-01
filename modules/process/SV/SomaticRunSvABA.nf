@@ -1,5 +1,5 @@
 process SomaticRunSvABA {
-	tag { idTumor + "__" + idNormal }
+	tag "${idTumor}__${idNormal}"
     publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/svaba", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi,contigs.bam}"
 
     input:

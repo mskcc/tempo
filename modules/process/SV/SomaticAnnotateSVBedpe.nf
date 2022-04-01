@@ -1,8 +1,7 @@
 process SomaticAnnotateSVBedpe {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor}__${idNormal}"
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: ".combined.filtered.bedpe"
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.annotsv.tsv"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.filtered.bedpe"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bedpein) 
@@ -15,8 +14,6 @@ process SomaticAnnotateSVBedpe {
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.combined.annot.filtered.bedpe"), emit: SVAnnotBedpe
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.combined.annot.filtered.pass.bedpe"), emit: SVAnnotBedpePass
-
-  when: workflow.profile != "test" 
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"

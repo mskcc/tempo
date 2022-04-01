@@ -1,5 +1,5 @@
 process generateBasFile {
-  tag { idSample }
+  tag "${idSample}"
 
   input:
   tuple val(idSample), val(target), path(bam), path(bai) 

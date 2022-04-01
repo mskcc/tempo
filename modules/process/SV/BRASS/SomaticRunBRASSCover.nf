@@ -1,5 +1,5 @@
 process runBRASSCover {
-  tag { idTumor + "__" + idNormal + "@" + brassCoverIndex }
+  tag "${idTumor}__${idNormal}@${brassCoverIndex}"
   label 'BRASS'
 
   input:
