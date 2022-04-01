@@ -35,7 +35,7 @@ include { mutSig_wf }            from './modules/subworkflow/mutSig_wf'
 include { mdParse_wf }           from './modules/subworkflow/mdParse_wf'
 include { loh_wf }               from './modules/subworkflow/loh_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { facets_wf }            from './modules/subworkflow/facets_wf'           addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { sv_wf }                from './modules/subworkflow/sv_wf'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { sv_wf }                from './modules/subworkflow/sv_wf_new'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { snv_wf }               from './modules/subworkflow/snv_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { sampleQC_wf }          from './modules/subworkflow/sampleQC_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap, multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { samplePairingQC_wf }   from './modules/subworkflow/samplePairingQC_wf'  addParams(referenceMap: referenceMap, targetsMap: targetsMap)
@@ -46,6 +46,8 @@ include { germlineSV_wf }        from './modules/subworkflow/germlineSV_wf'     
 include { PairTumorNormal }      from './modules/subworkflow/PairTumorNormal'
 include { aggregateFromResult }  from './modules/subworkflow/AggregateFromResult'
 include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProcess'
+include { hrdetect_wf }          from './modules/subworkflow/hrdetect_wf'
+include { ascat_wf }             from './modules/subworkflow/ascat_wf'            addParams(referenceMap: referenceMap)
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
@@ -176,17 +178,12 @@ workflow {
 
     if(doWF_facets)
     {
-      facets_wf(bamFiles)
+      	facets_wf(bamFiles)
     }
 
     if(doWF_germSNV)
     {
       germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno)
-    }
-
-    if(doWF_SV)
-    {
-      sv_wf(bamFiles, manta_wf.out.manta4Combine)
     }
 
     if(doWF_loh)
@@ -197,6 +194,19 @@ workflow {
     if(doWF_SNV)
     {
       snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
+    }
+
+    if(doWF_SV)
+    {
+      sv_wf(bamFiles, manta_wf.out.manta4Combine)
+      if (doWF_SNV && params.assayType == "genome"){
+	if (params.use_ascat) {
+        	ascat_wf(bamFiles)
+        	hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
+	} else {
+		hrdetect_wf(facets_wf.out.FacetsCNV4HrDetectFiltered, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
+	}
+      }
     }
 
     if(doWF_QC)

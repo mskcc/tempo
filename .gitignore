@@ -25,3 +25,4 @@ results/
 *.Rhistory
 *.tsv
 docs/node_modules
+*.pyc
