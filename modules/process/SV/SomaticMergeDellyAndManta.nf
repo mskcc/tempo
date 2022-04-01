@@ -5,38 +5,50 @@ process SomaticMergeDellyAndManta {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(dellyVcfs), path(dellyVcfsIndex), path(mantaFile)
+    path(custom_scripts) 
 
   output:
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz*"), emit: dellyMantaCombinedOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.delly.manta.vcf.gz"), path("${outputPrefix}.delly.manta.vcf.gz.tbi"), emit: sv4Aggregate
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.delly.manta.vcf.gz"), path("${outputPrefix}.delly.manta.vcf.gz.tbi"), emit: dellyMantaCombined
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  """ 
-  bcftools view \
-    --samples ${idTumor},${idNormal} \
-    --output-type z \
-    --output-file ${outputPrefix}.manta.swap.vcf.gz \
-    ${outputPrefix}.manta.vcf.gz 
-    
-  tabix --preset vcf ${outputPrefix}.manta.swap.vcf.gz
+  """
+  bcftools concat \\
+    --allow-overlaps \\
+    --output-type z \\
+    --output ${outputPrefix}.delly.vcf.gz \\
+    *.delly.vcf.gz 
 
-  bcftools concat \
-    --allow-overlaps \
-    --output-type z \
-    --output ${outputPrefix}.delly.manta.unfiltered.vcf.gz \
-    *.delly.vcf.gz ${outputPrefix}.manta.swap.vcf.gz
+  tabix --preset vcf ${outputPrefix}.delly.vcf.gz 
+
+  mergesvvcf \\
+    -n -m 1 \\
+    -l delly,manta \\
+    -o ${outputPrefix}.delly.manta.raw.vcf \\
+    -f -d -s -v \\
+    ${outputPrefix}.delly.vcf.gz ${mantaFile} 
+
+  cat ${outputPrefix}.delly.manta.raw.vcf | \\
+    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \\
+  bcftools sort --temp-dir ./ \\
+    > ${outputPrefix}.delly.manta.clean.anon.vcf
+
+  python ${custom_scripts}/filter-sv-vcf.py \\
+    --input ${outputPrefix}.delly.manta.clean.anon.vcf \\
+    --output ${outputPrefix}.delly.manta.clean.anon.corrected.vcf \\
+    --min 1 
+
+  bcftools annotate \\
+    --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
+    -o ${outputPrefix}.delly.manta.clean.vcf \\
+    ${outputPrefix}.delly.manta.clean.anon.corrected.vcf
+
+  bcftools view \\
+    --samples ${idTumor},${idNormal} \\
+    --output-type z \\
+    --output-file ${outputPrefix}.delly.manta.vcf.gz \\
+    ${outputPrefix}.delly.manta.clean.vcf
   
-  tabix --preset vcf ${outputPrefix}.delly.manta.unfiltered.vcf.gz
-
-  bcftools filter \
-    --include 'FILTER=\"PASS\"' \
-    --regions 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,MT,X,Y \
-    ${outputPrefix}.delly.manta.unfiltered.vcf.gz | \
-  bcftools sort \
-    --output-type z \
-    --output-file ${outputPrefix}.delly.manta.vcf.gz 
-
   tabix --preset vcf ${outputPrefix}.delly.manta.vcf.gz 
   """
 }
