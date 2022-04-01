@@ -1,14 +1,10 @@
 process SomaticMergeSVs {
-  tag "${idTumor}__${idNormal}"
+  tag {idTumor + "__" + idNormal}
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
 
   input:
-    tuple val(idTumor), val(idNormal), val(target), 
-      path(dellyVcfs), path(dellyVcfsIndex), 
-      path(mantaFile), path(mantaIndex), 
-      file(svabaFile), file(svabaIndex), 
-      file(brassFile), file(brassIndex)
+    tuple val(idTumor), val(idNormal), val(target), path(dellyVcfs), path(dellyVcfsIndex), path(mantaFile), path(mantaIndex), file(svabaFile), file(svabaIndex), file(brassFile), file(brassIndex)
     path(custom_scripts) 
 
   output:
@@ -19,11 +15,6 @@ process SomaticMergeSVs {
   labelparam = "delly,manta" 
   labelparam = svabaFile.name.endsWith("vcf.gz") ?  labelparam + ",svaba" : labelparam 
   labelparam = brassFile.name.endsWith("vcf.gz") ?  labelparam + ",brass" : labelparam 
-  labelparam_list = labelparam.split(",")
-  inVCFs = "${outputPrefix}.delly.vcf.gz ${mantaFile} "
-  inVCFs = labelparam_list.contains("svaba") ? inVCFs + " svaba.reformat.vcf.gz " : labelparam 
-  inVCFs = labelparam_list.contains("brass") ? inVCFs + " brass.reformat.vcf.gz " : labelparam 
-  passMin = labelparam_list.size() > 2 ? 2 : 1
   """
   bcftools concat \\
     --allow-overlaps \\
@@ -33,30 +24,12 @@ process SomaticMergeSVs {
 
   tabix --preset vcf ${outputPrefix}.delly.vcf.gz 
 
-  if [ "${labelparam_list.contains("brass")}" = true ] ; then 
-    echo -e "TUMOUR ${idTumor}\\nNORMAL ${idNormal}" > brass.samplenames.tsv 
-    bcftools reheader \\
-      --samples brass.samplenames.tsv \\
-      --output brass.reformat.vcf.gz \\
-      ${brassFile}
-    tabix -p vcf brass.reformat.vcf.gz
-  fi
-
-  if [ "${labelparam_list.contains("svaba")}" = true ] ; then 
-    echo -e "${idTumor}.bam ${idTumor}\\n${idNormal}.bam ${idNormal}" > svaba.samplenames.tsv 
-    bcftools reheader \\
-      --samples svaba.samplenames.tsv \\
-      --output svaba.reformat.vcf.gz \\
-      ${svabaFile}
-    tabix -p vcf svaba.reformat.vcf.gz
-  fi
-
   mergesvvcf \\
     -n -m 1 \\
-    -l ${labelparam} \\
+    -l ${labelparam}\\
     -o ${outputPrefix}.merged.raw.vcf \\
     -f -d -s -v \\
-    ${inVCFs}
+    ${outputPrefix}.delly.vcf.gz ${mantaFile} ${svabaFile} ${brassFile}
 
   cat ${outputPrefix}.merged.raw.vcf | \\
     awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \\
@@ -66,7 +39,7 @@ process SomaticMergeSVs {
   python ${custom_scripts}/filter-sv-vcf.py \\
     --input ${outputPrefix}.merged.clean.anon.vcf \\
     --output ${outputPrefix}.merged.clean.anon.corrected.vcf \\
-    --min ${passMin}
+    --min 1 
 
   bcftools annotate \\
     --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\

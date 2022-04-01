@@ -1,5 +1,5 @@
 process runBRASS {
-    tag { idTumor + "__" + idNormal }
+    tag "${idTumor}__${idNormal}"
     label 'BRASS'
 
     publishDir "${params.outDir}/somatic/${outputPrefix}/", mode: params.publishDirMode, pattern: "brass/*.{gz,tbi}"

@@ -1,5 +1,5 @@
 process runBRASSInput {
-    tag { idTumor + "__" + idNormal + "@" + inputIndex }
+    tag "${idTumor}__${idNormal}@${inputIndex}"
     label 'BRASS'   
 
     input:
