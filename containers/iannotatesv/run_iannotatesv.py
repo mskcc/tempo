@@ -22,8 +22,11 @@ def main():
 			else: 
 				header=x
 				main_data = True
-		data = pd.read_csv(f, header=None, sep="\t" )
-		data.columns = header.strip().split("\t")
+		try:
+			data = pd.read_csv(f, header=None, sep="\t" )
+			data.columns = header.strip().split("\t")
+		except:
+			data = pd.DataFrame(columns = header.strip().split("\t"))
 
 	iAnnotate_input = data["#CHROM_A|START_A|STRAND_A|CHROM_B|START_B|STRAND_B|ID".split("|")]
 	iAnnotate_input.columns = "chr1|pos1|str1|chr2|pos2|str2|ID".split("|")
