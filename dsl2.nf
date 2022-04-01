@@ -212,8 +212,8 @@ workflow {
           CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
         }
       } else { 
-        samplestatistics = Channel.create()
-        CNVcalls = Channel.create()
+        samplestatistics = Channel.empty()
+        CNVcalls = Channel.empty()
       }
       sv_wf(
         bamFiles, 
