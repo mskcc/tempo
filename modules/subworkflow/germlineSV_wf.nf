@@ -40,7 +40,7 @@ workflow germlineSV_wf
         GermlineMergeSVs.out.SVsCombinedOutputGermline,
     )
     GermlineAnnotateSVBedpe(
-        GermlineSVVcf2Bedpe.out.GermlineCombinedUnfilteredBedpe
+        GermlineSVVcf2Bedpe.out.GermlineCombinedUnfilteredBedpe,
         referenceMap.repeatMasker,
         referenceMap.mapabilityBlacklist,
         referenceMap.spliceSites, 

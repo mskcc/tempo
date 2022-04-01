@@ -59,7 +59,7 @@ def defineReferenceMap() {
     // splice sites for locating cDNA contam
     result_array << ['spliceSites' : checkParamReturnFile('spliceSites')]
     result_array << ['snpGcCorrections' : checkParamReturnFile('snpGcCorrections')]
-    if (workflow.profile != "test" ){
+    if (! workflow.profile.startsWith("test") ){
     	result_array << ['brassRefDir' : checkParamReturnFile('brassRefDir')]
     	result_array << ['vagrentRefDir' : checkParamReturnFile('vagrentRefDir')]
     }
