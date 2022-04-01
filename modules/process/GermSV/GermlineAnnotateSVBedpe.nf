@@ -1,4 +1,4 @@
-process SomaticAnnotateSVBedpe {
+process GermlineAnnotateSVBedpe {
   tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.filtered.bedpe"
