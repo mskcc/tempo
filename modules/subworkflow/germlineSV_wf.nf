@@ -48,9 +48,13 @@ workflow germlineSV_wf
         params.genome
     )
     
+    GermlineMergeSVs.out.SVsCombinedOutputGermline
+        .map{ idNormal, target, vcfFile, tbiFile ->
+          ["placeHolder", "noTumor", idNormal, target, vcfFile, tbiFile]
+        }.set{sv4AggregateGermline}
 
   emit:
     SVAnnotBedpe         = GermlineAnnotateSVBedpe.out.SVAnnotBedpe
     SVAnnotBedpePass     = GermlineAnnotateSVBedpe.out.SVAnnotBedpePass
-    sv4AggregateGermline = GermlineMergeSVs.out.SVsCombinedOutputGermline
+    sv4AggregateGermline = sv4AggregateGermline
 }

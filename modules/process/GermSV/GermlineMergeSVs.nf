@@ -10,7 +10,7 @@ process GermlineMergeSVs {
     path(custom_scripts)
 
   output:
-    tuple val("placeHolder"), val("noTumor"), val(idNormal), path("${idNormal}.merged.vcf.gz"), path("${idNormal}.merged.vcf.gz.tbi"), emit: SVsCombinedOutputGermline
+    tuple val(idNormal), path("${idNormal}.merged.vcf.gz"), path("${idNormal}.merged.vcf.gz.tbi"), emit: SVsCombinedOutputGermline
 
   script:
   labelparam = "delly,manta" 
