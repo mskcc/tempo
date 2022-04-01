@@ -70,7 +70,7 @@ workflow {
   doWF_facets          = doWF_SV && params.assayType == "genome" && ["hisens","purity"].contains(params.svcnv) ? true : doWF_facets
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
-  doWF_QC	             = 'qc' in WFs ? true : false
+  doWF_QC              = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
