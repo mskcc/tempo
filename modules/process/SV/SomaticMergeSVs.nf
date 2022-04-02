@@ -21,8 +21,8 @@ process SomaticMergeSVs {
   labelparam = brassFile.name.endsWith("vcf.gz") ?  labelparam + ",brass" : labelparam 
   labelparam_list = labelparam.split(",")
   inVCFs = "${outputPrefix}.delly.vcf.gz ${mantaFile} "
-  inVCFs = labelparam_list.contains("svaba") ? inVCFs + " svaba.reformat.vcf.gz " : labelparam 
-  inVCFs = labelparam_list.contains("brass") ? inVCFs + " brass.reformat.vcf.gz " : labelparam 
+  inVCFs = labelparam_list.contains("svaba") ? inVCFs + " svaba.reformat.vcf.gz " : inVCFs 
+  inVCFs = labelparam_list.contains("brass") ? inVCFs + " brass.reformat.vcf.gz " : inVCFs 
   passMin = labelparam_list.size() > 2 ? 2 : 1
   """
   bcftools concat \\
