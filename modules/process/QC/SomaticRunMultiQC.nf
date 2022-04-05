@@ -1,5 +1,5 @@
 process SomaticRunMultiQC {
-   tag {idTumor + "__" + idNormal}
+   tag "${idTumor + "__" + idNormal}"
    label 'multiqc_process'
 
   publishDir "${params.outDir}/somatic/${outPrefix}/multiqc", mode: params.publishDirMode  

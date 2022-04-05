@@ -1,5 +1,5 @@
 process CohortRunMultiQC {
-  tag {cohort}
+  tag "${cohort}"
   label 'multiqc_process'
 
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode

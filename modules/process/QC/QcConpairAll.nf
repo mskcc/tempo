@@ -1,5 +1,5 @@
 process QcConpairAll {
-  tag {idTumor + "@" + idNormal}
+  tag "${idTumor + "@" + idNormal}"
 
   input:
     tuple val(idTumor), val(idNormal_noUse), path(pileupTumor), val(idTumor_noUse), val(idNormal), path(pileupNormal)
