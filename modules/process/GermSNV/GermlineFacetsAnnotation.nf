@@ -1,5 +1,5 @@
 process GermlineFacetsAnnotation {
-  tag {idNormal}
+  tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.germline.final.maf"
 

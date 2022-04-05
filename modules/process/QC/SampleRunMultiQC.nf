@@ -1,5 +1,5 @@
 process SampleRunMultiQC {
-  tag {idSample}
+  tag "${idSample}"
   label 'multiqc_process'
 
   publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  

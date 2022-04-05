@@ -1,5 +1,5 @@
 process QcQualimap {
-  tag {idSample}
+  tag "${idSample}"
   
   publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*.{html,tar.gz}"
   publishDir "${params.outDir}/bams/${idSample}/qualimap", mode: params.publishDirMode, pattern: "*/*"
