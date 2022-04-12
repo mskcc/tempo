@@ -14,10 +14,10 @@
 
     script:
     if (workflow.profile == "juno") {
-      if(bam.size() > 200.GB) {
+      if(bam.size() > 100.GB) {
         task.time = { params.maxWallTime }
       }
-      else if (bam.size() < 100.GB) {
+      else if (bam.size() < 50.GB) {
         task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
       }
       else {

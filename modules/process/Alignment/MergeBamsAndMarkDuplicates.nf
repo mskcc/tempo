@@ -14,10 +14,10 @@ process MergeBamsAndMarkDuplicates {
   bam.each{ bamSize = bamSize + it.size()}
 
   if (workflow.profile == "juno") {
-    if(bamSize > 100.GB) {
+    if(bamSize > 80.GB) {
       task.time = { params.maxWallTime }
     }
-    else if (bamSize < 80.GB) {
+    else if (bamSize < 40.GB) {
       task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
     }
     else {
