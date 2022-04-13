@@ -52,7 +52,7 @@ process SomaticMergeSVs {
   fi
 
   mergesvvcf \\
-    -n -m 1 \\
+    -n -m ${passMin} \\
     -l ${labelparam} \\
     -o ${outputPrefix}.merged.raw.vcf \\
     -f -d -s -v \\

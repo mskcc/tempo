@@ -70,9 +70,12 @@ def filter_by_pass_callers(input,output,min_pass):
 		## Variant info
 		info = vcf_rec.info.keys()
 		filter = vcf_rec.filter.keys()
+		print(filter)
 		new_flags = []
 		callers = list(vcf_rec.info["Callers"])
 		num_callers = vcf_rec.info['NumCallers']
+		if num_callers < min_pass:
+			continue
 		for i in set(callers) - all_callers:
 			vcf_in.header.info.add(
 				"{}_filters".format(i),
