@@ -25,6 +25,7 @@ process SomaticDellyCall {
 
   delly filter \
     --filter somatic \
+    -a .05 \
     --samples samples.tsv \
     --outfile ${idTumor}__${idNormal}_${svType}.filter.bcf \
     ${idTumor}__${idNormal}_${svType}.bcf
