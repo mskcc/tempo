@@ -1,12 +1,13 @@
 FROM halllab/bcftools:v1.9
 
 LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
+      version.image="0.0.2" \
       version.ubuntu="18.04" \
-      version.delly="0.8.2" \
+      version.delly="1.0.3" \
       version.htslib="1.9"
 
 # set the environment variables
-ENV delly_version 0.8.2
+ENV delly_version 1.0.3
 ENV htslib_version 1.9
 
 # run update
