@@ -2,6 +2,7 @@ process SomaticMergeSVs {
   tag "${idTumor}__${idNormal}"
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.clean.vcf"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), 
@@ -13,6 +14,7 @@ process SomaticMergeSVs {
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.merged.vcf.gz"), path("${outputPrefix}.merged.vcf.gz.tbi"), emit: SVCallsCombinedVcf
+    path("${outputPrefix}.merged.clean.vcf")
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
@@ -63,21 +65,21 @@ process SomaticMergeSVs {
   bcftools sort --temp-dir ./ \\
     > ${outputPrefix}.merged.clean.anon.vcf
 
-  python ${custom_scripts}/filter-sv-vcf.py \\
-    --input ${outputPrefix}.merged.clean.anon.vcf \\
-    --output ${outputPrefix}.merged.clean.anon.corrected.vcf \\
-    --min ${passMin}
-
   bcftools annotate \\
     --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
     -o ${outputPrefix}.merged.clean.vcf \\
-    ${outputPrefix}.merged.clean.anon.corrected.vcf
+    ${outputPrefix}.merged.clean.anon.vcf
+
+  python ${custom_scripts}/filter-sv-vcf.py \\
+    --input ${outputPrefix}.merged.clean.vcf \\
+    --output ${outputPrefix}.merged.clean.corrected.vcf \\
+    --min ${passMin}
 
   bcftools view \\
     --samples ${idTumor},${idNormal} \\
     --output-type z \\
     --output-file ${outputPrefix}.merged.vcf.gz \\
-    ${outputPrefix}.merged.clean.vcf
+    ${outputPrefix}.merged.clean.corrected.vcf
   
   tabix --preset vcf ${outputPrefix}.merged.vcf.gz 
   """
