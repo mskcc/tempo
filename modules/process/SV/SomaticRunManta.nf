@@ -9,8 +9,9 @@ process SomaticRunManta {
     tuple path(svCallingIncludeRegions), path(svCallingIncludeRegionsIndex)
 
   output:
-    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz"), emit: manta4Combine
-    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz.tbi"), emit: mantaOutput
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz"), path("${outputPrefix}.manta.vcf.gz.tbi"), emit: manta4Combine
+    //tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz"), emit: manta4Combine
+    //tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz.tbi"), emit: mantaOutput
     tuple val(idTumor), val(idNormal), val(target), path("*.candidateSmallIndels.vcf.gz"), path("*.candidateSmallIndels.vcf.gz.tbi"), emit: mantaToStrelka
 
   script:

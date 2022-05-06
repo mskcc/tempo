@@ -35,7 +35,6 @@ def get_artefact_calls(df):
 def prep_intersection(intersect=pd.DataFrame(),bedpe_header_list=[]):
 	attr_list = sorted("exon_number|splice_orientation|gene|ccds_id".split("|"))
 	try:
-		intersect.columns = bedpe_header_list + "#chrom|start|end|attr|score|cds_strand".split("|")
 		attr_list = sorted("exon_number|splice_orientation|gene|ccds_id".split("|"))
 		intersect["attr"] = intersect.apply(lambda x: {j.split(":")[0]:j.split(":")[1] for j in x["attr"].split("|")}, axis=1)
 		intersect["attr"] = intersect.apply(lambda x: [ x["attr"].get(i,None) for i in attr_list  ],axis=1)
@@ -52,17 +51,19 @@ def prep_intersection(intersect=pd.DataFrame(),bedpe_header_list=[]):
 def main():
 	args = usage()
 
-	[meta_header, bedpe_header_list] = get_bedpe_header(args.bedpe)
+	[meta_header, bedpe_header_list, bedpe_df] = parse_svtools_bedpe_file(args.bedpe)
 
-	intersect = run_pair_to_bed(args.bedpe,args.regions,match_type="both").to_dataframe(header=None, comment="#")
-	intersect = prep_intersection(intersect,bedpe_header_list)
-	artefact_calls = get_artefact_calls(intersect)
-
+	bedpe_bt = pybedtools.BedTool.from_dataframe(bedpe_df)
+	regions_bt = pybedtools.BedTool(args.regions)
+	intersect = run_pair_to_bed(bedpe_bt,regions_bt,match_type="both")
+	intersect_df = bedtool_to_df(intersect,bedpe_header_list + "#chrom|start|end|attr|score|cds_strand".split("|"))
+	intersect_df = prep_intersection(intersect_df,bedpe_header_list)
 	if args.intermediate:
-			intersect.to_csv("intermediate.tsv",sep="\t",header=True, index=False)
-	cdna_filter = pybedtools.BedTool(args.bedpe)
-	cdna_filter = bedtool_to_df(cdna_filter,bedpe_header_list)
-	cdna_filter = cdna_filter.merge(artefact_calls, on="ID", how="left")
+			intersect_df.to_csv("intermediate.tsv",sep="\t",header=True, index=False)
+
+	artefact_calls = get_artefact_calls(intersect_df)
+
+	cdna_filter = bedpe_df.merge(artefact_calls, on="ID", how="left")
 		
 	with open(args.outbedpe, "w") as fw:
 		fw.write("".join(meta_header))

@@ -57,6 +57,9 @@ def filter_by_pass_callers(input,output,min_pass):
 	vcf_in.header.info.add(
 		"NumCallersPass", 1, "Integer", "Number of callers that made this call without filters"
     )
+	vcf_in.header.filters.add(
+		"minPassFilter", None,None, "Number of callers insufficient"
+    )
 
 	all_callers = set()
 
@@ -67,9 +70,12 @@ def filter_by_pass_callers(input,output,min_pass):
 		## Variant info
 		info = vcf_rec.info.keys()
 		filter = vcf_rec.filter.keys()
+		print(filter)
 		new_flags = []
 		callers = list(vcf_rec.info["Callers"])
 		num_callers = vcf_rec.info['NumCallers']
+		if num_callers < min_pass:
+			continue
 		for i in set(callers) - all_callers:
 			vcf_in.header.info.add(
 				"{}_filters".format(i),
@@ -90,6 +96,8 @@ def filter_by_pass_callers(input,output,min_pass):
 		#adjust filter based on passing callers
 		if num_callers_pass >= min_pass:
 			vcf_rec.filter.add("PASS")
+		else:
+			vcf_rec.filter.add("minPassFilter")
 
 		# change TRA to BND for svtools
 		if vcf_rec.info["SVTYPE"] == "TRA":
