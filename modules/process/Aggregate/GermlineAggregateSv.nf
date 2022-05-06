@@ -4,7 +4,7 @@ process GermlineAggregateSv {
   publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
 
   input:
-    tuple val(cohort), path(dellyMantaVcf), path(dellyMantaVcfTbi)
+    tuple val(cohort), path(combinedVcf), path(combinedVcfTbi)
     
   output:
     path("sv_germline.vcf.{gz,gz.tbi}"), emit: svAggregatedGermlineOutput
@@ -17,8 +17,9 @@ process GermlineAggregateSv {
 
   ## Collect and merge Delly and Manta VCFs
   mkdir sv
-  mv  *.delly.manta.vcf.gz* sv/
-  vcfs=(\$(ls sv/*delly.manta.vcf.gz))
+  mv ${combinedVcf.join(" ")} sv/
+  mv ${combinedVcfTbi.join(" ")} sv/
+  vcfs=(\$(ls sv/*.vcf.gz))
   if [[ \${#vcfs[@]} > 1 ]]
   then
     bcftools merge \
@@ -26,7 +27,7 @@ process GermlineAggregateSv {
     --merge none \
     --output-type z \
     --output sv_germline.vcf.gz \
-    sv/*delly.manta.vcf.gz
+    sv/*.vcf.gz
   else
     mv \${vcfs[0]} sv_germline.vcf.gz
   fi

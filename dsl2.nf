@@ -35,7 +35,7 @@ include { mutSig_wf }            from './modules/subworkflow/mutSig_wf'
 include { mdParse_wf }           from './modules/subworkflow/mdParse_wf'
 include { loh_wf }               from './modules/subworkflow/loh_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { facets_wf }            from './modules/subworkflow/facets_wf'           addParams(referenceMap: referenceMap, targetsMap: targetsMap)
-include { sv_wf }                from './modules/subworkflow/sv_wf_new'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { sv_wf }                from './modules/subworkflow/sv_wf'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { snv_wf }               from './modules/subworkflow/snv_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { sampleQC_wf }          from './modules/subworkflow/sampleQC_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap, multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { samplePairingQC_wf }   from './modules/subworkflow/samplePairingQC_wf'  addParams(referenceMap: referenceMap, targetsMap: targetsMap)
@@ -67,9 +67,10 @@ workflow {
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
+  doWF_facets          = doWF_SV && params.assayType == "genome" && ["hisens","purity"].contains(params.svcnv) ? true : doWF_facets
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
-  doWF_QC	       = 'qc' in WFs ? true : false
+  doWF_QC              = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
@@ -198,14 +199,29 @@ workflow {
 
     if(doWF_SV)
     {
-      sv_wf(bamFiles, manta_wf.out.manta4Combine)
+      if (params.assayType == "genome") {
+        if (params.svcnv == "ascat"){
+          ascat_wf(bamFiles)
+          samplestatistics = ascat_wf.out.ascatSS
+          CNVcalls = ascat_wf.out.ascatCNV
+        } else if(params.svcnv == "hisens") {
+          samplestatistics = facets_wf.out.FacetsHisensSampleStatistics4BRASS
+          CNVcalls = facets_wf.out.FacetsHisensCNV4HrDetectFiltered
+        } else if(params.svcnv == "purity"){
+          samplestatistics = facets_wf.out.FacetsPuritySampleStatistics4BRASS
+          CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
+        }
+      } else { 
+        samplestatistics = Channel.empty()
+        CNVcalls = Channel.empty()
+      }
+      sv_wf(
+        bamFiles, 
+        manta_wf.out.manta4Combine, 
+        samplestatistics
+      )
       if (doWF_SNV && params.assayType == "genome"){
-	if (params.use_ascat) {
-        	ascat_wf(bamFiles)
-        	hrdetect_wf(ascat_wf.out.ascatCNV, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
-	} else {
-		hrdetect_wf(facets_wf.out.FacetsCNV4HrDetectFiltered, snv_wf.out.mafFile, sv_wf.out.dellyMantaCombinedBedpe)
-	}
+        	hrdetect_wf(CNVcalls, snv_wf.out.mafFile, sv_wf.out.SVAnnotBedpePass)
       }
     }
 

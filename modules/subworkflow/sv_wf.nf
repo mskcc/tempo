@@ -1,12 +1,16 @@
 include { SomaticDellyCall }           from '../process/SV/SomaticDellyCall' 
-include { SomaticMergeDellyAndManta }  from '../process/SV/SomaticMergeDellyAndManta' 
+include { SomaticRunSvABA }            from '../process/SV/SomaticRunSvABA' 
+include { brass_wf }                   from './brass_wf' addParams(referenceMap: params.referenceMap)
+include { SomaticMergeSVs }            from '../process/SV/SomaticMergeSVs' 
 include { SomaticSVVcf2Bedpe }         from '../process/SV/SomaticSVVcf2Bedpe'
+include { SomaticAnnotateSVBedpe }     from '../process/SV/SomaticAnnotateSVBedpe'
 
 workflow sv_wf
 {
   take:
     bamFiles
     manta4Combine
+    sampleStatistics
 
   main:
     referenceMap = params.referenceMap
@@ -30,24 +34,54 @@ workflow sv_wf
 	.combine(manta4Combine, by: [0,1,2])
 	.set{ dellyMantaCombineChannel }
 
-    // --- Process Delly and Manta VCFs 
-    // Merge VCFs, Delly and Manta
-    SomaticMergeDellyAndManta(
-      dellyMantaCombineChannel,
+    if (params.assayType == "genome" && workflow.profile != "test") {
+      SomaticRunSvABA(
+        bamFiles,
+        referenceMap.genomeFile, 
+        referenceMap.genomeIndex,
+        referenceMap.genomeDict,
+        referenceMap.bwaIndex
+      )
+
+      brass_wf(
+        bamFiles, 
+        sampleStatistics // from ascat
+      )
+      
+      dellyMantaCombineChannel
+        .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
+        .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
+        .set{allSvCallsCombineChannel}
+    } else {
+      dellyMantaCombineChannel
+        .map{ it + ["","","",""]}
+        .set{allSvCallsCombineChannel}
+    }
+    
+    // --- Process SV VCFs 
+    // Merge VCFs
+    SomaticMergeSVs(
+      allSvCallsCombineChannel,
       workflow.projectDir + "/containers/bcftools-vt-mergesvvcf"
     )
 
+    // Convert VCF to Bedpe
     SomaticSVVcf2Bedpe(
-      SomaticMergeDellyAndManta.out.dellyMantaCombined,
+      SomaticMergeSVs.out.SVCallsCombinedVcf
+    )
+
+    // Annotate Bedpe
+    SomaticAnnotateSVBedpe(
+      SomaticSVVcf2Bedpe.out.SomaticCombinedUnfilteredBedpe,
       referenceMap.repeatMasker,
       referenceMap.mapabilityBlacklist,
-      referenceMap.annotSVref, 
-      referenceMap.spliceSites, 
-      workflow.projectDir + "/containers/svtools" 
+      referenceMap.spliceSites,
+      workflow.projectDir + "/containers/iannotatesv",
+      params.genome
     )
 
   emit:
-    dellyMantaCombinedBedpe         = SomaticSVVcf2Bedpe.out.SVCombinedBedpe
-    dellyMantaCombinedBedpePass     = SomaticSVVcf2Bedpe.out.SVCombinedBedpePass
-    sv4Aggregate                    = SomaticMergeDellyAndManta.out.dellyMantaCombined
+    SVAnnotBedpe         = SomaticAnnotateSVBedpe.out.SVAnnotBedpe
+    SVAnnotBedpePass     = SomaticAnnotateSVBedpe.out.SVAnnotBedpePass
+    sv4Aggregate         = SomaticMergeSVs.out.SVCallsCombinedVcf
 }
