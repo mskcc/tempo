@@ -1,7 +1,7 @@
 process SomaticAnnotateSVBedpe {
   tag "${idTumor}__${idNormal}"
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.filtered.bedpe"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.annot.filtered*.bedpe"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bedpein) 
