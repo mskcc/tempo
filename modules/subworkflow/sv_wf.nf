@@ -1,4 +1,6 @@
 include { SomaticDellyCall }           from '../process/SV/SomaticDellyCall' 
+include { DellyCombine
+            as SomaticDellyCombine }   from '../process/SV/DellyCombine'
 include { SomaticRunSvABA }            from '../process/SV/SomaticRunSvABA' 
 include { brass_wf }                   from './brass_wf' addParams(referenceMap: params.referenceMap)
 include { SomaticMergeSVs }            from '../process/SV/SomaticMergeSVs' 
@@ -29,10 +31,13 @@ workflow sv_wf
 
     // Put manta output and delly output into the same channel so they can be processed together in the group key
     // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+  SomaticDellyCombine(
     SomaticDellyCall.out.dellyFilter4Combine
-    	.groupTuple(by: [0,1,2], size: 5)
-	.combine(manta4Combine, by: [0,1,2])
-	.set{ dellyMantaCombineChannel }
+      .groupTuple(by: [0,1,2], size: 5),
+    "somatic")
+  SomaticDellyCombine.out
+	  .combine(manta4Combine, by: [0,1,2])
+	  .set{ dellyMantaCombineChannel }
 
     if (params.assayType == "genome" && workflow.profile != "test") {
       SomaticRunSvABA(
