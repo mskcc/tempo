@@ -6,7 +6,7 @@ process SomaticMergeSVs {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), 
-      path(dellyVcfs), path(dellyVcfsIndex), 
+      path(dellyFile), path(dellyIndex),
       path(mantaFile), path(mantaIndex), 
       file(svabaFile), file(svabaIndex), 
       file(brassFile), file(brassIndex)
@@ -22,19 +22,11 @@ process SomaticMergeSVs {
   labelparam = svabaFile.name.endsWith("vcf.gz") ?  labelparam + ",svaba" : labelparam 
   labelparam = brassFile.name.endsWith("vcf.gz") ?  labelparam + ",brass" : labelparam 
   labelparam_list = labelparam.split(",")
-  inVCFs = "${outputPrefix}.delly.vcf.gz ${mantaFile} "
+  inVCFs = "${dellyFile} ${mantaFile} "
   inVCFs = labelparam_list.contains("svaba") ? inVCFs + " svaba.reformat.vcf.gz " : inVCFs 
   inVCFs = labelparam_list.contains("brass") ? inVCFs + " brass.reformat.vcf.gz " : inVCFs 
   passMin = labelparam_list.size() > 2 ? 2 : 1
   """
-  bcftools concat \\
-    --allow-overlaps \\
-    --output-type z \\
-    --output ${outputPrefix}.delly.vcf.gz \\
-    *.delly.vcf.gz 
-
-  tabix --preset vcf ${outputPrefix}.delly.vcf.gz 
-
   if [ "${labelparam_list.contains("brass")}" = true ] ; then 
     echo -e "TUMOUR ${idTumor}\\nNORMAL ${idNormal}" > brass.samplenames.tsv 
     bcftools reheader \\
