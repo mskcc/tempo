@@ -2,6 +2,9 @@
 # they use SvABA version 134 (4a0606eba1bfd43c3d38433b27ac7f5e4887bc1e) but that is outdated at this point so start with latest commit
 FROM centos:7.3.1611
 
+LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
+    version.image="0.0.1"
+
 RUN yum install -y epel-release
 RUN yum install -y \
     git \
@@ -11,7 +14,14 @@ RUN yum install -y \
     make \
     wget \
     bzip2-devel.x86_64 \
-    xz-devel
+    xz-devel \
+    bcftools \
+    tabix
+
+# original commit for pcawg
+ENV SVABA_COMMIT 4a0606eba1bfd43c3d38433b27ac7f5e4887bc1e
+# latest release commit
+#ENV SVABA_COMMIT d12cf224f7a488b913eabbcf54a215e17238032c
 
 # SvABA Version: 1.1.3 (4d7b57);
 # Submodule path 'SeqLib': checked out 'f7a89a127409a3f52fdf725fa74e5438c68e48fb'
@@ -20,7 +30,7 @@ RUN yum install -y \
 # Submodule path 'SeqLib/htslib': checked out '49fdfbda20acbd73303df3c7fef84f2d972c5f8d'
 RUN git clone  https://github.com/walaj/svaba && \
 cd svaba && \
-git checkout 4d7b571356661c4ad34893ca2a47399212e0632b && \
+git checkout ${SVABA_COMMIT} && \
 git submodule update --init --recursive && \
 ./configure && \
 make && \
