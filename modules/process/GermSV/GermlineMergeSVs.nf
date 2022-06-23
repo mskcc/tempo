@@ -5,24 +5,25 @@ process GermlineMergeSVs {
 
   input:
     tuple val(idNormal), val(target), 
-      path(dellyVcfs), path(dellyVcfsIndex), 
-      path(mantaFile), path(mantaIndex)
+      path(Vcfs), path(Tbis),
+      path(callerNames)
     path(custom_scripts)
 
   output:
     tuple val(idNormal), val(target), path("${idNormal}.merged.vcf.gz"), path("${idNormal}.merged.vcf.gz.tbi"), emit: SVsCombinedOutputGermline
 
   script:
-  labelparam = "delly,manta" 
-  inVCFs = "${idNormal}.delly.vcf.gz ${mantaFile} "
+  vcfMap = [:]
+  for (i in 1..callerNames.size()){
+    vcfMap.put(callerNames[i-1], Vcfs[i-1])
+  }
+  labelparam = callerNames.sort().join(",")
+  inVCFs = ""
+  for (i in callerNames.sort()){
+    inVCFs += " " + vcfMap[i]
+  }
+  passMin = callerNames.size() > 2 ? 2 : 1
   """ 
-  bcftools concat \\
-    --allow-overlaps \\
-    --output-type z \\
-    --output ${idNormal}.delly.vcf.gz \\
-    *.delly.vcf.gz 
-  tabix --preset vcf ${idNormal}.delly.vcf.gz 
-
   mergesvvcf \\
     -n -m 1 \\
     -l ${labelparam} \\
@@ -38,7 +39,7 @@ process GermlineMergeSVs {
   python ${custom_scripts}/filter-sv-vcf.py \\
     --input ${idNormal}.merged.clean.anon.vcf \\
     --output ${idNormal}.merged.clean.anon.corrected.vcf \\
-    --min 1 
+    --min ${passMin} 
 
   bcftools annotate \\
     --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
