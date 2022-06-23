@@ -24,7 +24,10 @@ workflow germlineSV_wf
     )
     GermlineDellyCombine(
       GermlineDellyCall.out.dellyFilter4CombineGermline
-        .map{ idNormal, target, vcf, tbi -> ["",idNormal, target, vcf, tbi]}
+        .groupTuple(by: [0,1], size: 5)
+        .map{ normal_id, target, vcf, tbi ->
+          [ "", normal_id, target, vcf.sort(), tbi.sort() ]
+        }
       , "germline"
     )
 
