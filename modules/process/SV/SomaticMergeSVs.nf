@@ -18,33 +18,10 @@ process SomaticMergeSVs {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  labelparam = "delly,manta" 
-  labelparam = svabaFile.name.endsWith("vcf.gz") ?  labelparam + ",svaba" : labelparam 
-  labelparam = brassFile.name.endsWith("vcf.gz") ?  labelparam + ",brass" : labelparam 
-  labelparam_list = labelparam.split(",")
-  inVCFs = "${dellyFile} ${mantaFile} "
-  inVCFs = labelparam_list.contains("svaba") ? inVCFs + " svaba.reformat.vcf.gz " : inVCFs 
-  inVCFs = labelparam_list.contains("brass") ? inVCFs + " brass.reformat.vcf.gz " : inVCFs 
+  labelparam = "delly,manta,svaba,brass"
+  inVCFs = [dellyFile,mantaFile,svabaFile,brassFile].join(" ")
   passMin = labelparam_list.size() > 2 ? 2 : 1
   """
-  if [ "${labelparam_list.contains("brass")}" = true ] ; then 
-    echo -e "TUMOUR ${idTumor}\\nNORMAL ${idNormal}" > brass.samplenames.tsv 
-    bcftools reheader \\
-      --samples brass.samplenames.tsv \\
-      --output brass.reformat.vcf.gz \\
-      ${brassFile}
-    tabix -p vcf brass.reformat.vcf.gz
-  fi
-
-  if [ "${labelparam_list.contains("svaba")}" = true ] ; then 
-    echo -e "${idTumor}.bam ${idTumor}\\n${idNormal}.bam ${idNormal}" > svaba.samplenames.tsv 
-    bcftools reheader \\
-      --samples svaba.samplenames.tsv \\
-      --output svaba.reformat.vcf.gz \\
-      ${svabaFile}
-    tabix -p vcf svaba.reformat.vcf.gz
-  fi
-
   mergesvvcf \\
     -n -m ${passMin} \\
     -l ${labelparam} \\
