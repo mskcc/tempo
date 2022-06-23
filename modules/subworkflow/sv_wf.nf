@@ -33,11 +33,12 @@ workflow sv_wf
     // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
   SomaticDellyCombine(
     SomaticDellyCall.out.dellyFilter4Combine
-      .groupTuple(by: [0,1,2], size: 5),
-    "somatic")
-  SomaticDellyCombine.out
-	  .combine(manta4Combine, by: [0,1,2])
-	  .set{ dellyMantaCombineChannel }
+      .groupTuple(by: [0,1,2], size: 5)
+      .map{tumor_id, normal_id, target, vcf, tbi ->
+        [ tumor_id, normal_id, target, vcf.sort(), tbi.sort() ]
+      }
+    , "somatic"
+  )
 
     if (params.assayType == "genome" && workflow.profile != "test") {
       SomaticRunSvABA(
@@ -53,10 +54,6 @@ workflow sv_wf
         sampleStatistics // from ascat
       )
       
-      dellyMantaCombineChannel
-        .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
-        .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
-        .set{allSvCallsCombineChannel}
       SomaticDellyCombine.out
         .combine(manta4Combine, by: [0,1,2])
         .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
