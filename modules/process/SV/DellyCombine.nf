@@ -11,7 +11,8 @@ process DellyCombine {
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.delly.vcf.gz"), path("${outputPrefix}.delly.vcf.gz.tbi")
     
   script:
-  outputPrefix = [idTumor,idNormal].unique().remove("")
+  outputPrefix = [idTumor,idNormal].unique()
+  outputPrefix.remove("")
   outputPrefix = outputPrefix.join("__")
   """
   bcftools concat \\
