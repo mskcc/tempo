@@ -54,19 +54,17 @@ workflow sv_wf
         sampleStatistics // from ascat
       )
       
-      SomaticDellyCombine.out
-        .combine(manta4Combine, by: [0,1,2])
-        .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
-        .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
-        .map{ t,n,target,dellyvcf,dellytbi,mantavcf,mantatbi,svabavcf,svabatbi,brassvcf,brasstbi ->
-          [t,n,target,[dellyvcf,mantavcf,svabavcf,brassvcf],[dellytbi,mantatbi,svabatbi,brasstbi],["delly","manta","svaba","brass"]]
-        }.set{allSvCallsCombineChannel}
+      SomaticDellyCombine.out.map{ it + ["delly"]}
+        .mix(manta4Combine.map{ it + ["manta"]})
+        .mix(SomaticRunSvABA.out.SvABA4Combine.map{ it + ["svaba"]})
+        .mix(brass_wf.out.BRASS4Combine.map{ it + ["brass"]})
+        .groupTuple( by:[0,1,2], size:4, sort:true )
+        .set{allSvCallsCombineChannel}
     } else {
-      SomaticDellyCombine.out
-        .combine(manta4Combine, by: [0,1,2])
-        .map{ t,n,target,dellyvcf,dellytbi,mantavcf,mantatbi ->
-          [t,n,target,[dellyvcf,mantavcf],[dellytbi,mantatbi],["delly","manta"]]
-        }.set{allSvCallsCombineChannel}
+      SomaticDellyCombine.out.map{ it + ["delly"]}
+        .mix(manta4Combine.map{ it + ["manta"]})
+        .groupTuple( by:[0,1,2], size:2, sort:true )
+        .set{allSvCallsCombineChannel}
     }
     
     // --- Process SV VCFs 
