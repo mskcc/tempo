@@ -6,10 +6,8 @@ process SomaticMergeSVs {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), 
-      path(dellyFile), path(dellyIndex),
-      path(mantaFile), path(mantaIndex), 
-      file(svabaFile), file(svabaIndex), 
-      file(brassFile), file(brassIndex)
+      path(Vcfs), path(Tbis),
+      path(callerNames)
     path(custom_scripts) 
 
   output:
@@ -18,8 +16,15 @@ process SomaticMergeSVs {
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
-  labelparam = "delly,manta,svaba,brass"
-  inVCFs = [dellyFile,mantaFile,svabaFile,brassFile].join(" ")
+  vcfMap = [:]
+  for (i in 1..callerNames.size()){
+    vcfMap.put(callerNames[i-1], Vcfs[i-1])
+  }
+  labelparam = callerNames.sort().join(",")
+  inVCFs = ""
+  for (i in callerNames.sort()){
+    inVCFs += " " + vcfMap[i]
+  }
   passMin = labelparam_list.size() > 2 ? 2 : 1
   """
   mergesvvcf \\

@@ -57,10 +57,19 @@ workflow sv_wf
         .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
         .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
         .set{allSvCallsCombineChannel}
+      SomaticDellyCombine.out
+        .combine(manta4Combine, by: [0,1,2])
+        .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
+        .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
+        .map{ t,n,target,dellyvcf,dellytbi,mantavcf,mantatbi,svabavcf,svabatbi,brassvcf,brasstbi ->
+          [t,n,target,[dellyvcf,mantavcf,svabavcf,brassvcf],[dellytbi,mantatbi,svabatbi,brasstbi],["delly","manta","svaba","brass"]]
+        }.set{allSvCallsCombineChannel}
     } else {
-      dellyMantaCombineChannel
-        .map{ it + ["","","",""]}
-        .set{allSvCallsCombineChannel}
+      SomaticDellyCombine.out
+        .combine(manta4Combine, by: [0,1,2])
+        .map{ t,n,target,dellyvcf,dellytbi,mantavcf,mantatbi ->
+          [t,n,target,[dellyvcf,mantavcf],[dellytbi,mantatbi],["delly","manta"]]
+        }.set{allSvCallsCombineChannel}
     }
     
     // --- Process SV VCFs 
