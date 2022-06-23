@@ -25,7 +25,7 @@ process SomaticMergeSVs {
   for (i in callerNames.sort()){
     inVCFs += " " + vcfMap[i]
   }
-  passMin = labelparam_list.size() > 2 ? 2 : 1
+  passMin = callerNames.size() > 2 ? 2 : 1
   """
   mergesvvcf \\
     -n -m ${passMin} \\
