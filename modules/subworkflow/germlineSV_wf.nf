@@ -38,11 +38,10 @@ workflow germlineSV_wf
     )
 
     GermlineDellyCombine.out
-        .map{ tumor_id, normal_id, target, vcf, tbi -> [normal_id, target, vcf, tbi ] }
-        .combine(GermlineRunManta.out.mantaOutputGermline, by: [0,1])
-        .map{ normal_id,target,dellyvcf,dellytbi,mantavcf,mantatbi ->
-          [normal_id,target,[dellyvcf,mantavcf],[dellytbi,mantatbi],["delly","manta"]]
-        }.set{allSvCallsCombineChannel}
+        .map{ tumor_id, normal_id, target, vcf, tbi -> [normal_id, target, vcf, tbi, "delly" ] }
+        .mix(GermlineRunManta.out.mantaOutputGermline.map{ it + ["manta"]})
+        .groupTuple( by:[0,1], size:2, sort:true )
+        .set{allSvCallsCombineChannel}
 
     GermlineMergeSVs(
         allSvCallsCombineChannel,
