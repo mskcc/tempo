@@ -27,6 +27,14 @@ def run_pair_to_bed(bedpe,bed,match_type):
 	result = bedpe.pair_to_bed(bed, **{'type': match_type})
 	return result
 
+def run_pair_to_pair(bedpe,filter_bedpe,match_type,ignore_strand=False):
+	"""
+	use pybedtools to run bedtools pairtopair
+	a length of 1 base must be artificially added to each end with a length of 0, otherwise no overlap
+	"""
+	result = bedpe.pair_to_pair(filter_bedpe, **{'type': match_type,'is':ignore_strand})
+	return result
+
 
 def bedtool_to_df(bt,header_list):
 	try:
