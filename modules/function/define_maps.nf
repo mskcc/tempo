@@ -62,6 +62,9 @@ def defineReferenceMap() {
     if (! workflow.profile.startsWith("test") ){
     	result_array << ['brassRefDir' : checkParamReturnFile('brassRefDir')]
     	result_array << ['vagrentRefDir' : checkParamReturnFile('vagrentRefDir')]
+      result_array << ['svBlacklistBed' : checkParamReturnFile('svBlacklistBed')]
+      result_array << ['svBlacklistBedpe' : checkParamReturnFile('svBlacklistBedpe')]
+      result_array << ['svBlacklistFoldbackBedpe' : checkParamReturnFile('svBlacklistFoldbackBedpe')]
     }
     
   return result_array
