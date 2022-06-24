@@ -4,7 +4,7 @@ process DellyCombine {
   publishDir "${params.outDir}/${mode}/${outputPrefix}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
   
   input:
-    tuple val(idTumor), val(idNormal), val(target), val(inputVcfs), val(inputTbis)
+    tuple val(idTumor), val(idNormal), val(target), path(inputVcfs), path(inputTbis)
     val(mode)
     
   output:
