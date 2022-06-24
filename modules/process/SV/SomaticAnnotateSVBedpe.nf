@@ -19,14 +19,14 @@ process SomaticAnnotateSVBedpe {
   outputPrefix = "${idTumor}__${idNormal}"
   genome_ = ["GRCh37","smallGRCh37"].contains(genome) ? "hg19" : genome == "GRCh38" ? "hg38" : "hg18"
   """
-  python ${custom_scripts}/pair_to_bed_annot.py \\
+  python ${custom_scripts}/filter_regions_bedpe.py \\
     --blacklist-regions ${mapabilityBlacklist} \\
     --bedpe ${bedpein} \\
     --tag mappability \\
     --output ${outputPrefix}.combined.dac.bedpe \\
     --match-type either 
   
-  python ${custom_scripts}/pair_to_bed_annot.py \\
+  python ${custom_scripts}/filter_regions_bedpe.py \\
     --blacklist-regions ${repeatMasker} \\
     --bedpe ${outputPrefix}.combined.dac.bedpe \\
     --tag repeat_masker \\
