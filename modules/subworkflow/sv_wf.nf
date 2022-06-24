@@ -33,9 +33,9 @@ workflow sv_wf
     // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
   SomaticDellyCombine(
     SomaticDellyCall.out.dellyFilter4Combine
-      .groupTuple(by: [0,1,2], size: 5)
+      .groupTuple(by: [0,1,2], size: 5, sort:true)
       .map{tumor_id, normal_id, target, vcf, tbi ->
-        [ tumor_id, normal_id, target, vcf.sort(), tbi.sort() ]
+        [ tumor_id, normal_id, target, vcf, tbi ]
       }
     , "somatic"
   )
