@@ -6,7 +6,7 @@ process GermlineMergeSVs {
   input:
     tuple val(idNormal), val(target), 
       path(Vcfs), path(Tbis),
-      path(callerNames)
+      val(callerNames)
     path(custom_scripts)
 
   output:
