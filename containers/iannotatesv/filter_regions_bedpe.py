@@ -39,6 +39,9 @@ def validate_match_type(type):
 		raise ValueError( "--match-type must be {}.".format(" or ".join(overlap_type.keys())) )
 
 def main():
+	"""
+	validate inputs, read input beds/bedpes as 
+	"""
 	args = usage()
 
 	# parse inputs
@@ -59,20 +62,18 @@ def main():
 	# annotate bedpe
 	try:
 		bedpe_bt = pybedtools.BedTool.from_dataframe(bedpe_df)
-		ids_df = find_overlapped_ids(bedpe_bt, regions_bt, args.type, args.tag, args.ignore_strand, is_bed, bedpe_header_list)
+		ids_df = find_overlapped_ids(bedpe_bt, regions_bt, args.type, args.ignore_strand, is_bed)
 		bedpe_df = add_filter_by_id(bedpe_df,ids_df,args.tag)
 	except Exception as e:
 		print(e)
 		sys.exit()
 
 	# write result
-	#bedpe_df = bedtool_to_df(bedpe_bt,bedpe_header_list)
 	with open(args.outfile, "w") as fw:
 		fw.write("".join(meta_header))
-	#filtered_bed_df.to_csv(args.outfile, header=True, index=False, sep="\t", mode="a")
 	bedpe_df.to_csv(args.outfile, header=True, index=False, sep="\t", mode="a")
 
-def find_overlapped_ids(bedpe_bt,regions_bt,match_type,tag,ignore_strand,is_bed,bedpe_header_list):
+def find_overlapped_ids(bedpe_bt,regions_bt,match_type,ignore_strand,is_bed):
 	# determine validity of match_type
 	validate_match_type(match_type)
 
@@ -91,8 +92,6 @@ def find_overlapped_ids(bedpe_bt,regions_bt,match_type,tag,ignore_strand,is_bed,
 
 def add_filter_by_id(bedpe_df,ids_df,tag):
 	# annotate bedpe based on matching IDs
-	# intersect_df = bedtool_to_df(intersect,bedpe_header_list)[["ID"]].drop_duplicates()
-	# intersect_df["FILTER_NEW"] = tag
 	ids_df.columns = ["ID"]
 	ids_df["FILTER_NEW"] = tag
 	filtered_bedpe_df = bedpe_df.merge(ids_df, on="ID", how="left")
