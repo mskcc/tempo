@@ -3,6 +3,13 @@ import numpy as np
 import pandas as pd
 import pybedtools
 
+
+overlap_type = {"both":"notboth",
+				"notboth":"both",
+				"either":"neither",
+				"neither":"either"
+				}
+
 def add_tag(val,tag ):
 	"""
 	update FILTER value 
