@@ -7,7 +7,7 @@ process SomaticMergeSVs {
   input:
     tuple val(idTumor), val(idNormal), val(target), 
       path(Vcfs), path(Tbis),
-      path(callerNames)
+      val(callerNames)
     path(custom_scripts) 
 
   output:

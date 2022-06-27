@@ -34,9 +34,6 @@ workflow sv_wf
   SomaticDellyCombine(
     SomaticDellyCall.out.dellyFilter4Combine
       .groupTuple(by: [0,1,2], size: 5, sort:true)
-      .map{tumor_id, normal_id, target, vcf, tbi ->
-        [ tumor_id, normal_id, target, vcf, tbi ]
-      }
     , "somatic"
   )
 
