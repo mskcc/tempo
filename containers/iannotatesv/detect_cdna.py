@@ -64,6 +64,7 @@ def main():
 	artefact_calls = get_artefact_calls(intersect_df)
 
 	cdna_filter = bedpe_df.merge(artefact_calls, on="ID", how="left")
+	cdna_filter["POTENTIAL_CDNA_CONTAMINATION"] = cdna_filter["POTENTIAL_CDNA_CONTAMINATION"].replace(np.nan, ".")
 		
 	with open(args.outbedpe, "w") as fw:
 		fw.write("".join(meta_header))

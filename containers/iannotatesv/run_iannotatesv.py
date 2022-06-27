@@ -45,6 +45,7 @@ def main():
 	iAnnotate_output = pd.merge(iAnnotate_input,iAnnotate_output, on="chr1|pos1|str1|chr2|pos2|str2".split("|"), how="inner")
 
 	annot_data = iAnnotate_output.drop("chr1|pos1|str1|chr2|pos2|str2".split("|"), axis=1)
+	annot_data = annot_data.replace(np.nan, ".")
 
 	final_data = pd.merge(data, annot_data, on="ID",how="left")
 
