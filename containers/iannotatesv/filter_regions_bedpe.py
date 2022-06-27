@@ -40,7 +40,10 @@ def validate_match_type(type):
 
 def main():
 	"""
-	validate inputs, read input beds/bedpes as 
+	1. validate inputs
+	2. read input beds/bedpes as pybedtools.BedTool objects
+	3. extract variant IDs from overlapping regions
+	4. update the FILTER tag for identified variants
 	"""
 	args = usage()
 
