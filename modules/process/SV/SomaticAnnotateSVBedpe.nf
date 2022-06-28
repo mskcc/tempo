@@ -46,7 +46,7 @@ process SomaticAnnotateSVBedpe {
   python ${custom_scripts}/filter_regions_bedpe.py \\
     --blacklist-regions ${svBlacklistBedpe} \\
     --bedpe ${outputPrefix}.combined.dac.rm.pcawg.1.bedpe \\
-    --tag pcawg_blacklist_bed \\
+    --tag pcawg_blacklist_bedpe \\
     --output ${outputPrefix}.combined.dac.rm.pcawg.2.bedpe \\
     --match-type both \\
     --ignore-strand
@@ -54,7 +54,7 @@ process SomaticAnnotateSVBedpe {
   python ${custom_scripts}/filter_regions_bedpe.py \\
     --blacklist-regions ${svBlacklistFoldbackBedpe} \\
     --bedpe ${outputPrefix}.combined.dac.rm.pcawg.2.bedpe \\
-    --tag pcawg_blacklist_bed \\
+    --tag pcawg_blacklist_fb_bedpe \\
     --output ${outputPrefix}.combined.dac.rm.pcawg.3.bedpe \\
     --match-type both
   
