@@ -1,6 +1,6 @@
 process SomaticRunSvABA {
 	tag "${idTumor}__${idNormal}"
-    publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/svaba", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi,contigs.bam}"
+    publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/svaba", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi}"
 
     input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
@@ -14,7 +14,6 @@ process SomaticRunSvABA {
     path("*.vcf.gz*"), emit: allVcfs
     path("*.log"), emit: logs
     path("*.txt.gz"), emit: supportingFiles
-    path("*.contigs.bam"), emit: contigBams
 
     script:
     """
