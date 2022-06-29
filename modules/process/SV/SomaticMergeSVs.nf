@@ -1,8 +1,8 @@
 process SomaticMergeSVs {
   tag "${idTumor}__${idNormal}"
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.clean.vcf"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.raw.vcf"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), 

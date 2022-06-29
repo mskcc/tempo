@@ -1,7 +1,7 @@
 process GermlineMergeSVs {
   tag "${idNormal}"
 
-  publishDir "${params.outDir}/germline/${idNormal}/combined_svs/", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/germline/${idNormal}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
 
   input:
     tuple val(idNormal), val(target), 
