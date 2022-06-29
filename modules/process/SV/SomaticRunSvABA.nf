@@ -32,8 +32,8 @@ process SomaticRunSvABA {
     echo -e "${idTumor}.bam ${idTumor}\\n${idNormal}.bam ${idNormal}" > svaba.samplenames.tsv 
     bcftools reheader \\
       --samples svaba.samplenames.tsv \\
-      --output ${idTumor}__${idNormal}.reheader.svaba.somatic.sv.vcf.gz \\
-      ${idTumor}.svaba.somatic.sv.vcf.gz
-    tabix -p vcf ${idTumor}__${idNormal}.reheader.svaba.somatic.sv.vcf.gz
+      --output ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz \\
+      ${outputPrefix}.svaba.somatic.sv.vcf.gz
+    tabix -p vcf ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz
     """
 }
