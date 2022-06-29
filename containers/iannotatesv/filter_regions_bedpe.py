@@ -69,7 +69,7 @@ def main():
 		bedpe_df = add_filter_by_id(bedpe_df,ids_df,args.tag)
 	except Exception as e:
 		print(e)
-		sys.exit()
+		sys.exit("Filtering failed with inputs {} and {}".format(args.bedpe, args.regions))
 
 	# write result
 	with open(args.outfile, "w") as fw:
@@ -88,9 +88,9 @@ def find_overlapped_ids(bedpe_bt,regions_bt,match_type,ignore_strand,is_bed):
 
 	# extract ids
 	try:
-		ids_df = intersect.to_dataframe(header=None)[6].drop_duplicates()
+		ids_df = pd.DataFrame({"ID":list( intersect.to_dataframe(header=None)[6].drop_duplicates() )})
 	except:
-		ids_df = pd.DataFrame(columns=["name"])
+		ids_df = pd.DataFrame(columns=["ID"])
 	return ids_df
 
 def add_filter_by_id(bedpe_df,ids_df,tag):
@@ -101,7 +101,7 @@ def add_filter_by_id(bedpe_df,ids_df,tag):
 	filtered_bedpe_df = filtered_bedpe_df.apply(lambda x: update_filter(x,x["FILTER_NEW"]) if not pd.isna(x["FILTER_NEW"]) else x, axis=1)
 	filtered_bedpe_df = filtered_bedpe_df.drop(['FILTER_NEW'], axis=1)
 
-	return filtered_bedpe_dfs
+	return filtered_bedpe_df
 
 if __name__ == "__main__":
 	main()
