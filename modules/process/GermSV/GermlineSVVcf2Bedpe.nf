@@ -1,7 +1,7 @@
 process GermlineSVVcf2Bedpe {
   tag "${idNormal}"
 
-  publishDir "${params.outDir}/germline/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.bedpe"
+  publishDir "${params.outDir}/germline/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.combined.bedpe"
 
   input:
     tuple val(idNormal), val(target), path(vcfFile), path(tbiFile)
