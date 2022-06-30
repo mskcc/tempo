@@ -46,6 +46,7 @@ workflow germlineSV_wf
         referenceMap.svBlacklistBed,
         referenceMap.svBlacklistBedpe,
         referenceMap.svBlacklistFoldbackBedpe,
+        referenceMap.svBlacklistTEBedpe,
         referenceMap.spliceSites, 
         workflow.projectDir + "/containers/iannotatesv",
         params.genome
