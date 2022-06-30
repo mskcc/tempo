@@ -10,6 +10,7 @@ process GermlineAnnotateSVBedpe {
     path(svBlacklistBed)
     path(svBlacklistBedpe)
     path(svBlacklistFoldbackBedpe)
+    path(svBlacklistTEBedpe)
     path(spliceSites)
     path(custom_scripts) 
     val(genome)
@@ -58,9 +59,16 @@ process GermlineAnnotateSVBedpe {
     --output ${outputPrefix}.combined.dac.rm.pcawg.3.bedpe \\
     --match-type both
   
+  python ${custom_scripts}/filter_regions_bedpe.py \\
+    --blacklist-regions ${svBlacklistTEBedpe} \\
+    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.3.bedpe \\
+    --tag pcawg_blacklist_te_bedpe \\
+    --output ${outputPrefix}.combined.dac.rm.pcawg.4.bedpe \\
+    --match-type either
+
   python ${custom_scripts}/detect_cdna.py \\
     --exon-junct ${spliceSites} \\
-    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.3.bedpe \\
+    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.4.bedpe \\
     --out-bedpe ${outputPrefix}.combined.dac.rm.pcawg.cdna.bedpe \\
     --out ${outputPrefix}.contamination.tsv
 

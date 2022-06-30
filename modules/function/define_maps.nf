@@ -65,6 +65,7 @@ def defineReferenceMap() {
       result_array << ['svBlacklistBed' : checkParamReturnFile('svBlacklistBed')]
       result_array << ['svBlacklistBedpe' : checkParamReturnFile('svBlacklistBedpe')]
       result_array << ['svBlacklistFoldbackBedpe' : checkParamReturnFile('svBlacklistFoldbackBedpe')]
+      result_array << ['svBlacklistTEBedpe' : checkParamReturnFile('svBlacklistTEBedpe')]
     }
     
   return result_array
