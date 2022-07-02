@@ -51,6 +51,8 @@ def prep_intersection(intersect=pd.DataFrame(),bedpe_header_list=[]):
 def main():
 	args = usage()
 
+	print("Detecting possible cdna contamination in {}".format(os.path.basename(args.bedpe)))
+
 	[meta_header, bedpe_header_list, bedpe_df] = parse_svtools_bedpe_file(args.bedpe)
 
 	bedpe_bt = pybedtools.BedTool.from_dataframe(bedpe_df)
