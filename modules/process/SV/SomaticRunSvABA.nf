@@ -34,6 +34,6 @@ process SomaticRunSvABA {
       --samples svaba.samplenames.tsv \\
       --output ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz \\
       ${outputPrefix}.svaba.somatic.sv.vcf.gz
-    tabix -p vcf ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz
+    bcftools index -f -t ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz
     """
 }
