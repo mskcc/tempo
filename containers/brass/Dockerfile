@@ -11,7 +11,6 @@ RUN mkdir -p /tmp \
     && apt-get install -y \
          procps \
 	 bcftools \
-	 tabix \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

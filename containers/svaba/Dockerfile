@@ -15,8 +15,7 @@ RUN yum install -y \
     wget \
     bzip2-devel.x86_64 \
     xz-devel \
-    bcftools \
-    tabix
+    bcftools
 
 # original commit for pcawg
 ENV SVABA_COMMIT 4a0606eba1bfd43c3d38433b27ac7f5e4887bc1e
