@@ -47,6 +47,8 @@ def main():
 	"""
 	args = usage()
 
+	print("Filtering {} with {} regions".format(os.path.basename(args.bedpe), args.tag))
+
 	# parse inputs
 	try:
 		validate_bedpe_input(args.bedpe)

@@ -1,6 +1,7 @@
 import argparse, sys, os, subprocess
 import numpy as np
 import pandas as pd
+from utils import *
 
 def usage():
 	parser = argparse.ArgumentParser()
@@ -12,39 +13,32 @@ def usage():
 def main():
 	args = usage()
 
-	meta=""
-	with open(args.bedpe, 'r') as f:
-		main_data = False
-		while main_data == False:
-			x = f.readline()
-			if x.startswith("##"):
-				meta += x
-			else: 
-				header=x
-				main_data = True
-		try:
-			data = pd.read_csv(f, header=None, sep="\t" )
-			data.columns = header.strip().split("\t")
-		except:
-			data = pd.DataFrame(columns = header.strip().split("\t"))
+	print("Running iAnnotateSV on {}".format(os.path.basename(args.bedpe)))
 
+	data = parse_svtools_bedpe_file(args.bedpe)
 	iAnnotate_input = data["#CHROM_A|START_A|STRAND_A|CHROM_B|START_B|STRAND_B|ID".split("|")]
 	iAnnotate_input.columns = "chr1|pos1|str1|chr2|pos2|str2|ID".split("|")
 
 	iAnnotate_input = iAnnotate_input.replace("-", 1).replace("+", 0)
 
-	iAnnotate_input.to_csv("input.txt",sep="\t",header=True,index=False)
+	n_chunks = int((999+iAnnotate_input.shape[0])/1000)
+	iAnnotate_output = pd.DataFrame()
 
-	if not os.path.isdir("outputdir"):
-		os.mkdir("outputdir")
-	run_args = "python /usr/bin/iAnnotateSV/iAnnotateSV/iAnnotateSV.py -i input.txt -ofp outputfilePrefix -o outputdir -r {} -d 3000""".format(args.genome).split(" ")
-	p = subprocess.Popen(run_args)
-	p.communicate()
-
-	iAnnotate_output = pd.read_csv("outputdir/outputfilePrefix_Annotated.txt", sep="\t",header=0)
-	iAnnotate_output = pd.merge(iAnnotate_input,iAnnotate_output, on="chr1|pos1|str1|chr2|pos2|str2".split("|"), how="inner")
+	for i in range(n_chunks):
+		iAnnotate_input_chunk = iAnnotate_input.iloc[(i-1)*1000:i*1000]
+		input_file = "input_" + str(i) + ".txt"
+		output_dir = "output_" + str(i)
+		iAnnotate_input_chunk.to_csv(input_file,sep="\t",header=True,index=False)
+		if not os.path.isdir(output_dir): os.mkdir(output_dir)
+		run_args = "python /usr/bin/iAnnotateSV/iAnnotateSV/iAnnotateSV.py -i {} -ofp outputfilePrefix -o {} -r {} -d 3000""".format(input_file, output_dir, args.genome).split(" ")
+		p = subprocess.Popen(run_args)
+		p.communicate()
+		iAnnotate_output_chunk = pd.read_csv(os.path.join(output_dir,"outputfilePrefix_Annotated.txt"), sep="\t",header=0)
+		iAnnotate_output_chunk = pd.merge(iAnnotate_input_chunk,iAnnotate_output_chunk, on="chr1|pos1|str1|chr2|pos2|str2".split("|"), how="inner")
+		iAnnotate_output = pd.concat([iAnnotate_output,iAnnotate_output_chunk])
 
 	annot_data = iAnnotate_output.drop("chr1|pos1|str1|chr2|pos2|str2".split("|"), axis=1)
+	final_data = pd.merge(data, annot_data, on="ID",how="left")
 
 	final_data = pd.merge(data, annot_data, on="ID",how="left")
 

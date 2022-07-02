@@ -62,27 +62,45 @@ def bedtool_to_df(bt,header_list):
 		print("Unable to apply formatting to bedpe columns using pandas, when converting pybedtool.Bedtool to pandas.DataFrame. Skipping...")
 	return df.drop_duplicates()
 
-def parse_svtools_bedpe_file(bedpe):
-	with open(bedpe, 'r') as f:
-		x = f.readlines()
-	meta_header = [x[y] for y in range(len(x)) if x[y].startswith("##")]
-	header_idx = [y for y in range(len(x)) if x[y].startswith("#CHROM")][0]
-	bedpe_header_list = x[header_idx].rstrip().split("\t")
-	bedpe_df = pd.read_csv(bedpe, skiprows=header_idx,header=0, sep="\t")
+def parse_svtools_bedpe_file(bedpe, offset = True):
+	"""
+	Read bedpe file
+	1. Separate components meta-data, header line, and records (main data)
+	2. Coerce chromosome values to string, and position coordinates to integer
+	3. if offset set to True, add +1 to END_* coordinates. This may be necessary for certain pybedtools operations.
+	"""
+	meta_header=""
+	with open(args.bedpe, 'r') as f:
+		main_data = False
+		while main_data == False:
+			x = f.readline()
+			if x.startswith("##"):
+				meta_header += x
+			else:
+				header = x
+				header_list = header.strip().split("\t")
+				main_data = True
+		try:
+			records_df = pd.read_csv(f, header=None, sep="\t" )
+			records_df.columns = header_list
+		except:
+			records_df = pd.DataFrame(columns = header_list)
+
 	try:
-		bedpe_df = bedpe_df.astype({i:int for i in "START_A|END_A|START_B|END_B".split("|")})
+		records_df = records_df.astype({i:int for i in "START_A|END_A|START_B|END_B".split("|")})
 		for j in ["#CHROM_A","CHROM_B"]:
-			if bedpe_df[j].dtype == 'float64':
-				bedpe_df = bedpe_df.astype({j:int}).astype({j:str})
+			if records_df[j].dtype == 'float64':
+				records_df = records_df.astype({j:int}).astype({j:str})
 	except Exception as e:
 		print(e)
 		print("Unable to apply formatting to bedpe columns in pandas. Skipping...")
 
 	try:
-		if bedpe_df.shape[0] > 0:
-			bedpe_df["END_A"] = bedpe_df.apply(lambda row: row["END_A"] + 1 if row["START_A"] == row["END_A"] else row["END_A"],axis=1)
-			bedpe_df["END_B"] = bedpe_df.apply(lambda row: row["END_B"] + 1 if row["START_B"] == row["END_B"] else row["END_B"],axis=1)
+		if offset:
+			if records_df.shape[0] > 0:
+				records_df["END_A"] = records_df.apply(lambda row: row["END_A"] + 1 if row["START_A"] == row["END_A"] else row["END_A"],axis=1)
+				records_df["END_B"] = records_df.apply(lambda row: row["END_B"] + 1 if row["START_B"] == row["END_B"] else row["END_B"],axis=1)
 	except Exception as e:
 		print(e)
 		print("Unable to add +1 offset to END_A and END_B columns in pandas. There may be issues with pybedtools. Skipping...")
-	return [meta_header, bedpe_header_list,bedpe_df]
+	return [meta_header, header_list, records_df]
