@@ -70,7 +70,7 @@ def parse_svtools_bedpe_file(bedpe, offset = True):
 	3. if offset set to True, add +1 to END_* coordinates. This may be necessary for certain pybedtools operations.
 	"""
 	meta_header=""
-	with open(args.bedpe, 'r') as f:
+	with open(bedpe, 'r') as f:
 		main_data = False
 		while main_data == False:
 			x = f.readline()
