@@ -20,7 +20,7 @@ process runBRASS {
 
     output:
     tuple val(idTumor), val(idNormal), val(target), path("brass/*.{vcf.gz,vcf.gz.tbi}"), emit: BRASSOutput
-    tuple val(idTumor), val(idNormal), val(target), path("${idTumor}__${idNormal}.reheader.annot.vcf.gz"), path("${idTumor}__${idNormal}.reheader.annot.vcf.gz"), emit: BRASS4Combine
+    tuple val(idTumor), val(idNormal), val(target), path("${idTumor}__${idNormal}.reheader.annot.vcf.gz"), path("${idTumor}__${idNormal}.reheader.annot.vcf.gz.tbi"), emit: BRASS4Combine
 
     script:
     outputPrefix = "${idTumor}__${idNormal}"
@@ -75,6 +75,6 @@ process runBRASS {
       --samples brass.samplenames.tsv \\
       --output ${idTumor}__${idNormal}.reheader.annot.vcf.gz \\
       brass/${idTumor}_vs_${idNormal}.annot.vcf.gz
-    tabix -p vcf ${idTumor}__${idNormal}.reheader.annot.vcf.gz
+    bcftools index -f -t ${idTumor}__${idNormal}.brass.reheader.annot.vcf.gz
     """
 }
