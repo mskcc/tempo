@@ -33,7 +33,7 @@ workflow sv_wf
     // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
   SomaticDellyCombine(
     SomaticDellyCall.out.dellyFilter4Combine
-      .groupTuple(by: [0,1,2], size: 5, sort:true)
+      .groupTuple( by: [0,1,2], size: 5 )
     , "somatic"
   )
 
@@ -55,12 +55,12 @@ workflow sv_wf
         .mix(manta4Combine.map{ it + ["manta"]})
         .mix(SomaticRunSvABA.out.SvABA4Combine.map{ it + ["svaba"]})
         .mix(brass_wf.out.BRASS4Combine.map{ it + ["brass"]})
-        .groupTuple( by:[0,1,2], size:4, sort:true )
+        .groupTuple( by:[0,1,2], size:4 )
         .set{allSvCallsCombineChannel}
     } else {
       SomaticDellyCombine.out.map{ it + ["delly"]}
         .mix(manta4Combine.map{ it + ["manta"]})
-        .groupTuple( by:[0,1,2], size:2, sort:true )
+        .groupTuple( by:[0,1,2], size:2 )
         .set{allSvCallsCombineChannel}
     }
     
