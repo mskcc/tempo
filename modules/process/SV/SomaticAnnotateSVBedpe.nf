@@ -74,7 +74,9 @@ process SomaticAnnotateSVBedpe {
 
   python ${custom_scripts}/run_iannotatesv.py \\
     --bedpe ${outputPrefix}.combined.dac.rm.pcawg.cdna.bedpe \\
-    --genome ${genome_}
+    --genome ${genome_} \\
+    --threads ${task.cpus * 2} \\
+    --chunk 500
 
   cp ${outputPrefix}.combined.dac.rm.pcawg.cdna.iannotate.bedpe \\
     ${outputPrefix}.combined.annot.filtered.bedpe
