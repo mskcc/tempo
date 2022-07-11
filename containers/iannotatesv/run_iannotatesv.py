@@ -64,8 +64,6 @@ def main():
 	annot_data = iAnnotate_output.drop(key_col.keys(), axis=1)
 	final_data = pd.merge(data, annot_data, on="ID",how="left")
 
-	final_data = pd.merge(data, annot_data, on="ID",how="left")
-
 	outputbed = os.path.basename(args.bedpe)[:-6] if args.bedpe.endswith(".bedpe") else os.path.basename(args.bedpe)
 	outputbed = os.path.join(os.path.dirname(args.bedpe),outputbed + ".iannotate.bedpe")
 	with open(outputbed, "w") as fw:
