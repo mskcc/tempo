@@ -31,7 +31,7 @@ process GermlineMergeSVs {
     ${inVCFs}
 
   cat ${idNormal}.merged.raw.vcf | \\
-    awk -F"\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{print}' | \\
+    awk -F"\\t" -v OFS="\\t" '\$1 ~ /^#/ && \$1 !~ /^##/ && \$1 !~ /^#CHROM/{next;}{for(i=1; i<=NF; i++) if(\$i ~ /^ *\$/) \$i = "."; print \$0}' | \\
   bcftools sort --temp-dir ./ \\
     > ${idNormal}.merged.clean.anon.vcf
 
