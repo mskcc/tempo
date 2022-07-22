@@ -66,7 +66,7 @@ process SomaticMergeSVs {
     > ${outputPrefix}.merged.clean.anon.vcf
 
   bcftools annotate \\
-    --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
+    --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS\\_%INFO/CHR2\\_%INFO/END\\_%INFO/STRANDS' \\
     -o ${outputPrefix}.merged.clean.vcf \\
     ${outputPrefix}.merged.clean.anon.vcf
 

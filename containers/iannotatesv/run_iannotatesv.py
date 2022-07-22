@@ -60,7 +60,7 @@ def main():
 	iAnnotate_output = pd.merge(iAnnotate_input,iAnnotate_output, on=key_col.keys(), how="inner")
 
 	print("[{}] Merging annotation with bedpe".format(datetime.now()))
-	annot_data = iAnnotate_output.drop(key_col.keys(), axis=1)
+	annot_data = iAnnotate_output.drop(key_col.keys(), axis=1).replace(np.nan, ".")
 	final_data = pd.merge(data, annot_data, on="ID",how="left")
 
 	outputbed = os.path.basename(args.bedpe)[:-6] if args.bedpe.endswith(".bedpe") else os.path.basename(args.bedpe)
