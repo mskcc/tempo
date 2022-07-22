@@ -29,7 +29,7 @@ process SomaticRunSvABA {
 
     rm -f *germline*
 
-    echo -e "${idTumor}.bam ${idTumor}\\n${idNormal}.bam ${idNormal}" > svaba.samplenames.tsv 
+    echo -e "${bamTumor} ${idTumor}\\n${bamNormal} ${idNormal}" > svaba.samplenames.tsv
     bcftools reheader \\
       --samples svaba.samplenames.tsv \\
       --output ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz \\
