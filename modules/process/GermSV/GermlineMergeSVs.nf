@@ -2,6 +2,7 @@ process GermlineMergeSVs {
   tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
+  publishDir "${params.outDir}/germline/${idNormal}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.raw.vcf.{gz,gz.tbi}"
 
   input:
     tuple val(idNormal), val(target), 
@@ -11,6 +12,7 @@ process GermlineMergeSVs {
 
   output:
     tuple val(idNormal), val(target), path("${idNormal}.merged.vcf.gz"), path("${idNormal}.merged.vcf.gz.tbi"), emit: SVsCombinedOutputGermline
+    path("${idNormal}.merged.raw.vcf.{gz,gz.tbi}")
 
   script:
   vcfMap = [:]
@@ -36,22 +38,25 @@ process GermlineMergeSVs {
   bcftools sort --temp-dir ./ \\
     > ${idNormal}.merged.clean.anon.vcf
 
-  python ${custom_scripts}/filter-sv-vcf.py \\
-    --input ${idNormal}.merged.clean.anon.vcf \\
-    --output ${idNormal}.merged.clean.anon.corrected.vcf \\
-    --min ${passMin} 
-
   bcftools annotate \\
     --set-id 'TEMPO_%INFO/SVTYPE\\_%CHROM\\_%POS' \\
     -o ${idNormal}.merged.clean.vcf \\
-    ${idNormal}.merged.clean.anon.corrected.vcf
+    ${idNormal}.merged.clean.anon.vcf
+
+  python ${custom_scripts}/filter-sv-vcf.py \\
+    --input ${idNormal}.merged.clean.vcf \\
+    --output ${idNormal}.merged.clean.corrected.vcf \\
+    --min ${passMin}
 
   bcftools view \\
     --samples ${idNormal} \\
     --output-type z \\
     --output-file ${idNormal}.merged.vcf.gz \\
-    ${idNormal}.merged.clean.vcf
+    ${idNormal}.merged.clean.corrected.vcf
   
-  tabix --preset vcf ${idNormal}.merged.vcf.gz 
+  tabix --preset vcf ${idNormal}.merged.vcf.gz
+
+  bcftools view -O z -o ${idNormal}.merged.raw.vcf.gz ${idNormal}.merged.raw.vcf
+  tabix --preset vcf ${idNormal}.merged.raw.vcf.gz
   """
 }
