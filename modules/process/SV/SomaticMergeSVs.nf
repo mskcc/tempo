@@ -2,7 +2,7 @@ process SomaticMergeSVs {
   tag "${idTumor}__${idNormal}"
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.vcf.{gz,gz.tbi}"
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.raw.vcf"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs/intermediate_files", mode: params.publishDirMode, pattern: "*.merged.raw.vcf.{gz,gz.tbi}"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), 
@@ -12,7 +12,7 @@ process SomaticMergeSVs {
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.merged.vcf.gz"), path("${outputPrefix}.merged.vcf.gz.tbi"), emit: SVCallsCombinedVcf
-    path("${outputPrefix}.merged.clean.vcf")
+    path("${outputPrefix}.merged.raw.vcf.{gz,gz.tbi}")
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
@@ -28,7 +28,7 @@ process SomaticMergeSVs {
   passMin = callerNames.size() > 2 ? 2 : 1
   """
   mergesvvcf \\
-    -n -m ${passMin} \\
+    -n -m 1 \\
     -l ${labelparam} \\
     -o ${outputPrefix}.merged.raw.vcf \\
     -f -d -s -v \\
@@ -56,5 +56,8 @@ process SomaticMergeSVs {
     ${outputPrefix}.merged.clean.corrected.vcf
   
   tabix --preset vcf ${outputPrefix}.merged.vcf.gz 
+
+  bcftools view -O z -o ${outputPrefix}.merged.raw.vcf.gz ${outputPrefix}.merged.raw.vcf
+  tabix --preset vcf ${outputPrefix}.merged.raw.vcf.gz
   """
 }
