@@ -11,7 +11,6 @@ def usage():
 	parser.add_argument('--bedpe', help = 'bedpe file', required = True)
 	parser.add_argument('--genome', default = "hg19", help = 'hg19/hg38/hg18')
 	parser.add_argument('--threads', type=int, default = 4, help = 'number of threads for parallelization')
-	parser.add_argument('--chunk', type=int, dest = "chunk_size", default = 500, help = 'how many records to process with a single thread')
 
 	return parser.parse_args()
 
@@ -38,7 +37,7 @@ def main():
 	for k,v in key_col.items():
 		iAnnotate_input[k] = iAnnotate_input[k].astype(v)
 
-	k = int(args.chunk_size)
+	k = int(500)
 	n_chunks = int(((k-1)+iAnnotate_input.shape[0])/k)
 	iAnnotate_output = pd.DataFrame()
 	if not os.path.isdir("inputs"): os.mkdir("inputs")
