@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+
+__author__  = "Anne Marie Noronha"
+__email__   = "noronhaa@mskcc.org"
+__version__ = "0.0.1"
+__status__  = "Dev"
+
 import argparse
 import numpy as np
 import pandas as pd
