@@ -81,6 +81,10 @@ workflow sv_wf
       SomaticSVVcf2Bedpe.out.SomaticCombinedUnfilteredBedpe,
       referenceMap.repeatMasker,
       referenceMap.mapabilityBlacklist,
+      referenceMap.svBlacklistBed,
+      referenceMap.svBlacklistBedpe,
+      referenceMap.svBlacklistFoldbackBedpe,
+      referenceMap.svBlacklistTEBedpe,
       referenceMap.spliceSites,
       workflow.projectDir + "/containers/iannotatesv",
       params.genome

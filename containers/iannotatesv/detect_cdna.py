@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+
+"""Identify deletion rearrangements that may pertain to cDNA contaminants"""
+
+__author__  = "Anne Marie Noronha"
+__email__   = "noronhaa@mskcc.org"
+__version__ = "0.0.1"
+__status__  = "Dev"
+
 import argparse, sys, os
 import numpy as np
 import pandas as pd
@@ -50,6 +59,8 @@ def prep_intersection(intersect=pd.DataFrame(),bedpe_header_list=[]):
 
 def main():
 	args = usage()
+
+	print("Detecting possible cdna contamination in {}".format(os.path.basename(args.bedpe)))
 
 	[meta_header, bedpe_header_list, bedpe_df] = parse_svtools_bedpe_file(args.bedpe)
 
