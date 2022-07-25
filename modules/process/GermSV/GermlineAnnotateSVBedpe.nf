@@ -1,12 +1,16 @@
 process GermlineAnnotateSVBedpe {
   tag "${idNormal}"
 
-  publishDir "${params.outDir}/germline/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.filtered.bedpe"
+  publishDir "${params.outDir}/germline/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.annot.filtered*.bedpe"
   
   input:
     tuple val(idNormal), val(target), path(bedpein) 
     path(repeatMasker)
     path(mapabilityBlacklist)
+    path(svBlacklistBed)
+    path(svBlacklistBedpe)
+    path(svBlacklistFoldbackBedpe)
+    path(svBlacklistTEBedpe)
     path(spliceSites)
     path(custom_scripts) 
     val(genome)
@@ -19,31 +23,61 @@ process GermlineAnnotateSVBedpe {
   outputPrefix = "${idNormal}"
   genome_ = ["GRCh37","smallGRCh37"].contains(genome) ? "hg19" : genome == "GRCh38" ? "hg38" : "hg18"
   """
-  python ${custom_scripts}/pair_to_bed_annot.py \\
+  python ${custom_scripts}/filter_regions_bedpe.py \\
     --blacklist-regions ${mapabilityBlacklist} \\
     --bedpe ${bedpein} \\
     --tag mappability \\
     --output ${outputPrefix}.combined.dac.bedpe \\
     --match-type either 
   
-  python ${custom_scripts}/pair_to_bed_annot.py \\
+  python ${custom_scripts}/filter_regions_bedpe.py \\
     --blacklist-regions ${repeatMasker} \\
     --bedpe ${outputPrefix}.combined.dac.bedpe \\
     --tag repeat_masker \\
     --output ${outputPrefix}.combined.dac.rm.bedpe \\
     --match-type either 
+
+  python ${custom_scripts}/filter_regions_bedpe.py \\
+    --blacklist-regions ${svBlacklistBed} \\
+    --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
+    --tag pcawg_blacklist_bed \\
+    --output ${outputPrefix}.combined.dac.rm.pcawg.1.bedpe \\
+    --match-type either
+
+  python ${custom_scripts}/filter_regions_bedpe.py \\
+    --blacklist-regions ${svBlacklistBedpe} \\
+    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.1.bedpe \\
+    --tag pcawg_blacklist_bedpe \\
+    --output ${outputPrefix}.combined.dac.rm.pcawg.2.bedpe \\
+    --match-type both \\
+    --ignore-strand
+
+  python ${custom_scripts}/filter_regions_bedpe.py \\
+    --blacklist-regions ${svBlacklistFoldbackBedpe} \\
+    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.2.bedpe \\
+    --tag pcawg_blacklist_fb_bedpe \\
+    --output ${outputPrefix}.combined.dac.rm.pcawg.3.bedpe \\
+    --match-type both
   
+  python ${custom_scripts}/filter_regions_bedpe.py \\
+    --blacklist-regions ${svBlacklistTEBedpe} \\
+    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.3.bedpe \\
+    --tag pcawg_blacklist_te_bedpe \\
+    --output ${outputPrefix}.combined.dac.rm.pcawg.4.bedpe \\
+    --match-type either
+
   python ${custom_scripts}/detect_cdna.py \\
     --exon-junct ${spliceSites} \\
-    --bedpe ${outputPrefix}.combined.dac.rm.bedpe \\
-    --out-bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
+    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.4.bedpe \\
+    --out-bedpe ${outputPrefix}.combined.dac.rm.pcawg.cdna.bedpe \\
     --out ${outputPrefix}.contamination.tsv
 
   python ${custom_scripts}/run_iannotatesv.py \\
-    --bedpe ${outputPrefix}.combined.dac.rm.cdna.bedpe \\
-    --genome ${genome_}
+    --bedpe ${outputPrefix}.combined.dac.rm.pcawg.cdna.bedpe \\
+    --genome ${genome_} \\
+    --threads ${task.cpus * 2}
 
-  cp ${outputPrefix}.combined.dac.rm.cdna.iannotate.bedpe \\
+  cp ${outputPrefix}.combined.dac.rm.pcawg.cdna.iannotate.bedpe \\
     ${outputPrefix}.combined.annot.filtered.bedpe
 
   awk -F"\\t" '\$1 ~ /#/ || \$12 == "PASS"' \\
