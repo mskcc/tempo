@@ -1,5 +1,6 @@
 include { SomaticDellyCall }           from '../process/SV/SomaticDellyCall' 
 include { SomaticRunSvABA }            from '../process/SV/SomaticRunSvABA' 
+include { SomaticRunGRIDSS }           from '../process/SV/SomaticRunGRIDSS'
 include { brass_wf }                   from './brass_wf' addParams(referenceMap: params.referenceMap)
 include { SomaticMergeSVs }            from '../process/SV/SomaticMergeSVs' 
 include { SomaticSVVcf2Bedpe }         from '../process/SV/SomaticSVVcf2Bedpe'
@@ -35,6 +36,18 @@ workflow sv_wf
 	.set{ dellyMantaCombineChannel }
 
     if (params.assayType == "genome" && workflow.profile != "test") {
+
+      SomaticRunGRIDSS(
+        bamFiles,
+        referenceMap.genomeFile,
+        referenceMap.genomeIndex,
+        referenceMap.bwaIndex,
+        referenceMap.svCallingExcludeBedRegions,
+        referenceMap.gridss_breakend_pon,
+        referenceMap.gridss_breakpoint_pon,
+        referenceMap.gridss_breakpoint_hotspot
+      )
+
       SomaticRunSvABA(
         bamFiles,
         referenceMap.genomeFile, 
