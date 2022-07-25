@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+
+"""Annotate SV Bedpe file with iAnnotateSV"""
+__author__  = "Anne Marie Noronha"
+__email__   = "noronhaa@mskcc.org"
+__version__ = "0.0.1"
+__status__  = "Dev"
+
 import argparse, sys, os, subprocess
 from collections import OrderedDict
 from datetime import datetime
