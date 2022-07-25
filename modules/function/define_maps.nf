@@ -67,6 +67,10 @@ def defineReferenceMap() {
       result_array << ['gridss_breakpoint_pon' : checkParamReturnFile('gridss_breakpoint_pon')]
       result_array << ['gridss_breakpoint_hotspot' : checkParamReturnFile('gridss_breakpoint_hotspot')]
     }
+      result_array << ['svBlacklistBed' : checkParamReturnFile('svBlacklistBed')]
+      result_array << ['svBlacklistBedpe' : checkParamReturnFile('svBlacklistBedpe')]
+      result_array << ['svBlacklistFoldbackBedpe' : checkParamReturnFile('svBlacklistFoldbackBedpe')]
+      result_array << ['svBlacklistTEBedpe' : checkParamReturnFile('svBlacklistTEBedpe')]
     
   return result_array
 }
