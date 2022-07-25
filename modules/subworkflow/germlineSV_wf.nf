@@ -1,4 +1,6 @@
 include { GermlineDellyCall }                 from '../process/GermSV/GermlineDellyCall' 
+include { DellyCombine
+            as GermlineDellyCombine }         from '../process/SV/DellyCombine'
 include { GermlineRunManta }                  from '../process/GermSV/GermlineRunManta' 
 include { GermlineMergeSVs }                  from '../process/GermSV/GermlineMergeSVs'
 include { GermlineSVVcf2Bedpe }               from '../process/GermSV/GermlineSVVcf2Bedpe'
@@ -20,6 +22,14 @@ workflow germlineSV_wf
         bams,
         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions])
     )
+    GermlineDellyCombine(
+      GermlineDellyCall.out.dellyFilter4CombineGermline
+        .groupTuple( by: [0,1], size: 5 )
+        .map{ normal_id, target, vcf, tbi ->
+          [ "", normal_id, target, vcf, tbi ]
+        }
+      , "germline"
+    )
 
     GermlineRunManta(
         bams,
@@ -27,12 +37,14 @@ workflow germlineSV_wf
         Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex])
     )
 
-    GermlineDellyCall.out.dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5)
-        .combine(GermlineRunManta.out.mantaOutputGermline, by: [0,1])
-        .set{ dellyMantaChannelGermline }
+    GermlineDellyCombine.out
+        .map{ tumor_id, normal_id, target, vcf, tbi -> [normal_id, target, vcf, tbi, "delly" ] }
+        .mix(GermlineRunManta.out.mantaOutputGermline.map{ it + ["manta"]})
+        .groupTuple( by:[0,1], size:2 )
+        .set{allSvCallsCombineChannel}
 
     GermlineMergeSVs(
-        dellyMantaChannelGermline,
+        allSvCallsCombineChannel,
 			  workflow.projectDir + "/containers/bcftools-vt-mergesvvcf"
 		)
 
