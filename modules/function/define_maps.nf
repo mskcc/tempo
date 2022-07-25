@@ -62,6 +62,10 @@ def defineReferenceMap() {
     if (! workflow.profile.startsWith("test") ){
     	result_array << ['brassRefDir' : checkParamReturnFile('brassRefDir')]
     	result_array << ['vagrentRefDir' : checkParamReturnFile('vagrentRefDir')]
+      result_array << ['svCallingExcludeBedRegions': checkParamReturnFile('svCallingExcludeBedRegions')]
+      result_array << ['gridss_breakend_pon' : checkParamReturnFile('gridss_breakend_pon')]
+      result_array << ['gridss_breakpoint_pon' : checkParamReturnFile('gridss_breakpoint_pon')]
+      result_array << ['gridss_breakpoint_hotspot' : checkParamReturnFile('gridss_breakpoint_hotspot')]
     }
     
   return result_array
