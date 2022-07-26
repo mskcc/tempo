@@ -23,13 +23,24 @@ library(signature.tools.lib)
 library(data.table)
 library(tools)
 library(stringr)
-
+library(BSgenome.Hsapiens.1000genomes.hs37d5)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(plyr)
+library(dplyr)
 
 args = commandArgs(trailingOnly=TRUE)
 
 
 inputTSV = args[1]
 genome_version = args[2]
+if (genome_version == 'hg19'){
+	ref.genome = BSgenome.Hsapiens.1000genomes.hs37d5
+} else if (genome_version == 'hg38'){
+	ref.genome = BSgenome.Hsapiens.NCBI.GRCh38
+} else {
+	stop("Input genome must be hg19/hg38")
+}
+
 n_parallel = as.integer(args[3])
 if(is.na(n_parallel)){n_parallel=1}
 
@@ -93,6 +104,15 @@ correctMutations <- function(this_sample){
   setnames(this_mutations, "Allele", "ALT")
   setnames(this_mutations, "vcf_qual", "QUAL")
   this_indels<-this_mutations[this_mutations$Variant_Type %in% c("DEL", "DNP", "INS", "TNP"),]
+  this_indels <- this_indels %>%
+      dplyr::rowwise() %>%
+      mutate(left_b = as.character(ref.genome[[chr]][position])) %>%
+      mutate(REF = ifelse(ALT == "-",paste0(left_b,REF),REF),
+	     ALT = ifelse(ALT == "-",left_b,ALT)) %>%
+      mutate(ALT = ifelse(REF == "-",paste0(left_b,ALT),ALT),
+	     REF = ifelse(REF == "-",left_b,REF)) %>%
+      select(-c(left_b))
+
   this_snv<-this_mutations[!this_mutations$Variant_Type %in% c("DEL", "DNP", "INS", "TNP"),]
   print(table(rbind(this_indels, this_snv)$Variant_Type))
   write.table(file = paste0("tmp/", this_sample, ".indels"), x = this_indels, quote = F, row.names = F, col.names = T, sep = "\t")
