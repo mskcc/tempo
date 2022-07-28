@@ -12,10 +12,7 @@ process SomaticRunLumpy {
     output:
     tuple val(idTumor), val(idNormal), val(target), 
       path("${idTumor}__${idNormal}.lumpy.filtered.vcf.gz"), 
-      path("${idTumor}__${idNormal}.lumpy.filtered.vcf.gz.tbi"), emit: lumpyOutput4Merge
-    tuple val(idTumor), val(idNormal), val(target), 
-      path("${idTumor}__${idNormal}.lumpy.vcf.gz"), 
-      path("${idTumor}__${idNormal}.lumpy.vcf.gz.tbi"), emit: lumpyOutput
+      path("${idTumor}__${idNormal}.lumpy.filtered.vcf.gz.tbi")
     
     script:
     """
@@ -49,7 +46,7 @@ process SomaticRunLumpy {
 	  -S ${idTumor}.splitters.bam,${idNormal}.splitters.bam \\
       -D ${idTumor}.discordants.bam,${idNormal}.discordants.bam \\
       -x ${excludeRegionsBed} \\
-	  -o ${idTumor}__${idNormal}.vcf
+	  -o ${idTumor}__${idNormal}.raw.vcf
 
     svtyper \\
       -i ${idTumor}__${idNormal}.vcf \\
@@ -65,9 +62,6 @@ process SomaticRunLumpy {
       <(tail -n +4 ${idTumor}__${idNormal}.gt.vcf) > \\
       ${idTumor}__${idNormal}.lumpy.vcf
 
-    bcftools sort ${idTumor}__${idNormal}.lumpy.vcf -Oz -o ${idTumor}__${idNormal}.lumpy.vcf.gz
-    bcftools index -t ${idTumor}__${idNormal}.lumpy.vcf.gz
-
     bcftools filter \\
       -i "FORMAT/AB[1:0] < .25 | FORMAT/AB[1:0]=\\".\\"" \\
       ${idTumor}__${idNormal}.lumpy.vcf | \\
@@ -79,6 +73,8 @@ process SomaticRunLumpy {
 
     bcftools sort ${idTumor}__${idNormal}.lumpy.filtered.vcf -Oz -o ${idTumor}__${idNormal}.lumpy.filtered.vcf.gz
     bcftools index -t ${idTumor}__${idNormal}.lumpy.filtered.vcf.gz
+
+    rm -f ${idTumor}__${idNormal}.lumpy.vcf ${idTumor}__${idNormal}.gt.vcf ${idTumor}__${idNormal}.raw.vcf
 
     """
 }
