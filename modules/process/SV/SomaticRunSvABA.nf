@@ -10,21 +10,29 @@ process SomaticRunSvABA {
     path(bwaIndex)
 
     output:
-    tuple val(idTumor), val(idNormal), val(target), path("*.svaba.somatic.sv.vcf.gz"), path("*.svaba.somatic.sv.vcf.gz.tbi"), emit: SvABA4Combine
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz"), path("${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz.tbi"), emit: SvABA4Combine
     path("*.vcf.gz*"), emit: allVcfs
     path("*.log"), emit: logs
     path("*.txt.gz"), emit: supportingFiles
 
     script:
+    outputPrefix = "${idTumor}__${idNormal}"
     """
     svaba run \\
     -t "${bamTumor}" \\
     -n "${bamNormal}" \\
     -G "${genomeFile}" \\
     -p "${task.cpus * 2}" \\
-    --id-string "${idTumor}__${idNormal}" \\
+    --id-string "${outputPrefix}" \\
     -z
 
     rm -f *germline*
+
+    echo -e "${bamTumor} ${idTumor}\\n${bamNormal} ${idNormal}" > svaba.samplenames.tsv
+    bcftools reheader \\
+      --samples svaba.samplenames.tsv \\
+      --output ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz \\
+      ${outputPrefix}.svaba.somatic.sv.vcf.gz
+    bcftools index -f -t ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz
     """
 }
