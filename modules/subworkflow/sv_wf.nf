@@ -1,5 +1,7 @@
-include { SomaticDellyCall }           from '../process/SV/SomaticDellyCall'
-include { SomaticRunSvABA }            from '../process/SV/SomaticRunSvABA'
+include { SomaticDellyCall }           from '../process/SV/SomaticDellyCall' 
+include { DellyCombine
+            as SomaticDellyCombine }   from '../process/SV/DellyCombine'
+include { SomaticRunSvABA }            from '../process/SV/SomaticRunSvABA' 
 include { SomaticRunLumpy }            from '../process/SV/SomaticRunLumpy'
 include { brass_wf }                   from './brass_wf' addParams(referenceMap: params.referenceMap)
 include { SomaticMergeSVs }            from '../process/SV/SomaticMergeSVs' 
@@ -30,10 +32,11 @@ workflow sv_wf
 
     // Put manta output and delly output into the same channel so they can be processed together in the group key
     // that they came in with i.e. (`idTumor`, `idNormal`, and `target`)
+  SomaticDellyCombine(
     SomaticDellyCall.out.dellyFilter4Combine
-    	.groupTuple(by: [0,1,2], size: 5)
-	.combine(manta4Combine, by: [0,1,2])
-	.set{ dellyMantaCombineChannel }
+      .groupTuple( by: [0,1,2], size: 5 )
+    , "somatic"
+  )
 
     if (params.assayType == "genome" && workflow.profile != "test") {
 
@@ -56,13 +59,16 @@ workflow sv_wf
         sampleStatistics // from ascat
       )
       
-      dellyMantaCombineChannel
-        .combine(SomaticRunSvABA.out.SvABA4Combine, by: [0,1,2])
-        .combine(brass_wf.out.BRASS4Combine, by: [0,1,2])
+      SomaticDellyCombine.out.map{ it + ["delly"]}
+        .mix(manta4Combine.map{ it + ["manta"]})
+        .mix(SomaticRunSvABA.out.SvABA4Combine.map{ it + ["svaba"]})
+        .mix(brass_wf.out.BRASS4Combine.map{ it + ["brass"]})
+        .groupTuple( by:[0,1,2], size:4 )
         .set{allSvCallsCombineChannel}
     } else {
-      dellyMantaCombineChannel
-        .map{ it + ["","","",""]}
+      SomaticDellyCombine.out.map{ it + ["delly"]}
+        .mix(manta4Combine.map{ it + ["manta"]})
+        .groupTuple( by:[0,1,2], size:2 )
         .set{allSvCallsCombineChannel}
     }
     
@@ -83,6 +89,10 @@ workflow sv_wf
       SomaticSVVcf2Bedpe.out.SomaticCombinedUnfilteredBedpe,
       referenceMap.repeatMasker,
       referenceMap.mapabilityBlacklist,
+      referenceMap.svBlacklistBed,
+      referenceMap.svBlacklistBedpe,
+      referenceMap.svBlacklistFoldbackBedpe,
+      referenceMap.svBlacklistTEBedpe,
       referenceMap.spliceSites,
       workflow.projectDir + "/containers/iannotatesv",
       params.genome
