@@ -49,7 +49,7 @@ process SomaticRunLumpy {
 	  -o ${idTumor}__${idNormal}.raw.vcf
 
     svtyper \\
-      -i ${idTumor}__${idNormal}.vcf \\
+      -i ${idTumor}__${idNormal}.raw.vcf \\
       -B ${bamTumor},${bamNormal} \\
       -l stats.json > \\
       ${idTumor}__${idNormal}.gt.vcf
