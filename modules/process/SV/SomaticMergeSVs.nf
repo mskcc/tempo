@@ -58,6 +58,5 @@ process SomaticMergeSVs {
   tabix --preset vcf ${outputPrefix}.merged.vcf.gz 
 
   bcftools view -O z -o ${outputPrefix}.merged.raw.vcf.gz ${outputPrefix}.merged.raw.vcf
-  tabix --preset vcf ${outputPrefix}.merged.raw.vcf.gz
   """
 }
