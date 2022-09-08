@@ -1,0 +1,8 @@
+channels:
+    - r
+    - defaults
+    - conda-forge
+dependencies:
+    - r-gtools=3.8.1
+    - r-doparallel=1.0.14
+    - r-r.utils
