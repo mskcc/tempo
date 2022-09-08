@@ -1,0 +1,8 @@
+# You can use this file to create a conda environment for this pipeline:
+# conda env create -f environment.yml
+channels:
+  - bioconda
+  - conda-forge
+
+dependencies:
+  - svclone==v1.1.0-0
