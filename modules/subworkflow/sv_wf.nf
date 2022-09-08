@@ -96,7 +96,7 @@ workflow sv_wf
 
     RunSVSignatures(
       SomaticAnnotateSVBedpe.out.SVAnnotBedpePass,
-      workflow.projectDir + "/containers/hrdetect/run_sv_signatures.R"
+      workflow.projectDir + "/containers/signaturetoolslib/sv_signatures_wrapper.R"
     )
 
     SomaticRunSVclone(

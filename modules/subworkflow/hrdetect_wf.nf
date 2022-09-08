@@ -13,7 +13,7 @@ workflow hrdetect_wf {
 
 	HRDetect(
 		HRDetectVariantsIn,
-		workflow.projectDir + "/containers/hrdetect/HRDetect.R"
+		workflow.projectDir + "/containers/signaturetoolslib/HRDetect_wrapper.R"
 	)
 	
 }
