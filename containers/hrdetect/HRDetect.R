@@ -3,7 +3,7 @@
 
 # __author__      = "Vasilisa Rudneva"
 # __email__       = "rudnevav@mskcc.org"
-# __contributor__ = "Yixiao Gong (gongy@mskcc.org)"
+# __contributor__ = "Yixiao Gong (gongy@mskcc.org); Anne Marie Noronha (noronhaa@mskcc.org)"
 # __version__     = "1.0"
 
 
@@ -18,7 +18,7 @@
 # #devtools::install_github('linxihui/NNLM')
 # devtools::install_github('Nik-Zainal-Group/signature.tools.lib')
 
-
+suppressPackageStartupMessages({
 library(signature.tools.lib)
 library(data.table)
 library(tools)
@@ -27,6 +27,7 @@ library(BSgenome.Hsapiens.1000genomes.hs37d5)
 library(BSgenome.Hsapiens.UCSC.hg38)
 library(plyr)
 library(dplyr)
+})
 
 args = commandArgs(trailingOnly=TRUE)
 
@@ -185,6 +186,21 @@ input_matrix[rownames(Indel.del.mh.prop),"del.mh.prop"] <- Indel.del.mh.prop[,"d
 # Run the pipeline
 message("")
 message("========= Running HRDetect Pipeline =========")
+hrd.arglist = list()
+hrd.arglist[["data_matrix"]] = input_matrix
+hrd.arglist[["genome.v"]] = genome_version
+hrd.arglist[["SV_bedpe_files"]] = SV_bedpe_files
+hrd.arglist[["Indels_tab_files"]] = Indels_tab_files
+hrd.arglist[["CNV_tab_files"]] = CNV_tab_files
+hrd.arglist[["SNV_catalogues"]] = SNV_catalogues
+hrd.arglist[["nparallel"]] = n_parallel
+if (strsplit(as.character(packageVersion("signature.tools.lib")),"\\.")[[1]][1] %in% c("0","1")){
+	hrd.arglist[["signature_type"]] = "COSMIC"
+} else {
+	hrd.arglist[["SNV_signature_version"]] = "COSMICv2"
+}
+res <- do.call(HRDetect_pipeline, hrd.arglist)
+if (1==0) {
 res<-HRDetect_pipeline(input_matrix,
                        genome.v = genome_version,
                        SV_bedpe_files = SV_bedpe_files, 
@@ -193,6 +209,7 @@ res<-HRDetect_pipeline(input_matrix,
                        #SNV_tab_files = SNV_tab_files, 
                        SNV_catalogues = SNV_catalogues,
                        nparallel = n_parallel)
+}
 
 #save HRDetect scores
 hrdetect_output = as.data.table(res$hrdetect_output, keep.rownames="sample")
