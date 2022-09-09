@@ -40,7 +40,6 @@ include { snv_wf }               from './modules/subworkflow/snv_wf'            
 include { sampleQC_wf }          from './modules/subworkflow/sampleQC_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap, multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { samplePairingQC_wf }   from './modules/subworkflow/samplePairingQC_wf'  addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { somaticMultiQC_wf }    from './modules/subworkflow/somaticMultiQC_wf'   addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
-include { targets_wf }           from './modules/subworkflow/targets_wf'          addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { scatter_wf }           from './modules/subworkflow/scatter_wf'          addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSNV_wf }       from './modules/subworkflow/germlineSNV_wf'      addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { germlineSV_wf }        from './modules/subworkflow/germlineSV_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
@@ -60,7 +59,6 @@ WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','
 workflow {
   //Set flags for when each pipeline is required to run.
   doWF_align           = (params.mapping) ? true : false
-  doWF_targets         = WFs.size() > 0
   doWF_manta           = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
   doWF_germSNV         = 'germsnv' in WFs ? true : false
@@ -166,13 +164,9 @@ workflow {
       manta_wf(bamFiles)
     }
 
-    if(doWF_targets){
-      targets_wf()
-    }
-
     if(doWF_scatter)
     {
-      scatter_wf(targets_wf.out.baitsetPlus5)
+      scatter_wf()
     }
 
     if(doWF_germSV)
@@ -187,7 +181,7 @@ workflow {
 
     if(doWF_germSNV)
     {
-      germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno, targets_wf.out.baitsetPlus5)
+      germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno)
     }
 
     if(doWF_SV)
@@ -202,12 +196,12 @@ workflow {
 
     if(doWF_SNV)
     {
-      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno, targets_wf.out.baitsetPlus5)
+      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
     }
 
     if(doWF_QC)
     {
-      sampleQC_wf(inputBam, fastPJson, targets_wf.out.baitsetInterval, targets_wf.out.baitsetPlus5_unzipped, targets_wf.out.baitsetPlus5)
+      sampleQC_wf(inputBam, fastPJson)
     }
 
     if(doWF_msiSensor)
@@ -228,12 +222,9 @@ workflow {
         .combine(mutSig_wf.out.mutSig4MetaDataParser, by: [0,1,2])
         .combine(loh_wf.out.hlaOutput, by: [1,2])
         .unique()
-	.combine(targets_wf.out.codingBaitsetBed)
-	.filter{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, target2, codingBed ->
-	  target == target2
-	}.map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, target2, codingBed ->
-          [ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, codingBed ]
-        }.set{ mergedChannelMetaDataParser }
+        .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
+        [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
+      }.set{ mergedChannelMetaDataParser }
 
       mdParse_wf(mergedChannelMetaDataParser)
     }

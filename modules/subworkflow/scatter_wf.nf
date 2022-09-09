@@ -2,12 +2,14 @@ include { CreateScatteredIntervals }   from '../process/Scatter/CreateScatteredI
 
 workflow scatter_wf
 {
-  take:
-    targets4Intervals
-
   main:
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
+
+    targets4Intervals = Channel.from(targetsMap.keySet())
+        .map{ targetId ->
+          [ targetId, targetsMap."${targetId}".targetsBedGz, targetsMap."${targetId}".targetsBedGzTbi ]
+        }
 
     CreateScatteredIntervals(Channel.value([referenceMap.genomeFile, 
                                             referenceMap.genomeIndex, 
