@@ -14,7 +14,6 @@ workflow snv_wf
     mantaToStrelka
     hlaOutput
     facetsForMafAnno
-    baitsetPlus5
 
   main:
     referenceMap = params.referenceMap
@@ -53,11 +52,8 @@ workflow snv_wf
                              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
     bamFiles.combine(mantaToStrelka, by: [0, 1, 2])
-	.combine(baitsetPlus5)
-	.filter{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, target2, bedGz, bedGzTbi ->
-	  target2 == target
-	}.map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, target2, bedGz, bedGzTbi ->
-              [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, bedGz, bedGzTbi ]
+        .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
+              [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
         }.set{ input4Strelka }
 
     SomaticRunStrelka2(input4Strelka,
