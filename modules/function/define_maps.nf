@@ -56,17 +56,16 @@ def defineReferenceMap() {
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
+    result_array << ['codingRegions' : checkParamReturnFile("codingRegions")]
   return result_array
 }
 
 def loadTargetReferences(){
   def result_array = [:]
-  new File(params.targets_base).eachDir{ i -> 
+  new File("${params.targets_base}/${params.assayType}" ).eachDir{ i ->
     def target_id = i.getBaseName()
-    if (params.assayType == "genome" && target_id != "wgs" ){ return }
-    if (params.assayType != "genome" && target_id == "wgs" ){ return }
     result_array["${target_id}"] = [:]
-    for ( j in params.targets.keySet()) { // baitsInterval, targetsInterval, targetsBedGz, targetsBedGzTbi, codingBed
+    for ( j in params.targets.keySet()) { // baitsBed, targetsBed
       result_array."${target_id}" << [ ("$j".toString()) : evalTargetPath(j,target_id)]
     }
   }
