@@ -53,7 +53,7 @@ workflow germlineSNV_wf
         target == target2
       }.map{ idNormal, target, bamNormal, baiNormal, target2, bedGz, bedGzTbi ->
         [idNormal, target, bamNormal, baiNormal, bedGz, bedGzTbi]
-      }
+      }.set{bamsForStrelkaGermline}
 
     GermlineRunStrelka2(bamsForStrelkaGermline, 
                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
