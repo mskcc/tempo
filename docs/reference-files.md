@@ -130,7 +130,7 @@ grep -Ev "chr|MT|GL00|NC|hs37d5" human.hg19.excl.tsv > human.hg19.excl.clean.bed
 bedtools subtract -a b37.bed -b human.hg19.excl.clean.bed > b37.minusDellyExclude.bed
 ```
 
-For BRASS, Tempo is using a pre-built reference packages linked to the [dockstore registry](ftp://ftp.sanger.ac.uk/pub/cancer/dockstore/human/). To download references for GRCh37:
+For BRASS, Tempo is using a pre-built reference packages linked to [Sanger's dockstore registry](ftp://ftp.sanger.ac.uk/pub/cancer/dockstore/human/). To download references for GRCh37:
 ``` shell
 wget ftp://ftp.sanger.ac.uk/pub/cancer/dockstore/human/VAGrENT_ref_GRCh37d5_ensembl_75.tar.gz
 tar -xzvf VAGrENT_ref_GRCh37d5_ensembl_75.tar.gz
@@ -150,4 +150,4 @@ wget https://api.bitbucket.org/2.0/repositories/weischenfeldt/pcawg_sv_merge/src
 wget https://api.bitbucket.org/2.0/repositories/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/pcawg6_blacklist_TE_pseudogene.bedpe.gz
 ```
 
-Structural variants are also filtered with RepeatMasker and Mappability blacklists, whose preparation are described in the [above section](#repeatMasker-and-mappability-blacklist).
+Structural variants are also filtered with RepeatMasker and Mappability blacklists, whose preparation are described in [one of the above sections](#repeatMasker-and-mappability-blacklist).

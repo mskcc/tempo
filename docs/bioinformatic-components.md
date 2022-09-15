@@ -25,14 +25,7 @@ Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (c
 ## Somatic Analyses
 
 * __SNVs and indels__ are called using [MuTect2](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.4/org_broadinstitute_hellbender_tools_walkers_mutect_Mutect2.php) and [Strelka2](https://github.com/Illumina/strelka). Subsequently, they are combined, annotated and filtered as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
-* __Structural variants__ are detected by multiple callers and then merged, filtered and annotated as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-and-germline-svs).
-  * By default, the following callers are used regardless of assay type:
-    * [Delly](https://github.com/dellytools/delly) 
-    * [Manta](https://github.com/Illumina/manta) 
-  * In addition to the above callers, when the assay type is genome, the following callers are also used:
-    * [BRASS](https://github.com/cancerit/BRASS)
-	* [SvABA](https://github.com/walaj/svaba)
-
+* __Structural variants__ are detected by multiple callers and then merged, filtered and annotated as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-and-germline-svs). Exome and germline variants are generated with [Delly](https://github.com/dellytools/delly) and [Manta](https://github.com/Illumina/manta). Somatic whole genome variants are generated with the same callers, along with [BRASS](https://github.com/cancerit/BRASS) and [SvABA](https://github.com/walaj/svaba). 
 * __Copy-number analysis__ is performed with [FACETS](https://github.com/mskcc/facets) and processed using [facets-suite](https://github.com/mskcc/facets-suite). Locus-specific copy-number, purity and ploidy estimates are integrated with the SNV/indel calls to perform clonality and zygosity analyses.
 * __Microsatellite instability__ is detected using [MSIsensor](https://github.com/ding-lab/msisensor).
 * __HLA genotyping__ is performed with [POLYSOLVER](https://software.broadinstitute.org/cancer/cga/polysolver).
