@@ -6,7 +6,6 @@ include { brass_wf }                   from './brass_wf' addParams(referenceMap:
 include { SomaticMergeSVs }            from '../process/SV/SomaticMergeSVs' 
 include { SomaticSVVcf2Bedpe }         from '../process/SV/SomaticSVVcf2Bedpe'
 include { SomaticAnnotateSVBedpe }     from '../process/SV/SomaticAnnotateSVBedpe'
-include { SomaticRunSVclone }          from '../process/SV/SomaticRunSVclone'
 include { SomaticRunClusterSV }        from '../process/SV/SomaticRunClusterSV'
 include { RunSVSignatures }            from '../process/HRDetect/RunSVSignatures'
 
@@ -16,7 +15,6 @@ workflow sv_wf
     bamFiles
     manta4Combine
     sampleStatistics
-    finalMaf
 
   main:
     referenceMap = params.referenceMap
@@ -100,14 +98,6 @@ workflow sv_wf
     )
 
     if (params.assayType == "genome") {
-      SomaticRunSVclone(
-        bamFiles
-          .combine(SomaticAnnotateSVBedpe.out.SVAnnotBedpePass,by: [0,1,2])
-          .combine(finalMaf, by:[0,1,2])
-          .combine(sampleStatistics, by: [0,1,2]),
-        workflow.projectDir + "/containers/svclone/prepare_svclone_inputs.py"
-      )
-    
       SomaticRunClusterSV( SomaticAnnotateSVBedpe.out.SVAnnotBedpePass )
     }
 
