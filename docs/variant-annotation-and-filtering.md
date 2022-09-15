@@ -128,4 +128,22 @@ Similar to somatic mutations, tumor zygosity of germline SNVs and indels is esti
 
 ## Somatic and Germline SVs
 
-_Under development._
+Tempo uses two to four callers to identify structural variants. By default, the following callers are used regardless of assay type:
+    * [Delly](https://github.com/dellytools/delly) 
+    * [Manta](https://github.com/Illumina/manta) 
+  * In addition to the above callers, when the assay type is genome, the following callers are also used:
+    * [BRASS](https://github.com/cancerit/BRASS)
+	* [SvABA](https://github.com/walaj/svaba)
+
+The SV workflow in Tempo is significantly influenced by the [2020 PCAWG publication on whole genomes](https://www.nature.com/articles/s41586-020-1969-6). Similar to the workflow described in their paper, calls from each structural variant are provided to [mergesvvcf](https://github.com/papaemmelab/mergeSVvcf/tree/master/mergesvvcf), which converts each call to a normalized representation and merges them using a fixed window size of 200bp. Any two calls for which each breakpoint is less than 200bp away and matches relative directionality can be merged.
+
+From the merged callset, any variant is filtered if it is not `PASS` in a minimum number of individual callers that supported it (1 for exome, 2 for genome ).
+
+The merged callset is converted from vcf to bedpe using [svtools](https://github.com/hall-lab/svtools/tree/master/svtools) and the following filters are applied:
+- `mappability` and `repeat_masker`: One or both breakends is in a repeat, low-mappability, or hard-to-sequence region. More details in the [reference file description](reference-files.md#repeatmasker-and-mappability-blacklist).
+- `pcawg_blacklist_bed`: One or both breakends is in a region that PCAWG has blacklisted. 
+- `pcawg_blacklist_bedpe`: The breakpoint is blacklisted by PCAWG.
+- `pcawg_blacklist_fb_bedpe`: The breakpoint is blacklisted by PCAWG and is likely a foldback artefact.
+- `pcawg_blacklist_te_bedpe`: The breakpoint is blacklisted by PCAWG and is likely a transposable element. 
+
+The bed and bedpe files used for the flags `pcawg_blacklist_bed`,`pcawg_blacklist_bedpe`, `pcawg_blacklist_fb_bedpe` and `pcawg_blacklist_te_bedpe` are sourced from the [SV merging tool used in the PCAWG paper.](https://bitbucket.org/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/) In addition to filtering, Tempo also annotates the merged callset using the [iAnnotateSV package](https://github.com/rhshah/iAnnotateSV), and identifies possible cDNA contamination among deletion events that span splice sites.
