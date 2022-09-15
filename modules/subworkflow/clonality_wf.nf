@@ -15,7 +15,7 @@ workflow clonality_wf {
 
 	SomaticRunSVclone(
 		SVcloneInput,
-		workflow.projectDir + "/containers/signaturetoolslib/HRDetect_wrapper.R"
+		workflow.projectDir + "/containers/svclone/prepare_svclone_inputs.py"
 	)
 	
 }
