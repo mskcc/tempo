@@ -47,6 +47,7 @@ include { PairTumorNormal }      from './modules/subworkflow/PairTumorNormal'
 include { aggregateFromResult }  from './modules/subworkflow/AggregateFromResult'
 include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProcess'
 include { hrdetect_wf }          from './modules/subworkflow/hrdetect_wf'
+include { clonality_wf }         from './modules/subworkflow/clonality_wf'
 include { ascat_wf }             from './modules/subworkflow/ascat_wf'            addParams(referenceMap: referenceMap)
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
@@ -223,6 +224,7 @@ workflow {
       )
       if (doWF_SNV && params.assayType == "genome"){
         	hrdetect_wf(CNVcalls, snv_wf.out.mafFile, sv_wf.out.SVAnnotBedpePass)
+        	clonality_wf(bamFiles, sv_wf.out.SVAnnotBedpePass, snv_wf.out.mafFile, samplestatistics)
       }
     }
 
