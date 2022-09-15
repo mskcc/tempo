@@ -99,15 +99,17 @@ workflow sv_wf
       workflow.projectDir + "/containers/signaturetoolslib/sv_signatures_wrapper.R"
     )
 
-    SomaticRunSVclone(
-      bamFiles
-        .combine(SomaticAnnotateSVBedpe.out.SVAnnotBedpePass,by: [0,1,2])
-        .combine(finalMaf, by:[0,1,2])
-        .combine(sampleStatistics, by: [0,1,2]),
-      workflow.projectDir + "/containers/svclone/prepare_svclone_inputs.py"
-    )
-
-    SomaticRunClusterSV( SomaticAnnotateSVBedpe.out.SVAnnotBedpePass )
+    if (params.assayType == "genome") {
+      SomaticRunSVclone(
+        bamFiles
+          .combine(SomaticAnnotateSVBedpe.out.SVAnnotBedpePass,by: [0,1,2])
+          .combine(finalMaf, by:[0,1,2])
+          .combine(sampleStatistics, by: [0,1,2]),
+        workflow.projectDir + "/containers/svclone/prepare_svclone_inputs.py"
+      )
+    
+      SomaticRunClusterSV( SomaticAnnotateSVBedpe.out.SVAnnotBedpePass )
+    }
 
   emit:
     SVAnnotBedpe         = SomaticAnnotateSVBedpe.out.SVAnnotBedpe
