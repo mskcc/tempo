@@ -16,6 +16,6 @@ RUN echo "export PATH=$PATH" > /etc/environment
 
 RUN mkdir -p /config && \
     cd /config && \
-    wget https://github.com/mcmero/SVclone/raw/740cf36eab8407b66959abbd638eb44f4d9424e8/svclone_config.ini 
+    wget https://github.com/mcmero/SVclone/raw/4a02d5e2d8f548b2f38e9f7f77ea432bf456b349/svclone_config.ini 
 
 RUN sed -i "s/itrx_class: INTRX/itrx_class: INTRX,TRA,BND/g" /config/svclone_config.ini
