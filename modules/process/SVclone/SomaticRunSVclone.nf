@@ -9,6 +9,7 @@ input:
     path(bamNormal), path(baiNormal),
     path(inBedpe),
     path(mafFiltered),
+    path(cnv),
     path(ploidyIn)
   path(prepare_svclone_input_script)
 output:
@@ -18,7 +19,7 @@ output:
 script:
 outputPrefix = "${idTumor}__${idNormal}"
 """
-echo "Preparing svclone inputs"
+echo "Preparing svclone inputs using custom script"
 python ${prepare_svclone_input_script} \\
   --cfg_template /config/svclone_config.ini \\
   --bedpe ${inBedpe} \\
@@ -28,6 +29,7 @@ python ${prepare_svclone_input_script} \\
   --sampleid ${outputPrefix} \\
   --bam ${bamTumor}
 
+echo "Running SVclone"
 echo "Running svclone annotate"
 svclone annotate \\
   -i svclone_in/simple.sv.txt \\
@@ -49,6 +51,7 @@ svclone filter \\
   -i ${outputPrefix}/${outputPrefix}_svinfo.txt \\
   -p svclone_in/svclone_ploidy.txt \\
   -cfg svclone_in/svclone_config.ini \\
+  --cnvs ${cnv} \\
   --snvs svclone_in/callstats.txt \\
   --snv_format mutect_callstats
 
