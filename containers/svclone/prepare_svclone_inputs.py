@@ -1,3 +1,26 @@
+#!/usr/bin/env python
+
+"""
+Prepare input files (maf, bedpe, purity/ploidy file,
+and config) so that it can be used in SVclone.
+ * Maf file: should not contain filtered variants. The
+ columns Chromosome, vcf_pos, t_ref_count, t_alt_count are
+ retained.
+ * Bedpe file: should not contain filtered variants. The
+ columns #CHROM_A, START_A, STRAND_A, CHROM_B, START_B,
+ STRAND_B and TYPE are retained.
+ * Purity/ploidy file: can be produced either by ASCAT or by
+ generate_samplestatistics.R script in the DoFacets process.
+ * Config file: Template config file which is modified before
+ running SVclone.
+Usage: prepare_svclone_inputs.py -h
+"""
+
+__author__  = "Anne Marie Noronha"
+__email__   = "noronhaa@mskcc.org"
+__version__ = "0.0.1"
+__status__  = "Dev"
+
 import configparser
 import argparse, os
 import pysam, pandas as pd, numpy as np
@@ -12,7 +35,7 @@ def usage():
 	parser.add_argument("--cfg_template",help="Template config for editing")
 	parser.add_argument("--bam",help="Tumor Bam file")
 
-	return parser.parse_args() 
+	return parser.parse_args()
 
 def main():
 	args = usage()
@@ -21,10 +44,10 @@ def main():
 		pass
 	else:
 		os.mkdir(args.out_dir)
-	mut_out = os.path.join(args.out_dir,"callstats.txt") 
+	mut_out = os.path.join(args.out_dir,"callstats.txt")
 	sv_out = os.path.join(args.out_dir,"simple.sv.txt")
 	purity_ploidy_out = os.path.join(args.out_dir,"svclone_ploidy.txt")
-	cfg_out = os.path.join(args.out_dir,"svclone_config.ini") 
+	cfg_out = os.path.join(args.out_dir,"svclone_config.ini")
 
 	svclone_inputs = {"mut":mut_out,"sv":sv_out, "purity_ploidy":purity_ploidy_out, "cfg":cfg_out}
 
@@ -51,7 +74,7 @@ def main():
 	sv.columns = "chr1,pos1,dir1,chr2,pos2,dir2,classification".split(",")
 	sv.to_csv(sv_out,header=True, sep="\t", index=False )
 
-	## read in ploidy file and output reformatted information 
+	## read in ploidy file and output reformatted information
 	purity_ploidy = pd.read_csv(args.purity_ploidy, header=None, sep=" ", index_col=0, usecols=[0, 1]).T
 	purity_ploidy["sample"] = args.sampleid
 	purity_ploidy = purity_ploidy[["sample","rho","Ploidy"]]
