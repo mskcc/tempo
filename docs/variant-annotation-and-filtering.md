@@ -128,17 +128,17 @@ Similar to somatic mutations, tumor zygosity of germline SNVs and indels is esti
 
 ## Somatic and Germline SVs
 
-Tempo uses two to four callers to identify structural variants. By default, the following callers are used regardless of assay type:
+Tempo uses two to four callers to identify structural variants. By default, the following callers are used regardless of assay type for both somatic and germline analysis:
   - [Delly](https://github.com/dellytools/delly) 
   - [Manta](https://github.com/Illumina/manta) 
 
-In addition to the above callers, when the assay type is genome, the following callers are also used:
+For somatic analysis and when the assay type is genome, the following callers are used in addition:
   - [BRASS](https://github.com/cancerit/BRASS)
   - [SvABA](https://github.com/walaj/svaba)
 
 The SV workflow in Tempo is significantly influenced by the [2020 PCAWG publication on whole genomes](https://www.nature.com/articles/s41586-020-1969-6). Similar to the workflow described in their paper, calls from each structural variant are provided to [mergesvvcf](https://github.com/papaemmelab/mergeSVvcf/tree/master/mergesvvcf), which converts each call to a normalized representation and merges them using a fixed window size of 200bp. Any two calls for which each breakpoint is less than 200bp away and matches relative directionality can be merged.
 
-From the merged callset, any variant is filtered if it is not `PASS` in a minimum number of individual callers that supported it (1 for exome, 2 for genome ).
+From the merged callset, any variant is filtered based on a minimum number of supporting callers (1 for exome, 2 for genome). If a caller produced a filter flag for the variant, it is not considered to be a supporting caller.
 
 The merged callset is converted from vcf to bedpe using [svtools](https://github.com/hall-lab/svtools/tree/master/svtools) and the following filters are applied:
 - `mappability` and `repeat_masker`: One or both breakends is in a repeat, low-mappability, or hard-to-sequence region. More details in the [reference file description](reference-files.md#repeatmasker-and-mappability-blacklist).
