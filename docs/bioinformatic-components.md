@@ -32,6 +32,9 @@ Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (c
 * __LOH at HLA loci__ is assessed with [LOHHLA](https://github.com/mskcc/lohhla).
 * __Mutational signatures__ are inferred with [https://github.com/mskcc/tempoSig](https://github.com/mskcc/tempoSig).
 * __Neoantigen prediction__ using estimates of class I MHC binding affinity is performed with [NetMHC 4.0](https://www.ncbi.nlm.nih.gov/pubmed/28978689) and integrated into the set of SNV/indel calls using [https://github.com/taylor-lab/neoantigen-dev](https://github.com/taylor-lab/neoantigen-dev) (_Note: this repository is currently private_).
+* __Clonality using Structural Variants__ is assessed using [SVclone](https://github.com/mcmero/SVclone). Joint calling is performed on both SNPs and structural variants, providing an alternative to the SNP clonality inference offered by Facets, while also assigning structural variants in the same clonal structure.
+* __Structural variant signatures__ are inferred with [signature.tools.lib](https://github.com/Nik-Zainal-Group/signature.tools.lib)
+* __Homologous recombination deficiency__ is assessed using [HRDetect from the signature.tools.lib package](https://github.com/Nik-Zainal-Group/signature.tools.lib)
 
 ## Germline Analyses
 
