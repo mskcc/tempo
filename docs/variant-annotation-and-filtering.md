@@ -142,8 +142,6 @@ The SV workflow in Tempo is significantly influenced by the [2020 PCAWG publicat
 
 From the merged callset, any variant is filtered based on a minimum number of supporting callers (1 for exome, 2 for genome). If a caller produced a filter flag for the variant, it is not considered to be a supporting caller.
 
-Before any further processing, the variants are converted from vcf to bedpe file using [svtools vcftobedpe](https://github.com/hall-lab/svtools). Many downstream tools require bedpe or similar format. You can find more information about the bedpe file format [here](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
-
 The merged callset is converted from vcf to bedpe using [svtools](https://github.com/hall-lab/svtools/tree/master/svtools) and the following filters are applied:
 - `mappability` and `repeat_masker`: One or both breakends is in a repeat, low-mappability, or hard-to-sequence region. More details in the [reference file description](reference-files.md#repeatmasker-and-mappability-blacklist).
 - `pcawg_blacklist_bed`: One or both breakends is in a region that PCAWG has blacklisted. 
@@ -164,3 +162,7 @@ Each breakpoint is described on a single record of the bedpe file, with the coor
 | Deletion           | DEL          | Loss of a segment that is spanned by two joined breakends either side. |
 | Tandem Duplication | DUP          | Extra copy of a segment immediately downstream of the template in the same orientation. |
 | Inversion          | INV          | A segment inserted into its original position, but in the opposite orientation. Simple inversions are balanced, but in complex inversions the second side of a dsDNA break may not be rescued. |
+
+### BEDPE Format
+
+After merging the variants from different callers, the variants are converted from vcf to bedpe file using [svtools vcftobedpe](https://github.com/hall-lab/svtools). Many downstream tools require bedpe or similar table formats. The PCAWG Working Group also makes use of the bedpe format. You can find more information about the bedpe file format [here](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
