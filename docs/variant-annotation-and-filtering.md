@@ -140,6 +140,10 @@ The SV workflow in Tempo is significantly influenced by the [2020 PCAWG publicat
 
 ### Filtering and annotating structural variant calls
 
+Using the read support information reported in Delly and Manta, the variants from those callers are subject to the following filters:
+- `tumor_read_supp`: The variant is supported by less than 5 discordant reads or less than 2 split reads in the tumor sample.
+- `normal_read_supp`: The variant is supported by any number of reads in the normal sample.
+
 From the merged callset, any variant is filtered based on a minimum number of supporting callers (1 for exome, 2 for genome). If a caller produced a filter flag for the variant, it is not considered to be a supporting caller.
 
 The merged callset is converted from vcf to bedpe using [svtools](https://github.com/hall-lab/svtools/tree/master/svtools) and the following filters are applied:
