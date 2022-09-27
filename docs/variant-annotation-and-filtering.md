@@ -163,6 +163,6 @@ Each breakpoint is described on a single record of the bedpe file, with the coor
 | Tandem Duplication | DUP          | Extra copy of a segment immediately downstream of the template in the same orientation. |
 | Inversion          | INV          | A segment inserted into its original position, but in the opposite orientation. Simple inversions are balanced, but in complex inversions the second side of a dsDNA break may not be rescued. |
 
-### BEDPE Format
+## BEDPE Format
 
 After merging the variants from different callers, the variants are converted from vcf to bedpe file using [svtools vcftobedpe](https://github.com/hall-lab/svtools). Many downstream tools require bedpe or similar table formats. The PCAWG Working Group also makes use of the bedpe format. You can find more information about the bedpe file format [here](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
