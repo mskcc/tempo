@@ -138,7 +138,11 @@ For somatic analysis and when the assay type is genome, the following callers ar
 
 The SV workflow in Tempo is significantly influenced by the [2020 PCAWG publication on whole genomes](https://www.nature.com/articles/s41586-020-1969-6). Similar to the workflow described in their paper, calls from each structural variant are provided to [mergesvvcf](https://github.com/papaemmelab/mergeSVvcf/tree/master/mergesvvcf), which converts each call to a normalized representation and merges them using a fixed window size of 200bp. Any two calls for which each breakpoint is less than 200bp away and matches relative directionality can be merged.
 
+### Filtering and annotating structural variant calls
+
 From the merged callset, any variant is filtered based on a minimum number of supporting callers (1 for exome, 2 for genome). If a caller produced a filter flag for the variant, it is not considered to be a supporting caller.
+
+Before any further processing, the variants are converted from vcf to bedpe file using [svtools vcftobedpe](https://github.com/hall-lab/svtools). Many downstream tools require bedpe or similar format. You can find more information about the bedpe file format [here](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format).
 
 The merged callset is converted from vcf to bedpe using [svtools](https://github.com/hall-lab/svtools/tree/master/svtools) and the following filters are applied:
 - `mappability` and `repeat_masker`: One or both breakends is in a repeat, low-mappability, or hard-to-sequence region. More details in the [reference file description](reference-files.md#repeatmasker-and-mappability-blacklist).
@@ -147,4 +151,16 @@ The merged callset is converted from vcf to bedpe using [svtools](https://github
 - `pcawg_blacklist_fb_bedpe`: The breakpoint is blacklisted by PCAWG and is likely a foldback artefact.
 - `pcawg_blacklist_te_bedpe`: The breakpoint is blacklisted by PCAWG and is likely a transposable element. 
 
-The bed and bedpe files used for the flags `pcawg_blacklist_bed`,`pcawg_blacklist_bedpe`, `pcawg_blacklist_fb_bedpe` and `pcawg_blacklist_te_bedpe` are sourced from the [SV merging tool used in the PCAWG paper.](https://bitbucket.org/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/) In addition to filtering, Tempo also annotates the merged callset using the [iAnnotateSV package](https://github.com/rhshah/iAnnotateSV), and identifies possible cDNA contamination among deletion events that span splice sites.
+The bed and bedpe files used for the flags `pcawg_blacklist_bed`,`pcawg_blacklist_bedpe`, `pcawg_blacklist_fb_bedpe` and `pcawg_blacklist_te_bedpe` are sourced from the [SV merging tool used in the PCAWG paper](https://bitbucket.org/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/).
+
+In addition to filtering, Tempo also annotates the merged callset using the [iAnnotateSV package](https://github.com/rhshah/iAnnotateSV), and identifies possible cDNA contamination among deletion events that span splice sites. Possible cDNA contamination sites are not filtered.
+
+### Structural Variant Classes
+
+Each breakpoint is described on a single record of the bedpe file, with the coordinates and orientation of both breakends described.  The four types of breakends produced by Tempo are as follows:
+| Class              | Abbreviation | Description |
+| :---               | :---         | :---        |
+| Breakend           | BND          | Any event that cannot be described with one of the below terms. The majority of BND are usually translocations. |
+| Deletion           | DEL          | Loss of a segment that is spanned by two joined breakends either side. |
+| Tandem Duplication | DUP          | Extra copy of a segment immediately downstream of the template in the same orientation. |
+| Inversion          | INV          | A segment inserted into its original position, but in the opposite orientation. Simple inversions are balanced, but in complex inversions the second side of a dsDNA break may not be rescued. |
