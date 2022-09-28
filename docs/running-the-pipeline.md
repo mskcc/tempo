@@ -8,14 +8,13 @@ Tempo does not support running samples from mixed sequencing platforms together.
 
 This page provides instructions on how to run the pipeline through the `pipeline.nf` script. The basic command below shows how to run Tempo, with an explanation of flags and input arguments and files. Below is also described how to best [run the pipeline on Juno](running-the-pipeline.md#running-the-pipeline-on-juno) as well as [on AWS](running-the-pipeline.md#running-the-pipeline-on-aws).
 
+
 ```shell
-nextflow run pipeline.nf \
-    --mapping/--bamMapping <input mapping tsv file> \
-    --pairing <input pairing tsv file, can be optional> \
-    --assayType <string value: either "exome" or "genome"> \
-    --outDir <path to output subdirectory> \ 
+nextflow run dsl2.nf \
+    --mapping/--bamMapping <input mapping tsv file> \ 
+    --pairing <input mapping tsv file, can be optional> \
     -profile juno \
-    --somatic --germline --QC\
+    --workflows="SNV,qc" \
     --aggregate <true, false, or [a tsv file]>
 ```
 
@@ -24,16 +23,16 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 **Required arguments:**
 * `--mapping/--bamMapping <tsv>` is required except running in `--aggregate [tsv]` mode. When `--mapping [tsv]` is provided, FASTQ file paths are expected in the TSV file, and the pipeline will start from FASTQ files and go through all steps to generate BAM files. When `--bamMapping [tsv]` if provided, BAM file paths are expected in the TSV file. See [The Mapping File](running-the-pipeline.md#input-files) and [Execution Mode](running-the-pipeline.md#execution-mode) for details.
 * `--pairing <tsv>` is required when `--somatic` and/or `--germline` are enabled. `--pairing <tsv>` is not needed when you are running BAM generation part only, even if you are doign it with `--QC`( or `--QC` and `--aggregate`) enabled. See [The Mapping File](running-the-pipeline.md#input-files) and [Execution Mode](running-the-pipeline.md#execution-mode) for details.
-* `--assayType` ensures appropriate resources are allocated for indicated assay type. Only `exome` or `genome` is supported. Note: Please also make sure this value matches the `TARGET` field you put in the mapping.tsv file. Available TARGET field value for `exome` are `idt` or `agilent`i (can be mixed), for `genome` is `wgs`.
-* `--outDir` is the directory where the output will end up. This directory does not need to exist. If not set, by default it will be set to run directory (i.e. the directory from which the command `nextflow run` is executed.)
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively. `-profile test_singularity` is for testing on `juno`.
+* `--workflows` inidicates which [sub-workflows](sub-workflows.md) should be executed for this run. Possible options are `snv`, `sv`, `mutsig`, `germSNV`, `germSV`, `lohhla`, `facets`,`qc`, and `msisensor`. Multiple arguments can be provided in quotation marks (i.e. `--workflows="snv,qc"`). 
 
 **Section arguments:**
-* `--somatic`, `--germline` and `--QC` flags are boolean that indicate to run the somatic, germline variant calling and QC modules, respectively. Default value are `false` for all. Note: Currently the pipeline will enable `--somatic` automatically if only `--germline` is enabled, since germline analysis needs results from somatic analysis for now. (default: `false` for all)
-* `--aggregate <true, false, or [a tsv file]>` can be boolean or be given a path to a tsv file. Default value is `false`. It has to work together with `--somatic`, `--germline` and/or `--QC` to aggregate the results of these operations together as a cohort. There will be a `cohort_level/[cohort]/` directory generated under `--outDir [path]`. When boolean value `true` is given (equal to only give `--aggregate`), TEMPO will aggregate all the samples in the mapping and pairing file as one cohort named "default cohort". When `--aggregate <tsv>` file is given, the pipeline will aggregate samples and tumor/normal pairs based on the value is given in `COHORT` columns. Each sample and tumor/normal pairs can be assigned to different cohorts in different rows.
+* `--workflows` can be run independently as needed, however, when the output of a sub-workflow is required to as a dependency for an indicated workflow provided via the `--workflows` argument, the necessary dependent workflows will be automatically enabled. Note that while sub-workflows can be run independently, specific processes must be run as part of as sub-workflow. See the [sub-workflows](sub-workflows.md) section for more details.
+* `--aggregate <true, false, or [a tsv file]>` can be boolean or be given a path to a tsv file. Default value is `false`. A `cohort_level/[cohort]/` directory generated under `--outDir [path]`. When boolean value `true` is given (equal to only give `--aggregate`), TEMPO will aggregate all the samples in the mapping and pairing file as one cohort named "default cohort". When `--aggregate <tsv>` file is given, the pipeline will aggregate samples and tumor/normal pairs based on the value is given in `COHORT` columns. Each sample and tumor/normal pairs can be assigned to different cohorts in different rows.
 
 
 **Optional arguments:**
+* `--outDir` is the directory where the output will end up. This directory does not need to exist. If not set, by default it will be set to run directory (i.e. the directory from which the command `nextflow run` is executed.)
 * `-work-dir`/`-w` is the directory where the temporary output will be cached. By default, this is set to the run directory. Please see `NXF_WORK` in [Nextflow environment variables](https://www.nextflow.io/docs/latest/config.html#environment-variables).
 * `-publishAll` is a boolean, resulting in retention of intermediate output files ((default: `true`).
 * `--splitLanes` indicates that the provided FASTQ files will be scanned for all unique sequencing lanes and demultiplexed accordingly. This is recommended for some steps of the alignment pipeline. See more under [The Mapping File](running-the-pipeline.md#input-files) (default: `true`).
@@ -46,12 +45,12 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 Using test inputs provided in the GitHub repository, here is a concrete example:
 
 ```shell
-nextflow run pipeline.nf \
-    --mapping test_inputs/local/full_test_mapping.tsv \ 
-    --pairing test_inputs/local/full_test_pairing.tsv \
+nextflow run dsl2.nf \
     -profile juno \
-    --outDir results
-    --somatic --germline --aggregate --QC \
+    --mapping test_inputs/local/full_test_mapping.tsv \
+    --pairing test_inputs/local/full_test_pairing.tsv 
+    --workflows="SNV,qc" \
+    --aggregate true
 ```
 
 ## Input Files
