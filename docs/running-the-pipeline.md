@@ -24,6 +24,7 @@ _Note: [The number of dashes matters](nextflow-basics.md)._
 * `--mapping/--bamMapping <tsv>` is required except running in `--aggregate [tsv]` mode. When `--mapping [tsv]` is provided, FASTQ file paths are expected in the TSV file, and the pipeline will start from FASTQ files and go through all steps to generate BAM files. When `--bamMapping [tsv]` if provided, BAM file paths are expected in the TSV file. See [The Mapping File](running-the-pipeline.md#input-files) and [Execution Mode](running-the-pipeline.md#execution-mode) for details.
 * `--pairing <tsv>` is required when `--somatic` and/or `--germline` are enabled. `--pairing <tsv>` is not needed when you are running BAM generation part only, even if you are doign it with `--QC`( or `--QC` and `--aggregate`) enabled. See [The Mapping File](running-the-pipeline.md#input-files) and [Execution Mode](running-the-pipeline.md#execution-mode) for details.
 * `-profile` loads the preset configuration required to run the pipeline in the supported environment. Accepted values are `juno` and `awsbatch` for execution on the [Juno cluster](juno-setup.md) or on [AWS Batch](aws-setup.md), respectively. `-profile test_singularity` is for testing on `juno`.
+* `--assayType` ensures appropriate resources are allocated for indicated assay type. Only `exome` or `genome` is supported. Default is exome. Note: Please also make sure this value matches the `TARGET` field you put in the mapping.tsv file. Available TARGET field value for `exome` are `idt` or `agilent`i (can be mixed), for `genome` is `wgs`.
 * `--workflows` inidicates which [sub-workflows](sub-workflows.md) should be executed for this run. Possible options are `snv`, `sv`, `mutsig`, `germSNV`, `germSV`, `lohhla`, `facets`,`qc`, and `msisensor`. Multiple arguments can be provided in quotation marks (i.e. `--workflows="snv,qc"`). 
 
 **Section arguments:**
@@ -49,7 +50,7 @@ nextflow run dsl2.nf \
     -profile juno \
     --mapping test_inputs/local/full_test_mapping.tsv \
     --pairing test_inputs/local/full_test_pairing.tsv 
-    --workflows="SNV,qc" \
+    --workflows="SNV,qc,lohhla" \
     --aggregate true
 ```
 
@@ -80,9 +81,9 @@ Tempo checks for the following aspects:
 
 For processing paired-end FASTQ inputs, users must provide both a mapping file using `--mapping <tsv>`, as described below.
 
-You do not need `--pairing <tsv>` when you are running BAM generation alone (even together with `--QC`).
+You do not need `--pairing <tsv>` when you are running BAM generation alone.
 
-You must to give `--pariring <tsv>` when `--somatic` or `--germline` is enabled.
+You must to give `--pariring <tsv>` when running any other sub-workflow.
 
 ::: warning Be aware
 Tempo can deal with any number of sequencing lanes per sample, in any combination of lanes split or combined across multiple FASTQ pairs. Different FASTQ pairs for the same sample can be provided as different lines in the mapping file and give the same SAMPLE ID in the `SAMPLE` field, and repeating the `TARGET` field. By default, Tempo will look for all distinct sequencing lanes in provided FASTQ files by scanning each FASTQ read name. The pipeline uses this and the instrument, run, and flowcell IDs from the _sequence identifiers_ in the input FASTQs to generate all different read group IDs for each sample. This information is used by the base quality score recalibration steps of the GATK suite of tools. If FASTQ files name explicitly specified the lane name in the format of `_L(\d){3}_` ("\_L" + "3 integer" + "\_"), the pipeline will assume this FASTQ files contain only one lane, and it will skip scanning and splitting the FASTQ files, and give one read group ID all the reads in the FASTQ files based on the name of the first read in the FASTQ file. Please refer to [this GATK Forum Page](https://gatkforums.broadinstitute.org/gatk/discussion/6472/read-groups)for more details.
@@ -108,7 +109,7 @@ Read further details on these parameters [here](reference-files.md#genomic-inter
 
 If the user is using pre-processed BAMs, the input TSV file is a similar format as FASTQ mapping TSV file, with slight difference showing below.
 
-You must to give `--pariring <tsv>` and at least one of `--somatic` `--germline` `--QC` simultaneously when you use `--bamMapping <tsv>`.
+You must to give `--pariring <tsv>` and specify at least one [sub-workflow](sub-workflow.md) when beginning with BAM mapping files.
 
 Example:
 
@@ -122,7 +123,7 @@ Example:
 The `--pairing <tsv>` file will be exactly the same as using FASTQ mapping TSV file, describing below.
 
 ::: tip Note
-The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `pipeline.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
+The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `dsl2.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
 
 Different from FASTQ mapping tsv, in this TSV file each SAMPLE id can only appear once, meaning the pipeline will not combine different BAMs for you for the same sample.
 :::
@@ -131,7 +132,7 @@ Different from FASTQ mapping tsv, in this TSV file each SAMPLE id can only appea
 
 The pipeline needs to know which tumor and normal samples are to be analyzed as matched pairs. This file provides that pairing by referring to the sample names as provided in the `SAMPLE` column in the mapping file.
 
-You do not need `--pairing <tsv>` when you are running BAM generation alone (even together with `--QC`).
+You do not need `--pairing <tsv>` when you are running only the alignment sub-workflow.
 
 Example:
 
@@ -146,7 +147,7 @@ Example:
 
 * When boolean value `true` is given (equal to only give `--aggregate`), TEMPO will aggregate all the samples in the mapping and pairing file as one cohort named "default cohort". 
 * When `--aggregate <tsv>` file is given, the pipeline will aggregate samples and tumor/normal pairs based on the value is given in `COHORT` column. Each sample and tumor/normal pairs can be assigned to different cohorts in different rows.
-* When running aggregation only mode, `PATH` column need to be provided to introduce the TEMPO result directories for each sample and tumor/normal pairs (only up to the parent folder of `qc`, `somatic` and `germline` folder).
+* When running aggregation only mode, the `PATH` column needs to be provided to introduce the TEMPO result directories for each sample and tumor/normal pairs (only up to a TEMPO produced output folder).
 
 Example:
 
@@ -160,58 +161,28 @@ Example:
 The `--pairing <tsv>` file will be exactly the same as using FASTQ mapping TSV file, describing below.
 
 ::: tip Note
-The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `pipeline.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
+The pipeline expects BAM file indices in the same subdirectories as `TUMOR_BAM` and `NORMAL_BAM`. If the index files `*.bai` or `*.bam.bai` do not exist, `dsl2.nf` will throw an error. The BAI column in the BAM Mapping TSV file is not actually used.
 
 Different from FASTQ mapping tsv, in this TSV file each SAMPLE id can only appear once, meaning the pipeline will not combine different BAMs for you for the same sample.
 :::
 
 ## Execution Mode
-
-There are overall 4 execution modes that TEMPO accept, depending on the way of input arguments are given. The pipeline will throw an error when it detects incompatible _Section arguments_ (`--somatic`, `--germline`, `--QC`, `--aggregate`) combinations. Compatibility of analysis argument combinations are described below:
+There are a variety of execution modes that can be executed by TEMPO. Specific details can be found in the [sub-workflows](sub-workflows.md) section.  Additionally, there are special cases under which TEMPO can run.
 
 ### `--mapping <tsv>` only
-When no additional _Section arguments_ are given, only alignment steps will be performed.
-
-***Compatible _Section Arguments_ Combinations:***
-* `--QC`: `QcAlfred` and `QcCollectHsMetrics` will be performed.
-* `--QC --aggregate true/<tsv>`: `QcAlfred` and `QcCollectHsMetrics` will be performed and aggregated in `cohort_level/[cohort]` folder.
-
-***Incompatible _Section Arguments_:***
-* `--somatic`: No pairing infomation.
-* `--germline`: No pairing information.
-* `--bamMapping <tsv>`: Conflicts.
+When no additional sub-workflow arguments are given, only alignment steps will be performed.
 
 ### `--mapping/--bamMapping <tsv>` and `--pairing <tsv>` (We are describing two modes in this section)
 When `--mapping <tsv>` is given, the pipeline will use FASTQ input and start from alignment steps.
 
 When `--bamMapping <tsv>` is given, the pipeline will use BAM input and skip alignment steps.
 
-When no additional _Sectionarguments_ are given, pipeline will throw an error indicating that `--pairing <tsv>` is not used.
-
-***Compatible _Section Arguments_ Combinations:***
-* `--somatic` with or without `--aggregate true/<tsv>`
-* `--somatic --germline` with or without `--aggregate true/<tsv>`
-* `--somatic --QC` with or without `--aggregate true/<tsv>`
-* `--QC` with or without `--aggregate true/<tsv>`: `QcConpair` will be performed together with `QcAlfred` and `QcCollectHsMetrics`.
-
-***Incompatible _Section Arguments_:***
-* `--germline` with or without `--aggregate true/<tsv>` and `--QC`: The pipeline will auto-enable `--somatic` because germline analysis need the results from somatic analysis at this stage.
-* `--aggregate <tsv>`: Conflicts.
+When no additional sub-workflow arguments are given, the pipeline will throw an error indicating that `--pairing <tsv>` is not used.
 
 ### `--aggregate <tsv>` only
-This mode can only be run when the TEMPO produced output structure path is provided as `PATH` column in `--aggregate <tsv>`. It explicitly relies on the output structure ((only up to the parent folder of `qc`, `somatic` and `germline` folder) that are auto-generated by TEMPO to identify how and what files need to be aggregated together as a cohort level result under folder `cohort_level/[cohort]`. Please refer to [Outputs](outputs.md#outputs) for more detail.
+This mode can only be run when the TEMPO produced output structure path is provided as `PATH` column in `--aggregate <tsv>`. It explicitly relies on the output structure (only up to the parent folder of of a TEMPO generated output directory) that are auto-generated by TEMPO to identify how and what files need to be aggregated together as a cohort level result under folder `cohort_level/[cohort]`. Please refer to [Outputs](outputs.md#outputs) for more detail.
 
-
-***Compatible _Section Arguments_ Combinations:***
-* The pipeline will auto-detect which sections need to be aggregated, so no _Section_Arguments_ need to be given.
-
-***Incompatible _Section Arguments_:***
-* `--somatic`: Not needed. Auto-detected.
-* `--germline`: Not needed. Auto-detected.
-* `--QC`: Not needed. Auto-detected.
-* `--mapping <tsv>`: Conflicts.
-* `--bamMapping <tsv>`: Conflicts.
-* `--pairing <tsv>`: Conflicts.
+When using this mode, no sub-workflow arguments need to be given.
 
 ## Running the Pipeline on Juno
 
@@ -221,30 +192,36 @@ First follow the instructions to [set up your enviroment on Juno](juno-setup.md)
 
 ### Submitting the Pipeline to LSF
 
-We recommend submitting your `nextflow run pipeline.nf <...>` command to the cluster via `bsub`, which will launch a leader job from which individual processes are submitted as jobs to the cluster.
+We recommend submitting your `nextflow run dsl2.nf <...>` command to the cluster via `bsub`, which will launch a leader job from which individual processes are submitted as jobs to the cluster.
 
 ```
 bsub -W <hh:mm> -n 2 -R "rusage[mem=<requested memory>]" \
     -o <LSF output file name>.out -e <LSF error file name>.err \
-    nextflow run pipeline.nf -profile juno <...> 
+    nextflow run dsl2.nf -profile juno <...> 
 ```
 
 We recommend that users check the [documentation for LSF](https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.2/lsf_command_ref/bsub.1.html) to clarify each of the arguments above. However,
 
-* `-W <hh:mm>` sets the time allotted for `nextflow run pipeline.nf` to run to completion. 
-* `-n 2` is requesting one slot. This should be sufficient for `nextflow run pipeline.nf`
+* `-W <hh:mm>` sets the time allotted for `nextflow run dsl2.nf` to run to completion. 
+* `-n 2` is requesting one slot. This should be sufficient for `nextflow run dsl2.nf`
 * ` -o <LSF output file name>.out` is the name of the STDOUT file, which is quite informative for Nextflow. We **strongly** encourage users to set this.
 * ` -e <LSF output file name>.err` is the name of the STDERR file. Please set this. 
-* ` -R "rusage[mem=<requested memory>]"` is the requested memory for  `nextflow run pipeline.nf`, which will not be memory intensive at all. 
+* ` -R "rusage[mem=<requested memory>]"` is the requested memory for  `nextflow run dsl2.nf`, which will not be memory intensive at all. 
 
 Here is a concrete example of a bsub command to process 25 WES TN pairs, running somatic and germline variant calling modules:
 
 ```shell
-bsub -W 80:00 -n 2 -R "rusage[mem=8]" -o nf_output.out -e nf_output.err \
-    nextflow run <path-to-repository>/pipeline.nf --somatic --germline \
-    --mapping test_inputs/local/WES_25TN.tsv --pairing test_inputs/local/WES_25TN_pairing.tsv 
+
+    bsub -W 80:00 -n 2 -R "rusage[mem=8]" \
+    -o nf_output.out \
+    -e nf_output.err \
+    nextflow run <path-to-repository>/dsl2.nf \
+    --mapping test_inputs/local/WES_25TN.tsv \
+    --pairing test_inputs/local/WES_25TN_pairing.tsv \
     --outDir results \
-    -profile juno
+    -profile juno \
+    --workflows="SNV,qc,lohhla" \
+    --aggregate true
 ```
 
 ::: warning Be aware
@@ -273,7 +250,7 @@ Nextflow supports [modify and resume](https://www.nextflow.io/docs/latest/getsta
 
 To resume an interrupted Nextflow pipeline run, add `-resume` (note the single dash) to your command-line call to access the cache history of Nextflow and continue a job from where it left off. This will trigger a check of which jobs already completed before starting unfinished jobs in the pipeline.
 
-This function also allows you to make changes to values in the `pipeline.nf` script and continue from where you left off. Nextflow will use the cached information from the unchanged sections while running only the modified processes. If you want to make changes to processes that already successfully completed, you have to manually delete the subdirectories in `work` where those processes where run. 
+This function also allows you to make changes to values in the `dsl2.nf` script and continue from where you left off. Nextflow will use the cached information from the unchanged sections while running only the modified processes. If you want to make changes to processes that already successfully completed, you have to manually delete the subdirectories in `work` where those processes where run. 
 
 ::: tip Note
 * If you use `-resume` for the first time of a timeline run, Nextflow will recognize this as superfluous, and continue.
@@ -309,7 +286,7 @@ or equivalently
 Sometimes the resume feature may not work entirely as expected, as described in troubleshooting tips [here on the Nextflow blog](https://www.nextflow.io/blog/2019/troubleshooting-nextflow-resume.html)
 
 
-## After Successful Run
+## After A Successful Run
 
 Nextflow generate many intermediate output files. All the relevant output data should be in the directory given to the `outDir` argument. Once you have verified that the data are satisfactory, everything outside this directory can be removed. In particular, the `work` directory will contain all intermediate output files, which takes up a great deal of disk space and should be removed. The `nextflow clean -force` command does all of this. Also see `nextflow clean -help` for options. 
 
