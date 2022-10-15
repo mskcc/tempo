@@ -34,6 +34,7 @@ def usage():
 	parser.add_argument("--out_dir",default="svclone_inputs", help="Folder to write all svclone inputs")
 	parser.add_argument("--cfg_template",help="Template config for editing")
 	parser.add_argument("--bam",help="Tumor Bam file")
+	parser.add_argument("--cnv",help="CNV file")
 
 	return parser.parse_args()
 
@@ -61,7 +62,7 @@ def main():
 	## read in bedpe and output reformatted SVs
 	with open(args.bedpe,"r") as f:
 		in_meta=True
-		x = 0
+		line_cursor = 0
 		while in_meta:
 			bedpe_line = f.readline()
 			if bedpe_line.startswith("#CHROM"):
@@ -85,12 +86,17 @@ def main():
 	## also adjust SVClass descriptor terms.
 	cfg = configparser.ConfigParser()
 	cfg.read(args.cfg_template)
+	max_cn = max(pd.read_csv(args.cnv, sep=",",header=None).iloc[:, 6].tolist())
 	insert_mean, insert_std = estimateInsertSizeDistribution(args.bam)
-	print(insert_mean)
-	print(insert_std)
+	read_len = estimateReadLen(args.bam)
+	mean_cov = estimateCoverage(args.bam)
+	cfg.set('BamParameters', 'read_len', str(int(read_len)))
 	cfg.set('BamParameters', 'insert_mean', str(int(insert_mean)))
 	cfg.set('BamParameters', 'insert_std',  str(int(insert_std)))
+	cfg.set('BamParameters', 'max_cn',  str(int(max_cn)))
+	cfg.set('BamParameters', 'mean_cov',  str(int(mean_cov)))
 	cfg.set('SVclasses', 'itrx_class',  "INTRX,TRA,BND")
+	cfg.set('SVannotateParameters','sv_class_field','classification')
 	with open(cfg_out, 'w') as configfile:
 		cfg.write(configfile)
 
@@ -99,19 +105,51 @@ def main():
 def estimateInsertSizeDistribution(bamfile, alignments=10000):
 	sam = pysam.AlignmentFile(bamfile)
 	inserts = np.array([read.tlen for read in sam.head(alignments) if read.tlen > 0 and read.tlen < 500000 and read.is_paired and read.next_reference_id == read.reference_id ])
-	print(len(inserts))
 	insert_mean, insert_std = np.mean(inserts), np.std(inserts)
 	return [ insert_mean, insert_std ]
 
 def readConfigFile(filePath):
-	Config = configparser.ConfigParser(delimiters=":")
-	cfg_file = Config.read(filePath)
-	return cfg_file
+	config = configparser.ConfigParser(delimiters=":")
+	config.read(filePath)
+	return config
 
-def writeConfigFile(filePath,cfg_obj):
-	with open(filePath, 'w') as configfile:
-		config.write(configfile,space_around_delimiters=True)
+def writeConfigFile(outFilePath,cfg_obj):
+	with open(outFilePath, 'w') as configfile:
+		cfg_obj.write(configfile,space_around_delimiters=True)
 		
+def estimateCoverage(bamfile):
+	"""
+	estimate coverage in bam file
+	assumes uniform coverage
+	"""
+	sam = pysam.AlignmentFile(bamfile)
+	cov = list()
+	interval_len = 1000000
+	for i in sam.references:
+		if i.startswith("GL") or i.startswith("NC"): continue
+		if i in ["hs37d5","X","Y","chrX","chrY"]: continue
+		print(i)
+		for j in range(1,int(sam.get_reference_length(i)/interval_len)):
+			try:
+				x = sam.count_coverage(i,start=j*interval_len, stop=(j*interval_len) + 50)
+				cov += list(np.add(np.add(x[0],x[1]),np.add(x[2],x[3])))
+			except ValueError as e:
+				print(e)
+				pass
+	print(len(cov))
+	return int(sum(cov)/len(cov))
+
+def estimateReadLen(bamfile,alignments=1000):
+	sam = pysam.AlignmentFile(bamfile)
+	sizes = [read.rlen for read in sam.head(alignments)]
+	sizes_dict = dict()
+	for i in sizes:
+		if not i in sizes_dict: sizes_dict[i] = 0
+		sizes_dict[i] += 1
+	read_len = max(sizes_dict, key=sizes_dict.get)
+	if sizes_dict[read_len] < alignments * .5:
+		read_len = int(sum(sizes)/len(sizes))
+	return read_len
 
 if __name__ == "__main__":
 	main()

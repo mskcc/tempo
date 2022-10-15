@@ -1,7 +1,7 @@
 process SomaticRunSVclone {
 tag "${idTumor}__${idNormal}"
 
-publishDir "${params.outDir}/somatic/${outputPrefix}/clonality/", mode: params.publishDirMode
+publishDir "${params.outDir}/somatic/${outputPrefix}/svclone/", mode: params.publishDirMode, pattern: "${outputPrefix}/ccube_out/post_assign/*"
 
 input:
   tuple val(idTumor), val(idNormal), val(target), 
@@ -27,7 +27,8 @@ python ${prepare_svclone_input_script} \\
   --purity_ploidy ${ploidyIn} \\
   --out_dir svclone_in \\
   --sampleid ${outputPrefix} \\
-  --bam ${bamTumor}
+  --bam ${bamTumor} \\
+  --cnv ${cnv}
 
 echo "Running SVclone"
 echo "Running svclone annotate"
