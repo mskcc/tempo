@@ -12,6 +12,7 @@ workflow germlineSNV_wf
     bamsTumor
     mergedIList
     facetsForMafAnno
+    baitsetPlus5
 
   main:
     referenceMap = params.referenceMap
@@ -46,9 +47,13 @@ workflow germlineSNV_wf
     GermlineCombineHaplotypecallerVcf(haplotypecaller4Combine,
                                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
-    bams.map{ idNormal, target, bamNormal, baiNormal -> 
-              [idNormal, target, bamNormal, baiNormal, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
-            }.set{ bamsForStrelkaGermline }
+    bams
+      .combine(baitsetPlus5)
+      .filter{ idNormal, target, bamNormal, baiNormal, target2, bedGz, bedGzTbi ->
+        target == target2
+      }.map{ idNormal, target, bamNormal, baiNormal, target2, bedGz, bedGzTbi ->
+        [idNormal, target, bamNormal, baiNormal, bedGz, bedGzTbi]
+      }.set{bamsForStrelkaGermline}
 
     GermlineRunStrelka2(bamsForStrelkaGermline, 
                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))

@@ -9,14 +9,20 @@ workflow sampleQC_wf
   take:
     inputChannel
     fastPJson
+    intervals
+    targetsBed
+    targetsBedGz
 
   main:
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
 
-    inputChannel.map{ idSample, target, bam, bai ->
-        [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
-    }.set{ bamsBQSR4HsMetrics }
+    inputChannel.combine(intervals)
+	.filter{ idSample, target, bam, bai, target2, targetsInterval, baitsInterval ->
+	    target == target2
+	}.map{ idSample, target, bam, bai, target2, targetsInterval, baitsInterval ->
+	    [idSample, target, bam, bai, targetsInterval, baitsInterval]
+	}.set{ bamsBQSR4HsMetrics }
 
     QcCollectHsMetrics(bamsBQSR4HsMetrics,
                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
@@ -30,16 +36,19 @@ workflow sampleQC_wf
     }
 
     inputChannel
-      .map{ idSample, target, bam, bai -> [ idSample, target, bam, bai, file(targetsMap."$target".targetsBed) ]}
+      .combine(targetsBed)
+      .filter{ idSample, target, bam, bai, targets2, bedfile -> target == targets2 }
+      .map{ idSample, target, bam, bai, targets2, bedfile -> [idSample, target, bam, bai, bedfile] }
       .set{ bamsBQSR4Qualimap }
 
     QcQualimap(bamsBQSR4Qualimap)
 
     Channel.from(true, false).set{ ignore_read_groups }
     inputChannel
-      .map{ idSample, target, bam, bai -> 
-        [ idSample, target, bam, bai, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi ]
-      }.set{ bamsBQSR4Alfred }
+      .combine(targetsBedGz)
+      .filter{ idSample, target, bam, bai, targets2, bedGz, bedGzTbi -> target == targets2 }
+      .map{ idSample, target, bam, bai, targets2, bedGz, bedGzTbi -> [idSample, target, bam, bai, bedGz, bedGzTbi] }
+      .set{ bamsBQSR4Alfred }
 
     QcAlfred(ignore_read_groups, 
              bamsBQSR4Alfred,
