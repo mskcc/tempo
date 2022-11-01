@@ -7,6 +7,18 @@ import nextflow.Channel
 
 class TempoUtils {
 
+  static def extractGermlineSamples(tsvFile) {
+    def allRows = [:]
+    Channel.from(tsvFile)
+    .splitCsv(sep: '\t', header: true)
+    .map { row ->
+    checkHeader([row.NORMAL_ID], tsvFile)
+    if(!checkNumberOfItem(row, 1, tsvFile)){System.exit(1)}
+    if(!checkDuplicates(allRows, row, row, tsvFile)){System.exit(1)}
+    row.NORMAL_ID
+    }
+  }
+
   static def extractPairing(tsvFile) {
     def allRows = [:]
     Channel.from(tsvFile)
