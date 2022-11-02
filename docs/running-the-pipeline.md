@@ -225,7 +225,7 @@ Here is a concrete example of a bsub command to process 25 WES TN pairs, running
 ```
 
 ::: warning Be aware
-Whereas a few exome samples finish within a few hours, larger batches and genomes will take .s. Allow for this by setting`-W` to a good amount of hours. The pipeline will die if the leader job does, but can be [resumed](running-the-pipelinf.md#modifying-or-resuming-pipeline-run) subsequently. 
+Whereas a few exome samples finish within a few hours, larger batches and genomes will take .s. Allow for this by setting `-W` to a good amount of hours. The pipeline will die if the leader job does, but can be [resumed](running-the-pipelinf.md#modifying-or-resuming-pipeline-run) subsequently. 
 :::
 
 ### Running From a `screen` Session
@@ -280,7 +280,7 @@ Users can then restart the pipeline at specific run, using either the `RUN NAME`
 or equivalently
 
 ```shell
-> nextflow run naseq-nf -resume 4dc656d2-c410-44c8-bc32-7dd0ea87bebf
+> nextflow run rnaseq-nf -resume 4dc656d2-c410-44c8-bc32-7dd0ea87bebf
 ```
 
 Sometimes the resume feature may not work entirely as expected, as described in troubleshooting tips [here on the Nextflow blog](https://www.nextflow.io/blog/2019/troubleshooting-nextflow-resume.html)
