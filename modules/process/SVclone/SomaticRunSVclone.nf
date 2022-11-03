@@ -1,7 +1,7 @@
 process SomaticRunSVclone {
 tag "${idTumor}__${idNormal}"
 
-publishDir "${params.outDir}/somatic/${outputPrefix}/svclone/", mode: params.publishDirMode, pattern: "${outputPrefix}/ccube_out/post_assign/*"
+publishDir "${params.outDir}/somatic/${outputPrefix}/", mode: params.publishDirMode, pattern: "svclone/"
 
 input:
   tuple val(idTumor), val(idNormal), val(target), 
@@ -14,7 +14,9 @@ input:
   path(prepare_svclone_input_script)
 output:
   tuple val(idTumor), val(idNormal), val(target),
-    path("${outputPrefix}")
+    path("${outputPrefix}"), emit: SVcloneOutput
+  tuple val(idTumor), val(idNormal), val(target),
+    path("svclone"), emit: SVclonePublish
 
 script:
 outputPrefix = "${idTumor}__${idNormal}"
@@ -65,6 +67,8 @@ echo "Running svclone postassign"
 svclone postassign \\
   -s ${outputPrefix} \\
   --joint
+
+mkdir -p svclone ; cp -R ${outputPrefix}/ccube_out/post_assign/* svclone
 
 """
 }
