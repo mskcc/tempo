@@ -62,7 +62,7 @@ if ( ! dir.exists(outDir)){ dir.create(outDir) }
 message("## read and pre-process input ##")
 this_sv <- fread(cmd = paste("grep -v '^##'", input.file), header = T, data.table = F)
 if ("FILTER" %in% names(this_sv)){ this_sv <- this_sv[this_sv$FILTER=="PASS",] }
-this_sv$sample <- sampleName
+this_sv$sample <- rep(sampleName,dim(this_sv)[1])
 setnames(this_sv, "#CHROM_A", "chrom1")
 setnames(this_sv, "START_A", "start1")
 setnames(this_sv, "END_A", "end1")
@@ -98,12 +98,36 @@ if (strsplit(as.character(packageVersion("signature.tools.lib")),"\\.")[[1]][1] 
 } else {
 
 	sig.arglist[["useBootstrap"]] = TRUE
-	sig.arglist[["fit_method"]] = "Fit" 
+	sig.arglist[["fit_method"]] = "Fit"
 	sig.arglist[["SV_bedpe_files"]] = SV_bedpe_file
 	sig.arglist[["signature_version"]] = "RefSigv2"
 	res <- do.call(signatureFit_pipeline, sig.arglist)
 	plotSignatures(res$catalogues, output_file = paste(outDir,paste0(sampleName,"_catalogues.pdf"),sep="/"),ncolumns=1)
-	writeTable(res$fitResults$exposures, paste(outDir,paste0(sampleName,"_exposures.tsv"),sep="/"))
+
+	exp <- res$fitResults$exposures
+	perc <- res$fitResults$exposures %>%
+		as.data.frame %>%
+		mutate(across()/rowSums(across())) %>%
+		rename_with(~paste0(., "_perc"))
+	pvals <- res$fitResults$bootstrap_exposures_pvalues %>%
+		t %>%
+		as.data.frame %>%
+		rename_with(~paste0(., "_pval"))
+
+	exp_extended <- as.data.frame(do.call(cbind, list(exp, perc, pvals)))
+
+	ordered.colnames <- c(paste("RefSigR",rep(c(c(1:5),"6a","6b",c(7:20)), each = 3 ), c("","_perc","_pval"), sep = ""), "unassigned","unassigned_perc")
+	exp_extended <- exp_extended %>%
+					select(ordered.colnames) %>%
+					tibble::rownames_to_column(var="SampleID") %>%
+					relocate(SampleID)
+	write.table(exp_extended,
+				file = paste(outDir,paste0(sampleName,"_exposures.tsv"),sep="/"),
+				row.names = F,
+				quote=F,
+				sep="\t"
+			   )
+
 }
+
 saveRDS(res,file="result.rds")
- 
