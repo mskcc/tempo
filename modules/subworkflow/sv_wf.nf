@@ -92,17 +92,20 @@ workflow sv_wf
       params.genome
     )
 
-    RunSVSignatures(
-      SomaticAnnotateSVBedpe.out.SVAnnotBedpePass,
-      workflow.projectDir + "/containers/signaturetoolslib/sv_signatures_wrapper.R"
-    )
-
     if (params.assayType == "genome") {
+      RunSVSignatures(
+        SomaticAnnotateSVBedpe.out.SVAnnotBedpePass,
+        workflow.projectDir + "/containers/signaturetoolslib/sv_signatures_wrapper.R"
+      )
+      SVSignatures = RunSVSignatures.out
       SomaticRunClusterSV( SomaticAnnotateSVBedpe.out.SVAnnotBedpePass )
+    } else {
+      SVSignatures = Channel.empty()
     }
 
   emit:
+    SVSignatures         = SVSignatures
     SVAnnotBedpe         = SomaticAnnotateSVBedpe.out.SVAnnotBedpe
     SVAnnotBedpePass     = SomaticAnnotateSVBedpe.out.SVAnnotBedpePass
-    sv4Aggregate         = SomaticMergeSVs.out.SVCallsCombinedVcf
+    sv4Aggregate         = SomaticAnnotateSVBedpe.out.SVAnnotBedpe4Aggregate
 }

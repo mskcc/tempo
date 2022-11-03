@@ -72,5 +72,5 @@ workflow germlineSV_wf
   emit:
     SVAnnotBedpe         = GermlineAnnotateSVBedpe.out.SVAnnotBedpe
     SVAnnotBedpePass     = GermlineAnnotateSVBedpe.out.SVAnnotBedpePass
-    sv4AggregateGermline = sv4AggregateGermline
+    sv4AggregateGermline = GermlineAnnotateSVBedpe.out.SVAnnotBedpe4Aggregate
 }

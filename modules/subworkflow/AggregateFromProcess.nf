@@ -8,6 +8,8 @@ include { SomaticAggregateMaf }                from '../process/Aggregate/Somati
 include { SomaticAggregateMetadata }           from '../process/Aggregate/SomaticAggregateMetadata'
 include { SomaticAggregateNetMHC }             from '../process/Aggregate/SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
+include { SomaticAggregateSvSignatures }       from '../process/Aggregate/SomaticAggregateSvSignatures'
+include { SomaticAggregateHRDetect }           from '../process/Aggregate/SomaticAggregateHRDetect'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
 include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
 
@@ -19,6 +21,7 @@ workflow aggregateFromProcess
     facets4Aggregate
     sv4Aggregate
     snv4Aggregate
+    hrd4Aggregate
     lohhla4Aggregate
     MetaData4Aggregate
     snv4AggregateGermline
@@ -56,11 +59,23 @@ workflow aggregateFromProcess
       input4AggregateFacets = inputAggregate.combine(facets4Aggregate.out.facets4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2],it[4],it[5],it[6],it[7],it[8]]}
     }
     if (sv4Aggregate){
-      inputSomaticAggregateSv = inputAggregate.combine(sv4Aggregate.out.sv4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+      inputSomaticAggregateSv = 
+        inputAggregate.combine(sv4Aggregate.out.sv4Aggregate, by:[1,2])
+          .groupTuple(by:[2])
+          .map{[it[2], it[4]]}
+
+      inputSomaticAggregateSvSignatures = 
+        inputAggregate.combine(sv4Aggregate.out.SVSignatures, by:[1,2])
+          .groupTuple(by:[2])
+          .map{[it[2], it[4], it[5]]}
     }
     if (snv4Aggregate){
       inputSomaticAggregateNetMHC = inputAggregate.combine(snv4Aggregate.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
       inputSomaticAggregateMaf    = inputAggregate.combine(snv4Aggregate.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+    }
+    if (hrd4Aggregate){
+      inputSomaticAggregateHrd = inputAggregate.combine(
+        hrd4Aggregate.out.HRDetect, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
     }
     if (lohhla4Aggregate){
       inputSomaticAggregateLOHHLA = inputAggregate.combine(lohhla4Aggregate.out.lohhla4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
@@ -73,7 +88,7 @@ workflow aggregateFromProcess
     }
     if (sv4AggregateGermline)
     {
-      inputGermlineAggregateSv    = inputAggregate.combine(sv4AggregateGermline.out.sv4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique(), it[6].unique()]}
+      inputGermlineAggregateSv = inputAggregate.combine(sv4AggregateGermline.out.sv4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
     }
 
     if (sampleQC4Aggregate){
@@ -227,6 +242,12 @@ workflow aggregateFromProcess
   }
   if (sv4Aggregate){
     SomaticAggregateSv(inputSomaticAggregateSv)
+    if (params.assayType == "genome"){
+      SomaticAggregateSvSignatures(inputSomaticAggregateSvSignatures)
+    }
+  }
+  if (hrd4Aggregate){
+    SomaticAggregateHRDetect(inputSomaticAggregateHrd)
   }
   if (lohhla4Aggregate){
     SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA)
