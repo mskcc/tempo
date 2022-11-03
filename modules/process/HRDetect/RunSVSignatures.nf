@@ -8,9 +8,8 @@ process RunSVSignatures {
     path(sv_signature_script) 
 
   output:
-    tuple val(idTumor), val(idNormal), path("${outputPrefix}_catalogues.pdf"), path("${outputPrefix}_exposures.tsv")
-
-  when: params.assayType == "genome" 
+    tuple val("placeholder"), val(idTumor), val(idNormal),
+      path("${outputPrefix}_catalogues.pdf"), path("${outputPrefix}_exposures.tsv")
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"

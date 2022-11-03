@@ -3,7 +3,7 @@ include { HRDetect }				from '../process/HRDetect/HRDetect'
 workflow hrdetect_wf {
 	take:
 	CNVoutput
-	MAFoutput 
+	MAFoutput
 	SVoutput
 	
 	main:
@@ -15,5 +15,8 @@ workflow hrdetect_wf {
 		HRDetectVariantsIn,
 		workflow.projectDir + "/containers/signaturetoolslib/HRDetect_wrapper.R"
 	)
+
+	emit:
+	HRDetect = HRDetect.out
 	
 }
