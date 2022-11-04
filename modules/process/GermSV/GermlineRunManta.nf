@@ -1,5 +1,5 @@
 process GermlineRunManta {
-  tag {idNormal}
+  tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/manta", mode: params.publishDirMode
 

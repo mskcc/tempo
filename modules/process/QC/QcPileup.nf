@@ -1,5 +1,5 @@
 process QcPileup {
-  tag {idSample}
+  tag "${idSample}"
 
   publishDir "${params.outDir}/bams/${idSample}/pileup/", mode: params.publishDirMode
 

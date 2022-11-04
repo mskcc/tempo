@@ -1,5 +1,5 @@
 process GermlineRunStrelka2 {
-  tag {idNormal}
+  tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/strelka2", mode: params.publishDirMode
 

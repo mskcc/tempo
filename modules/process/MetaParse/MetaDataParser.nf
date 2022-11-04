@@ -1,5 +1,5 @@
 process MetaDataParser {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
  
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 

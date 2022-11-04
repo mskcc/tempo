@@ -1,5 +1,5 @@
 process MergeBamsAndMarkDuplicates {
-  tag {idSample}
+  tag "${idSample}"
 
   input:
     tuple val(idSample), path(bam), val(target)
@@ -11,7 +11,7 @@ process MergeBamsAndMarkDuplicates {
   script:
 
   bamSize = 0
-  bam.each{ bamSize = bamSize + it.size()}
+  [bam].flatten().each{ bamSize = bamSize + it.size()}
 
   if (workflow.profile == "juno") {
     if(bamSize > 100.GB) {

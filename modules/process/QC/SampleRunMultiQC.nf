@@ -1,11 +1,11 @@
 process SampleRunMultiQC {
-  tag {idSample}
+  tag "${idSample}"
   label 'multiqc_process'
 
   publishDir "${params.outDir}/bams/${idSample}/multiqc", mode: params.publishDirMode  
   
   input:
-    tuple val(idSample), path(alfredRGNTsvFile), path(alfredRGYTsvFile), path(fastpJsonFile), path(qualimapFolder), path(hsmetricsFile)
+    tuple val(idSample), path(alfredRGNTsvFile), path(alfredRGYTsvFile), path(fastpJsonFile), path(qualimapFolder), file(hsmetricsFile)
     tuple path("exome_multiqc_config.yaml"), path("wgs_multiqc_config.yaml"), path("tempoLogo.png")
 
   output:

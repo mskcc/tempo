@@ -1,5 +1,5 @@
 process SomaticDellyCall {
-  tag {idTumor + "__" + idNormal + '@' + svType}
+  tag "${idTumor + "__" + idNormal + '@' + svType}"
 
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
   
