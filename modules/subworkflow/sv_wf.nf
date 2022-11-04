@@ -37,15 +37,18 @@ workflow sv_wf
     , "somatic"
   )
 
-    if (params.assayType == "genome" && workflow.profile != "test") {
-      SomaticRunSvABA(
-        bamFiles,
-        referenceMap.genomeFile, 
-        referenceMap.genomeIndex,
-        referenceMap.genomeDict,
-        referenceMap.bwaIndex
-      )
+    SomaticRunSvABA(
+      bamFiles
+        .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal -> 
+	  [ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal ] + [targetsMap."$target".targetsBed] 
+	},
+      referenceMap.genomeFile,
+      referenceMap.genomeIndex,
+      referenceMap.genomeDict,
+      referenceMap.bwaIndex
+    )
 
+    if (params.assayType == "genome" && workflow.profile != "test") {
       brass_wf(
         bamFiles, 
         sampleStatistics // from ascat
@@ -60,7 +63,7 @@ workflow sv_wf
     } else {
       SomaticDellyCombine.out.map{ it + ["delly"]}
         .mix(manta4Combine.map{ it + ["manta"]})
-        .groupTuple( by:[0,1,2], size:2 )
+        .groupTuple( by:[0,1,2], size:3 )
         .set{allSvCallsCombineChannel}
     }
     
