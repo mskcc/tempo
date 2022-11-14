@@ -19,7 +19,7 @@ process SomaticRunClusterSV {
   """
   mkdir -p tmp
   grep -v "^#" ${bedpe} | cut -f 1-12 > tmp/${outputPrefix}.bedpe
-  if [ \$(cat ${outputPrefix}.bedpe | wc -l ) -lt 1 ] ; then
+  if [ \$(cat tmp/${outputPrefix}.bedpe | wc -l ) -lt 1 ] ; then
     touch tmp/${outputPrefix}.sv_clusters_and_footprints.tsv
   else
     Rscript /opt/ClusterSV/R/run_cluster_sv.R \\
