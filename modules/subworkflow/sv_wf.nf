@@ -48,7 +48,7 @@ workflow sv_wf
 
       brass_wf(
         bamFiles, 
-        sampleStatistics // from ascat
+        sampleStatistics // from facets (default) or ascat
       )
       
       SomaticDellyCombine.out.map{ it + ["delly"]}
