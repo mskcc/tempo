@@ -18,7 +18,7 @@ process GermlineAnnotateSVBedpe {
   output:
     tuple val(idNormal), val(target), path("${outputPrefix}.combined.annot.filtered.bedpe"), emit: SVAnnotBedpe
     tuple val(idNormal), val(target), path("${outputPrefix}.combined.annot.filtered.pass.bedpe"), emit: SVAnnotBedpePass
-    tuple val("placeholder"), val(idNormal), path("${outputPrefix}.combined.annot.filtered.bedpe"), emit: SVAnnotBedpe4Aggregate
+    tuple val("placeholder"), val("noTumor"), val(idNormal), path("${outputPrefix}.combined.annot.filtered.bedpe"), emit: SVAnnotBedpe4Aggregate
   script:
   outputPrefix = "${idNormal}"
   genome_ = ["GRCh37","smallGRCh37"].contains(genome) ? "hg19" : genome == "GRCh38" ? "hg38" : "hg18"
