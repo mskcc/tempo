@@ -11,6 +11,6 @@ output:
 
 script:
   """
-  awk '\$1 ~ /^#/ && FNUM !=1{next;}{print}' ${bedpeFiles} > sv_germline.bedpe
+  awk '\$1 ~ /^#/ && FNR < NR {next;}{print}' ${bedpeFiles} > sv_germline.bedpe
   """
 }
