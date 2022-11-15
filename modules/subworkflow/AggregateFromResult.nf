@@ -113,8 +113,6 @@ workflow aggregateFromResult
     SomaticAggregateFacets(inputSomaticAggregateFacets)
     SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
 
-    inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
-          .set{ inputSomaticAggregateSv }
     SomaticAggregateSv(inputSomaticAggregateSv)
     SomaticAggregateSvSignatures(inputSomaticAggregateSvSignatures)
     SomaticAggregateHRDetect(inputSomaticAggregateHrd)
