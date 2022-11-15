@@ -1,5 +1,5 @@
 process AlignReads {
-  tag {fileID + "@" + lane}   // The tag directive allows you to associate each process executions with a custom label
+  tag "${fileID + "@" + lane}"   // The tag directive allows you to associate each process executions with a custom label
 
   publishDir "${params.outDir}/bams/${idSample}/fastp", mode: params.publishDirMode, pattern: "*.{html,json}"
 
