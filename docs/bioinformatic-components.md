@@ -25,13 +25,16 @@ Tempo accepts as input sequencing reads from one or multiple FASTQ file pairs (c
 ## Somatic Analyses
 
 * __SNVs and indels__ are called using [MuTect2](https://software.broadinstitute.org/gatk/documentation/tooldocs/4.beta.4/org_broadinstitute_hellbender_tools_walkers_mutect_Mutect2.php) and [Strelka2](https://github.com/Illumina/strelka). Subsequently, they are combined, annotated and filtered as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
-* __Structural variants__ are detected by [Delly](https://github.com/dellytools/delly) and [Manta](https://github.com/Illumina/manta) then combined, filtered and annotated as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-and-germline-svs).
+* __Structural variants__ are detected by multiple callers and then merged, filtered and annotated as described [in the section on variant annotation and filtering](variant-annotation-and-filtering.md#somatic-and-germline-svs). Exome and germline variants are generated with [Delly](https://github.com/dellytools/delly) and [Manta](https://github.com/Illumina/manta). Somatic whole genome variants are generated with the same callers, along with [BRASS](https://github.com/cancerit/BRASS) and [SvABA](https://github.com/walaj/svaba). 
 * __Copy-number analysis__ is performed with [FACETS](https://github.com/mskcc/facets) and processed using [facets-suite](https://github.com/mskcc/facets-suite). Locus-specific copy-number, purity and ploidy estimates are integrated with the SNV/indel calls to perform clonality and zygosity analyses.
 * __Microsatellite instability__ is detected using [MSIsensor](https://github.com/ding-lab/msisensor).
 * __HLA genotyping__ is performed with [POLYSOLVER](https://software.broadinstitute.org/cancer/cga/polysolver).
 * __LOH at HLA loci__ is assessed with [LOHHLA](https://github.com/mskcc/lohhla).
 * __Mutational signatures__ are inferred with [https://github.com/mskcc/tempoSig](https://github.com/mskcc/tempoSig).
 * __Neoantigen prediction__ using estimates of class I MHC binding affinity is performed with [NetMHC 4.0](https://www.ncbi.nlm.nih.gov/pubmed/28978689) and integrated into the set of SNV/indel calls using [https://github.com/taylor-lab/neoantigen-dev](https://github.com/taylor-lab/neoantigen-dev) (_Note: this repository is currently private_).
+* __Clonality using Structural Variants__ is assessed using [SVclone](https://github.com/mcmero/SVclone). Joint calling is performed on both SNPs and structural variants, providing an alternative to the SNP clonality inference offered by Facets, while also assigning structural variants in the same clonal structure.
+* __Structural variant signatures__ are inferred with [signature.tools.lib](https://github.com/Nik-Zainal-Group/signature.tools.lib)
+* __Homologous recombination deficiency__ is assessed using [HRDetect from the signature.tools.lib package](https://github.com/Nik-Zainal-Group/signature.tools.lib)
 
 ## Germline Analyses
 

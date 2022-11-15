@@ -1,5 +1,5 @@
 process SomaticAggregateSv {
-  tag { cohortID }
+  tag "${cohortID}"
   publishDir "${params.outDir}/cohort_level/${cohortID}", mode: params.publishDirMode
 
 input:

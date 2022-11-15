@@ -21,10 +21,12 @@ workflow sampleQC_wf
     QcCollectHsMetrics(bamsBQSR4HsMetrics,
                        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
-    if (params.assayType != "exome"){
-      QcCollectHsMetrics.out.collectHsMetricsOutput
-        .map{ idSample, target, bam, bai, targetList, baitList -> [idSample, ""]}
-        .set{ collectHsMetricsOutput }
+    if (params.assayType == "exome"){
+	collectHsMetricsOutput = QcCollectHsMetrics.out.collectHsMetricsOutput
+    } else {
+    	inputChannel
+        	.map{ idSample, target, bam, bai -> [idSample, ""]}
+        	.set{ collectHsMetricsOutput }
     }
 
     inputChannel
@@ -47,7 +49,7 @@ workflow sampleQC_wf
       .groupTuple(size:2, by:0)
       .join(fastPJson, by:0)
       .join(QcQualimap.out.qualimap4Process, by:0)
-      .join(QcCollectHsMetrics.out.collectHsMetricsOutput, by:0)
+      .join(collectHsMetricsOutput, by:0)
       .set{ sampleMetrics4MultiQC }
 
     SampleRunMultiQC(sampleMetrics4MultiQC, 
@@ -55,6 +57,6 @@ workflow sampleQC_wf
 
   emit:
     bamsQcStats4Aggregate  = QcAlfred.out.bamsQcStats4Aggregate
-    collectHsMetricsOutput = QcCollectHsMetrics.out.collectHsMetricsOutput
+    collectHsMetricsOutput = collectHsMetricsOutput 
     qualimap4Process       = QcQualimap.out.qualimap4Process
 }

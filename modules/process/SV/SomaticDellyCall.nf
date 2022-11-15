@@ -1,5 +1,5 @@
 process SomaticDellyCall {
-  tag {idTumor + "__" + idNormal + '@' + svType}
+  tag "${idTumor + "__" + idNormal + '@' + svType}"
 
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
   
@@ -30,8 +30,21 @@ process SomaticDellyCall {
     --outfile ${idTumor}__${idNormal}_${svType}.filter.bcf \
     ${idTumor}__${idNormal}_${svType}.bcf
 
+  # Filter variants that have low supporting reads in the tumor or high supporting reads in the normal
+  # DV = discordant reads
+  # RV = split reads
+  bcftools view \\
+    -s ${idTumor},${idNormal} \\
+    ${idTumor}__${idNormal}_${svType}.filter.bcf | \\
+  bcftools filter \\
+    --soft-filter tumor_read_supp -m + \\
+    -e "FORMAT/DV[0] < 5 | FORMAT/RV[0] < 2" | \\
+  bcftools filter \\
+    --soft-filter normal_read_supp -m + \\
+    -e "FORMAT/DV[1] > 0 | FORMAT/RV[1] > 0" | \\
+  bcftools view --output-type z > \\
+    ${idTumor}__${idNormal}_${svType}.delly.vcf.gz
 
-  bcftools view --output-type z ${idTumor}__${idNormal}_${svType}.filter.bcf > ${idTumor}__${idNormal}_${svType}.delly.vcf.gz
   tabix --preset vcf ${idTumor}__${idNormal}_${svType}.delly.vcf.gz
   """
 }
