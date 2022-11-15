@@ -1,5 +1,5 @@
 process CreateScatteredIntervals {
-  tag {targetId}
+  tag "${targetId}"
 
   input:
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)

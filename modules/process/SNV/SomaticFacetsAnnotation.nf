@@ -1,5 +1,5 @@
 process SomaticFacetsAnnotation {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
 

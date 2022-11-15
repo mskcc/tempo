@@ -1,5 +1,5 @@
 process DoFacets {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
 
   publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "*.snp_pileup.gz"
   publishDir "${params.outDir}/somatic/${tag}/facets/${tag}", mode: params.publishDirMode, pattern: "${tag}_OUT.txt"
