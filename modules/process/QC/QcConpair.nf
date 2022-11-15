@@ -1,5 +1,5 @@
 process QcConpair {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
 
   publishDir "${params.outDir}/somatic/${outPrefix}/conpair/", mode: params.publishDirMode
 

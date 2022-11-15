@@ -1,5 +1,5 @@
 process QcAlfred {
-  tag {idSample + "@" + "ignore_rg_" + ignore_rg }
+  tag "${idSample + "@" + "ignore_rg_" + ignore_rg }"
 
   publishDir "${params.outDir}/bams/${idSample}/alfred", mode: params.publishDirMode
 
