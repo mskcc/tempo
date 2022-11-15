@@ -1,6 +1,6 @@
 process SomaticAggregateHRDetect {
 tag { cohortID }
-publishDir "${params.outDir}/cohort_level/${cohort}", mode: params.publishDirMode
+publishDir "${params.outDir}/cohort_level/${cohortID}", mode: params.publishDirMode
 
 input:
   tuple val(cohortID), 
