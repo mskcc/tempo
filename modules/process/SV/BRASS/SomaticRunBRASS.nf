@@ -20,7 +20,7 @@ process runBRASS {
 
     output:
     tuple val(idTumor), val(idNormal), val(target), path("brass/*.{vcf.gz,vcf.gz.tbi}"), emit: BRASSOutput
-    tuple val(idTumor), val(idNormal), val(target), path("${idTumor}__${idNormal}.brass.reheader.annot.vcf.gz"), path("${idTumor}__${idNormal}.brass.reheader.annot.vcf.gz.tbi"), emit: BRASS4Combine
+    tuple val(idTumor), val(idNormal), val(target), path("${idTumor}__${idNormal}.brass.annot.vcf.gz"), path("${idTumor}__${idNormal}.brass.annot.vcf.gz.tbi"), emit: BRASS4Combine
 
     script:
     outputPrefix = "${idTumor}__${idNormal}"
@@ -73,8 +73,11 @@ process runBRASS {
     echo -e "TUMOUR ${idTumor}\\nNORMAL ${idNormal}" > brass.samplenames.tsv 
     bcftools reheader \\
       --samples brass.samplenames.tsv \\
-      --output ${idTumor}__${idNormal}.brass.reheader.annot.vcf.gz \\
-      brass/${idTumor}_vs_${idNormal}.annot.vcf.gz
-    bcftools index -f -t ${idTumor}__${idNormal}.brass.reheader.annot.vcf.gz
+      brass/${idTumor}_vs_${idNormal}.annot.vcf.gz | \\
+    bcftools filter \\
+      -O z \\
+      -e "POS=0 | ( INFO/BKDIST > 0 & INFO/BKDIST = POS + 1 ) " \\
+    > ${idTumor}__${idNormal}.brass.annot.vcf.gz
+    bcftools index -f -t ${idTumor}__${idNormal}.brass.annot.vcf.gz
     """
 }
