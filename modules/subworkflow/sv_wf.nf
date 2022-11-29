@@ -8,6 +8,7 @@ include { SomaticSVVcf2Bedpe }         from '../process/SV/SomaticSVVcf2Bedpe'
 include { SomaticAnnotateSVBedpe }     from '../process/SV/SomaticAnnotateSVBedpe'
 include { SomaticRunClusterSV }        from '../process/SV/SomaticRunClusterSV'
 include { RunSVSignatures }            from '../process/HRDetect/RunSVSignatures'
+include { SomaticRunSVCircos }         from '../process/SV/SomaticRunSVCircos'
 
 workflow sv_wf
 {
@@ -15,6 +16,7 @@ workflow sv_wf
     bamFiles
     manta4Combine
     sampleStatistics
+    cnvCalls
 
   main:
     referenceMap = params.referenceMap
@@ -105,6 +107,15 @@ workflow sv_wf
     } else {
       SVSignatures = Channel.empty()
     }
+
+    if (cnvCalls){
+      SomaticRunSVCircos(
+        SomaticAnnotateSVBedpe.out.SVAnnotBedpePass
+        .combine(cnvCalls, by: [0,1,2]),
+        workflow.projectDir + "/containers/biocircos/generate_biocircos.R"
+      )
+    }
+
 
   emit:
     SVSignatures         = SVSignatures

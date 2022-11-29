@@ -213,13 +213,14 @@ workflow {
           CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
         }
       } else { 
-        samplestatistics = Channel.empty()
-        CNVcalls = Channel.empty()
+        samplestatistics = false
+        CNVcalls = false
       }
       sv_wf(
         bamFiles, 
         manta_wf.out.manta4Combine, 
-        samplestatistics
+        samplestatistics,
+        CNVcalls
       )
       if (doWF_SNV && params.assayType == "genome"){
         hrdetect_wf(CNVcalls, snv_wf.out.mafFile, sv_wf.out.SVAnnotBedpePass)
