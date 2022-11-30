@@ -200,16 +200,6 @@ if (strsplit(as.character(packageVersion("signature.tools.lib")),"\\.")[[1]][1] 
 	hrd.arglist[["SNV_signature_version"]] = "COSMICv2"
 }
 res <- do.call(HRDetect_pipeline, hrd.arglist)
-if (1==0) {
-res<-HRDetect_pipeline(input_matrix,
-                       genome.v = genome_version,
-                       SV_bedpe_files = SV_bedpe_files, 
-                       Indels_tab_files  = Indels_tab_files, 
-                       CNV_tab_files = CNV_tab_files,
-                       #SNV_tab_files = SNV_tab_files, 
-                       SNV_catalogues = SNV_catalogues,
-                       nparallel = n_parallel)
-}
 
 #save HRDetect scores
 hrdetect_output = as.data.table(res$hrdetect_output, keep.rownames="sample")
