@@ -1,7 +1,7 @@
 process SomaticRunSVclone {
 tag "${idTumor}__${idNormal}"
 
-publishDir "${params.outDir}/somatic/${outputPrefix}/", mode: params.publishDirMode, pattern: "svclone/"
+publishDir "${params.outDir}/somatic/${outputPrefix}/", mode: params.publishDirMode, pattern: "svclone/*"
 
 input:
   tuple val(idTumor), val(idNormal), val(target), 
@@ -16,7 +16,7 @@ output:
   tuple val(idTumor), val(idNormal), val(target),
     path("${outputPrefix}"), emit: SVcloneOutput
   tuple val(idTumor), val(idNormal), val(target),
-    path("svclone"), emit: SVclonePublish
+    path("svclone/*"), emit: SVclonePublish
 
 script:
 outputPrefix = "${idTumor}__${idNormal}"
