@@ -200,6 +200,8 @@ workflow {
 
     if(doWF_SV)
     {
+      CNVcalls = false
+      samplestatistics = false
       if (params.assayType == "genome") {
         if (params.svcnv == "ascat"){
           ascat_wf(bamFiles)
@@ -207,14 +209,16 @@ workflow {
           CNVcalls = ascat_wf.out.ascatCNV
         } else if(params.svcnv == "hisens") {
           samplestatistics = facets_wf.out.FacetsHisensSampleStatistics4BRASS
-          CNVcalls = facets_wf.out.FacetsHisensCNV4HrDetectFiltered
         } else if(params.svcnv == "purity"){
           samplestatistics = facets_wf.out.FacetsPuritySampleStatistics4BRASS
-          CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
         }
-      } else { 
-        samplestatistics = false
-        CNVcalls = false
+      }
+      if (doWF_facets && CNVcalls == false){
+	if(params.svcnv == "purity") {
+	  CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
+	} else {
+	  CNVcalls = facets_wf.out.FacetsHisensCNV4HrDetectFiltered
+	}
       }
       sv_wf(
         bamFiles, 
