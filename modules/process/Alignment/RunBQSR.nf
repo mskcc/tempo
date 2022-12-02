@@ -1,5 +1,5 @@
  process RunBQSR {
-    tag {idSample}
+    tag "${idSample}"
     
     publishDir "${params.outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
 

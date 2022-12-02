@@ -5,6 +5,7 @@ include { GermlineRunManta }                  from '../process/GermSV/GermlineRu
 include { GermlineMergeSVs }                  from '../process/GermSV/GermlineMergeSVs'
 include { GermlineSVVcf2Bedpe }               from '../process/GermSV/GermlineSVVcf2Bedpe'
 include { GermlineAnnotateSVBedpe }           from '../process/GermSV/GermlineAnnotateSVBedpe'
+include { GermlineRunSvABA }                  from '../process/GermSV/GermlineRunSvABA'
 
 workflow germlineSV_wf
 {
@@ -37,10 +38,22 @@ workflow germlineSV_wf
         Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex])
     )
 
+    GermlineRunSvABA(
+        bams
+	  .map{ idNormal, target, bamNormal, baiNormal ->
+	    [ idNormal, target, bamNormal, baiNormal ] + [targetsMap."$target".targetsBed]
+          },
+	  referenceMap.genomeFile,
+	  referenceMap.genomeIndex,
+	  referenceMap.genomeDict,
+	  referenceMap.bwaIndex
+    )
+
     GermlineDellyCombine.out
         .map{ tumor_id, normal_id, target, vcf, tbi -> [normal_id, target, vcf, tbi, "delly" ] }
         .mix(GermlineRunManta.out.mantaOutputGermline.map{ it + ["manta"]})
-        .groupTuple( by:[0,1], size:2 )
+        .mix(GermlineRunSvABA.out.SvABA4Combine.map{ it + ["svaba"]})
+        .groupTuple( by:[0,1], size:3 )
         .set{allSvCallsCombineChannel}
 
     GermlineMergeSVs(

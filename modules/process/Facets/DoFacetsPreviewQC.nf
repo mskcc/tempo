@@ -1,5 +1,5 @@
 process DoFacetsPreviewQC {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
   publishDir "${params.outDir}/somatic/${tag}/facets/${tag}/", mode: params.publishDirMode, pattern: "${idTumor}__${idNormal}.facets_qc.txt"
 
   input:

@@ -3,7 +3,7 @@ process SomaticRunSvABA {
     publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/svaba", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi}"
 
     input:
-    tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
+    tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal), path(targetsBed)
     path(genomeFile)
     path(genomeIndex)
     path(genomeDict)
@@ -17,14 +17,16 @@ process SomaticRunSvABA {
 
     script:
     outputPrefix = "${idTumor}__${idNormal}"
+    target_param = params.assayType == "genome" ? "" : "-k ${targetsBed} "
     """
     svaba run \\
-    -t "${bamTumor}" \\
-    -n "${bamNormal}" \\
-    -G "${genomeFile}" \\
-    -p "${task.cpus * 2}" \\
-    --id-string "${outputPrefix}" \\
-    -z
+      -t "${bamTumor}" \\
+      -n "${bamNormal}" \\
+      -G "${genomeFile}" \\
+      -p "${task.cpus * 2}" \\
+      --id-string "${outputPrefix}" \\
+      ${target_param} \\
+      -z
 
     rm -f *germline*
 
