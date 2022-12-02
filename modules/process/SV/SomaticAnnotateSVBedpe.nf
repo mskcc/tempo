@@ -1,7 +1,9 @@
 process SomaticAnnotateSVBedpe {
   tag "${idTumor}__${idNormal}"
 
-  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.combined.annot.filtered*.bedpe"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.unfiltered.bedpe"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/combined_svs", mode: params.publishDirMode, pattern: "*.final.bedpe"
+
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bedpein) 
@@ -16,9 +18,9 @@ process SomaticAnnotateSVBedpe {
     val(genome)
 
   output:
-    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.combined.annot.filtered.bedpe"), emit: SVAnnotBedpe
-    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.combined.annot.filtered.pass.bedpe"), emit: SVAnnotBedpePass
-    tuple val("placeholder"), val(idTumor), val(idNormal), path("${outputPrefix}.combined.annot.filtered.pass.bedpe"), emit: SVAnnotBedpe4Aggregate
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.unfiltered.bedpe"), emit: SVAnnotBedpe
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.final.bedpe"), emit: SVAnnotBedpePass
+    tuple val("placeholder"), val(idTumor), val(idNormal), path("${outputPrefix}.final.bedpe"), emit: SVAnnotBedpe4Aggregate
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
@@ -79,11 +81,11 @@ process SomaticAnnotateSVBedpe {
     --threads ${task.cpus * 2}
 
   cp ${outputPrefix}.combined.dac.rm.pcawg.cdna.iannotate.bedpe \\
-    ${outputPrefix}.combined.annot.filtered.bedpe
+    ${outputPrefix}.unfiltered.bedpe
 
   awk -F"\\t" '\$1 ~ /#/ || \$12 == "PASS"' \\
-    ${outputPrefix}.combined.annot.filtered.bedpe > \\
-    ${outputPrefix}.combined.annot.filtered.pass.bedpe
+    ${outputPrefix}.unfiltered.bedpe > \\
+    ${outputPrefix}.final.bedpe
   
   """
 
