@@ -17,7 +17,7 @@ workflow clonality_wf {
 
 	SomaticRunSVclone(
 		SVcloneInput,
-		workflow.projectDir + "/containers/svclone/prepare_svclone_inputs.py"
+		workflow.projectDir + "/containers/svclone/svclone_wrapper.py"
 	)
 	
 }

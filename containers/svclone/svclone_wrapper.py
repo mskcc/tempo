@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Prepare input files (maf, bedpe, purity/ploidy file,
-and config) so that it can be used in SVclone.
+Run SVclone with Tempo inputs. Does preprocessessing of 
+Tempo inputs before executing SVclone steps.
  * Maf file: should not contain filtered variants. The
  columns Chromosome, vcf_pos, t_ref_count, t_alt_count are
  retained.
@@ -13,7 +13,7 @@ and config) so that it can be used in SVclone.
  generate_samplestatistics.R script in the DoFacets process.
  * Config file: Template config file which is modified before
  running SVclone.
-Usage: prepare_svclone_inputs.py -h
+Usage: svclone_wrapper_tempo.py -h
 """
 
 __author__  = "Anne Marie Noronha"
@@ -22,8 +22,9 @@ __version__ = "0.0.1"
 __status__  = "Dev"
 
 import configparser
-import argparse, os
+import argparse, os, sys
 import pysam, pandas as pd, numpy as np
+import subprocess
 
 def usage():
 	parser = argparse.ArgumentParser(description="Prepare inputs for SVClone")
@@ -50,7 +51,7 @@ def main():
 	purity_ploidy_out = os.path.join(args.out_dir,"svclone_ploidy.txt")
 	cfg_out = os.path.join(args.out_dir,"svclone_config.ini")
 
-	svclone_inputs = {"mut":mut_out,"sv":sv_out, "purity_ploidy":purity_ploidy_out, "cfg":cfg_out}
+	svclone_inputs = {"snv":mut_out,"sv":sv_out, "purity_ploidy":purity_ploidy_out, "cfg":cfg_out}
 
 	## read in maf and output reformatted SNPs
 	mut = pd.read_csv(args.maf,sep="\t",header=0)
@@ -102,6 +103,16 @@ def main():
 
 	print(svclone_inputs)
 
+	svclone_wrapper(
+		sv=svclone_inputs["sv"],
+		bam=args.bam,
+		outPrefix=args.sampleid,
+		config=svclone_inputs["cfg"],
+		cnv=args.cnv,
+		snv=svclone_inputs["snv"],
+		purity_ploidy=svclone_inputs["purity_ploidy"]
+		)
+
 def estimateInsertSizeDistribution(bamfile, alignments=10000):
 	sam = pysam.AlignmentFile(bamfile)
 	inserts = np.array([read.tlen for read in sam.head(alignments) if read.tlen > 0 and read.tlen < 500000 and read.is_paired and read.next_reference_id == read.reference_id ])
@@ -128,7 +139,6 @@ def estimateCoverage(bamfile):
 	for i in sam.references:
 		if i.startswith("GL") or i.startswith("NC"): continue
 		if i in ["hs37d5","X","Y","chrX","chrY"]: continue
-		print(i)
 		for j in range(1,int(sam.get_reference_length(i)/interval_len)):
 			try:
 				x = sam.count_coverage(i,start=j*interval_len, stop=(j*interval_len) + 50)
@@ -136,7 +146,6 @@ def estimateCoverage(bamfile):
 			except ValueError as e:
 				print(e)
 				pass
-	print(len(cov))
 	return int(sum(cov)/len(cov))
 
 def estimateReadLen(bamfile,alignments=1000):
@@ -150,6 +159,52 @@ def estimateReadLen(bamfile,alignments=1000):
 	if sizes_dict[read_len] < alignments * .5:
 		read_len = int(sum(sizes)/len(sizes))
 	return read_len
+
+def svclone_wrapper(sv,bam,outPrefix,config,cnv,snv,purity_ploidy):
+	cmd_dict = dict()
+	cmd_dict["annotate"] = [
+		"svclone", "annotate",
+		"-cfg", config,
+		"-b", bam,
+		"-s", outPrefix,
+		"-i", sv,
+		"--sv_format","simple"
+		]
+	cmd_dict["count"] = [
+		"svclone", "count",
+		"-cfg", config,
+		"-b", bam,
+		"-s", outPrefix,
+		"-i",os.path.join(outPrefix,outPrefix+"_svin.txt")
+		]
+	cmd_dict["filter"] = [
+		"svclone", "filter",
+		"-cfg", config,
+		#"-b", bam,
+		"-s", outPrefix,
+		"-i",os.path.join(outPrefix,outPrefix+"_svinfo.txt"),
+		"--snv_format","mutect_callstats",
+		"--snvs",snv,
+		"--cnvs",cnv,
+		"-p",purity_ploidy
+		]
+	cmd_dict["cluster"] = [
+		"svclone", "cluster",
+		"-cfg", config,
+		"-s", outPrefix
+		]
+	cmd_dict["postassign"] = [
+		"svclone", "postassign",
+		#"-cfg", config,
+		"-s", outPrefix,
+		"--joint"
+		]
+	
+	print("Running SVclone from wrapper")
+	for i in ["annotate","count","filter","cluster","postassign"]:
+		print("Running svclone {}".format(i), file=sys.stderr)
+		subprocess.run(cmd_dict[i])
+		print("Completed svclone {}".format(i), file=sys.stderr)
 
 if __name__ == "__main__":
 	main()
