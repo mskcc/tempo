@@ -66,7 +66,7 @@ cnv %>%
 
 
 
-plot.biocircos <- function(bedpe,cnv,sample_name,genome_v){
+gen.plot.biocircos <- function(bedpe,cnv,sample_name,genome_v){
   # initiate variable to store tracks
   tracklist <- list()
 
@@ -129,8 +129,9 @@ plot.biocircos <- function(bedpe,cnv,sample_name,genome_v){
 
   tracklist$background = BioCircosBackgroundTrack("arcs_background", colors = "#2222EE")
   
-  
+  # Add together all elements of the tracklist
   tracklist <- Reduce('+', tracklist)
+  # Plot tracklist
   plot=BioCircos(tracklist,
                  genomeFillColor = "PuOr",
                  genome = genome_v,
@@ -143,5 +144,5 @@ plot.biocircos <- function(bedpe,cnv,sample_name,genome_v){
   return(plot)
 }
 
-plot <- plot.biocircos(bedpe=bedpe,cnv=cnv,sample_name = opt$sampleName, genome_v=genome_v )
-htmlwidgets::saveWidget(plot, paste0(opt$sampleName,".circos.html"), selfcontained = T, libdir = "lib")
+plot.biocircos <- gen.plot.biocircos(bedpe=bedpe,cnv=cnv,sample_name = opt$sampleName, genome_v=genome_v )
+rmarkdown::render("biocircos.Rmd", "all", paste0(opt$sampleName,".circos.html"), output_dir='.')
