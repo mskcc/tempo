@@ -114,7 +114,8 @@ workflow sv_wf
       SomaticRunSVCircos(
         SomaticAnnotateSVBedpe.out.SVAnnotBedpePass
         .combine(cnvCalls, by: [0,1,2]),
-        workflow.projectDir + "/containers/biocircos/generate_biocircos.R"
+        workflow.projectDir + "/containers/biocircos/generate_biocircos.R", 
+	workflow.projectDir + "/containers/biocircos/biocircos.Rmd"
       )
     }
 

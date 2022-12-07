@@ -6,6 +6,7 @@ process SomaticRunSVCircos {
 	input:
 	  tuple val(idTumor), val(idNormal), val(target), path(bedpe), path(cnv)
 	  path(biocircos_script)
+	  path(biocircos_Rmd)
 
 	output:
 	  path("${outputPrefix}.circos.html")
@@ -21,9 +22,6 @@ process SomaticRunSVCircos {
 	  -c ${cnv} \\
 	  -s ${outputPrefix} \\
 	  -g ${genome_version}
-
-	cat ${outputPrefix}.circos.html | sed "s/¶/<p><\\/p>/g" > ${outputPrefix}.circos.fix.html
-	mv ${outputPrefix}.circos.fix.html ${outputPrefix}.circos.html
 
 	"""
 }
