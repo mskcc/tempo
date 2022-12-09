@@ -10,6 +10,7 @@ include { SomaticAggregateNetMHC }             from '../process/Aggregate/Somati
 include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
 include { SomaticAggregateSvSignatures }       from '../process/Aggregate/SomaticAggregateSvSignatures'
 include { SomaticAggregateHRDetect }           from '../process/Aggregate/SomaticAggregateHRDetect'
+include { SomaticAggregateSVclone }            from '../process/Aggregate/SomaticAggregateSVclone'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
 include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
 
@@ -22,6 +23,7 @@ workflow aggregateFromProcess
     sv4Aggregate
     snv4Aggregate
     hrd4Aggregate
+    svclone4Aggregate
     lohhla4Aggregate
     MetaData4Aggregate
     snv4AggregateGermline
@@ -76,6 +78,12 @@ workflow aggregateFromProcess
     if (hrd4Aggregate){
       inputSomaticAggregateHrd = inputAggregate.combine(
         hrd4Aggregate.out.HRDetect, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4]]}
+    }
+    if (svclone4Aggregate){
+      inputSomaticAggregateSVclone = inputAggregate
+        .combine(svclone4Aggregate.out.svclone4Aggregate, by:[1,2])
+        .groupTuple(by:[2])
+        .map{[it[2], it[4], it[5]]}
     }
     if (lohhla4Aggregate){
       inputSomaticAggregateLOHHLA = inputAggregate.combine(lohhla4Aggregate.out.lohhla4Aggregate, by:[1,2]).groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
@@ -248,6 +256,9 @@ workflow aggregateFromProcess
   }
   if (hrd4Aggregate){
     SomaticAggregateHRDetect(inputSomaticAggregateHrd)
+  }
+  if (svclone4Aggregate){
+    SomaticAggregateSVclone(inputSomaticAggregateSVclone)
   }
   if (lohhla4Aggregate){
     SomaticAggregateLOHHLA(inputSomaticAggregateLOHHLA)

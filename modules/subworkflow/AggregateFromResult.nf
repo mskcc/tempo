@@ -10,6 +10,7 @@ include { SomaticAggregateNetMHC }             from '../process/Aggregate/Somati
 include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
 include { SomaticAggregateSvSignatures }       from '../process/Aggregate/SomaticAggregateSvSignatures'
 include { SomaticAggregateHRDetect }           from '../process/Aggregate/SomaticAggregateHRDetect'
+include { SomaticAggregateSVclone }            from '../process/Aggregate/SomaticAggregateSVclone'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
 include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
 
@@ -61,6 +62,7 @@ workflow aggregateFromResult
         [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.bedpe")]
       svSignatures4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*_exposures.tsv"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*_catalogues.pdf")]
       hrd4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.hrdetect.tsv")]
+      svclone4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/svs/*_cluster_certainty.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/snvs/*_cluster_certainty.txt")]
       predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
       intCPN4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*DNA.IntegerCPN_CI.txt")]
       MetaData4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.sample_data.txt")]
@@ -92,6 +94,7 @@ workflow aggregateFromResult
     inputSomaticAggregateSv       = aggregateList.sv4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputSomaticAggregateSvSignatures = aggregateList.svSignatures4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     inputSomaticAggregateHrd      = aggregateList.hrd4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputSomaticAggregateSVclone  = aggregateList.svclone4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     inputPredictHLA4Aggregate     = aggregateList.predictHLA4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputIntCPN4Aggregate         = aggregateList.intCPN4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputSomaticAggregateMetadata = aggregateList.MetaData4Aggregate.transpose().groupTuple(by:[2])
@@ -118,6 +121,7 @@ workflow aggregateFromResult
     SomaticAggregateSv(inputSomaticAggregateSv)
     SomaticAggregateSvSignatures(inputSomaticAggregateSvSignatures)
     SomaticAggregateHRDetect(inputSomaticAggregateHrd)
+    SomaticAggregateSVclone(inputSomaticAggregateSVclone)
   
     inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
           .set{ inputSomaticAggregateLOHHLA }
