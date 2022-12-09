@@ -306,6 +306,7 @@ workflow {
         doWF_SV ? sv_wf : false,
         doWF_SNV ? snv_wf : false,
         doWF_SV && doWF_SNV && params.assayType == "genome" ? hrdetect_wf : false,
+        doWF_SV && doWF_SNV && params.assayType == "genome" ? clonality_wf : false,
         doWF_loh ? loh_wf : false,
         doWF_mdParse ? mdParse_wf : false,
         doWF_germSNV ? germlineSNV_wf : false,
