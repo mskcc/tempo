@@ -131,10 +131,10 @@ Similar to somatic mutations, tumor zygosity of germline SNVs and indels is esti
 Tempo uses two to four callers to identify structural variants. By default, the following callers are used regardless of assay type for both somatic and germline analysis:
   - [Delly](https://github.com/dellytools/delly) 
   - [Manta](https://github.com/Illumina/manta) 
-
-For somatic analysis and when the assay type is genome, the following callers are used in addition:
-  - [BRASS](https://github.com/cancerit/BRASS)
   - [SvABA](https://github.com/walaj/svaba)
+
+When the assay type is WGS, the following caller is used in addition for somatic variant calling only:
+  - [BRASS](https://github.com/cancerit/BRASS)
 
 The SV workflow in Tempo is significantly influenced by the [2020 PCAWG publication on whole genomes](https://www.nature.com/articles/s41586-020-1969-6). Similar to the workflow described in their paper, calls from each structural variant are provided to [mergesvvcf](https://github.com/papaemmelab/mergeSVvcf/tree/master/mergesvvcf), which converts each call to a normalized representation and merges them using a fixed window size of 200bp. Any two calls for which each breakpoint is less than 200bp away and matches relative directionality can be merged.
 
