@@ -67,6 +67,7 @@ workflow sv_wf
     } else {
       SomaticDellyCombine.out.map{ it + ["delly"]}
         .mix(manta4Combine.map{ it + ["manta"]})
+	.mix(SomaticRunSvABA.out.SvABA4Combine.map{ it + ["svaba"]})
         .groupTuple( by:[0,1,2], size:3 )
         .set{allSvCallsCombineChannel}
     }
