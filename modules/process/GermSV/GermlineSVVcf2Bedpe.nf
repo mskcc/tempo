@@ -27,7 +27,7 @@ process GermlineSVVcf2Bedpe {
 
   zgrep "^##" ${vcfFile} | sed "s/##fileformat=*/##fileformat=BEDPE/g" > ${outputPrefix}.combined.unsorted.bedpe
   grep -v "^##" ${outputPrefix}.combined.tmp.bedpe | \\
-  awk -F"\\t" -v nid="${idNormal}" 'NR == 1 {print \$0,"NORMAL_ID";next;}{print \$0,nid}' \\
+  awk -F"\\t" -v nid="${idNormal}" -v OFS="\\t" 'NR == 1 {print \$0,"NORMAL_ID";next;}{print \$0,nid}' \\
   >> ${outputPrefix}.combined.unsorted.bedpe
 
   if [ ! -s ${outputPrefix}.combined.unsorted.bedpe ] ; then 
