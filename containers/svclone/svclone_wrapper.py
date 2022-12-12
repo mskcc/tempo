@@ -180,7 +180,6 @@ def svclone_wrapper(sv,bam,outPrefix,config,cnv,snv,purity_ploidy):
 	cmd_dict["filter"] = [
 		"svclone", "filter",
 		"-cfg", config,
-		#"-b", bam,
 		"-s", outPrefix,
 		"-i",os.path.join(outPrefix,outPrefix+"_svinfo.txt"),
 		"--snv_format","mutect_callstats",
@@ -195,7 +194,6 @@ def svclone_wrapper(sv,bam,outPrefix,config,cnv,snv,purity_ploidy):
 		]
 	cmd_dict["postassign"] = [
 		"svclone", "postassign",
-		#"-cfg", config,
 		"-s", outPrefix,
 		"--joint"
 		]
