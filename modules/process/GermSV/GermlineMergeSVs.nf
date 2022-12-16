@@ -57,6 +57,5 @@ process GermlineMergeSVs {
   tabix --preset vcf ${idNormal}.merged.vcf.gz
 
   bcftools view -O z -o ${idNormal}.merged.raw.vcf.gz ${idNormal}.merged.raw.vcf
-  tabix --preset vcf ${idNormal}.merged.raw.vcf.gz
   """
 }
