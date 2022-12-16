@@ -47,6 +47,7 @@ include { PairTumorNormal }      from './modules/subworkflow/PairTumorNormal'
 include { aggregateFromResult }  from './modules/subworkflow/AggregateFromResult'
 include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProcess'
 include { hrdetect_wf }          from './modules/subworkflow/hrdetect_wf'
+include { clonality_wf }         from './modules/subworkflow/clonality_wf'
 include { ascat_wf }             from './modules/subworkflow/ascat_wf'            addParams(referenceMap: referenceMap)
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
@@ -199,6 +200,8 @@ workflow {
 
     if(doWF_SV)
     {
+      CNVcalls = false
+      samplestatistics = false
       if (params.assayType == "genome") {
         if (params.svcnv == "ascat"){
           ascat_wf(bamFiles)
@@ -206,22 +209,32 @@ workflow {
           CNVcalls = ascat_wf.out.ascatCNV
         } else if(params.svcnv == "hisens") {
           samplestatistics = facets_wf.out.FacetsHisensSampleStatistics4BRASS
-          CNVcalls = facets_wf.out.FacetsHisensCNV4HrDetectFiltered
         } else if(params.svcnv == "purity"){
           samplestatistics = facets_wf.out.FacetsPuritySampleStatistics4BRASS
-          CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
         }
-      } else { 
-        samplestatistics = Channel.empty()
-        CNVcalls = Channel.empty()
+      }
+      if (doWF_facets && CNVcalls == false){
+	if(params.svcnv == "purity") {
+	  CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
+	} else {
+	  CNVcalls = facets_wf.out.FacetsHisensCNV4HrDetectFiltered
+	}
       }
       sv_wf(
         bamFiles, 
         manta_wf.out.manta4Combine, 
-        samplestatistics
+        samplestatistics,
+        CNVcalls
       )
       if (doWF_SNV && params.assayType == "genome"){
-        	hrdetect_wf(CNVcalls, snv_wf.out.mafFile, sv_wf.out.SVAnnotBedpePass)
+        hrdetect_wf(CNVcalls, snv_wf.out.mafFile, sv_wf.out.SVAnnotBedpePass)
+        clonality_wf(
+          bamFiles,
+          sv_wf.out.SVAnnotBedpePass,
+          snv_wf.out.mafFile,
+          CNVcalls,
+          samplestatistics
+        )
       }
     }
 
@@ -292,6 +305,8 @@ workflow {
         doWF_facets ? facets_wf : false,
         doWF_SV ? sv_wf : false,
         doWF_SNV ? snv_wf : false,
+        doWF_SV && doWF_SNV && params.assayType == "genome" ? hrdetect_wf : false,
+        doWF_SV && doWF_SNV && params.assayType == "genome" ? clonality_wf : false,
         doWF_loh ? loh_wf : false,
         doWF_mdParse ? mdParse_wf : false,
         doWF_germSNV ? germlineSNV_wf : false,
