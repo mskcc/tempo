@@ -54,7 +54,7 @@ WFs = params.workflows instanceof Boolean ? '' : params.workflows
 
 WFs = WFs.split(',').collect{it.trim().toLowerCase()}.unique()
 
-WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','sv','mutsig','germSNV','germSV','lohhla','facets','qc','msisensor'] : WFs
+WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','sv','mutsig','germsnv','germsv','lohhla','facets','qc','msisensor'] : WFs
 
 workflow {
   //Set flags for when each pipeline is required to run.
