@@ -1,6 +1,11 @@
 include { GermlineDellyCall }                 from '../process/GermSV/GermlineDellyCall' 
+include { DellyCombine
+            as GermlineDellyCombine }         from '../process/SV/DellyCombine'
 include { GermlineRunManta }                  from '../process/GermSV/GermlineRunManta' 
-include { GermlineMergeDellyAndManta }        from '../process/GermSV/GermlineMergeDellyAndManta'
+include { GermlineMergeSVs }                  from '../process/GermSV/GermlineMergeSVs'
+include { GermlineSVVcf2Bedpe }               from '../process/GermSV/GermlineSVVcf2Bedpe'
+include { GermlineAnnotateSVBedpe }           from '../process/GermSV/GermlineAnnotateSVBedpe'
+include { GermlineRunSvABA }                  from '../process/GermSV/GermlineRunSvABA'
 
 workflow germlineSV_wf
 {
@@ -13,21 +18,72 @@ workflow germlineSV_wf
     
     Channel.from("DUP", "BND", "DEL", "INS", "INV").set{ svTypesGermline }
 
-    GermlineDellyCall(svTypesGermline,
-                      bams,
-                      Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions]))
+    GermlineDellyCall(
+        svTypesGermline,
+        bams,
+        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.svCallingExcludeRegions])
+    )
+    GermlineDellyCombine(
+      GermlineDellyCall.out.dellyFilter4CombineGermline
+        .groupTuple( by: [0,1], size: 5 )
+        .map{ normal_id, target, vcf, tbi ->
+          [ "", normal_id, target, vcf, tbi ]
+        }
+      , "germline"
+    )
 
-    GermlineRunManta(bams,
-                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
-                     Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]))
+    GermlineRunManta(
+        bams,
+        Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
+        Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex])
+    )
 
-    GermlineDellyCall.out.dellyFilter4CombineGermline.groupTuple(by: [0,1], size: 5)
-            .combine(GermlineRunManta.out.mantaOutputGermline, by: [0,1])
-            .set{ dellyMantaChannelGermline }
+    GermlineRunSvABA(
+        bams
+	  .map{ idNormal, target, bamNormal, baiNormal ->
+	    [ idNormal, target, bamNormal, baiNormal ] + [targetsMap."$target".targetsBed]
+          },
+	  referenceMap.genomeFile,
+	  referenceMap.genomeIndex,
+	  referenceMap.genomeDict,
+	  referenceMap.bwaIndex
+    )
 
-    GermlineMergeDellyAndManta(dellyMantaChannelGermline,
-                               Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+    GermlineDellyCombine.out
+        .map{ tumor_id, normal_id, target, vcf, tbi -> [normal_id, target, vcf, tbi, "delly" ] }
+        .mix(GermlineRunManta.out.mantaOutputGermline.map{ it + ["manta"]})
+        .mix(GermlineRunSvABA.out.SvABA4Combine.map{ it + ["svaba"]})
+        .groupTuple( by:[0,1], size:3 )
+        .set{allSvCallsCombineChannel}
+
+    GermlineMergeSVs(
+        allSvCallsCombineChannel,
+			  workflow.projectDir + "/containers/bcftools-vt-mergesvvcf"
+		)
+
+    GermlineSVVcf2Bedpe(
+        GermlineMergeSVs.out.SVsCombinedOutputGermline
+    )
+    GermlineAnnotateSVBedpe(
+        GermlineSVVcf2Bedpe.out.GermlineCombinedUnfilteredBedpe,
+        referenceMap.repeatMasker,
+        referenceMap.mapabilityBlacklist,
+        referenceMap.svBlacklistBed,
+        referenceMap.svBlacklistBedpe,
+        referenceMap.svBlacklistFoldbackBedpe,
+        referenceMap.svBlacklistTEBedpe,
+        referenceMap.spliceSites, 
+        workflow.projectDir + "/containers/iannotatesv",
+        params.genome
+    )
+    
+    GermlineMergeSVs.out.SVsCombinedOutputGermline
+        .map{ idNormal, target, vcfFile, tbiFile ->
+          ["placeHolder", "noTumor", idNormal, vcfFile, tbiFile]
+        }.set{sv4AggregateGermline}
 
   emit:
-    sv4AggregateGermline    = GermlineMergeDellyAndManta.out.sv4AggregateGermline
+    SVAnnotBedpe         = GermlineAnnotateSVBedpe.out.SVAnnotBedpe
+    SVAnnotBedpePass     = GermlineAnnotateSVBedpe.out.SVAnnotBedpePass
+    sv4AggregateGermline = GermlineAnnotateSVBedpe.out.SVAnnotBedpe4Aggregate
 }

@@ -46,6 +46,9 @@ include { germlineSV_wf }        from './modules/subworkflow/germlineSV_wf'     
 include { PairTumorNormal }      from './modules/subworkflow/PairTumorNormal'
 include { aggregateFromResult }  from './modules/subworkflow/AggregateFromResult'
 include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProcess'
+include { hrdetect_wf }          from './modules/subworkflow/hrdetect_wf'
+include { clonality_wf }         from './modules/subworkflow/clonality_wf'
+include { ascat_wf }             from './modules/subworkflow/ascat_wf'            addParams(referenceMap: referenceMap)
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
@@ -65,9 +68,10 @@ workflow {
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
+  doWF_facets          = doWF_SV && params.assayType == "genome" && ["hisens","purity"].contains(params.svcnv) ? true : doWF_facets
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
-  doWF_QC	       = 'qc' in WFs ? true : false
+  doWF_QC              = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
   doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
@@ -176,17 +180,12 @@ workflow {
 
     if(doWF_facets)
     {
-      facets_wf(bamFiles)
+      	facets_wf(bamFiles)
     }
 
     if(doWF_germSNV)
     {
       germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno)
-    }
-
-    if(doWF_SV)
-    {
-      sv_wf(bamFiles, manta_wf.out.manta4Combine)
     }
 
     if(doWF_loh)
@@ -197,6 +196,46 @@ workflow {
     if(doWF_SNV)
     {
       snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
+    }
+
+    if(doWF_SV)
+    {
+      CNVcalls = false
+      samplestatistics = false
+      if (params.assayType == "genome") {
+        if (params.svcnv == "ascat"){
+          ascat_wf(bamFiles)
+          samplestatistics = ascat_wf.out.ascatSS
+          CNVcalls = ascat_wf.out.ascatCNV
+        } else if(params.svcnv == "hisens") {
+          samplestatistics = facets_wf.out.FacetsHisensSampleStatistics4BRASS
+        } else if(params.svcnv == "purity"){
+          samplestatistics = facets_wf.out.FacetsPuritySampleStatistics4BRASS
+        }
+      }
+      if (doWF_facets && CNVcalls == false){
+	if(params.svcnv == "purity") {
+	  CNVcalls = facets_wf.out.FacetsPurityCNV4HrDetectFiltered
+	} else {
+	  CNVcalls = facets_wf.out.FacetsHisensCNV4HrDetectFiltered
+	}
+      }
+      sv_wf(
+        bamFiles, 
+        manta_wf.out.manta4Combine, 
+        samplestatistics,
+        CNVcalls
+      )
+      if (doWF_SNV && params.assayType == "genome"){
+        hrdetect_wf(CNVcalls, snv_wf.out.mafFile, sv_wf.out.SVAnnotBedpePass)
+        clonality_wf(
+          bamFiles,
+          sv_wf.out.SVAnnotBedpePass,
+          snv_wf.out.mafFile,
+          CNVcalls,
+          samplestatistics
+        )
+      }
     }
 
     if(doWF_QC)
@@ -266,6 +305,8 @@ workflow {
         doWF_facets ? facets_wf : false,
         doWF_SV ? sv_wf : false,
         doWF_SNV ? snv_wf : false,
+        doWF_SV && doWF_SNV && params.assayType == "genome" ? hrdetect_wf : false,
+        doWF_SV && doWF_SNV && params.assayType == "genome" ? clonality_wf : false,
         doWF_loh ? loh_wf : false,
         doWF_mdParse ? mdParse_wf : false,
         doWF_germSNV ? germlineSNV_wf : false,

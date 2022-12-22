@@ -56,6 +56,18 @@ def defineReferenceMap() {
     result_array << ['neoantigenCDNA' : checkParamReturnFile("neoantigenCDNA")]
     result_array << ['neoantigenCDS' : checkParamReturnFile("neoantigenCDS")]
     // coding region BED files for calculating TMB
+    // splice sites for locating cDNA contam
+    result_array << ['spliceSites' : checkParamReturnFile('spliceSites')]
+    result_array << ['snpGcCorrections' : checkParamReturnFile('snpGcCorrections')]
+    if (! workflow.profile.startsWith("test") ){
+    	result_array << ['brassRefDir' : checkParamReturnFile('brassRefDir')]
+    	result_array << ['vagrentRefDir' : checkParamReturnFile('vagrentRefDir')]
+    }
+      result_array << ['svBlacklistBed' : checkParamReturnFile('svBlacklistBed')]
+      result_array << ['svBlacklistBedpe' : checkParamReturnFile('svBlacklistBedpe')]
+      result_array << ['svBlacklistFoldbackBedpe' : checkParamReturnFile('svBlacklistFoldbackBedpe')]
+      result_array << ['svBlacklistTEBedpe' : checkParamReturnFile('svBlacklistTEBedpe')]
+    
   return result_array
 }
 

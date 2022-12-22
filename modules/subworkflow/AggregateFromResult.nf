@@ -8,6 +8,9 @@ include { SomaticAggregateMaf }                from '../process/Aggregate/Somati
 include { SomaticAggregateMetadata }           from '../process/Aggregate/SomaticAggregateMetadata'
 include { SomaticAggregateNetMHC }             from '../process/Aggregate/SomaticAggregateNetMHC'
 include { SomaticAggregateSv }                 from '../process/Aggregate/SomaticAggregateSv'
+include { SomaticAggregateSvSignatures }       from '../process/Aggregate/SomaticAggregateSvSignatures'
+include { SomaticAggregateHRDetect }           from '../process/Aggregate/SomaticAggregateHRDetect'
+include { SomaticAggregateSVclone }            from '../process/Aggregate/SomaticAggregateSVclone'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
 include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
 
@@ -54,14 +57,17 @@ workflow aggregateFromResult
       FacetsArmLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.arm_level.txt")]
       FacetsGeneLev4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*/*.gene_level.txt")]
       FacetsQC4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*_OUT.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*/*.facets_qc.txt")]
-      dellyMantaCombined4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz")]
-      dellyMantaCombinedTbi4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
+      sv4Aggregate: params.assayType == "genome" ?
+        [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.clustered.bedpe")] :
+        [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.final.bedpe")]
+      svSignatures4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*_exposures.tsv"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*_catalogues.pdf")]
+      hrd4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.hrdetect.tsv")]
+      svclone4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/svs/*_cluster_certainty.txt"), file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/snvs/*_cluster_certainty.txt")]
       predictHLA4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.DNA.HLAlossPrediction_CI.txt")]
       intCPN4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*DNA.IntegerCPN_CI.txt")]
       MetaData4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/*.sample_data.txt")]
       mafFile4AggregateGermline: [idTumor, idNormal, cohort, "placeHolder", file(path + "/germline/" + idNormal + "/*/" + idTumor + "__" + idNormal + ".germline.final.maf")]
-      dellyMantaCombined4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz")]
-      dellyMantaCombinedTbi4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.delly.manta.vcf.gz.tbi")]
+      sv4AggregateGermline: [idNormal, cohort, idTumor, "placeHolder", "noTumor", file(path + "/germline/" + idNormal + "/*/*.final.bedpe")]
       conpairConcord4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".concordance.txt")]
       conpairContami4Aggregate: [idTumor, idNormal, cohort, "placeHolder", file(path + "/somatic/" + idTumor + "__" + idNormal + "/*/" + idTumor + "__" + idNormal + ".contamination.txt")]
 		  alfredIgnoreYTumor: [cohort, idTumor, idNormal, file(path + "/bams/" + idTumor + "/*/*.alfred.tsv.gz/")]
@@ -85,14 +91,15 @@ workflow aggregateFromResult
     inputArmLev4Aggregate         = aggregateList.FacetsArmLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputGeneLev4Aggregate        = aggregateList.FacetsGeneLev4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputFacetsQC4CohortMultiQC   = aggregateList.FacetsQC4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
-    inputSomaticAggregateSv       = aggregateList.dellyMantaCombined4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
-    inputSomaticAggregateSvTbi    = aggregateList.dellyMantaCombinedTbi4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputSomaticAggregateSv       = aggregateList.sv4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputSomaticAggregateSvSignatures = aggregateList.svSignatures4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
+    inputSomaticAggregateHrd      = aggregateList.hrd4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
+    inputSomaticAggregateSVclone  = aggregateList.svclone4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4], it[5]]}
     inputPredictHLA4Aggregate     = aggregateList.predictHLA4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputIntCPN4Aggregate         = aggregateList.intCPN4Aggregate.transpose().groupTuple(by:[2]).map{[it[2], it[4]]}
     inputSomaticAggregateMetadata = aggregateList.MetaData4Aggregate.transpose().groupTuple(by:[2])
     inputGermlineAggregateMaf     = aggregateList.mafFile4AggregateGermline.transpose().groupTuple(by:[2])
-    inputGermlineAggregateSv      = aggregateList.dellyMantaCombined4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
-    inputGermlineAggregateSvTbi   = aggregateList.dellyMantaCombinedTbi4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
+    inputGermlineAggregateSv      = aggregateList.sv4AggregateGermline.transpose().groupTuple(by:[1]).map{[it[1], it[5].unique()]}
     inputAlfredIgnoreY            = aggregateList.alfredIgnoreYTumor.unique().combine(aggregateList.alfredIgnoreYNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
     inputAlfredIgnoreN            = aggregateList.alfredIgnoreNTumor.unique().combine(aggregateList.alfredIgnoreNNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
     inputQualimap4CohortMultiQC   = aggregateList.qualimapTumor.unique().combine(aggregateList.qualimapNormal.unique(), by:[0,1,2]).transpose().groupTuple(by:[0]).map{ [it[0], it[3].unique(), it[4].unique()]}
@@ -111,9 +118,10 @@ workflow aggregateFromResult
     SomaticAggregateFacets(inputSomaticAggregateFacets)
     SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
 
-    inputSomaticAggregateSv.join(inputSomaticAggregateSvTbi)
-          .set{ inputSomaticAggregateSv }
     SomaticAggregateSv(inputSomaticAggregateSv)
+    SomaticAggregateSvSignatures(inputSomaticAggregateSvSignatures)
+    SomaticAggregateHRDetect(inputSomaticAggregateHrd)
+    SomaticAggregateSVclone(inputSomaticAggregateSVclone)
   
     inputPredictHLA4Aggregate.join(inputIntCPN4Aggregate)
           .set{ inputSomaticAggregateLOHHLA }
@@ -123,8 +131,6 @@ workflow aggregateFromResult
 
     GermlineAggregateMaf(inputGermlineAggregateMaf)
   
-    inputGermlineAggregateSv.join(inputGermlineAggregateSvTbi)
-          .set{ inputGermlineAggregateSv }
     GermlineAggregateSv(inputGermlineAggregateSv)
 
     inputAlfredIgnoreY.join(inputAlfredIgnoreN)
