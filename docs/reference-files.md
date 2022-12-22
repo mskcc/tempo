@@ -121,6 +121,7 @@ Functional mutation effects and predicted oncogenicity of variants, as well as l
 Annotation of germline variants in _BRCA1_ and _BRCA2_ is carried out with the [annotateMaf package](https://github.com/taylor-lab/annotateMaf). This includes variant-level annotation from the ENIGMA consortium and ClinVar.
 
 ## Structural Variant Calling
+
 Delly provides and takes as an argument a [file of regions](https://github.com/dellytools/delly/tree/master/excludeTemplates) to _exclude_ from variant calling. This excludes telomeres and centromeres from auto- and allosomes as well as any other contig.
 
 For Manta, subtract these regions from a bed file of the whole genome to generate a list of regions to _include_. First clean up the file provided by Delly, since it is not in `bed` format:
@@ -128,3 +129,25 @@ For Manta, subtract these regions from a bed file of the whole genome to generat
 grep -Ev "chr|MT|GL00|NC|hs37d5" human.hg19.excl.tsv > human.hg19.excl.clean.bed
 bedtools subtract -a b37.bed -b human.hg19.excl.clean.bed > b37.minusDellyExclude.bed
 ```
+
+For BRASS, Tempo is using a pre-built reference packages linked to [Sanger's dockstore registry](ftp://ftp.sanger.ac.uk/pub/cancer/dockstore/human/). To download references for GRCh37:
+``` shell
+wget ftp://ftp.sanger.ac.uk/pub/cancer/dockstore/human/VAGrENT_ref_GRCh37d5_ensembl_75.tar.gz
+tar -xzvf VAGrENT_ref_GRCh37d5_ensembl_75.tar.gz
+wget ftp://ftp.sanger.ac.uk/pub/cancer/dockstore/human/CNV_SV_ref_GRCh37d5_brass6+.tar.gz
+tar -xzvf CNV_SV_ref_GRCh37d5_brass6+.tar.gz
+# grab CNV_SV_ref/brass and VAGrENT_ref_GRCh37d5_ensembl_75/vagrent
+```
+GRCh38 is also available from the same ftp server. To build a new reference, follow the instructions on the [BRASS wiki](https://github.com/cancerit/BRASS/wiki).
+
+## Structural Variant Annotation
+
+The bed and bedpe files used for the flags `pcawg_blacklist_bed`,`pcawg_blacklist_bedpe`, `pcawg_blacklist_fb_bedpe` and `pcawg_blacklist_te_bedpe` are sourced from the [SV merging tool used in the PCAWG paper](https://bitbucket.org/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/). They can be downloaded as follows: 
+``` shell
+wget https://api.bitbucket.org/2.0/repositories/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/pcawg6_blacklist.slop.bed.gz
+wget https://api.bitbucket.org/2.0/repositories/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/pcawg6_blacklist.slop.bedpe.gz
+wget https://api.bitbucket.org/2.0/repositories/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/pcawg6_blacklist_foldback_artefacts.slop.bedpe.gz
+wget https://api.bitbucket.org/2.0/repositories/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/pcawg6_blacklist_TE_pseudogene.bedpe.gz
+```
+
+Structural variants are also filtered with RepeatMasker and Mappability blacklists, whose preparation are described in [one of the above sections](#repeatMasker-and-mappability-blacklist).

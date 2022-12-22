@@ -13,6 +13,6 @@ workflow manta_wf
               Channel.value([referenceMap.svCallingIncludeRegions, referenceMap.svCallingIncludeRegionsIndex]))
   emit:
     manta4Combine    = SomaticRunManta.out.manta4Combine
-    mantaOutput      = SomaticRunManta.out.mantaOutput
+    //mantaOutput      = SomaticRunManta.out.mantaOutput
     mantaToStrelka   = SomaticRunManta.out.mantaToStrelka
 }

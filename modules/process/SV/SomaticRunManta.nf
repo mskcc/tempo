@@ -9,8 +9,7 @@ process SomaticRunManta {
     tuple path(svCallingIncludeRegions), path(svCallingIncludeRegionsIndex)
 
   output:
-    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz"), emit: manta4Combine
-    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz.tbi"), emit: mantaOutput
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.manta.vcf.gz"), path("${outputPrefix}.manta.vcf.gz.tbi"), emit: manta4Combine
     tuple val(idTumor), val(idNormal), val(target), path("*.candidateSmallIndels.vcf.gz"), path("*.candidateSmallIndels.vcf.gz.tbi"), emit: mantaToStrelka
 
   script:
@@ -43,8 +42,26 @@ process SomaticRunManta {
   mv Manta/results/variants/diploidSV.vcf.gz.tbi \
     Manta_${outputPrefix}.diploidSV.vcf.gz.tbi
   mv Manta/results/variants/somaticSV.vcf.gz \
-    ${outputPrefix}.manta.vcf.gz
+    ${outputPrefix}.manta.raw.vcf.gz
   mv Manta/results/variants/somaticSV.vcf.gz.tbi \
-    ${outputPrefix}.manta.vcf.gz.tbi
+    ${outputPrefix}.manta.raw.vcf.gz.tbi
+
+
+  # Filter variants that have low supporting reads in the tumor or high supporting reads in the normal
+  # PR = discordant reads
+  # SR = split reads
+  bcftools view \\
+    -s ${idTumor},${idNormal} \\
+    ${outputPrefix}.manta.raw.vcf.gz | \\
+  bcftools filter \\
+    --soft-filter tumor_read_supp -m + \\
+    -e "FORMAT/PR[0:1] < 5 | FORMAT/SR[0:1] < 2" | \\
+  bcftools filter \\
+    --soft-filter normal_read_supp -m + \\
+    -e "FORMAT/PR[1:1] > 0 | FORMAT/SR[1:1] > 0" | \\
+  bcftools view --output-type z > \\
+    ${outputPrefix}.manta.vcf.gz
+
+  tabix --preset vcf ${outputPrefix}.manta.vcf.gz
   """
 }
