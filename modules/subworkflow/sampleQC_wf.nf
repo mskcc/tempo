@@ -14,15 +14,15 @@ workflow sampleQC_wf
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
 
-    inputChannel.map{ idSample, target, bam, bai ->
-        [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
-    }.set{ bamsBQSR4HsMetrics }
+    if (params.assayType != "genome"){
+        inputChannel.map{ idSample, target, bam, bai ->
+            [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
+        }.set{ bamsBQSR4HsMetrics }
 
-    QcCollectHsMetrics(bamsBQSR4HsMetrics,
-                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
-
-    if (params.assayType == "exome"){
-	collectHsMetricsOutput = QcCollectHsMetrics.out.collectHsMetricsOutput
+        QcCollectHsMetrics(bamsBQSR4HsMetrics,
+                           Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict])
+                          )
+        collectHsMetricsOutput = QcCollectHsMetrics.out.collectHsMetricsOutput
     } else {
     	inputChannel
         	.map{ idSample, target, bam, bai -> [idSample, ""]}
