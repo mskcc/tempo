@@ -17,7 +17,7 @@ process GermlineCombineHaplotypecallerVcf {
   """
   bcftools concat \
     --allow-overlaps \
-    ${haplotypecallerSnpVcf} ${haplotypecallerIndelVcf} | \
+    *.filter.vcf.gz | \
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \
