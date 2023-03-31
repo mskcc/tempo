@@ -12,3 +12,4 @@ dependencies:
   - pysam=0.15.2
   - strelka=2.9.10
   - manta=1.5.0
+  - bioconda::vcftools=0.1.16
