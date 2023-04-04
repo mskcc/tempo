@@ -58,5 +58,7 @@ process SomaticRunStrelka2 {
     --output ${outfile}
 
   tabix --preset vcf ${outfile}
+
+  if [ \$(vcf-validator ${outfile} 2>&1 | wc -l ) -gt 0 ] ; then exit 1 ; fi
   """
 }
