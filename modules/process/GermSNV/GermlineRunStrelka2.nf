@@ -30,5 +30,7 @@ process GermlineRunStrelka2 {
 
   mv Strelka/results/variants/variants.vcf.gz ${idNormal}.strelka2.vcf.gz
   mv Strelka/results/variants/variants.vcf.gz.tbi ${idNormal}.strelka2.vcf.gz.tbi
+
+  if [ \$(vcf-validator ${idNormal}.strelka2.vcf.gz 2>&1 | wc -l ) -gt 0 ] ; then exit 1 ; fi
   """
 }
