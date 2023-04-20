@@ -145,4 +145,5 @@ gen.plot.biocircos <- function(bedpe,cnv,sample_name,genome_v){
 }
 
 plot.biocircos <- gen.plot.biocircos(bedpe=bedpe,cnv=cnv,sample_name = opt$sampleName, genome_v=genome_v )
-rmarkdown::render("biocircos.Rmd", "all", paste0(opt$sampleName,".circos.html"), output_dir='.')
+rmarkdown::render("biocircos.Rmd", "all", paste0(opt$sampleName,".circos.html"), output_dir='.',intermediates_dir='./tmp')
+unlink('./tmp',recursive=TRUE)
