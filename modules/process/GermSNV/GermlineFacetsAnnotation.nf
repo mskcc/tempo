@@ -4,7 +4,7 @@ process GermlineFacetsAnnotation {
   publishDir "${params.outDir}/germline/${idNormal}/combined_mutations/", mode: params.publishDirMode, pattern: "*.germline.final.maf"
 
   input:
-    tuple val(idTumor), val(idNormal), val(target), path(purity_rdata), path(purity_cncf), path(hisens_cncf), val(facetsPath), path(maf)
+    tuple val(idTumor), val(idNormal), val(target), path(hisens_rdata), val(facetsPath), path(maf)
     
   output:
     path("${outputPrefix}.final.maf"), emit: mafFileOutputGermline
@@ -15,7 +15,7 @@ process GermlineFacetsAnnotation {
   """
   if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
-    --facets-output ${purity_rdata} \
+    --facets-output ${hisens_rdata} \
     --maf-file ${maf} \
     --output ${outputPrefix}.facets.maf
 
