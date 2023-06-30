@@ -4,7 +4,7 @@ process SomaticFacetsAnnotation {
   publishDir "${params.outDir}/somatic/${outputPrefix}/combined_mutations/", mode: params.publishDirMode, pattern: "*.somatic.final.maf"
 
   input:
-    tuple val(idTumor), val(idNormal), val(target), path(purity_rdata), path(purity_cncf), path(hisens_cncf), val(facetsPath), path(maf)
+    tuple val(idTumor), val(idNormal), val(target), path(hisens_rdata), val(facetsPath), path(maf)
 
   output:
     tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.somatic.final.maf"), emit: finalMaf4Aggregate
@@ -17,7 +17,7 @@ process SomaticFacetsAnnotation {
   """
   if [ \$( cat ${maf} | wc -l ) -gt 1 ] ; then 
   Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \
-    --facets-output ${purity_rdata} \
+    --facets-output ${hisens_rdata} \
     --maf-file ${maf} \
     --facets-algorithm em \
     --output ${outputPrefix}.facets.maf
