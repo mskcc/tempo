@@ -49,6 +49,7 @@ include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProces
 include { hrdetect_wf }          from './modules/subworkflow/hrdetect_wf'
 include { clonality_wf }         from './modules/subworkflow/clonality_wf'
 include { ascat_wf }             from './modules/subworkflow/ascat_wf'            addParams(referenceMap: referenceMap)
+include { indel_wf }             from './modules/subworkflow/indel_wf'  
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
@@ -236,6 +237,9 @@ workflow {
           samplestatistics
         )
       }
+
+      indel_wf(bamFiles, snv_wf.out.strelkaOut, snv_wf.out.platypusOut,  sv_wf.out.svabaIndelout)
+
     }
 
     if(doWF_QC)

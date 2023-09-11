@@ -5,6 +5,7 @@ include { SomaticCombineChannel }      from '../process/SNV/SomaticCombineChanne
 include { SomaticAnnotateMaf }         from '../process/SNV/SomaticAnnotateMaf' 
 include { RunNeoantigen }              from '../process/SNV/RunNeoantigen' 
 include { SomaticFacetsAnnotation }    from '../process/SNV/SomaticFacetsAnnotation' 
+include { RunPlatypus }               from '../process/SNV/RunPlatypus' 
 
 workflow snv_wf
 {
@@ -42,6 +43,10 @@ workflow snv_wf
     }
     .transpose()
     .set{ mergedChannelSomatic }
+
+
+    RunPlatypus(mergedChannelSomatic, 
+          Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
     RunMutect2(mergedChannelSomatic, 
           Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
@@ -81,6 +86,8 @@ workflow snv_wf
     SomaticFacetsAnnotation(facetsMafFileSomatic)
 
   emit:
+    strelkaOut            = SomaticRunStrelka2.out.strelka4Combine
+    platypusOut           = RunPlatypus.out.platypusOutput
     mafFile               = SomaticAnnotateMaf.out.mafFile
     maf4MetaDataParser    = SomaticFacetsAnnotation.out.maf4MetaDataParser
     NetMhcStats4Aggregate = RunNeoantigen.out.NetMhcStats4Aggregate
