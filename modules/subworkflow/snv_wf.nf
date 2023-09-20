@@ -45,7 +45,7 @@ workflow snv_wf
     .set{ mergedChannelSomatic }
 
 
-    RunPlatypus(mergedChannelSomatic, 
+    RunPlatypus(bamFiles, 
           Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
     RunMutect2(mergedChannelSomatic, 
@@ -86,6 +86,7 @@ workflow snv_wf
     SomaticFacetsAnnotation(facetsMafFileSomatic)
 
   emit:
+    strelka4IndelCombine  = SomaticRunStrelka2.out.strelka4IndelCombine
     strelkaOut            = SomaticRunStrelka2.out.strelka4Combine
     platypusOut           = RunPlatypus.out.platypusOutput
     mafFile               = SomaticAnnotateMaf.out.mafFile

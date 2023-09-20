@@ -238,7 +238,7 @@ workflow {
         )
       }
 
-      indel_wf(bamFiles, snv_wf.out.strelkaOut, snv_wf.out.platypusOut,  sv_wf.out.svabaIndelout)
+      indel_wf(bamFiles, snv_wf.out.strelka4IndelCombine, snv_wf.out.platypusOut,  sv_wf.out.svabaIndelout)
 
     }
 
