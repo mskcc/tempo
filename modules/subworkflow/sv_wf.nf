@@ -121,6 +121,7 @@ workflow sv_wf
     }
 
   emit:
+    svabaIndelout        = SomaticRunSvABA.out.SvABA4INDELCombine
     SVSignatures         = SVSignatures
     SVAnnotBedpe         = SomaticAnnotateSVBedpe.out.SVAnnotBedpe
     SVAnnotBedpePass     = SomaticAnnotateSVBedpe.out.SVAnnotBedpePass

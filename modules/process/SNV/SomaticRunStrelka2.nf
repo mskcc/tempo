@@ -9,6 +9,7 @@ process SomaticRunStrelka2 {
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path('*strelka2.vcf.gz'), path('*strelka2.vcf.gz.tbi'), emit: strelka4Combine
+    tuple val(combineKey), path('*strelka2.vcf.gz'), path('*strelka2.vcf.gz.tbi'), emit: strelka4IndelCombine
     tuple path('*strelka2.vcf.gz'), path('*strelka2.vcf.gz.tbi'), emit: strelkaOutput
 
   script:
@@ -19,6 +20,8 @@ process SomaticRunStrelka2 {
   }
   outputPrefix = "${idTumor}__${idNormal}"
   outfile = "${outputPrefix}.strelka2.vcf.gz"
+  combineKey = "${idTumor}__${idNormal}_${target}"
+
   """
   configureStrelkaSomaticWorkflow.py \
     ${options} \

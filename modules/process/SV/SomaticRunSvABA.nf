@@ -11,7 +11,7 @@ process SomaticRunSvABA {
 
     output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz"), path("${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz.tbi"), emit: SvABA4Combine
-    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.INDEL*vcf.gz"), path("${outputPrefix}.INDEL*vcf.gz.tbi"), emit: SvABA4INDELCombine
+    tuple val(combineKey), path("${outputPrefix}.reheader.svaba.somatic.indel.vcf.gz"), path("${outputPrefix}.reheader.svaba.somatic.indel.vcf.gz"), emit: SvABA4INDELCombine
     path("*.vcf.gz*"), emit: allVcfs
     path("*.log"), emit: logs
     path("*.txt.gz"), emit: supportingFiles
@@ -19,6 +19,7 @@ process SomaticRunSvABA {
     script:
     outputPrefix = "${idTumor}__${idNormal}"
     target_param = params.assayType == "genome" ? "" : "-k ${targetsBed} "
+    combineKey = "${idTumor}__${idNormal}_${target}"
     """
     svaba run \\
       -t "${bamTumor}" \\
@@ -37,5 +38,15 @@ process SomaticRunSvABA {
       --output ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz \\
       ${outputPrefix}.svaba.somatic.sv.vcf.gz
     bcftools index -f -t ${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz
+
+
+    bcftools reheader \\
+      --samples svaba.samplenames.tsv \\
+      --output ${outputPrefix}.reheader.svaba.somatic.indel.vcf.gz \\
+      ${outputPrefix}.svaba.somatic.indel.vcf.gz
+    bcftools index -f -t ${outputPrefix}.reheader.svaba.somatic.indel.vcf.gz
+
+
+    
     """
 }
