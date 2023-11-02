@@ -26,7 +26,7 @@ process SomaticSVVcf2Bedpe {
     -t ${outputPrefix}_tmp
 
   if [ ! -s ${outputPrefix}.combined.tmp.bedpe ] ; then
-    echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\tTUMOR\\tNORMAL\\tTUMOR_ID\\tNORMAL_ID" >> ${outputPrefix}.combined.tmp.bedpe
+    echo -e "#CHROM_A\\tSTART_A\\tEND_A\\tCHROM_B\\tSTART_B\\tEND_B\\tID\\tQUAL\\tSTRAND_A\\tSTRAND_B\\tTYPE\\tFILTER\\tNAME_A\\tREF_A\\tALT_A\\tNAME_B\\tREF_B\\tALT_B\\tINFO_A\\tINFO_B\\tFORMAT\\tTUMOR\\tNORMAL" >> ${outputPrefix}.combined.tmp.bedpe
   fi
 
   zgrep "^##" ${vcfFile} | sed "s/##fileformat=*/##fileformat=BEDPE/g" > ${outputPrefix}.combined.unsorted.bedpe
