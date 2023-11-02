@@ -26,7 +26,8 @@ process SomaticRunClusterSV {
   mkdir -p tmp
   grep -v "^#" ${bedpe} | cut -f 1-10 > tmp/${outputPrefix}.bedpe
   if [ \$(cat tmp/${outputPrefix}.bedpe | wc -l ) -lt 1 ] ; then
-    touch tmp/${outputPrefix}.sv_clusters_and_footprints.tsv
+    touch ${outputPrefix}.sv_clusters_and_footprints.tsv
+    touch ${outputPrefix}.sv_distance_pvals
   else
     Rscript /opt/ClusterSV/R/run_cluster_sv.R \\
       -chr /opt/ClusterSV/references/${genome_}.chrom_sizes \\
