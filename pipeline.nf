@@ -660,15 +660,15 @@ if (params.mapping) {
     """
   }
 
-  File file = new File(outname)
-  file.newWriter().withWriter { w ->
+  File file_bammapping = new File(outname)
+  file_bammapping.newWriter().withWriter { w ->
       w << "SAMPLE\tTARGET\tBAM\tBAI\n"
   }
 
   bamResults.map{ idSample, target, bam, bai ->
       [ idSample, target, "${file(outDir).toString()}/bams/${idSample}/${idSample}.bam", "${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai" ]
   }.subscribe { Object obj ->
-      file.withWriterAppend { out ->
+      file_bammapping.withWriterAppend { out ->
           out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
       }
   }
