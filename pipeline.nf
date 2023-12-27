@@ -581,8 +581,7 @@ if (params.mapping) {
         referenceMap.knownIndelsIndex 
       ])
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
-      set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap, bamResults
       file("file-size.txt") into bamSize
     script:
     if (workflow.profile == "juno") {
@@ -666,7 +665,9 @@ if (params.mapping) {
       w << "SAMPLE\tTARGET\tBAM\tBAI\n"
   }
 
-  bamResults.subscribe { Object obj ->
+  bamResults.map{ idSample, target, bam, bai ->
+      [ idSample, target, "${file(outDir).toString()}/bams/${idSample}/${idSample}.bam", "${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai" ]
+  }.subscribe { Object obj ->
       file.withWriterAppend { out ->
           out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
       }
