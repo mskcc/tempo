@@ -489,27 +489,25 @@ if (params.mapping) {
 
   // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
   def allReadIds = [:]
-  sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = "@" + readIdFile.getSimpleName().replaceAll("@", ":")
-
-		// Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
+  sortedBam
+	   .groupTuple(by:[3])
+	   .map { idSample, target, bam, fileID, lane, readIdFile ->
+	        def idSample_first = idSample instanceof Collection ? idSample.first() : idSample
+		def target_first   = target instanceof Collection ? target.first() : target
+               // Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
 		if ( !params.watch ){
-		if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the follwoing samples, since they contain the same read: \n${readId}")){exit 1}
+		    for (i in readIdFile.flatten().unique()){
+                        def readId = "@" + i.getSimpleName().replaceAll("@", ":")
+                        if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample_first + "\t" + fileID, "the following samples, since they contain the same read: \n${readId}")){exit 1}
+		    }
 		}
-
-		[idSample, target, bam, fileID, lane]
-	   }
-	   .groupTuple(by: [3])
-	   .map{ item ->
-		      def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
-		      def target   = item[1] instanceof Collection ? item[1].first() : item[1]
-		      def bams = item[2]
-		      [idSample, target, bams]
+                [idSample_first, target_first, bam.flatten().unique()]
 	   }
 	   .groupTuple(by: [0])
 	   .map{ item ->
 		      def idSample = item[0]
 		      def target =  item[1] instanceof Collection ? item[1].first() : item[1]
-		      def bams = item[2].flatten()
+		      def bams = item[2].flatten().unique()
 		      [idSample, bams, target]
 	   }
 	   .set{ groupedBam }
@@ -581,8 +579,7 @@ if (params.mapping) {
         referenceMap.knownIndelsIndex 
       ])
     output:
-      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap
-      set idSample, target, val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam"), val("${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai") into bamResults
+      set idSample, target, file("${idSample}.bam"), file("${idSample}.bam.bai") into bamsBQSR4Alfred, bamsBQSR4CollectHsMetrics, bamsBQSR4Tumor, bamsBQSR4Normal, bamsBQSR4QcPileup, bamsBQSR4Qualimap, bamResults
       file("file-size.txt") into bamSize
     script:
     if (workflow.profile == "juno") {
@@ -661,13 +658,15 @@ if (params.mapping) {
     """
   }
 
-  File file = new File(outname)
-  file.newWriter().withWriter { w ->
+  File file_bammapping = new File(outname)
+  file_bammapping.newWriter().withWriter { w ->
       w << "SAMPLE\tTARGET\tBAM\tBAI\n"
   }
 
-  bamResults.subscribe { Object obj ->
-      file.withWriterAppend { out ->
+  bamResults.map{ idSample, target, bam, bai ->
+      [ idSample, target, "${file(outDir).toString()}/bams/${idSample}/${idSample}.bam", "${file(outDir).toString()}/bams/${idSample}/${idSample}.bam.bai" ]
+  }.subscribe { Object obj ->
+      file_bammapping.withWriterAppend { out ->
           out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
       }
   }
