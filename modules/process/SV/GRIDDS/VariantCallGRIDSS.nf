@@ -32,7 +32,7 @@ process VariantCallGRIDSS {
         mkdir ${normalBam}.gridss.working
         
         echo $baseTumor
-
+        
         for FILE in \$(find . -type l); do
             tgt=`readlink "\${FILE}"`
             filesep=`basename \$tgt `
@@ -69,17 +69,18 @@ process VariantCallGRIDSS {
 
 
         /opt/gridss/gridss \
-        --jvmheap 112g --otherjvmheap 16g \
+        --jvmheap ${task.memory.toGiga() - 1}g \
+        --otherjvmheap ${task.memory.toGiga() - 1}g \
         -r ${genomeFile} \
         -j /opt/gridss/gridss-2.13.2-gridss-jar-with-dependencies.jar \
-         -t 8 \
+         --threads ${task.cpus} \
          -s assemble,call \
          -b  exclude_.bed \
         -a assembly.bam \
          -o ${idTumor}.GRIDSS.vcf \
         ${normalBam} ${tumorBam} 
 
-        java -Xmx230g -jar /opt/gripss_v2.3.4.jar \
+        java -Xmx${toGiga() - 1}g -jar /opt/gripss_v2.3.4.jar \
          -sample ${idTumor} \
          -reference ${idNormal} \
          -ref_genome_version 37 \

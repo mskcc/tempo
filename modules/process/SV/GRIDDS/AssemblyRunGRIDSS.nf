@@ -66,16 +66,14 @@ process AssemblyRunGRIDSS {
 
         done
 
-            
-
-
-
-
+        
         ls
         ls ./${baseNormal}.gridss.working/
 
 
         /opt/gridss/gridss \
+        --jvmheap ${task.memory.toGiga() - 1}g \
+        --otherjvmheap ${task.memory.toGiga() - 1}g \
         -r ${genomeFile} \
         -j ${gridds_jar} \
         -t 8 \
