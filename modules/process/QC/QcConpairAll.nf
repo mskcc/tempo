@@ -6,8 +6,8 @@ process QcConpairAll {
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
 
   output:
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.{concordance,contamination}.txt"), emit: conpairAllOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outPrefix}.concordance.txt"), path("${outPrefix}.contamination.txt"), emit: conpairAll4Aggregate
+    tuple val(idTumor), val(idNormal), path("${outPrefix}.{concordance,contamination}.txt"), emit: conpairAllOutput
+    tuple val(idTumor), val(idNormal), path("${outPrefix}.concordance.txt"), path("${outPrefix}.contamination.txt"), emit: conpairAll4Aggregate
 
   script:
   outPrefix = "${idTumor}__${idNormal}"

@@ -1,5 +1,6 @@
 include { QcPileup }                           from '../process/QC/QcPileup'
 include { QcConpair }                          from '../process/QC/QcConpair'
+include { QcConpairAll }                       from '../process/QC/QcConpairAll'
 
 workflow samplePairingQC_wf
 {
@@ -49,16 +50,19 @@ workflow samplePairingQC_wf
     pileupT.combine(pileupN, by: [0, 1]).unique().set{ pileupConpair }
 
     QcConpair(pileupConpair, Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+    conpair4Aggregate = QcConpair.out.conpair4Aggregate.map{ ["placeHolder"] + it }
+    conpairOutput = QcConpair.out.conpairOutput.map{ ["placeHolder"] + it }
 
     if(runConpairAll){
       pileupT.combine(pileupN).unique().set{ pileupConpairAll }
 
       QcConpairAll(pileupConpairAll,
                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+      conpairAll4Aggregate = QcConpairAll.out.conpairAll4Aggregate.map{ ["placeHolder"] + it }
     }
 
   emit:
     // -- Run based on QcConpairAll channels or the single QcConpair channels
-    conpair4Aggregate = (!runConpairAll ? QcConpair.out.conpair4Aggregate : QcConpairAll.out.conpairAll4Aggregate)
+    conpair4Aggregate = (!runConpairAll ? conpair4Aggregate : conpairAll4Aggregate)
     conpairOutput = QcConpair.out.conpairOutput
 }
