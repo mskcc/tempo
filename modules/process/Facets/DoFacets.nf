@@ -9,15 +9,16 @@ process DoFacets {
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
     file(facetsVcf)
     path(custom_scripts)
+    val(outputDir)
 
   output:
     path("${outfile}"), emit: snpPileupOutput
     path("${outputDir}/*"), emit: FacetsOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*_purity.seg"), path("*/*_hisens.seg"), path("*_OUT.txt"), path("*/*.arm_level.txt"), path("*/*.gene_level.txt"), emit: facets4Aggregate
+    tuple val(idTumor), val(idNormal), path("*/*_purity.seg"), path("*/*_hisens.seg"), path("*_OUT.txt"), path("*/*.arm_level.txt"), path("*/*.gene_level.txt"), emit: facets4Aggregate
     tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*purity.out"), emit: facetsPurity
-    tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*hisens.Rdata"), val("${outputDir}"), emit: facetsForMafAnno
-    tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*.{Rdata,png,out,seg,txt}"), path("${idTumor}__${idNormal}.snp_pileup.gz"), val("${outputDir}"), emit: Facets4FacetsPreview
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*/*.*_level.txt"), emit: FacetsArmGeneOutput
+    tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*hisens.Rdata"), val(outputDir), emit: facetsForMafAnno
+    tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/*.{Rdata,png,out,seg,txt}"), path("${idTumor}__${idNormal}.snp_pileup.gz"), val(outputDir), emit: Facets4FacetsPreview
+    tuple val(idTumor), val(idNormal), path("*/*.*_level.txt"), emit: FacetsArmGeneOutput
     tuple val(idTumor), val(idNormal), val(target), path("*/*.qc.txt"), emit: FacetsQC4MetaDataParser
     tuple val(idTumor), val(idNormal), path("*_OUT.txt"), emit: FacetsRunSummary
     tuple val(idTumor), val(idNormal), val(target), path("${tag}_hisens.facets.copynumber.csv"), emit: FacetsHisensCNV4HrDetect
@@ -30,8 +31,6 @@ process DoFacets {
   script:
   tag = outputFacetsSubdirectory = "${idTumor}__${idNormal}"
   outfile = tag + ".snp_pileup.gz"
-  outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
-
   """
   touch .Rprofile
 
