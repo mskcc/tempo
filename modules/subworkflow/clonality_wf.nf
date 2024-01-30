@@ -19,7 +19,8 @@ workflow clonality_wf {
 		SVcloneInput,
 		workflow.projectDir + "/containers/svclone/svclone_wrapper.py"
 	)
+        svclone4Aggregate = SomaticRunSVclone.out.SVclone4Aggregate.map{ ["placeHolder"] + it }
 	
 	emit:
-	  svclone4Aggregate      = SomaticRunSVclone.out.SVclone4Aggregate
+	  svclone4Aggregate      = svclone4Aggregate
 }
