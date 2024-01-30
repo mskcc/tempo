@@ -2,7 +2,6 @@ include { QcCollectHsMetrics }                 from '../process/QC/QcCollectHsMe
 include { QcQualimap }                         from '../process/QC/QcQualimap' 
 include { QcAlfred }                           from '../process/QC/QcAlfred'
 include { SampleRunMultiQC }                   from '../process/QC/SampleRunMultiQC'
-include { QcConpairAll }                       from '../process/QC/QcConpairAll'
 
 workflow sampleQC_wf
 {
