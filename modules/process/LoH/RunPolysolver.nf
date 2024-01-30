@@ -5,7 +5,7 @@ process RunPolysolver {
     tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
 
   output:
-    tuple val("placeHolder"), val(idNormal), val(target), path("${outputPrefix}.hla.txt"), emit: hlaOutput
+    tuple val(idNormal), val(target), path("${outputPrefix}.hla.txt"), emit: hlaOutput
   
   script:
   outputPrefix = "${idNormal}"

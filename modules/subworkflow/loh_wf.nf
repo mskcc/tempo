@@ -13,15 +13,16 @@ workflow loh_wf
     targetsMap   = params.targetsMap
 
     RunPolysolver(bams)
+    hlaOutput = RunPolysolver.out.hlaOutput.map{ ["placeHolder"] + it }
 
     bamFiles.combine(facetsPurity, by: [0,1,2])
-            .combine(RunPolysolver.out.hlaOutput, by: [1,2])
+            .combine(hlaOutput, by: [1,2])
             .set{ mergedChannelLOHHLA }
 
     RunLOHHLA(mergedChannelLOHHLA, 
             Channel.value([referenceMap.hlaFasta, referenceMap.hlaDat]))
 
   emit:
-    hlaOutput            = RunPolysolver.out.hlaOutput
+    hlaOutput            = hlaOutput
     lohhla4Aggregate     = RunLOHHLA.out.lohhla4Aggregate
 }
