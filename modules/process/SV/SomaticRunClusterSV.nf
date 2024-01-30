@@ -11,7 +11,7 @@ process SomaticRunClusterSV {
       path("${outputPrefix}.sv_clusters_and_footprints.tsv"),
       path("${outputPrefix}.sv_distance_pvals"),
       path("${clusteredBedpe}"), emit: clusterSvOutput
-    tuple val("placeholder"), val(idTumor), val(idNormal),
+    tuple val(idTumor), val(idNormal),
       path("${clusteredBedpe}"), emit: Bedpe4Aggregate
 
   when: ["GRCh37","GRCh38","smallGRCh37"].contains(params.genome)
