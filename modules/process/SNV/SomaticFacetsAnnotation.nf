@@ -7,7 +7,7 @@ process SomaticFacetsAnnotation {
     tuple val(idTumor), val(idNormal), val(target), path(hisens_rdata), val(facetsPath), path(maf)
 
   output:
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.somatic.final.maf"), emit: finalMaf4Aggregate
+    tuple val(idTumor), val(idNormal), path("${outputPrefix}.somatic.final.maf"), emit: finalMaf4Aggregate
     path("file-size.txt"), emit: mafSize
     path("${outputPrefix}.somatic.final.maf"), emit: finalMafOutput
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.somatic.final.maf"), emit: maf4MetaDataParser
