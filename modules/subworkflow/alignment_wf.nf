@@ -12,13 +12,6 @@ workflow alignment_wf
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
 
-    if (params.bamMapping)
-    {
-      println "Alignment workflow cannot accept bam files for input."
-      exit 1
-    }
-    if(params.mapping)
-    {
       // Parse input FASTQ mapping
       if (params.watch != true) {
         inputMapping.groupTuple(by: [0])
@@ -180,13 +173,6 @@ workflow alignment_wf
             out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
         }
       }
-    }
-    else{
-      if(params.pairing){
-        println "ERROR: When --pairing [tsv], --mapping [tsv] must be provided."
-        exit 1
-      }
-    }
   
 
   emit:

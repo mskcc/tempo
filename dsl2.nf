@@ -27,6 +27,7 @@ referenceMap = defineReferenceMap()
 targetsMap   = loadTargetReferences()
 
 //Sub-workflow Includes
+include { bam2fastq }            from './modules/process/Alignment/bam2fastq'
 include { validate_wf }          from './modules/subworkflow/validate_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { alignment_wf }         from './modules/subworkflow/alignment_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { manta_wf }             from './modules/subworkflow/manta_wf'            addParams(referenceMap: referenceMap, targetsMap: targetsMap)
@@ -61,7 +62,7 @@ WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','
 
 workflow {
   //Set flags for when each pipeline is required to run.
-  doWF_align           = (params.mapping) ? true : false
+  doWF_align           = params.mapping || (params.bam2fastq && params.bamMapping) ? true : false
   doWF_manta           = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
   doWF_germSNV         = 'germsnv' in WFs ? true : false
@@ -100,7 +101,7 @@ workflow {
       exit 1
   }
 
-  if (params.bamMapping && WFs == ['']){
+  if (params.bamMapping && !params.bam2fastq && WFs == ['']){
       println "ERROR: No sub-workflows to run.."
       println "\tPlease provide sub-workflows using --workflow parameters."
       exit 1
@@ -130,13 +131,27 @@ workflow {
     inputMapping = validate_wf.out.inputMapping
     inputPairing = validate_wf.out.inputPairing
 
+    if (params.bam2fastq)
+    {
+      inputBam = inputMapping
+      bam2fastq(inputBam)
+      fastqs = bam2fastq.out.fastqOutput
+			.map { idSample, targets, files_pe1, files_pe2
+			  -> tuple(groupKey(idSample, files_pe1.size()), targets, files_pe1, files_pe2)
+			}
+			.transpose()
+    }
+    else {
+      fastqs = inputMapping
+    }
+
     if (doWF_align)
     {
-      alignment_wf(inputMapping)
+      alignment_wf(fastqs)
     }
 
     //Handle input bams as coming originally from bams, or from an alignment this run.
-    if (params.bamMapping) {
+    if (params.bamMapping && !params.bam2fastq) {
       inputBam = inputMapping
       if (doWF_QC){
         inputMapping.map{idSample, target, bam, bai ->
