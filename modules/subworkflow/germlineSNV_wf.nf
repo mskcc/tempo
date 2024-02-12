@@ -54,7 +54,12 @@ workflow germlineSNV_wf
                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 
     // Join HaploTypeCaller and Strelka outputs, bcftools.
-    GermlineCombineHaplotypecallerVcf.out.haplotypecallerCombinedVcfOutput.combine(GermlineRunStrelka2.out.strelkaOutputGermline, by: [0,1,2])
+    GermlineCombineHaplotypecallerVcf.out.haplotypecallerCombinedVcfOutput
+      .map{ ["placeHolder"] + it }
+      .combine(
+        GermlineRunStrelka2.out.strelkaOutputGermline.map{ ["placeHolder"] + it },
+        by: [0,1,2]
+      )
             .combine(bamsTumor, by: [1,2])
             .set{ mergedChannelVcfCombine }
 
@@ -71,7 +76,8 @@ workflow germlineSNV_wf
       .set{ facetsMafFileGermline }
 
     GermlineFacetsAnnotation(facetsMafFileGermline)
+    snv4AggregateGermline = GermlineFacetsAnnotation.out.mafFile4AggregateGermline.map{ ["placeHolder"] + it }
     
   emit:
-    snv4AggregateGermline = GermlineFacetsAnnotation.out.mafFile4AggregateGermline      
+    snv4AggregateGermline = snv4AggregateGermline
 }

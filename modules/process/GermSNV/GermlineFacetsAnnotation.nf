@@ -8,7 +8,7 @@ process GermlineFacetsAnnotation {
     
   output:
     path("${outputPrefix}.final.maf"), emit: mafFileOutputGermline
-    tuple val("placeHolder"), val(idTumor), val(idNormal), file("${outputPrefix}.final.maf"), emit: mafFile4AggregateGermline
+    tuple val(idTumor), val(idNormal), file("${outputPrefix}.final.maf"), emit: mafFile4AggregateGermline
 
   script:
   outputPrefix = "${idTumor}__${idNormal}.germline"
