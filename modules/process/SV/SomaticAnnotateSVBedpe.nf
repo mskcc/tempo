@@ -20,7 +20,7 @@ process SomaticAnnotateSVBedpe {
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.unfiltered.bedpe"), emit: SVAnnotBedpe
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.final.bedpe"), emit: SVAnnotBedpePass
-    tuple val("placeholder"), val(idTumor), val(idNormal), path("${outputPrefix}.final.bedpe"), emit: SVAnnotBedpe4Aggregate
+    tuple val(idTumor), val(idNormal), path("${outputPrefix}.final.bedpe"), emit: SVAnnotBedpe4Aggregate
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"

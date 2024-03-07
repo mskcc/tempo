@@ -134,28 +134,27 @@ workflow alignment_wf
 
       // Check for FASTQ files which might have different path but contains the same reads, based only on the name of the first read.
       def allReadIds = [:]
-      AlignReads.out.sortedBam.map { idSample, target, bam, fileID, lane, readIdFile -> def readId = '@' + readIdFile.getSimpleName().replaceAll('@', ':')
-        // Use the first line of the fastq file (the name of the first read) as unique identifier to check across all the samples if there is any two fastq files contains the same read name, if so, we consider there are some human error of mixing up the same reads into different fastq files
-        if ( !params.watch ) {
-          if (!TempoUtils.checkDuplicates(allReadIds, readId, idSample + "\t" + bam, "the following samples, since they contain the same read: \n${ readId }")) {exit 1}
+      AlignReads.out.sortedBam
+        .groupTuple(by:[3])
+        .map { idSample, target, bam, fileID, lane, readIdFile ->
+          def idSample_first = idSample instanceof Collection ? idSample.first() : idSample
+          def target_first   = target instanceof Collection ? target.first() : target
+          if ( !params.watch ){
+            for (i in readIdFile.flatten().unique()){
+              def readId = "@" + i.getSimpleName().replaceAll("@", ":")
+              if(!TempoUtils.checkDuplicates(allReadIds, readId, idSample_first + "\t" + fileID, "the following samples, since they contain the same read: \n${readId}")){exit 1}
+            }
+          }
+          [idSample_first, target_first, bam.flatten().unique()]
         }
-        [idSample, target, bam, fileID, lane]
-      }
-      .groupTuple(by: [3])
-      .map { item ->
-        def idSample = item[0] instanceof Collection ? item[0].first() : item[0]
-        def target   = item[1] instanceof Collection ? item[1].first() : item[1]
-        def bams = item[2]
-        [idSample, target, bams]
-      }
-      .groupTuple(by: [0])
-      .map { item ->
-        def idSample = item[0]
-        def target =  item[1] instanceof Collection ? item[1].first() : item[1]
-        def bams = item[2].flatten()
-        [idSample, bams, target]
-      }
-      .set { groupedBam }
+        .groupTuple(by: [0])
+        .map{ item ->
+          def idSample = item[0]
+          def target =  item[1] instanceof Collection ? item[1].first() : item[1]
+          def bams = item[2].flatten().unique()
+          [idSample, bams, target]
+        }
+        .set { groupedBam }
 
       MergeBamsAndMarkDuplicates(groupedBam)
       RunBQSR(MergeBamsAndMarkDuplicates.out.mdBams,
@@ -170,13 +169,16 @@ workflow alignment_wf
               ]))
 
 
-      File file = new File(params.outname)
-      file.newWriter().withWriter { w ->
+      File file_bammapping = new File(params.outname)
+      file_bammapping.newWriter().withWriter { w ->
           w << "SAMPLE\tTARGET\tBAM\tBAI\n"
       }
 
-      RunBQSR.out.bamResults.subscribe { Object obj ->
-        file.withWriterAppend { out ->
+      RunBQSR.out.bamsBQSR
+      .map{ idSample, target, bam, bai ->
+        [ idSample, target, "${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam", "${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam.bai" ]
+      }.subscribe { Object obj ->
+        file_bammapping.withWriterAppend { out ->
             out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
         }
       }
@@ -191,7 +193,6 @@ workflow alignment_wf
 
   emit:
     RunBQSR_bamsBQSR   = RunBQSR.out.bamsBQSR
-    RunBQSR_bamResults = RunBQSR.out.bamResults
     RunBQSR_bamSize    = RunBQSR.out.bamSize
     fastPJson          = fastPJson
 }

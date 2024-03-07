@@ -17,7 +17,7 @@ output:
     path("${outputPrefix}"), emit: SVcloneOutput
   tuple val(idTumor), val(idNormal), val(target),
     path("svclone/*"), emit: SVclonePublish
-  tuple val("placeHolder"), val(idTumor), val(idNormal),
+  tuple val(idTumor), val(idNormal),
     path("svclone/svs/*cluster_certainty.txt"),
     path("svclone/snvs/*cluster_certainty.txt"), emit: SVclone4Aggregate
 

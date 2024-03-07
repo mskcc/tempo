@@ -16,7 +16,9 @@ workflow hrdetect_wf {
 		workflow.projectDir + "/containers/signaturetoolslib/HRDetect_wrapper.R"
 	)
 
+	HRDetectOut = HRDetect.out.map{ ["placeHolder"] + it }
+
 	emit:
-	HRDetect = HRDetect.out
+	HRDetect = HRDetectOut
 	
 }
