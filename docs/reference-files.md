@@ -1,6 +1,6 @@
 # Reference Files
 
-This and associated pages in this section provide details on the provenance and generation of all reference files used in `pipeline.nf`. Usage of these files is defined in the [references configuration file](https://github.com/mskcc/tempo/blob/master/conf/references.config).
+This and associated pages in this section provide details on the provenance and generation of all reference files used in `dsl2.nf`. Usage of these files is defined in the [references configuration file](https://github.com/mskcc/tempo/blob/master/conf/references.config).
 
 ::: tip Note
 All reference files described herein are in assembly GRCh37/hg19 of the human genome.
