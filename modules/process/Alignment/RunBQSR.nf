@@ -52,6 +52,7 @@
       ${knownSites} \
       --verbosity INFO \
       --create-output-bam-index true \
+      --emit-original-quals \
       -O ${idSample}.bam 
    
     echo -e "${idSample}\t\$(du -b ${idSample}.bam)" > file-size.txt
@@ -78,6 +79,7 @@
       --reference ${genomeFile} \
       --create-output-bam-index true \
       --bqsr-recal-file ${idSample}.recal.table \
+      --emit-original-quals \
       --input ${bam} \
       --output ${idSample}.bam
 
