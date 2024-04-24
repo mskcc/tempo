@@ -9,7 +9,7 @@ process HRDetect {
     path(HRDetect_script) 
 
   output:
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${outputPrefix}.hrdetect.tsv")
+    tuple val(idTumor), val(idNormal), path("${outputPrefix}.hrdetect.tsv")
 
   when: params.assayType == "genome" 
 

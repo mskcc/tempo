@@ -9,7 +9,6 @@
 
     output:
       tuple val(idSample), val(target), path("${idSample}.bam"), path("${idSample}.bam.bai"), emit: bamsBQSR
-      tuple val(idSample), val(target), val("${params.outDir}/bams/${idSample}/${idSample}.bam"), val("${params.outDir}/bams/${idSample}/${idSample}.bam.bai"), emit: bamResults
       path("file-size.txt"), emit: bamSize
 
     script:

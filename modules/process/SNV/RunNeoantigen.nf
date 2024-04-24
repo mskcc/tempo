@@ -8,7 +8,7 @@ process RunNeoantigen {
     tuple path(neoantigenCDNA), path(neoantigenCDS)
 
   output:
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("${idTumor}__${idNormal}.all_neoantigen_predictions.txt"), emit: NetMhcStats4Aggregate
+    tuple val(placeHolder), val(idTumor), val(idNormal), path("${idTumor}__${idNormal}.all_neoantigen_predictions.txt"), emit: NetMhcStats4Aggregate
     path("${idTumor}__${idNormal}.all_neoantigen_predictions.txt"), emit: NetMhcStatsOutput
     tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/${outputPrefix}.neoantigens.maf"), emit: mafFileForMafAnno
 

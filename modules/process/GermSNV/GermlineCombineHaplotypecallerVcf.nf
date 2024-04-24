@@ -8,7 +8,7 @@ process GermlineCombineHaplotypecallerVcf {
     tuple file(genomeFile), file(genomeIndex), file(genomeDict)
 
   output:
-    tuple val("placeHolder"), val(idNormal), val(target), path("${outfile}"), path("${outfile}.tbi"), emit: haplotypecallerCombinedVcfOutput
+    tuple val(idNormal), val(target), path("${outfile}"), path("${outfile}.tbi"), emit: haplotypecallerCombinedVcfOutput
 
   script: 
   idNormal = id.toString().split("@")[0]
