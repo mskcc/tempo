@@ -1,12 +1,15 @@
 include { CrossValidateSamples }       from '../process/SampleValidation/CrossValidateSamples'
-include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
+//include { watchMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
+include { watchMapping; watchBamMapping; watchPairing } from '../function/read_inputs_interval.nf'
 
 workflow validate_wf
 {
   main:
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
-    
+    if (params.watch == true) {
+        read_inputs_channel = Channel.interval('100s').view()
+    }
     TempoUtils.checkAssayType(params.assayType)
     target_id_list = targetsMap.keySet()
     if (params.watch == false) {
@@ -15,7 +18,7 @@ workflow validate_wf
     }
     else if (params.watch == true) {
       mappingFile = params.mapping ? file(params.mapping, checkIfExists: false) : file(params.bamMapping, checkIfExists: false)
-      inputMapping  = params.mapping ? watchMapping(mappingFile, params.assayType, target_id_list) : watchBamMapping(mappingFile, params.assayType, target_id_list)
+      inputMapping  = params.mapping ? watchMapping(read_inputs_channel) : watchBamMapping(read_inputs_channel).bamMapping_ch
     }
     else{}
     if(params.pairing){
@@ -36,7 +39,7 @@ workflow validate_wf
       }
       else if (params.watch == true) {
         pairingFile = file(params.pairing, checkIfExists: false)
-        inputPairing  = watchPairing(pairingFile)
+        inputPairing  = watchPairing(read_inputs_channel).pairing_ch
       }
       else{}
     }
