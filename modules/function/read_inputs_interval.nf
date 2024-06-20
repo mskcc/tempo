@@ -66,7 +66,7 @@ workflow watchBamMapping {
               def target = row.TARGET
               def bam = file(row.BAM, checkIfExists: false)
               def bai = file(row.BAI, checkIfExists: false)
-              if(!TempoUtils.checkTarget(target, params.assayType, params.targetsMap.keySet()){}
+              if(!TempoUtils.checkTarget(target, params.assayType, params.targetsMap.keySet())){}
               if(!TempoUtils.checkNumberOfItem(row, 4, params.bamMapping)){}
 
               [idSample, target, bam, bai]
@@ -116,12 +116,12 @@ workflow watchAggregateWithResult {
 	index = 0
         file(params.aggregate)
       }.splitCsv(sep: '\t', header: true)
-      .filter{ index, row ->
+      .filter{ row ->
         index += 1
         if (params.chunkSizeLimit > 0 ){
 	  index <= params.chunkSizeLimit*interval_count
 	} else { 1 }
-    .map{ row ->
+    }.map{ row ->
       def idNormal = row.NORMAL_ID
       def idTumor = row.TUMOR_ID
       def cohort = row.COHORT
