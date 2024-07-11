@@ -49,7 +49,7 @@ include { aggregateFromProcess } from './modules/subworkflow/AggregateFromProces
 include { hrdetect_wf }          from './modules/subworkflow/hrdetect_wf'
 include { clonality_wf }         from './modules/subworkflow/clonality_wf'
 include { ascat_wf }             from './modules/subworkflow/ascat_wf'            addParams(referenceMap: referenceMap)
-include { indel_wf }             from './modules/subworkflow/indel_wf'  
+include { indel_wf }             from './modules/subworkflow/indel_wf'            addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 
 aggregateParamIsFile = !(runAggregate instanceof Boolean)
 // check if --aggregate is a file
@@ -72,6 +72,7 @@ workflow {
   doWF_facets          = doWF_SV && params.assayType == "genome" && ["hisens","purity"].contains(params.svcnv) ? true : doWF_facets
   doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
+  doindel_wf           = ['indel'].any(it -> it in WFs) ? true : false ? true : false
   doWF_QC              = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
@@ -189,14 +190,14 @@ workflow {
       germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno)
     }
 
-    if(doWF_loh)
-    {
-      loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
-    }
+    // if(doWF_loh)
+    // {
+    //   loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
+    // }
 
     if(doWF_SNV)
     {
-      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
+      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, facets_wf.out.facetsForMafAnno)
     }
 
     if(doWF_SV)
@@ -238,10 +239,13 @@ workflow {
         )
       }
 
-      indel_wf(bamFiles, snv_wf.out.strelka4IndelCombine, snv_wf.out.platypusOut,  sv_wf.out.svabaIndelout)
+      
 
     }
-
+    if(doindel_wf)
+    {
+      indel_wf(bamFiles, snv_wf.out.strelka4IndelCombine, snv_wf.out.platypusOut, sv_wf.out.svabaIndelout)
+    }
     if(doWF_QC)
     {
       sampleQC_wf(inputBam, fastPJson)

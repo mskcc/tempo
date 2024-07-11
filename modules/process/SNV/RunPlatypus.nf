@@ -1,14 +1,16 @@
 process RunPlatypus {
   tag "${idTumor + "__" + idNormal}"
-  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/platypus", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi}"
+  publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/platypus", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi,vcf}"
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict) 
 
   output:
-    tuple val(combineKey), path('*Somatic*'), emit:  platypusCombine
+    tuple val(idTumor), val(idNormal), val(target), path('*Somatic*'), emit:  platypusCombine
     path("${outputPrefix}.Somatic.Platypus.vcf"), emit: platypusOutput
+    path("${outputPrefix}_bothPlat.vcf")
+
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
@@ -29,7 +31,7 @@ process RunPlatypus {
     --inputVCF ${outputPrefix}_bothPlat.vcf \
     --outputVCF ${outputPrefix}.Somatic.Platypus.vcf \
     --tumourSample  ${idTumor} \
-    --normalSample ${idNormal}
+    --normalSample ${idNormal} || touch ${outputPrefix}.Somatic.Platypus.vcf
 
   """
 }
