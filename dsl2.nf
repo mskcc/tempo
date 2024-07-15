@@ -187,20 +187,21 @@ workflow {
 
     if(doWF_germSNV)
     {
-      germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno)
+      germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
     }
 
-    // if(doWF_loh)
-    // {
-    //   loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
-    // }
+    if(doWF_loh)
+    {
+      loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
+    }
 
     if(doWF_SNV)
     {
-      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, facets_wf.out.facetsForMafAnno)
+      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput,facets_wf.out.facetsForMafAnno)
+      
     }
 
-    if(doWF_SV)
+    if(doWF_SV) 
     {
       CNVcalls = false
       samplestatistics = false
@@ -244,7 +245,9 @@ workflow {
     }
     if(doindel_wf)
     {
+      sv_wf.out.svabaIndelout.view()
       indel_wf(bamFiles, snv_wf.out.strelka4IndelCombine, snv_wf.out.platypusOut, sv_wf.out.svabaIndelout)
+      indel_wf.out.indelOut.view()
     }
     if(doWF_QC)
     {

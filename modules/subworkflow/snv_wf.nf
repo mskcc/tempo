@@ -55,17 +55,24 @@ workflow snv_wf
 
     SomaticCombineMutect2Vcf(forMutect2Combine, 
                              Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
-
+    
     bamFiles.combine(mantaToStrelka, by: [0, 1, 2])
         .map{ idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi ->
               [idTumor, idNormal, target, bamTumor, baiTumor, bamNormal, baiNormal, mantaCSI, mantaCSIi, targetsMap."$target".targetsBedGz, targetsMap."$target".targetsBedGzTbi]
         }.set{ input4Strelka }
-
+    
+    // mergedChannelSomatic.view()
+    
     SomaticRunStrelka2(input4Strelka,
                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
+    
+    // SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.view()
+    // SomaticRunStrelka2.out.strelka4IndelCombine.view()
 
     SomaticCombineMutect2Vcf.out.mutect2CombinedVcfOutput.combine(bamFiles, by: [0,1,2]).combine(SomaticRunStrelka2.out.strelka4Combine, by: [0,1,2]).set{ mutectStrelkaChannel }
-
+    
+    // mutectStrelkaChannel.view()
+    
     SomaticCombineChannel(mutectStrelkaChannel,
                           Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex]),
                           Channel.value([referenceMap.repeatMasker, referenceMap.repeatMaskerIndex, referenceMap.mapabilityBlacklist, referenceMap.mapabilityBlacklistIndex]),
@@ -80,7 +87,7 @@ workflow snv_wf
     hlaOutput.combine(SomaticAnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }
 
     RunNeoantigen(input4Neoantigen, Channel.value([referenceMap.neoantigenCDNA, referenceMap.neoantigenCDS]))
-
+    
     facetsForMafAnno.combine(RunNeoantigen.out.mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
 
     SomaticFacetsAnnotation(facetsMafFileSomatic)
@@ -88,7 +95,7 @@ workflow snv_wf
   emit:
     strelka4IndelCombine  = SomaticRunStrelka2.out.strelka4IndelCombine
     strelkaOut            = SomaticRunStrelka2.out.strelka4Combine
-    platypusOut           = RunPlatypus.out.platypusOutput
+    platypusOut           = RunPlatypus.out.platypusCombine
     mafFile               = SomaticAnnotateMaf.out.mafFile
     maf4MetaDataParser    = SomaticFacetsAnnotation.out.maf4MetaDataParser
     NetMhcStats4Aggregate = RunNeoantigen.out.NetMhcStats4Aggregate

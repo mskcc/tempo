@@ -4,10 +4,10 @@ process RunPlatypus {
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
-    tuple path(genomeFile), path(genomeIndex), path(genomeDict) 
+    tuple path(genomeFile), path(genomeIndex), path(genomeDict)
 
   output:
-    tuple val(idTumor), val(idNormal), val(target), path('*Somatic*'), emit:  platypusCombine
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.Somatic.Platypus.vcf"), emit:  platypusCombine
     path("${outputPrefix}.Somatic.Platypus.vcf"), emit: platypusOutput
     path("${outputPrefix}_bothPlat.vcf")
 

@@ -11,7 +11,7 @@ process SomaticRunSvABA {
 
     output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz"), path("${outputPrefix}.reheader.svaba.somatic.sv.vcf.gz.tbi"), emit: SvABA4Combine
-    tuple val(combineKey), path("${outputPrefix}.reheader.svaba.somatic.indel.vcf.gz"), path("${outputPrefix}.reheader.svaba.somatic.indel.vcf.gz"), emit: SvABA4INDELCombine
+    tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.reheader.svaba.somatic.indel.vcf.gz"), emit: SvABA4INDELCombine
     path("*.vcf.gz*"), emit: allVcfs
     path("*.log"), emit: logs
     path("*.txt.gz"), emit: supportingFiles

@@ -1,9 +1,6 @@
 nextflow.enable.dsl=2
 include { AggregateIndels }               from '../process/SNV/AggregateIndels' 
-include { RunIndelModel }               from '../process/SNV/RunIndelModel' 
-
-
-
+include { RunIndelModel }                 from '../process/SNV/RunIndelModel' 
 
 workflow indel_wf {
   take: 
@@ -17,23 +14,25 @@ workflow indel_wf {
 
     targetsMap   = params.targetsMap
     referenceMap = params.referenceMap
-    platypusOut.view()
-    strelkaOut.view()
-    svabaIndelout.view()
+    // platypusOut.view()
+    // strelkaOut.view()
+    // svabaIndelout.view()
     combinedChannel = strelkaOut.combine(platypusOut, by: [0,1,2]).combine(svabaIndelout, by: [0,1,2])
 
-    // refs.view()
+    
     // filter to pass
     AggregateIndels(bamFiles,
                     combinedChannel, 
                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.repeatMasker,referenceMap.dbsnp]))
 
-    
-    RunIndelModel(bamFiles,AggregateIndels.out.tsvGroup,
+    bamTsvChannel = bamFiles.combine(AggregateIndels.out.tsvGroup, by: [0,1,2])
+    bamTsvChannel.view()
+
+    RunIndelModel(bamTsvChannel,
                   Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.repeatMasker,referenceMap.py2bitfile])
     )
 
     emit:
-    indelOut  = RunIndelModel.out
+      indelOut  = RunIndelModel.out.indelOut
 }
 
