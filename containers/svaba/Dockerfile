@@ -1,6 +1,9 @@
 # Start with an Ubuntu image
 FROM ubuntu:20.04
 
+LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
+    version.image="0.0.2"
+
 # Avoid prompts with tzdata (timezones)
 ENV DEBIAN_FRONTEND=noninteractive
 
