@@ -289,7 +289,6 @@ workflow {
 
 
       samplePairingQC_wf.out.conpairOutput
-        .map{ placeHolder, idTumor, idNormal, conpairFiles -> [idTumor, idNormal, conpairFiles]}
         .join(qualimap4SomaticMultiQC, by:[0,1])
         .join(FacetsQC4SomaticMultiQC, by:[0,1])
         .set{ somaticMultiQCinput }
