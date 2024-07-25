@@ -245,9 +245,7 @@ workflow {
     }
     if(doindel_wf)
     {
-      sv_wf.out.svabaIndelout.view()
       indel_wf(bamFiles, snv_wf.out.strelka4IndelCombine, snv_wf.out.platypusOut, sv_wf.out.svabaIndelout)
-      indel_wf.out.indelOut.view()
     }
     if(doWF_QC)
     {

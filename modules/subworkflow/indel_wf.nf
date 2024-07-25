@@ -14,9 +14,6 @@ workflow indel_wf {
 
     targetsMap   = params.targetsMap
     referenceMap = params.referenceMap
-    // platypusOut.view()
-    // strelkaOut.view()
-    // svabaIndelout.view()
     combinedChannel = strelkaOut.combine(platypusOut, by: [0,1,2]).combine(svabaIndelout, by: [0,1,2])
 
     
@@ -26,7 +23,6 @@ workflow indel_wf {
                     Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.repeatMasker,referenceMap.dbsnp]))
 
     bamTsvChannel = bamFiles.combine(AggregateIndels.out.tsvGroup, by: [0,1,2])
-    bamTsvChannel.view()
 
     RunIndelModel(bamTsvChannel,
                   Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.repeatMasker,referenceMap.py2bitfile])
