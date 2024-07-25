@@ -9,11 +9,13 @@ workflow facets_wf
   main:
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
+    outputDir = "facets${params.facets.R_lib}c${params.facets.cval}pc${params.facets.purity_cval}"
     
     DoFacets(
       bamFiles, 
       referenceMap.facetsVcf,
-      workflow.projectDir + "/containers/facets-suite-preview-htstools"  
+      workflow.projectDir + "/containers/facets-suite-preview-htstools",  
+      outputDir
     )
 
     DoFacetsPreviewQC(DoFacets.out.Facets4FacetsPreview)
@@ -24,14 +26,24 @@ workflow facets_wf
       ["placeholder",idTumor, idNormal, summaryFiles, qcFiles]
     }.set{ FacetsQC4Aggregate }
 
+    DoFacets.out.facets4Aggregate
+      .map{
+        ["placeHolder"] + it
+      }.set{facets4Aggregate}
+
+    DoFacets.out.FacetsArmGeneOutput
+      .map{
+        ["placeHolder"] + it
+      }.set{FacetsArmGeneOutput}
+
   emit:
     snpPileupOutput            = DoFacets.out.snpPileupOutput
     FacetsOutput               = DoFacets.out.FacetsOutput
-    facets4Aggregate           = DoFacets.out.facets4Aggregate
+    facets4Aggregate           = facets4Aggregate
     facetsPurity               = DoFacets.out.facetsPurity
     facetsForMafAnno           = DoFacets.out.facetsForMafAnno
     Facets4FacetsPreview       = DoFacets.out.Facets4FacetsPreview
-    FacetsArmGeneOutput        = DoFacets.out.FacetsArmGeneOutput
+    FacetsArmGeneOutput        = FacetsArmGeneOutput
     FacetsQC4MetaDataParser    = DoFacets.out.FacetsQC4MetaDataParser
     FacetsRunSummary           = DoFacets.out.FacetsRunSummary
     FacetsPreviewOut           = DoFacetsPreviewQC.out.FacetsPreviewOut

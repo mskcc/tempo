@@ -91,6 +91,7 @@ workflow snv_wf
     facetsForMafAnno.combine(RunNeoantigen.out.mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
 
     SomaticFacetsAnnotation(facetsMafFileSomatic)
+    finalMaf4Aggregate = SomaticFacetsAnnotation.out.finalMaf4Aggregate.map { ["placeHolder"] + it }
 
   emit:
     strelka4IndelCombine  = SomaticRunStrelka2.out.strelka4IndelCombine
@@ -99,5 +100,5 @@ workflow snv_wf
     mafFile               = SomaticAnnotateMaf.out.mafFile
     maf4MetaDataParser    = SomaticFacetsAnnotation.out.maf4MetaDataParser
     NetMhcStats4Aggregate = RunNeoantigen.out.NetMhcStats4Aggregate
-    finalMaf4Aggregate    = SomaticFacetsAnnotation.out.finalMaf4Aggregate
+    finalMaf4Aggregate    = finalMaf4Aggregate
 }

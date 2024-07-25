@@ -11,7 +11,7 @@ process SomaticRunClusterSV {
       path("${outputPrefix}.sv_clusters_and_footprints.tsv"),
       path("${outputPrefix}.sv_distance_pvals"),
       path("${clusteredBedpe}"), emit: clusterSvOutput
-    tuple val("placeholder"), val(idTumor), val(idNormal),
+    tuple val(idTumor), val(idNormal),
       path("${clusteredBedpe}"), emit: Bedpe4Aggregate
 
   when: ["GRCh37","GRCh38","smallGRCh37"].contains(params.genome)
@@ -26,7 +26,8 @@ process SomaticRunClusterSV {
   mkdir -p tmp
   grep -v "^#" ${bedpe} | cut -f 1-10 > tmp/${outputPrefix}.bedpe
   if [ \$(cat tmp/${outputPrefix}.bedpe | wc -l ) -lt 1 ] ; then
-    touch tmp/${outputPrefix}.sv_clusters_and_footprints.tsv
+    touch ${outputPrefix}.sv_clusters_and_footprints.tsv
+    touch ${outputPrefix}.sv_distance_pvals
   else
     Rscript /opt/ClusterSV/R/run_cluster_sv.R \\
       -chr /opt/ClusterSV/references/${genome_}.chrom_sizes \\

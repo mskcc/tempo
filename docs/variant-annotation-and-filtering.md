@@ -2,8 +2,9 @@
 
 :::tip Note
 Hard-coded filter thresholds are viewable and editable in the configuration files here:
-[* Exomes](../conf/exome.config)
-[* Genomes](../conf/genome.config)
+* [Exomes](https://github.com/mskcc/tempo/blob/develop/conf/exome.config)
+* [Genomes](https://github.com/mskcc/tempo/blob/develop/conf/genome.config)
+
 :::
 
 ::: warning Be aware

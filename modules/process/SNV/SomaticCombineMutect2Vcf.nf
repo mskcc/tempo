@@ -18,7 +18,7 @@ process SomaticCombineMutect2Vcf {
   """
   bcftools concat \
     --allow-overlaps \
-    ${mutect2Vcf} | \
+    *.filtered.vcf.gz | \
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \

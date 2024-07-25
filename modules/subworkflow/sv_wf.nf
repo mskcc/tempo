@@ -105,10 +105,10 @@ workflow sv_wf
       )
       SVSignatures = RunSVSignatures.out
       SomaticRunClusterSV( SomaticAnnotateSVBedpe.out.SVAnnotBedpePass )
-      sv4Aggregate = SomaticRunClusterSV.out.Bedpe4Aggregate
+      sv4Aggregate = SomaticRunClusterSV.out.Bedpe4Aggregate.map{ ["placeHolder"] + it }
     } else {
       SVSignatures = Channel.empty()
-      sv4Aggregate = SomaticAnnotateSVBedpe.out.SVAnnotBedpe4Aggregate
+      sv4Aggregate = SomaticAnnotateSVBedpe.out.SVAnnotBedpe4Aggregate.map{ ["placeHolder"] + it }
     }
 
     if (cnvCalls){
