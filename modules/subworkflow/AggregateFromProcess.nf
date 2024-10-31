@@ -48,8 +48,8 @@ workflow aggregateFromProcess
 		  .set{inputAggregate}
       }
       else{
-	read_inputs_channel = Channel.interval('100s').view()
-        inputAggregate = watchAggregate(read_inputs_channel).aggregate_ch
+	read_inputs_channel = Channel.interval(params.touchInputsInterval * 60 + 's').view()
+        inputAggregate = watchAggregate(read_inputs_channel).aggregate_ch.view()
       }
     }
     else {
