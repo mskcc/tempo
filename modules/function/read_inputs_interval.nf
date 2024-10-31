@@ -8,7 +8,7 @@ workflow watchMapping {
 	.map{
           interval_count = it + 1
           index = 0
-          file(params.bamMapping)
+          file(params.mapping)
         }
 	.splitCsv(sep: '\t', header: true)
 	.filter{ row ->
@@ -26,7 +26,7 @@ workflow watchMapping {
               def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: false)
               def numOfPairs = row.NUM_OF_PAIRS.toInteger()
               if(!TempoUtils.checkTarget(target, params.assayType, validTargetsList)){}
-              if(!TempoUtils.checkNumberOfItem(row, 5, tsvFile)){}
+              if(!TempoUtils.checkNumberOfItem(row, 5, params.mapping)){}
 
               [idSample, numOfPairs, target, fastqFile1, fastqFile2]
          }
@@ -87,13 +87,13 @@ workflow watchPairing {
     read_inputs_channel
   main:
     read_inputs_channel
-      .map{ params.pairing }
+      .map{ file(params.pairing) }
       .splitCsv(sep: '\t', header: true)
       .unique()
       .map { row ->
          def TUMOR_ID = row.TUMOR_ID
          def NORMAL_ID = row.NORMAL_ID
-         if(!TempoUtils.checkNumberOfItem(row, 2, tsvFile)){}
+         if(!TempoUtils.checkNumberOfItem(row, 2, params.pairing)){}
 
          [TUMOR_ID, NORMAL_ID]
       }.unique()
@@ -127,7 +127,7 @@ workflow watchAggregateWithResult {
       def cohort = row.COHORT
       def cohortSize = row.COHORT_SIZE.toInteger()
       def path = row.PATH
-      if(!TempoUtils.checkNumberOfItem(row, 5, file(runAggregate))){}
+      if(!TempoUtils.checkNumberOfItem(row, 5, file(params.aggregate))){}
       [cohort, cohortSize, idTumor, idNormal, path]
     }.map { cohort, cohortSize, idTumor, idNormal, path
       -> tuple( groupKey(cohort, cohortSize), idTumor, idNormal, path)
@@ -145,7 +145,7 @@ workflow watchAggregate {
     read_inputs_channel
   main:
     read_inputs_channel
-        .map{ params.aggregate }
+        .map{ file(params.aggregate) }
      .splitCsv(sep: '\t', header: true)
 	 .unique()
          .map{ row ->
@@ -153,7 +153,7 @@ workflow watchAggregate {
               def idTumor = row.TUMOR_ID
               def cohort = row.COHORT
               def cohortSize = row.COHORT_SIZE.toInteger()
-              if(!TempoUtils.checkNumberOfItem(row, 4, tsvFile)){}
+              if(!TempoUtils.checkNumberOfItem(row, 4, file(params.aggregate))){}
 
               [cohort, cohortSize, idTumor, idNormal]
          }
