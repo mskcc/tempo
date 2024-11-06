@@ -12,7 +12,6 @@ include { SomaticAggregateSvSignatures }       from '../process/Aggregate/Somati
 include { SomaticAggregateHRDetect }           from '../process/Aggregate/SomaticAggregateHRDetect'
 include { SomaticAggregateSVclone }            from '../process/Aggregate/SomaticAggregateSVclone'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
-//include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
 include { watchAggregate }                     from '../function/read_inputs_interval'
 
 workflow aggregateFromProcess
