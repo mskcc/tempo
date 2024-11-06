@@ -25,7 +25,7 @@ workflow watchMapping {
               def fastqFile1 = file(row.FASTQ_PE1, checkIfExists: false)
               def fastqFile2 = file(row.FASTQ_PE2, checkIfExists: false)
               def numOfPairs = row.NUM_OF_PAIRS.toInteger()
-              if(!TempoUtils.checkTarget(target, params.assayType, validTargetsList)){}
+              if(!TempoUtils.checkTarget(target, params.assayType, params.targetsMap.keySet())){}
               if(!TempoUtils.checkNumberOfItem(row, 5, params.mapping)){}
 
               [idSample, numOfPairs, target, fastqFile1, fastqFile2]
