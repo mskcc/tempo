@@ -5,7 +5,7 @@ Tempo is a computational pipeline for processing data of paired-end whole-exome 
 
 These pages contain instructions on how to run the Tempo pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus an outline describing the reference resources used. 
 
-If there are any questions or comments, you are welcome to [raise an issue](docs/https://github.com/mskcc/tempo/issues/new?title=[User%20question]).
+If there are any questions or comments, you are welcome to [raise an issue](https://github.com/mskcc/tempo/issues/new?title=[User%20question]).
 
 <small>Note: Tempo currently only supports human samples. The pipeline has only been tested for exome and genome sequencing experiments, and all reference files are in build GRCh37 of the human genome.</small>
 
