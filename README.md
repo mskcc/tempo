@@ -73,16 +73,16 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 
 ## Pipeline Flowchart
 <p align="center">
-  <img id="diagram" src="./pipeline-flowchart.png"/>
+  <img id="diagram" src="./docs/pipeline-flowchart.png"/>
 </p>
 
 ## Directed Acyclic Graph
 <p align="center">
-  <img id="dag" src="./dag.png"/>
+  <img id="dag" src="./docs/dag.png"/>
 </p>
 
 ##
 <p align="center">
-  <img src="./brandenburg5_allegro.jpg">
+  <img src="./docs/brandenburg5_allegro.jpg">
 </p>
 ---
