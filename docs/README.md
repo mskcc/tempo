@@ -1,17 +1,3 @@
----
-home: true
-heroImage: /tempoLogo.jpg
-actionText: Get Started →
-actionLink: /installation/
-features:
-- title: Reproducible Workflows
-  details: Containerized workflows with Docker and Singularity
-- title: Portable 
-  details: Tailored for LSF and AWS 
-- title: User-Friendly 
-  details: Written to be quickly run and used by anyone in the CMO
-footer: MIT Licensed | Copyright © 2019-present
----
 
 # Time-Efficient Mutational Profiling in Oncology (Tempo)
 
@@ -30,7 +16,7 @@ If there are any questions or comments, you are welcome to [raise an issue](http
 ### 1. Getting Started
 
 #### 1.1. Setup
-* [Installation](installation.md)
+* [Installation](docs/installation.md)
 * [Setup on Juno](juno-setup.md)
 * [Setup on AWS](aws-setup.md)
 
