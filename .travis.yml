@@ -1,0 +1,22 @@
+sudo: required
+language: java
+jdk: openjdk8
+
+os:
+  - linux
+
+services:
+  - docker
+
+before_install:
+  # Install Nextflow
+  - export NXF_VER=21.10.1 && curl -fsSL get.nextflow.io | bash
+  - chmod 777 nextflow
+  # to change the test-data for travis, please download using the following command, extract, make changes, tarball again with gzip, and upload to google drive. 
+  # you will have to change the link below as well. Click to share the link, making it so anyone with the link can access, then extract the id in the link and put it here after "id="
+  - wget -O test-data.tar.gz --no-check-certificate 'https://drive.usercontent.google.com/download?export=download&confirm=no_antivirus&id=13zUVw4BZ0_5QAW7zmdCsZ_CZDHbNxyMV'
+  - tar -xzvf test-data.tar.gz 
+
+script:
+  # Run test script here
+  - python3 tests/test_runner.py tests/tests.json

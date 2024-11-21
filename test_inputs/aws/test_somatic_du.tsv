@@ -1,0 +1,3 @@
+ASSAY	TARGET	TUMOR_ID	NORMAL_ID	TUMOR_BAM	NORMAL_BAM	TUMOR_BAI	NORMAL_BAI
+exome	agilent	DU874145-T	DU874145-N	s3://nextflow-is/test_files/DU874145-T.recal.bam	s3://nextflow-is/test_files/DU874145-N.recal.bam	s3://nextflow-is/test_files/DU874145-T.recal.bai	s3://nextflow-is/test_files/DU874145-N.recal.bai
+exome	idt	DU874145-T2	DU874145-N2	s3://nextflow-is/test_files/DU874145-T2.recal.bam	s3://nextflow-is/test_files/DU874145-N2.recal.bam	s3://nextflow-is/test_files/DU874145-T2.recal.bai	s3://nextflow-is/test_files/DU874145-N2.recal.bai
