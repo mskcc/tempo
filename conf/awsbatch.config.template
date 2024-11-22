@@ -1,0 +1,47 @@
+// from https://www.nextflow.io/docs/latest/awscloud.html#aws-batch
+
+// NOTE: this setting is only required if the AWS CLI tool is installed in a custom AMI
+// executor.awscli = '/home/ec2-user/miniconda/bin/aws'
+
+aws.region = <AWS-REGION>
+aws.client.storageEncryption = <STORAGE-ENCRYPTION>
+aws.batch.volumes = ['/scratch:/scratch:rw']
+aws.batch.maxParallelTransfers = 1
+aws.batch.maxTransferAttempts = 4
+aws.batch.cliPath = '/home/ec2-user/miniconda/bin/aws'
+
+workDir = <AWS-S3-WORKDIR>
+
+executor {
+  name = 'awsbatch'
+  queueSize = 5000000
+}
+
+process {
+  queue = <AWS-BATCH-QUEUE-ARN>
+  scratch = true
+  maxRetries = 3
+  errorStrategy = { task.attempt <= process.maxRetries ? 'retry' : 'ignore' }
+}
+
+params {
+  mem_per_core = false
+  reference_base = "s3:/"
+  genome_base = params.genome == 'GRCh37' ? "${reference_base}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh37" : params.genome == 'GRCh38' ? "${reference_base}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh38" : "${reference_base}/mskcc-igenomes/igenomes/smallGRCh37"
+  outDir = <AWS-S3-OUTDIR>
+  publishDirMode = "copy"
+}
+
+env {
+  TMPDIR = '/scratch'
+  SPARK_LOCAL_DIRS = './'
+}
+
+process {
+  withName:CreateRecalibrationTable {
+    container = 'job-definition://UlimitLargeMem' 
+  }
+  withName:RecalibrateBam {
+    container = 'job-definition://UlimitLargeMem' 
+  }
+}

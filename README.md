@@ -8,75 +8,94 @@
 
 ## Introduction
 
-<!-- TODO nf-core: Write a 1-2 sentence summary of what data the pipeline is for and what it does -->
+# Time-Efficient Mutational Profiling in Oncology (Tempo)
 
-**mskcc/tempo** is a bioinformatics best-practice analysis pipeline for Time-Efficient Mutational Profiling in Oncology.
+Tempo is a computational pipeline for processing data of paired-end whole-exome (WES) and whole-genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the [Center for Molecular Oncology](https://www.mskcc.org/research-programs/molecular-oncology).
 
 The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It uses Docker/Singularity containers making installation trivial and results highly reproducible. The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. Where possible, these processes have been submitted to and installed from [nf-core/modules](https://github.com/nf-core/modules) in order to make them available to all nf-core pipelines, and to everyone within the Nextflow community!
 
-<!-- TODO nf-core: Add full-sized test dataset and amend the paragraph below if applicable -->
+These pages contain instructions on how to run the Tempo pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus an outline describing the reference resources used. 
+
+If there are any questions or comments, you are welcome to [raise an issue](https://github.com/mskcc/tempo/issues/new?title=[User%20question]).
+
+<small>Note: Tempo currently only supports human samples. The pipeline has only been tested for exome and genome sequencing experiments, and all reference files are in build GRCh37 of the human genome.</small>
 
 On release, automated continuous integration tests run the pipeline on a full-sized dataset on the AWS cloud infrastructure. This ensures that the pipeline runs on AWS, has sensible resource allocation defaults set to run on real-world datasets, and permits the persistent storage of results to benchmark between pipeline releases and other analysis sources.
 
-## Pipeline summary
+---
 
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->
+## Table of Contents
 
-1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
-2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+### 1. Getting Started
 
-## Quick Start
+#### 1.1. Setup
+* [Installation](docs/installation.md)
+* [Setup on Juno](docs/juno-setup.md)
+* [Setup on AWS](docs/aws-setup.md)
 
-1. Install [`Nextflow`](https://www.nextflow.io/docs/latest/getstarted.html#installation) (`>=22.10.1`)
+#### 1.2. Usage
+* [Running the Pipeline](docs/running-the-pipeline.md)
+    * [Overview](docs/running-the-pipeline.md#overview)
+    * [Input Files](docs/running-the-pipeline.md#input-files)
+    * [Execution Mode](docs/running-the-pipeline.md#execution-mode)
+    * [Modifying or Resuming Pipeline Run](docs/running-the-pipeline.md#modifying-or-resuming-pipeline-run)
+    * [After Successful Run](docs/running-the-pipeline.md#after-successful-run)
+* [Nextflow Basics](docs/nextflow-basics.md)
+* [Working With Containers](docs/working-with-containers.md)
 
-2. Install any of [`Docker`](https://docs.docker.com/engine/installation/), [`Singularity`](https://www.sylabs.io/guides/3.0/user-guide/) (you can follow [this tutorial](https://singularity-tutorial.github.io/01-installation/)), [`Podman`](https://podman.io/), [`Shifter`](https://nersc.gitlab.io/development/shifter/how-to-use/) or [`Charliecloud`](https://hpc.github.io/charliecloud/) for full pipeline reproducibility _(you can use [`Conda`](https://conda.io/miniconda.html) both to install Nextflow itself and also to manage software within pipelines. Please only use it within pipelines as a last resort; see [docs](https://nf-co.re/usage/configuration#basic-configuration-profiles))_.
+#### 1.3 Outputs
+* [BAM Files](docs/outputs.md#bam-files)
+* [QC Outputs](docs/outputs.md#qc-outputs)
+* [Somatic Data](docs/outputs.md#somatic-data)
+* [Germline Data](docs/outputs.md#germline-data)
+* [Cohort Level Outputs](docs/outputs.md#cohort-level-outputs)
 
-3. Download the pipeline and test it on a minimal dataset with a single command:
+### 2. Pipeline contents
 
-   ```bash
-   nextflow run mskcc/tempo -profile test,YOURPROFILE --outdir <OUTDIR>
-   ```
+#### 2.1. Bioinformatic Components
+* [Read Alignment](docs/bioinformatic-components.md#read-alignment)
+* [Somatic Analyses](docs/bioinformatic-components.md#somatic-analyses)
+* [Germline Analyses](docs/bioinformatic-components.md#germline-analyses)
+* [Quality Control](docs/bioinformatic-components.md#quality-control)
 
-   Note that some form of configuration will be needed so that Nextflow knows how to fetch the required software. This is usually done in the form of a config profile (`YOURPROFILE` in the example command above). You can chain multiple config profiles in a comma-separated string.
+#### 2.2. Reference Resources
+* [Genome Assembly](docs/reference-files.md#genome-assembly)
+* [Genomic Intervals](docs/reference-files.md#genomic-intervals)
+* [RepeatMasker and Mappability Blacklist](docs/reference-files.md#repeatmasker-and-mappability-blacklist)
+* [Preferred Transcript Isoforms](docs/reference-files.md#preferred-transcript-isoforms)
+* [Hotspot Annotation](docs/reference-files.md#hotspot-annotation.md)
+* [OncoKB Annotation](docs/reference-files.md#oncokb.md)
+* [gnomAD](docs/gnomad.md)
+* [Panel of Normals for Exomes](docs/wes-panel-of-normals.md)
 
-   > - The pipeline comes with config profiles called `docker`, `singularity`, `podman`, `shifter`, `charliecloud` and `conda` which instruct the pipeline to use the named tool for software management. For example, `-profile test,docker`.
-   > - Please check [nf-core/configs](https://github.com/nf-core/configs#documentation) to see if a custom config file to run nf-core pipelines already exists for your Institute. If so, you can simply use `-profile <institute>` in your command. This will enable either `docker` or `singularity` and set the appropriate execution settings for your local compute environment.
-   > - If you are using `singularity`, please use the [`nf-core download`](https://nf-co.re/tools/#downloading-pipelines-for-offline-use) command to download images first, before running the pipeline. Setting the [`NXF_SINGULARITY_CACHEDIR` or `singularity.cacheDir`](https://www.nextflow.io/docs/latest/singularity.html?#singularity-docker-hub) Nextflow options enables you to store and re-use the images from a central location for future pipeline runs.
-   > - If you are using `conda`, it is highly recommended to use the [`NXF_CONDA_CACHEDIR` or `conda.cacheDir`](https://www.nextflow.io/docs/latest/conda.html) settings to store the environments in a central location for future pipeline runs.
+#### 2.3. Variant Annotation and Filtering
+* [Somatic SNVs and Indels](docs/variant-annotation-and-filtering.md#somatic-snvs-and-indels)
+* [Germline SNVs and Indels](docs/variant-annotation-and-filtering.md#germline-snvs-and-indels)
+* [Somatic and Germline SVs](docs/variant-annotation-and-filtering.md#somatic-and-germline-svs)
 
-4. Start running your own analysis!
+### 3. Help and Other Resources
+* [Troubleshooting](docs/troubleshooting.md)
+* [AWS Glossary](docs/aws-glossary.md)
 
-   <!-- TODO nf-core: Update the example "typical command" below used to run the pipeline -->
+### 4. Contributing
+* [Contributing to Tempo](docs/contributing-to-tempo.md)
 
-   ```bash
-   nextflow run mskcc/tempo --input samplesheet.csv --outdir <OUTDIR> --genome GRCh37 -profile <docker/singularity/podman/shifter/charliecloud/conda/institute>
-   ```
+### 5. Acknowledgements
+* [Acknowledgements](docs/acknowledgements.md)
 
-## Credits
 
-mskcc/tempo was originally written by mskcc.
+## Pipeline Flowchart
+<p align="center">
+  <img id="diagram" src="./docs/pipeline-flowchart.png"/>
+</p>
 
-We thank the following people for their extensive assistance in the development of this pipeline:
+## Directed Acyclic Graph
+<p align="center">
+  <img id="dag" src="./docs/dag.png"/>
+</p>
 
-<!-- TODO nf-core: If applicable, make list of people who have also contributed -->
-
-## Contributions and Support
-
-If you would like to contribute to this pipeline, please see the [contributing guidelines](.github/CONTRIBUTING.md).
-
-## Citations
-
-<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
-<!-- If you use  mskcc/tempo for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
-
-<!-- TODO nf-core: Add bibliography of tools and data used in your pipeline -->
-
-An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
-
-This pipeline uses code and infrastructure developed and maintained by the [nf-core](https://nf-co.re) community, reused here under the [MIT license](https://github.com/nf-core/tools/blob/master/LICENSE).
-
-> **The nf-core framework for community-curated bioinformatics pipelines.**
->
-> Philip Ewels, Alexander Peltzer, Sven Fillinger, Harshil Patel, Johannes Alneberg, Andreas Wilm, Maxime Ulysse Garcia, Paolo Di Tommaso & Sven Nahnsen.
->
-> _Nat Biotechnol._ 2020 Feb 13. doi: [10.1038/s41587-020-0439-x](https://dx.doi.org/10.1038/s41587-020-0439-x).
+##
+<p align="center">
+  <img src="./docs/brandenburg5_allegro.jpg">
+</p>
+---
