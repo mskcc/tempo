@@ -1,14 +1,22 @@
 include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
 include { AlignReads }                 from '../process/Alignment/AlignReads'
-include { MergeBamsAndMarkDuplicates } from '../process/Alignment/MergeBamsAndMarkDuplicates'
-include { RunBQSR }                    from '../process/Alignment/RunBQSR' 
+include { GATK4_MARKDUPLICATES } from '../nf-core/gatk4/markduplicates/main'
+include { GATK4SPARK_BASERECALIBRATOR } from '../nf-core/gatk4spark/baserecalibrator/main'
+include { GATK4_GATHERBQSRREPORTS } from '../nf-core/gatk4/gatherbqsrreports/main'
+include { GATK4SPARK_APPLYBQSR      } from '../nf-core/gatk4spark/applybqsr/main'
+include { SAMTOOLS_MERGE as MERGE_BAM       } from '../nf-core/samtools/merge/main'
+include { SAMTOOLS_INDEX as INDEX_BQSR_BAM } from '../nf-core/samtools/index/main'
 
 workflow alignment_wf
 {
   take:
     inputMapping
+    mergedIList
 
   main:
+
+    versions = Channel.empty()
+
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
 
@@ -156,17 +164,99 @@ workflow alignment_wf
         }
         .set { groupedBam }
 
-      MergeBamsAndMarkDuplicates(groupedBam)
-      RunBQSR(MergeBamsAndMarkDuplicates.out.mdBams,
-              Channel.value([
-                referenceMap.genomeFile,
-                referenceMap.genomeIndex,
-                referenceMap.genomeDict,
-                referenceMap.dbsnp,
-                referenceMap.dbsnpIndex,
-                referenceMap.knownIndels,
-                referenceMap.knownIndelsIndex
-              ]))
+
+      GATK4_MARKDUPLICATES(
+	     groupedBam.map{item ->
+		def meta = [:]
+		meta.id = item[0]
+		meta.target = item[2]
+		bams = item[1]
+		[meta, bams]
+	     },
+             referenceMap.genomeFile,
+             referenceMap.genomeIndex,
+      )
+
+
+    // Join with the bai file
+      markdup_bam_bai = GATK4_MARKDUPLICATES.out.bam.map{[it[0].id, it[0], it[1]]}
+						    .join(GATK4_MARKDUPLICATES.out.bai.map{[it[0].id, it[0], it[1]]}, failOnDuplicate: true, failOnMismatch: true)
+						    .map{[it[1], it[2], it[4]]}
+
+      split_interval = mergedIList.map{ item ->
+			target = item[2]
+			num_intervals = item[0] instanceof Collection ? item[0].size() : 1
+			intervals = item[0]
+			[target, num_intervals, intervals]
+		}
+
+      bam_and_intervals = markdup_bam_bai.map{[it[0].target, it[0], it[1], it[2]]}
+					 .combine(split_interval, by: 0)
+					 .transpose()
+					 .map{[it[1] + [num_intervals:it[4]], it[2], it[3], it[5]]}
+      // Channel Contains [meta, bam, bai, interval]
+
+      GATK4SPARK_BASERECALIBRATOR(
+	     bam_and_intervals,
+             referenceMap.genomeFile,
+             referenceMap.genomeIndex,
+             referenceMap.genomeDict,
+	     Channel.fromPath(params.genomes[params.genome].knownIndels)
+			.concat(Channel.fromPath(params.genomes[params.genome].dbsnp))
+			.collect(),
+	     Channel.fromPath(params.genomes[params.genome].knownIndelsIndex)
+			.concat(Channel.fromPath(params.genomes[params.genome].dbsnpIndex))
+			.collect()
+      )
+
+    // Figuring out if there is one or more table(s) from the same sample
+    table_to_merge = GATK4SPARK_BASERECALIBRATOR.out.table.map{ meta, table -> [ groupKey(meta, meta.num_intervals), table ] }.groupTuple().branch{
+        // Use meta.num_intervals to asses number of intervals
+        single:   it[0].num_intervals <= 1
+        multiple: it[0].num_intervals > 1
+    }
+
+    // Only when using intervals
+    GATK4_GATHERBQSRREPORTS(table_to_merge.multiple)
+
+    // Mix intervals and no_intervals channels together
+    table_bqsr = GATK4_GATHERBQSRREPORTS.out.table.mix(table_to_merge.single.map{ meta, table -> [ meta, table[0] ] })
+						  .map{ meta, table -> [ meta - meta.subMap('num_intervals'), table ] }
+        // Remove no longer necessary field: num_intervals
+
+    bqsr_input = table_bqsr.map{meta, file -> [meta.id, file]}
+			   .combine(bam_and_intervals.map{[it[0].id, it[0], it[1], it[2], it[3]]},by: 0)
+			   .map{[it[2], it[3], it[4],  it[1], it[5]]}
+    GATK4SPARK_APPLYBQSR(
+	bqsr_input,
+	referenceMap.genomeFile,
+	referenceMap.genomeIndex,
+	referenceMap.genomeDict
+    )
+
+    bam_to_merge_index = GATK4SPARK_APPLYBQSR.out.bam.map{ meta, bam -> [ groupKey(meta, meta.num_intervals), bam ] }.groupTuple().branch{
+        // Use meta.num_intervals to asses number of intervals
+        single:   it[0].num_intervals <= 1
+        multiple: it[0].num_intervals > 1
+    }
+
+    // Only when using intervals
+    MERGE_BAM(
+	bam_to_merge_index.multiple,
+	Channel.fromPath(params.genomes[params.genome].genomeFile).collect().map{ it -> [ [ id:'fasta' ], it ] },
+	Channel.fromPath(params.genomes[params.genome].genomeIndex).collect().map{ it -> [ [ id:'fasta_fai' ], it ] }
+    )
+
+    // Mix intervals and no_intervals channels together
+    bam_all = MERGE_BAM.out.bam.mix(bam_to_merge_index.single.map{ meta, bam -> [ meta, bam[0] ] })
+			       .map{ meta, bam -> [ meta - meta.subMap('num_intervals'), bam ] }
+        // Remove no longer necessary field: num_intervals
+
+    // Index bam
+    INDEX_BQSR_BAM(bam_all)
+
+    // Join with the bai file
+    bam_bai = bam_all.join(INDEX_BQSR_BAM.out.bai, failOnDuplicate: true, failOnMismatch: true).map{[it[0].id, it[0].target, it[1], it[2]]}
 
 
       File file_bammapping = new File(params.outname)
@@ -174,7 +264,7 @@ workflow alignment_wf
           w << "SAMPLE\tTARGET\tBAM\tBAI\n"
       }
 
-      RunBQSR.out.bamsBQSR
+      bam_bai
       .map{ idSample, target, bam, bai ->
         [ idSample, target, "${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam", "${file(params.outDir).toString()}/bams/${idSample}/${idSample}.bam.bai" ]
       }.subscribe { Object obj ->
@@ -182,6 +272,14 @@ workflow alignment_wf
             out.println "${obj[0]}\t${obj[1]}\t${obj[2]}\t${obj[3]}"
         }
       }
+
+    // Gather versions of all tools used
+      versions = versions.mix(GATK4_MARKDUPLICATES.out.versions)
+      versions = versions.mix(GATK4SPARK_BASERECALIBRATOR.out.versions)
+      versions = versions.mix(GATK4_GATHERBQSRREPORTS.out.versions)
+      versions = versions.mix(GATK4SPARK_APPLYBQSR.out.versions)
+      versions = versions.mix(MERGE_BAM.out.versions.first())
+      versions = versions.mix(INDEX_BQSR_BAM.out.versions.first())
     }
     else{
       if(params.pairing){
@@ -192,7 +290,7 @@ workflow alignment_wf
   
 
   emit:
-    RunBQSR_bamsBQSR   = RunBQSR.out.bamsBQSR
-    RunBQSR_bamSize    = RunBQSR.out.bamSize
+    bam_bai
     fastPJson          = fastPJson
+    versions          // channel: [ versions.yml ]
 }
