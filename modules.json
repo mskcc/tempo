@@ -8,17 +8,72 @@
                     "custom/dumpsoftwareversions": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
-                        "installed_by": ["modules"]
+                        "installed_by": [
+                            "modules"
+                        ]
                     },
                     "fastqc": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
-                        "installed_by": ["modules"]
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "gatk4/gatherbqsrreports": {
+                        "branch": "master",
+                        "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "gatk4/markduplicates": {
+                        "branch": "master",
+                        "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "gatk4spark/applybqsr": {
+                        "branch": "master",
+                        "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "gatk4spark/baserecalibrator": {
+                        "branch": "master",
+                        "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "gatk4spark/markduplicates": {
+                        "branch": "master",
+                        "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",
+                        "installed_by": [
+                            "modules"
+                        ]
                     },
                     "multiqc": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
-                        "installed_by": ["modules"]
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "samtools/index": {
+                        "branch": "master",
+                        "git_sha": "b13f07be4c508d6ff6312d354d09f2493243e208",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
+                    "samtools/merge": {
+                        "branch": "master",
+                        "git_sha": "b13f07be4c508d6ff6312d354d09f2493243e208",
+                        "installed_by": [
+                            "modules"
+                        ]
                     }
                 }
             }
