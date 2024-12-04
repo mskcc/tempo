@@ -40,7 +40,7 @@ parser$add_argument('-gaf', '--gnomad-allele-frequency', type = 'double', requir
 parser$add_argument('-pon', '--normal-panel-count', type = 'integer', required = FALSE,
                     default = 10, help = 'Panel of normals count cut-off [default %(default)s]')
 parser$add_argument('-onco', '--oncokb-url', type = 'character', required = FALSE,
-                    default = "https://data-legacy.oncokb.aws.mskcc.org/api/v1/", help = 'Panel of normals count cut-off [default %(default)s]')                    
+                    default = "https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/", help = 'Panel of normals count cut-off [default %(default)s]')                    
                 
 # Get inputs
 args = parser$parse_args()
