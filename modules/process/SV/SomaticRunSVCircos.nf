@@ -11,7 +11,7 @@ process SomaticRunSVCircos {
 	output:
 	  path("${outputPrefix}.circos.html")
 
-	when: ["GRCh37","smallGRCh37","GRCh38"].contains(params.genome)
+	when: ["GRCh37","GRCh38"].contains(params.genome)
 
 	script:
 	outputPrefix = "${idTumor}__${idNormal}"
