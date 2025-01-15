@@ -130,11 +130,6 @@ workflow {
     inputMapping = validate_wf.out.inputMapping
     inputPairing = validate_wf.out.inputPairing
 
-    if(doWF_scatter)
-    {
-      scatter_wf()
-    }
-
     if (doWF_align)
     {
       alignment_wf(inputMapping)
@@ -171,6 +166,11 @@ workflow {
     if(doWF_manta)
     {
       manta_wf(bamFiles)
+    }
+
+    if(doWF_scatter)
+    {
+      scatter_wf()
     }
 
     if(doWF_germSV)
