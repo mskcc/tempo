@@ -173,11 +173,6 @@ workflow {
       manta_wf(bamFiles)
     }
 
-    if(doWF_scatter)
-    {
-      scatter_wf()
-    }
-
     if(doWF_germSV)
     {
       germlineSV_wf(bams)
