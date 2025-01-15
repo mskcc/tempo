@@ -33,6 +33,13 @@
                             "modules"
                         ]
                     },
+                    "gatk4/splitintervals": {
+                        "branch": "master",
+                        "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",
+                        "installed_by": [
+                            "modules"
+                        ]
+                    },
                     "gatk4spark/applybqsr": {
                         "branch": "master",
                         "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",

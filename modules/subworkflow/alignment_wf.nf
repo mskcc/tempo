@@ -1,6 +1,7 @@
 include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
 include { AlignReads }                 from '../process/Alignment/AlignReads'
 include { GATK4_MARKDUPLICATES } from '../nf-core/gatk4/markduplicates/main'
+include { GATK4_SPLITINTERVALS as BQSR_SPLITINTERVALS } from '../nf-core/gatk4/splitintervals/main'
 include { GATK4SPARK_BASERECALIBRATOR } from '../nf-core/gatk4spark/baserecalibrator/main'
 include { GATK4_GATHERBQSRREPORTS } from '../nf-core/gatk4/gatherbqsrreports/main'
 include { GATK4SPARK_APPLYBQSR      } from '../nf-core/gatk4spark/applybqsr/main'
@@ -11,7 +12,6 @@ workflow alignment_wf
 {
   take:
     inputMapping
-    mergedIList
 
   main:
 
@@ -171,6 +171,9 @@ workflow alignment_wf
 		meta.id = item[0]
 		meta.target = item[2]
 		bams = item[1]
+		bamSize = 0
+		bams.flatten().each{ bamSize = bamSize + it.size()}
+		meta.size = bamSize >> 30
 		[meta, bams]
 	     },
              referenceMap.genomeFile,
@@ -183,10 +186,17 @@ workflow alignment_wf
 						    .join(GATK4_MARKDUPLICATES.out.bai.map{[it[0].id, it[0], it[1]]}, failOnDuplicate: true, failOnMismatch: true)
 						    .map{[it[1], it[2], it[4]]}
 
-      split_interval = mergedIList.map{ item ->
-			target = item[2]
-			num_intervals = item[0] instanceof Collection ? item[0].size() : 1
-			intervals = item[0]
+      BQSR_SPLITINTERVALS(
+	   Channel.from(targetsMap.keySet()).map{ targetId -> [ [ id:"${targetId}"], targetsMap."${targetId}".targetsInterval ]},
+	   Channel.fromPath(params.genomes[params.genome].genomeFile).collect().map{ it -> [ [ id:'fasta' ], it ] },
+	   Channel.fromPath(params.genomes[params.genome].genomeIndex).collect().map{ it -> [ [ id:'fai' ], it ] },
+	   Channel.fromPath(params.genomes[params.genome].genomeDict).collect().map{ it -> [ [ id:'Dict' ], it ] },
+      )
+
+      split_interval = BQSR_SPLITINTERVALS.out.split_intervals.map{ item ->
+			target = item[0].id
+			num_intervals = item[1] instanceof Collection ? item[1].size() : 1
+			intervals = item[1]
 			[target, num_intervals, intervals]
 		}
 

@@ -63,7 +63,7 @@ workflow {
   //Set flags for when each pipeline is required to run.
   doWF_align           = (params.mapping) ? true : false
   doWF_manta           = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
-  doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv'].any(it -> it in WFs) || (params.mapping) ? true : false
+  doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
   doWF_germSNV         = 'germsnv' in WFs ? true : false
   doWF_germSV          = 'germsv' in WFs ? true : false
   doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
@@ -137,7 +137,7 @@ workflow {
 
     if (doWF_align)
     {
-      alignment_wf(inputMapping, scatter_wf.out.mergedIList)
+      alignment_wf(inputMapping)
     }
 
     //Handle input bams as coming originally from bams, or from an alignment this run.
@@ -171,6 +171,11 @@ workflow {
     if(doWF_manta)
     {
       manta_wf(bamFiles)
+    }
+
+    if(doWF_scatter)
+    {
+      scatter_wf()
     }
 
     if(doWF_germSV)
