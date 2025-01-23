@@ -1,6 +1,6 @@
 include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
 include { AlignReads }                 from '../process/Alignment/AlignReads'
-include { GATK4_MARKDUPLICATES } from '../nf-core/gatk4/markduplicates/main'
+include { GATK4SPARK_MARKDUPLICATES } from '../nf-core/gatk4spark/markduplicates/main'
 include { GATK4_SPLITINTERVALS as BQSR_SPLITINTERVALS } from '../nf-core/gatk4/splitintervals/main'
 include { GATK4SPARK_BASERECALIBRATOR } from '../nf-core/gatk4spark/baserecalibrator/main'
 include { GATK4_GATHERBQSRREPORTS } from '../nf-core/gatk4/gatherbqsrreports/main'
@@ -165,7 +165,7 @@ workflow alignment_wf
         .set { groupedBam }
 
 
-      GATK4_MARKDUPLICATES(
+      GATK4SPARK_MARKDUPLICATES(
 	     groupedBam.map{item ->
 		def meta = [:]
 		meta.id = item[0]
@@ -178,6 +178,7 @@ workflow alignment_wf
 	     },
              referenceMap.genomeFile,
              referenceMap.genomeIndex,
+	     referenceMap.genomeDict
       )
 
 
@@ -284,7 +285,7 @@ workflow alignment_wf
       }
 
     // Gather versions of all tools used
-      versions = versions.mix(GATK4_MARKDUPLICATES.out.versions)
+      versions = versions.mix(GATK4SPARK_MARKDUPLICATES.out.versions)
       versions = versions.mix(GATK4SPARK_BASERECALIBRATOR.out.versions)
       versions = versions.mix(GATK4_GATHERBQSRREPORTS.out.versions)
       versions = versions.mix(GATK4SPARK_APPLYBQSR.out.versions)
