@@ -134,6 +134,7 @@ workflow {
     if (params.bam2fastq)
     {
       inputBam = inputMapping
+      outname  = 'bamMapping_realigned.tsv'
       bam2fastq(inputBam)
       fastqs = bam2fastq.out.fastqOutput
 			.map { idSample, targets, files_pe1, files_pe2
