@@ -137,7 +137,8 @@ workflow {
       bam2fastq(inputBam)
       fastqs = bam2fastq.out.fastqOutput
 			.map { idSample, targets, files_pe1, files_pe2
-			  -> tuple(groupKey(idSample, files_pe1.size()), targets, files_pe1, files_pe2)
+			  -> 	def calculatedSize = (files_pe1.size() instanceof Collection) ? files_pe1.size() : 1
+				tuple(groupKey(idSample, calculatedSize), targets, files_pe1, files_pe2)
 			}
 			.transpose()
     }
