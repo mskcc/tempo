@@ -1,5 +1,5 @@
 process QcCollectHsMetrics {
-  tag {idSample}
+  tag "${idSample}"
 
   publishDir "${params.outDir}/bams/${idSample}/collecthsmetrics", mode: params.publishDirMode
 

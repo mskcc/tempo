@@ -1,5 +1,5 @@
 process GermlineRunStrelka2 {
-  tag {idNormal}
+  tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/strelka2", mode: params.publishDirMode
 
@@ -8,7 +8,7 @@ process GermlineRunStrelka2 {
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
     
   output:
-    tuple val("placeHolder"), val(idNormal), val(target), path("${idNormal}.strelka2.vcf.gz"), path("${idNormal}.strelka2.vcf.gz.tbi"), emit: strelkaOutputGermline
+    tuple val(idNormal), val(target), path("${idNormal}.strelka2.vcf.gz"), path("${idNormal}.strelka2.vcf.gz.tbi"), emit: strelkaOutputGermline
   
   script:
   options = ""
@@ -30,5 +30,7 @@ process GermlineRunStrelka2 {
 
   mv Strelka/results/variants/variants.vcf.gz ${idNormal}.strelka2.vcf.gz
   mv Strelka/results/variants/variants.vcf.gz.tbi ${idNormal}.strelka2.vcf.gz.tbi
+
+  if [ \$(vcf-validator ${idNormal}.strelka2.vcf.gz 2>&1 | wc -l ) -gt 0 ] ; then exit 1 ; fi
   """
 }

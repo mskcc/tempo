@@ -1,5 +1,5 @@
 process GermlineAnnotateMaf {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/combined_mutations", mode: params.publishDirMode, pattern: "*.unfiltered.maf"
 

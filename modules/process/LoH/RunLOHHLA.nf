@@ -1,5 +1,5 @@
 process RunLOHHLA {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/lohhla", mode: params.publishDirMode
 
@@ -9,7 +9,7 @@ process RunLOHHLA {
 
   output:
     tuple path("*.DNA.HLAlossPrediction_CI.txt"), path("*DNA.IntegerCPN_CI.txt"), path("*.pdf"), path("*.RData"), optional: true, emit: lohhlaOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), file("*.DNA.HLAlossPrediction_CI.txt"), file("*DNA.IntegerCPN_CI.txt"), emit: lohhla4Aggregate
+    tuple val(placeHolder), val(idTumor), val(idNormal), file("*.DNA.HLAlossPrediction_CI.txt"), file("*DNA.IntegerCPN_CI.txt"), emit: lohhla4Aggregate
 
   script:
   outputPrefix = "${idTumor}__${idNormal}"
