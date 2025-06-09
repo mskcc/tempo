@@ -1,5 +1,5 @@
 process SplitLanesR1 {
-  tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
+  tag "${idSample + "@" + fileID}"   // The tag directive allows you to associate each process executions with a custom label
 
   input:
     tuple val(idSample), val(target), file(fastqFile1), val(fileID)
@@ -38,7 +38,7 @@ process SplitLanesR1 {
 }
 
 process SplitLanesR2 {
-  tag {idSample + "@" + fileID}   // The tag directive allows you to associate each process executions with a custom label
+  tag "${idSample + "@" + fileID}"   // The tag directive allows you to associate each process executions with a custom label
 
   input:
     tuple val(idSample), val(target), file(fastqFile2), val(fileID)

@@ -61,7 +61,10 @@ def main():
 	pool.close()
 	pool.join()
 
-	iAnnotate_output = pd.concat(map(read_iannotatesv_result, [os.path.join("outputs","output_" + str(i) + "_Annotated.txt") for i in range(n_chunks)]))
+	try:
+		iAnnotate_output = pd.concat(map(read_iannotatesv_result, [os.path.join("outputs","output_" + str(i) + "_Annotated.txt") for i in range(n_chunks)]))
+	except ValueError as ve:
+		iAnnotate_output = pd.DataFrame(columns=key_col.keys())
 	for key,val in key_col.items():
 		iAnnotate_output[key] = iAnnotate_output[key].astype(val)
 

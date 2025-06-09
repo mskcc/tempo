@@ -1,5 +1,5 @@
 process GermlineCombineHaplotypecallerVcf {
-  tag {idNormal}
+  tag "${idNormal}"
 
   publishDir "${params.outDir}/germline/${idNormal}/haplotypecaller", mode: params.publishDirMode
 
@@ -8,7 +8,7 @@ process GermlineCombineHaplotypecallerVcf {
     tuple file(genomeFile), file(genomeIndex), file(genomeDict)
 
   output:
-    tuple val("placeHolder"), val(idNormal), val(target), path("${outfile}"), path("${outfile}.tbi"), emit: haplotypecallerCombinedVcfOutput
+    tuple val(idNormal), val(target), path("${outfile}"), path("${outfile}.tbi"), emit: haplotypecallerCombinedVcfOutput
 
   script: 
   idNormal = id.toString().split("@")[0]
@@ -17,7 +17,7 @@ process GermlineCombineHaplotypecallerVcf {
   """
   bcftools concat \
     --allow-overlaps \
-    ${haplotypecallerSnpVcf} ${haplotypecallerIndelVcf} | \
+    *.filter.vcf.gz | \
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \

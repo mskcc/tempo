@@ -1,5 +1,5 @@
 process SomaticCombineMutect2Vcf {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
 
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/mutect2", mode: params.publishDirMode
 
@@ -18,7 +18,7 @@ process SomaticCombineMutect2Vcf {
   """
   bcftools concat \
     --allow-overlaps \
-    ${mutect2Vcf} | \
+    *.filtered.vcf.gz | \
   bcftools sort | \
   bcftools norm \
     --fasta-ref ${genomeFile} \

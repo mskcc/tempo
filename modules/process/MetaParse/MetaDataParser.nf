@@ -1,5 +1,5 @@
 process MetaDataParser {
-  tag {idTumor + "__" + idNormal}
+  tag "${idTumor + "__" + idNormal}"
  
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/meta_data/", mode: params.publishDirMode, pattern: "*.sample_data.txt"
 
@@ -8,7 +8,7 @@ process MetaDataParser {
 
   output:
     path("*.sample_data.txt"), emit: MetaDataOutput
-    tuple val("placeHolder"), val(idTumor), val(idNormal), path("*.sample_data.txt"), emit: MetaData4Aggregate
+    tuple val(placeHolder), val(idTumor), val(idNormal), path("*.sample_data.txt"), emit: MetaData4Aggregate
 
   script:
   codingRegionsBed = codingBed

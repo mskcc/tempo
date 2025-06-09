@@ -1,5 +1,5 @@
  process RunBQSR {
-    tag {idSample}
+    tag "${idSample}"
     
     publishDir "${params.outDir}/bams/${idSample}", mode: params.publishDirMode, pattern: "*.bam*"
 
@@ -9,7 +9,6 @@
 
     output:
       tuple val(idSample), val(target), path("${idSample}.bam"), path("${idSample}.bam.bai"), emit: bamsBQSR
-      tuple val(idSample), val(target), val("${params.outDir}/bams/${idSample}/${idSample}.bam"), val("${params.outDir}/bams/${idSample}/${idSample}.bam.bai"), emit: bamResults
       path("file-size.txt"), emit: bamSize
 
     script:
@@ -52,6 +51,7 @@
       ${knownSites} \
       --verbosity INFO \
       --create-output-bam-index true \
+      --emit-original-quals \
       -O ${idSample}.bam 
    
     echo -e "${idSample}\t\$(du -b ${idSample}.bam)" > file-size.txt
@@ -78,6 +78,7 @@
       --reference ${genomeFile} \
       --create-output-bam-index true \
       --bqsr-recal-file ${idSample}.recal.table \
+      --emit-original-quals \
       --input ${bam} \
       --output ${idSample}.bam
 

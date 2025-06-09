@@ -2,7 +2,6 @@ include { QcCollectHsMetrics }                 from '../process/QC/QcCollectHsMe
 include { QcQualimap }                         from '../process/QC/QcQualimap' 
 include { QcAlfred }                           from '../process/QC/QcAlfred'
 include { SampleRunMultiQC }                   from '../process/QC/SampleRunMultiQC'
-include { QcConpairAll }                       from '../process/QC/QcConpairAll'
 
 workflow sampleQC_wf
 {
@@ -14,17 +13,19 @@ workflow sampleQC_wf
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
 
-    inputChannel.map{ idSample, target, bam, bai ->
-        [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
-    }.set{ bamsBQSR4HsMetrics }
+    if (params.assayType != "genome"){
+        inputChannel.map{ idSample, target, bam, bai ->
+            [idSample, target, bam, bai, targetsMap."$target".targetsInterval,  targetsMap."$target".baitsInterval]
+        }.set{ bamsBQSR4HsMetrics }
 
-    QcCollectHsMetrics(bamsBQSR4HsMetrics,
-                       Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
-
-    if (params.assayType != "exome"){
-      QcCollectHsMetrics.out.collectHsMetricsOutput
-        .map{ idSample, target, bam, bai, targetList, baitList -> [idSample, ""]}
-        .set{ collectHsMetricsOutput }
+        QcCollectHsMetrics(bamsBQSR4HsMetrics,
+                           Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict])
+                          )
+        collectHsMetricsOutput = QcCollectHsMetrics.out.collectHsMetricsOutput
+    } else {
+    	inputChannel
+        	.map{ idSample, target, bam, bai -> [idSample, ""]}
+        	.set{ collectHsMetricsOutput }
     }
 
     inputChannel
@@ -47,7 +48,7 @@ workflow sampleQC_wf
       .groupTuple(size:2, by:0)
       .join(fastPJson, by:0)
       .join(QcQualimap.out.qualimap4Process, by:0)
-      .join(QcCollectHsMetrics.out.collectHsMetricsOutput, by:0)
+      .join(collectHsMetricsOutput, by:0)
       .set{ sampleMetrics4MultiQC }
 
     SampleRunMultiQC(sampleMetrics4MultiQC, 
@@ -55,6 +56,6 @@ workflow sampleQC_wf
 
   emit:
     bamsQcStats4Aggregate  = QcAlfred.out.bamsQcStats4Aggregate
-    collectHsMetricsOutput = QcCollectHsMetrics.out.collectHsMetricsOutput
+    collectHsMetricsOutput = collectHsMetricsOutput 
     qualimap4Process       = QcQualimap.out.qualimap4Process
 }
