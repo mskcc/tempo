@@ -30,7 +30,7 @@ process bam2fastq {
     javaOptions    = "--java-options '-Xmx" + originalMem.toString().split(" ")[0].toInteger() * memMultiplier + "g'"
 
   """
-  gatk SamToFastq ${javaOptions} VALIDATION_STRINGENCY=LENIENT I=${bam} RG_TAG=ID OUTPUT_PER_RG=true COMPRESS_OUTPUTS_PER_RG=true OUTPUT_DIR=./ INCLUDE_NON_PF_READS=true INCLUDE_NON_PRIMARY_ALIGNMENTS=true
+  gatk SamToFastq ${javaOptions} VALIDATION_STRINGENCY=LENIENT I=${bam} RG_TAG=ID OUTPUT_PER_RG=true COMPRESS_OUTPUTS_PER_RG=true OUTPUT_DIR=./ INCLUDE_NON_PF_READS=true INCLUDE_NON_PRIMARY_ALIGNMENTS=false
   ls *.fastq.gz | xargs -I {} -n1 mv {} `basename ${idSample}`@{}
   """
 }
