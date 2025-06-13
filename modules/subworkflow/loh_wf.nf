@@ -12,7 +12,7 @@ workflow loh_wf
     referenceMap = params.referenceMap
     targetsMap   = params.targetsMap
 
-    RunPolysolver(bams)
+    RunPolysolver(bamFiles)
     hlaOutput = RunPolysolver.out.hlaOutput.map{ ["placeHolder"] + it }
 
     bamFiles.combine(facetsPurity, by: [0,1,2])
