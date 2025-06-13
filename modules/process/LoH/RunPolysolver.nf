@@ -11,7 +11,7 @@ process RunPolysolver {
     tuple val(idNormal), val(target), path("${outputPrefix}.hla.txt"), emit: hlaOutput
   
   script:
-  outputPrefix = "${idNormal}"
+  outputPrefix = "${idTumor}__${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
   genome_ = params.genome == "GRCh37" ? "hg19" : params.genome == 'GRCh38' ? "hg38" : params.genome == 'smallGRCh37' ? "small" : "other"
