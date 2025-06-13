@@ -1,6 +1,9 @@
 process RunPolysolver {
   tag "${idNormal}"
-  
+
+  publishDir "${params.outDir}/somatic/${outputPrefix}/polysolver", 
+    mode: params.publishDirMode
+
   input:
     tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
 
