@@ -5,7 +5,7 @@ process RunPolysolver {
     mode: params.publishDirMode
 
   input:
-    tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
+    tuple val(idTumor), val(idNormal), val(target),  path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
 
   output:
     tuple val(idNormal), val(target), path("${outputPrefix}.hla.txt"), emit: hlaOutput
