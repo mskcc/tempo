@@ -5,13 +5,13 @@ process RunPolysolver {
     mode: params.publishDirMode
 
   input:
-    tuple val(idTumor), val(idNormal), val(target),  path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)
+    tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
 
   output:
     tuple val(idNormal), val(target), path("${outputPrefix}.hla.txt"), emit: hlaOutput
   
   script:
-  outputPrefix = "${idTumor}__${idNormal}"
+  outputPrefix = "${idNormal}"
   outputDir = "."
   tmpDir = "${outputDir}-nf-scratch"
   genome_ = params.genome == "GRCh37" ? "hg19" : params.genome == 'GRCh38' ? "hg38" : params.genome == 'smallGRCh37' ? "small" : "other"
