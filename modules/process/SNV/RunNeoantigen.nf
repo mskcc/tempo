@@ -41,6 +41,7 @@ process RunNeoantigen {
     --sample_id ${outputPrefix} \
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
+    --threads ${task.cpus} \
     --output_dir ${outputDir}
 
   awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
