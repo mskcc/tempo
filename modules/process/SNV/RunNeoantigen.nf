@@ -18,14 +18,17 @@ process RunNeoantigen {
     if(mafFile.size() > 10.MB){
       task.time = { params.maxWallTime }
       task.cpus = 4 * { task.attempt }
+      threads   = 4 * { task.attempt }
     }
     else if (mafFile.size() < 5.MB){
       task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
-      threads = task.attempt * 2
+      threads   = 2 * { task.attempt }
+      task.cpus = 2 * { task.attempt }
     }
     else {
       task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
-      threads = task.attempt * 2
+      threads   = 2 * { task.attempt }
+      task.cpus = 2 * { task.attempt }
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
 
