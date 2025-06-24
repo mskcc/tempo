@@ -21,13 +21,15 @@ process RunNeoantigen {
     }
     else if (mafFile.size() < 5.MB){
       task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+      threads = task.attempt * 2
     }
     else {
       task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+      threads = task.attempt * 2
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
 
-    threads = task.attempt * 4
+    
   }
 
   outputPrefix = "${idTumor}__${idNormal}"
