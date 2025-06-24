@@ -17,6 +17,7 @@ process RunNeoantigen {
   if (workflow.profile == "juno") {
     if(mafFile.size() > 10.MB){
       task.time = { params.maxWallTime }
+      task.cpus = 4 * { task.attempt }
     }
     else if (mafFile.size() < 5.MB){
       task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
@@ -25,6 +26,8 @@ process RunNeoantigen {
       task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
+
+    threads = task.attempt * 4
   }
 
   outputPrefix = "${idTumor}__${idNormal}"
@@ -42,6 +45,7 @@ process RunNeoantigen {
     --hla_file ${polysolverFile} \
     --maf_file ${mafFile} \
     --output_dir ${outputDir}
+    --threads ${threads}
 
   awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${outputPrefix}", \$0) }' neoantigen/*.all_neoantigen_predictions.txt > ${outputPrefix}.all_neoantigen_predictions.txt
   """
