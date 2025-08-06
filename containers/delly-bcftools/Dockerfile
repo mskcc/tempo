@@ -16,7 +16,7 @@ RUN sed -i "s/security.debian/archive.debian/g" /etc/apt/sources.list
 RUN sed -i "s/deb.debian/archive.debian/g" /etc/apt/sources.list
 
 # run update
-RUN apt-get update -y && apt-get install -y \
+RUN apt-get update -y && apt-get install -y --allow-unauthenticated \
     libnss-sss \
     curl \
     less \
