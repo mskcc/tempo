@@ -4,7 +4,7 @@ LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
       version.ubuntu="18.04" \
       version.delly="1.5.0" \
       version.htslib="1.20" \
-      version.image="0.0.3"
+      version.image="0.0.4"
 
 # set the environment variables
 ENV delly_version 1.5.0
