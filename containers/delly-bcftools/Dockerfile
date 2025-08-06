@@ -7,8 +7,8 @@ LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
       version.image="0.0.4"
 
 # set the environment variables
-ENV delly_version 1.5.0
-ENV htslib_version 1.20
+ENV delly_version=1.5.0
+ENV htslib_version=1.20
 
 # APT repository has moved to archive. Sources needs to change.
 RUN sed -i /stretch-updates/d /etc/apt/sources.list
@@ -43,7 +43,7 @@ RUN tar -xjf /usr/local/bin/htslib-${htslib_version}.tar.bz2 -C /usr/local/bin/
 RUN cd /usr/local/bin/htslib-${htslib_version}/ && ./configure
 RUN cd /usr/local/bin/htslib-${htslib_version}/ && make
 RUN cd /usr/local/bin/htslib-${htslib_version}/ && make install
-ENV LD_LIBRARY_PATH /usr/local/bin/htslib-${htslib_version}/
+ENV LD_LIBRARY_PATH=/usr/local/bin/htslib-${htslib_version}/
 
 # install delly
 WORKDIR /usr/local/bin
