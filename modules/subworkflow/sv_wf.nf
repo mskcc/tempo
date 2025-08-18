@@ -2,6 +2,7 @@ include { SomaticDellyCall }           from '../process/SV/SomaticDellyCall'
 include { DellyCombine
             as SomaticDellyCombine }   from '../process/SV/DellyCombine'
 include { SomaticRunSvABA }            from '../process/SV/SomaticRunSvABA' 
+include { gridss_wf }                  from './gridss_wf'  addParams(referenceMap: params.referenceMap)
 include { brass_wf }                   from './brass_wf' addParams(referenceMap: params.referenceMap)
 include { SomaticMergeSVs }            from '../process/SV/SomaticMergeSVs' 
 include { SomaticSVVcf2Bedpe }         from '../process/SV/SomaticSVVcf2Bedpe'
@@ -51,6 +52,9 @@ workflow sv_wf
       referenceMap.genomeDict,
       referenceMap.bwaIndex
     )
+
+
+    gridss_wf(bamFiles)
 
     if (params.assayType == "genome" && workflow.profile != "test") {
       brass_wf(
