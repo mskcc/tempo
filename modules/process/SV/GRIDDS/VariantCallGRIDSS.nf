@@ -9,6 +9,8 @@ process VariantCallGRIDSS {
     path(bwaIndex)
     path(genomeDict)
     path(genomeIndex)
+    path(hotSpots)
+    path(repeatMask)
 
     output:
     tuple val(idTumor), val(idNormal), path("${idTumor}.gripss.filtered*"), emit: GRIDSS4Combine
@@ -85,8 +87,8 @@ process VariantCallGRIDSS {
          -reference ${idNormal} \
          -ref_genome_version 37 \
          -ref_genome ${genomeFile} \
-         -known_hotspot_file /juno/work/ccs/orgeraj/SV/sv/known_fusions.37.bedpe \
-         -repeat_mask_file /juno/work/ccs/orgeraj/SV/sv/repeat_mask_data.37.fa.gz \
+         -known_hotspot_file ${hotSpots} \
+         -repeat_mask_file ${repeatMask} \
          -vcf ${idTumor}.GRIDSS.vcf \
          -output_dir ./ 
 

@@ -93,7 +93,9 @@ workflow gridss_wf {
         referenceMap.svCallingExcludeRegions,
         referenceMap.bwaIndex,
         referenceMap.genomeDict,
-        referenceMap.genomeIndex
+        referenceMap.genomeIndex,
+        referenceMap.repeatMaskGridss,
+        referenceMap.knownFusionGridss
     )
 
 
