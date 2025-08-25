@@ -42,7 +42,7 @@
                     },
                     "gatk4spark/applybqsr": {
                         "branch": "master",
-                        "git_sha": "1999eff2c530b2b185a25cc42117a1686f09b685",
+                        "git_sha": "2b7eb9b3fae57cfaa2559b47e7eff855a81978ac",
                         "installed_by": [
                             "modules"
                         ]
