@@ -1,6 +1,7 @@
 include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
 include { AlignReads }                 from '../process/Alignment/AlignReads'
 include { GATK4SPARK_MARKDUPLICATES } from '../nf-core/gatk4spark/markduplicates/main'
+include { PICARD_SETNMMDANDUQTAGS } from '../local/picard/setnmmdanduqtags/main'
 include { GATK4_SPLITINTERVALS as BQSR_SPLITINTERVALS } from '../nf-core/gatk4/splitintervals/main'
 include { GATK4SPARK_BASERECALIBRATOR } from '../nf-core/gatk4spark/baserecalibrator/main'
 include { GATK4_GATHERBQSRREPORTS } from '../nf-core/gatk4/gatherbqsrreports/main'
@@ -181,10 +182,9 @@ workflow alignment_wf
 	     referenceMap.genomeDict
       )
 
-
     // Join with the bai file
-      markdup_bam_bai = GATK4_MARKDUPLICATES.out.bam.map{[it[0].id, it[0], it[1]]}
-						    .join(GATK4_MARKDUPLICATES.out.bai.map{[it[0].id, it[0], it[1]]}, failOnDuplicate: true, failOnMismatch: true)
+      markdup_bam_bai = GATK4SPARK_MARKDUPLICATES.out.output.map{[it[0].id, it[0], it[1]]}
+						    .join(GATK4SPARK_MARKDUPLICATES.out.bam_index.map{[it[0].id, it[0], it[1]]}, failOnDuplicate: true, failOnMismatch: true)
 						    .map{[it[1], it[2], it[4]]}
 
       BQSR_SPLITINTERVALS(
@@ -207,8 +207,13 @@ workflow alignment_wf
 					 .map{[it[1] + [num_intervals:it[4]], it[2], it[3], it[5]]}
       // Channel Contains [meta, bam, bai, interval]
 
+      PICARD_SETNMMDANDUQTAGS(bam_and_intervals, Channel.fromPath(params.genomes[params.genome].genomeFile).collect().map{ it -> [ [ id:'fasta' ], it ] })
+
+    // Join with the bai file
+      settags_bam_bai = PICARD_SETNMMDANDUQTAGS.out.bam_bai.map{[it[0], it[1], it[2], []]}
+
       GATK4SPARK_BASERECALIBRATOR(
-	     bam_and_intervals,
+	     settags_bam_bai,
              referenceMap.genomeFile,
              referenceMap.genomeIndex,
              referenceMap.genomeDict,
@@ -286,6 +291,7 @@ workflow alignment_wf
 
     // Gather versions of all tools used
       versions = versions.mix(GATK4SPARK_MARKDUPLICATES.out.versions)
+      versions = versions.mix(PICARD_SETNMMDANDUQTAGS.out.versions)
       versions = versions.mix(GATK4SPARK_BASERECALIBRATOR.out.versions)
       versions = versions.mix(GATK4_GATHERBQSRREPORTS.out.versions)
       versions = versions.mix(GATK4SPARK_APPLYBQSR.out.versions)
