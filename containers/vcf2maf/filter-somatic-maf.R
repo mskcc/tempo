@@ -3,7 +3,7 @@
 # __author__      = "Philip Jonsson"
 # __email__       = "jonssonp@mskcc.org"
 # __contributor__ = "Anne Marie Noronha (noronhaa@mskcc.org)"
-# __version__     = "0.6.2"
+# __version__     = "0.7.0"
 # __status__      = "Dev"
 
 suppressPackageStartupMessages({
@@ -39,6 +39,8 @@ parser$add_argument('-gaf', '--gnomad-allele-frequency', type = 'double', requir
                     default = 0.01, help = 'gnomAD allele frequency cut-off [default %(default)s]')
 parser$add_argument('-pon', '--normal-panel-count', type = 'integer', required = FALSE,
                     default = 10, help = 'Panel of normals count cut-off [default %(default)s]')
+parser$add_argument('-onco', '--oncokb-url', type = 'character', required = FALSE,
+                    default = "https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/", help = 'Panel of normals count cut-off [default %(default)s]')                    
                 
 # Get inputs
 args = parser$parse_args()
@@ -51,6 +53,7 @@ normal_depth_cutoff = args$normal_depth
 normal_readcount_cutoff = args$normal_count
 gnomad_af_cutoff = args$gnomad_allele_frequency
 pon_cutoff = args$normal_panel_count
+oncokb_url = args$oncokb_url
 
 add_tag = function(filter, tag) {
   split_filter <- strsplit(filter,";")
@@ -100,7 +103,7 @@ maf[(t_alt_count_raw > 10 & alt_bias & MuTect2 == 0) |
 maf[, `:=` (Custom_filters = NULL)] 
 
 # Tag and whitelist hotspots --------------------------------------------------------------------------------------
-maf = hotspot_annotate_maf(maf)
+maf = hotspot_annotate_maf(maf,oncokbbaseurl=oncokb_url)
 maf = as.data.table(maf) # necessary because of the class of output from previous call
 maf[Hotspot == TRUE & t_var_freq >= 0.02 & FILTER == 'low_vaf', FILTER := 'PASS'] # note: variants flagged by other filters will not be rescued by this
 maf[Hotspot == TRUE & FILTER == 'low_mapping_quality', FILTER := 'PASS']

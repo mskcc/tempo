@@ -3,7 +3,7 @@ description: CCS Research Pipeline for Whole-Genome and Whole-Exome Sequencing
 themeConfig:
   logo: /allegro.jpg
   sidebar:
-    - "/"
+    - ['', 'Home']
     - title: Setup
       collapsable: false
       children:

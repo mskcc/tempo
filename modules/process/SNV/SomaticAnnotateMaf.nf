@@ -45,7 +45,7 @@ process SomaticAnnotateMaf {
     --filter-vcf 0
     
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
-    -u "https://legacy.oncokb.org/api/v1" \
+    -u "https://data-legacy.oncokb.aws.mskcc.org/api/v1/" \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
 
@@ -58,6 +58,7 @@ process SomaticAnnotateMaf {
     --gnomad-allele-frequency ${params.somaticVariant.gnomadAf} \
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
-    --output-prefix ${outputPrefix}
+    --output-prefix ${outputPrefix} \
+    --onco "https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/"
   """
 }
