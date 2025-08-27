@@ -2,15 +2,16 @@ process RunNeoantigen {
   tag "${idTumor + "__" + idNormal}"
 
   publishDir "${params.outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*.txt"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/neoantigen/", mode: params.publishDirMode, pattern: "*/*.maf", saveAs: { filename -> new File(filename).name }
 
   input:
     tuple val(idNormal), val(target), val(placeHolder), path(polysolverFile), val(idTumor), path(mafFile)
     tuple path(neoantigenCDNA), path(neoantigenCDS)
 
   output:
+    path("${outputDir}/${outputPrefix}.neoantigens.maf"), emit: neoantigenMafOutput
     tuple val(placeHolder), val(idTumor), val(idNormal), path("${idTumor}__${idNormal}.all_neoantigen_predictions.txt"), emit: NetMhcStats4Aggregate
     path("${idTumor}__${idNormal}.all_neoantigen_predictions.txt"), emit: NetMhcStatsOutput
-    tuple val(idTumor), val(idNormal), val(target), path("${outputDir}/${outputPrefix}.neoantigens.maf"), emit: mafFileForMafAnno
 
   script:
 

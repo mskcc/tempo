@@ -37,6 +37,7 @@ include { loh_wf }               from './modules/subworkflow/loh_wf'            
 include { facets_wf }            from './modules/subworkflow/facets_wf'           addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { sv_wf }                from './modules/subworkflow/sv_wf'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { snv_wf }               from './modules/subworkflow/snv_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { neoantigen_wf }        from './modules/subworkflow/neoantigen_wf'       addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { sampleQC_wf }          from './modules/subworkflow/sampleQC_wf'         addParams(referenceMap: referenceMap, targetsMap: targetsMap, multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
 include { samplePairingQC_wf }   from './modules/subworkflow/samplePairingQC_wf'  addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { somaticMultiQC_wf }    from './modules/subworkflow/somaticMultiQC_wf'   addParams(multiqcWesConfig: multiqcWesConfig, multiqcWgsConfig: multiqcWgsConfig, multiqcTempoLogo: multiqcTempoLogo)
@@ -57,20 +58,21 @@ WFs = params.workflows instanceof Boolean ? '' : params.workflows
 
 WFs = WFs.split(',').collect{it.trim().toLowerCase()}.unique()
 
-WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','sv','mutsig','germsnv','germsv','lohhla','facets','qc','msisensor'] : WFs
+WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','sv','mutsig','germsnv','germsv','lohhla','facets','qc','msisensor', "neoantigen"] : WFs
 
 workflow {
   //Set flags for when each pipeline is required to run.
   doWF_align           = (params.mapping) ? true : false
-  doWF_manta           = ['snv', 'sv', 'mutsig'].any(it -> it in WFs) ? true : false
-  doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
+  doWF_manta           = ['snv', 'sv', 'mutsig', 'neoantigen'].any(it -> it in WFs) ? true : false
+  doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv', 'neoantigen'].any(it -> it in WFs) ? true : false
   doWF_germSNV         = 'germsnv' in WFs ? true : false
   doWF_germSV          = 'germsv' in WFs ? true : false
-  doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv'].any(it -> it in WFs) ? true : false
+  doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv', 'neoantigen'].any(it -> it in WFs) ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
   doWF_facets          = doWF_SV && params.assayType == "genome" && ["hisens","purity"].contains(params.svcnv) ? true : doWF_facets
-  doWF_loh             = ['lohhla', 'snv', 'mutsig'].any(it -> it in WFs) ? true : false
-  doWF_SNV             = ['snv', 'mutsig'].any(it -> it in WFs) ? true : false ? true : false
+  doWF_loh             = ['lohhla', 'mutsig', 'neoantigen'].any(it -> it in WFs) ? true : false
+  doWF_SNV             = ['snv', 'mutsig', 'neoantigen'].any(it -> it in WFs) ? true : false
+  doWF_neoantigen      = 'neoantigen' in WFs ? true : false
   doWF_QC              = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
@@ -195,8 +197,14 @@ workflow {
 
     if(doWF_SNV)
     {
-      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, loh_wf.out.hlaOutput, facets_wf.out.facetsForMafAnno)
+      snv_wf(bamFiles, scatter_wf.out.mergedIList, manta_wf.out.mantaToStrelka, facets_wf.out.facetsForMafAnno)
     }
+
+    if(doWF_neoantigen)
+    {
+      neoantigen_wf(snv_wf.out.mafFile, loh_wf.out.hlaOutput)
+    }
+
 
     if(doWF_SV)
     {
@@ -306,6 +314,7 @@ workflow {
         doWF_facets ? facets_wf : false,
         doWF_SV ? sv_wf : false,
         doWF_SNV ? snv_wf : false,
+        doWF_neoantigen ? neoantigen_wf : false,
         doWF_SV && doWF_SNV && params.assayType == "genome" ? hrdetect_wf : false,
         doWF_SV && doWF_SNV && params.assayType == "genome" ? clonality_wf : false,
         doWF_loh ? loh_wf : false,

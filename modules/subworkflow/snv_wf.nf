@@ -3,7 +3,6 @@ include { RunMutect2 }                 from '../process/SNV/RunMutect2'
 include { SomaticCombineMutect2Vcf }   from '../process/SNV/SomaticCombineMutect2Vcf' 
 include { SomaticCombineChannel }      from '../process/SNV/SomaticCombineChannel' 
 include { SomaticAnnotateMaf }         from '../process/SNV/SomaticAnnotateMaf' 
-include { RunNeoantigen }              from '../process/SNV/RunNeoantigen' 
 include { SomaticFacetsAnnotation }    from '../process/SNV/SomaticFacetsAnnotation' 
 
 workflow snv_wf
@@ -12,7 +11,6 @@ workflow snv_wf
     bamFiles
     mergedIList
     mantaToStrelka
-    hlaOutput
     facetsForMafAnno
 
   main:
@@ -71,12 +69,7 @@ workflow snv_wf
                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
                                         referenceMap.vepCache, referenceMap.isoforms]))
 
-
-    hlaOutput.combine(SomaticAnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }
-
-    RunNeoantigen(input4Neoantigen, Channel.value([referenceMap.neoantigenCDNA, referenceMap.neoantigenCDS]))
-
-    facetsForMafAnno.combine(RunNeoantigen.out.mafFileForMafAnno, by: [0,1,2]).set{ facetsMafFileSomatic }
+    facetsForMafAnno.combine(SomaticAnnotateMaf.out.mafFile, by: [0,1,2]).set{ facetsMafFileSomatic }
 
     SomaticFacetsAnnotation(facetsMafFileSomatic)
     finalMaf4Aggregate = SomaticFacetsAnnotation.out.finalMaf4Aggregate.map { ["placeHolder"] + it }
@@ -84,6 +77,5 @@ workflow snv_wf
   emit:
     mafFile               = SomaticAnnotateMaf.out.mafFile
     maf4MetaDataParser    = SomaticFacetsAnnotation.out.maf4MetaDataParser
-    NetMhcStats4Aggregate = RunNeoantigen.out.NetMhcStats4Aggregate
     finalMaf4Aggregate    = finalMaf4Aggregate
 }

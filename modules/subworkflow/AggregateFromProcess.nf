@@ -22,6 +22,7 @@ workflow aggregateFromProcess
     facets4Aggregate
     sv4Aggregate
     snv4Aggregate
+    neoantigen4Aggregate
     hrd4Aggregate
     svclone4Aggregate
     lohhla4Aggregate
@@ -72,8 +73,10 @@ workflow aggregateFromProcess
           .map{[it[2], it[4], it[5]]}
     }
     if (snv4Aggregate){
-      inputSomaticAggregateNetMHC = inputAggregate.combine(snv4Aggregate.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
       inputSomaticAggregateMaf    = inputAggregate.combine(snv4Aggregate.out.finalMaf4Aggregate, by:[1,2]).groupTuple(by:[2])
+    }
+    if (neoantigen4Aggregate){
+      inputSomaticAggregateNetMHC = inputAggregate.combine(neoantigen4Aggregate.out.NetMhcStats4Aggregate, by:[1,2]).groupTuple(by:[2])
     }
     if (hrd4Aggregate){
       inputSomaticAggregateHrd = inputAggregate.combine(
@@ -246,6 +249,8 @@ workflow aggregateFromProcess
   }
   if (snv4Aggregate){
     SomaticAggregateMaf(inputSomaticAggregateMaf)
+  }
+  if (neoantigen4Aggregate){
     SomaticAggregateNetMHC(inputSomaticAggregateNetMHC)
   }
   if (sv4Aggregate){
