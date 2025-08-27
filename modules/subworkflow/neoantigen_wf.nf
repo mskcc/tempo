@@ -1,4 +1,4 @@
-include { RunNeoantigen }              from '../process/SNV/RunNeoantigen' 
+include { RunNeoantigen }              from '../process/NeoAntigen/RunNeoantigen' 
 
 workflow neoantigen_wf
 {
