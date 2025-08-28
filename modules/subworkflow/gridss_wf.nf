@@ -88,14 +88,14 @@ workflow gridss_wf {
     }
 
     VariantCallGRIDSS(
-		varCallIn,
+		    varCallIn,
         referenceMap.genomeFile,
         referenceMap.svCallingExcludeRegions,
         referenceMap.bwaIndex,
         referenceMap.genomeDict,
         referenceMap.genomeIndex,
-        referenceMap.repeatMaskGridss,
-        referenceMap.knownFusionGridss
+        referenceMap.knownFusionGridss,
+        referenceMap.repeatMaskGridss
     )
 
 
