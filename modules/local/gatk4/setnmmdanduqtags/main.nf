@@ -1,16 +1,18 @@
-process PICARD_SETNMMDANDUQTAGS {
+process GATK4_SETNMMDANDUQTAGS {
     tag "$meta.id"
     label 'process_low'
     label 'process_long'
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/picard:3.3.0--hdfd78af_0':
-        'biocontainers/picard:3.3.0--hdfd78af_0' }"
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/b2/b28daf5d9bb2f0d129dcad1b7410e0dd8a9b087aaf3ec7ced929b1f57624ad98/data':
+	 'community.wave.seqera.io/library/gatk4_gcnvkernel:e48d414933d188cd' }"
 
     input:
     tuple val(meta), path(bam, name:"input/*"), path(bai, name:"input/*"), path(interval_list)
-    tuple val(meta2), path(reference)
+    path fasta
+    path fai
+    path dict
 
     output:
     tuple val(meta), path("*.bam"), path("*.bai"), emit: bam_bai
@@ -31,26 +33,26 @@ process PICARD_SETNMMDANDUQTAGS {
     }
 
     """
-    picard \\
-        -Xmx${avail_mem}M \\
-        FilterSamReads \\
-        --INPUT ${bam} \\
-        --INTERVAL_LIST ${interval_list} \\
-        --FILTER includePairedIntervals \\
-        --REFERENCE_SEQUENCE ${reference} \\
-        --OUTPUT x.bam
-    picard \\
-        -Xmx${avail_mem}M \\
+    gatk \\
+        --java-options "-Xmx${avail_mem}M" \\
+        PrintReads \\
+        --input ${bam} \\
+        --intervals ${interval_list} \\
+        --reference ${fasta} \\
+        --create-output-bam-index true \\
+        --output x.bam
+    gatk \\
+        --java-options "-Xmx${avail_mem}M" \\
         SetNmMdAndUqTags \\
         $args \\
         --CREATE_INDEX true \\
         --INPUT x.bam \\
         --OUTPUT ${prefix}.bam \\
-        --REFERENCE_SEQUENCE ${reference}
+        --REFERENCE_SEQUENCE ${fasta}
 rm -rf x.bam
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        picard: \$( echo \$(picard SetNmMdAndUqTags --version 2>&1) | grep -o 'Version:.*' | cut -f2- -d:)
+        gatk: \$( echo \$(gatk SetNmMdAndUqTags --version 2>&1) | grep -o 'Version:.*' | cut -f2- -d:)
     END_VERSIONS
     """
 
@@ -63,7 +65,7 @@ rm -rf x.bam
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        picard: \$( echo \$(picard SetNmMdAndUqTags --version 2>&1) | grep -o 'Version:.*' | cut -f2- -d:)
+        gatk: \$( echo \$(gatk SetNmMdAndUqTags --version 2>&1) | grep -o 'Version:.*' | cut -f2- -d:)
     END_VERSIONS
     """
 }
