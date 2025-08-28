@@ -74,7 +74,7 @@ workflow {
   doWF_QC              = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
-  doWF_mdParse         = (doWF_manta && doWF_scatter && doWF_facets && doWF_loh && doWF_SNV && doWF_msiSensor && doWF_mutSig) ? true : false
+  doWF_mdParse         = (doWF_facets || doWF_loh || doWF_SNV || doWF_msiSensor || doWF_mutSig) ? true : false
 
   doWF_AggregateFromResult = false
   doWF_AggregateFromProcess = false
@@ -255,17 +255,15 @@ workflow {
 
     if(doWF_mdParse)
     {
-      facets_wf.out.facetsPurity.combine(snv_wf.out.maf4MetaDataParser, by: [0,1,2])
-        .combine(facets_wf.out.FacetsQC4MetaDataParser, by: [0,1,2])
-        .combine(msiSensor_wf.out.msi4MetaDataParser, by: [0,1,2])
-        .combine(mutSig_wf.out.mutSig4MetaDataParser, by: [0,1,2])
-        .combine(loh_wf.out.hlaOutput, by: [1,2])
-        .unique()
-        .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
-        [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
-      }.set{ mergedChannelMetaDataParser }
-
-      mdParse_wf(mergedChannelMetaDataParser)
+      mdParse_wf(
+        bamFiles.map { [ it[0], it[1], it[2] ] },
+        doWF_facets ? facets_wf.out.facetsPurity : bamFiles.map { [ it[0], it[1], it[2], null ] },
+        doWF_SNV ? snv_wf.out.maf4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
+        doWF_facets ? facets_wf.out.FacetsQC4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
+        doWF_msiSensor ? msiSensor_wf.out.msi4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
+        doWF_mutSig ? mutSig_wf.out.mutSig4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
+        doWF_loh ? loh_wf.out.hlaOutput : bamFiles.map { [ ["placeHolder"], it[1], it[2], null ] }
+      )
     }
 
     if(doWF_QC && params.pairing)
