@@ -67,6 +67,8 @@ def defineReferenceMap() {
       result_array << ['svBlacklistBedpe' : checkParamReturnFile('svBlacklistBedpe')]
       result_array << ['svBlacklistFoldbackBedpe' : checkParamReturnFile('svBlacklistFoldbackBedpe')]
       result_array << ['svBlacklistTEBedpe' : checkParamReturnFile('svBlacklistTEBedpe')]
+    result_array << ['knownFusionGridss'  : checkParamReturnFile('knownFusionGridss')]
+    result_array << ['repeatMaskGridss' : checkParamReturnFile('repeatMaskGridss')]
     
   return result_array
 }
