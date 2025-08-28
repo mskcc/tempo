@@ -17,7 +17,7 @@ process AssemblyRunGRIDSS {
     
     script:
 
-    gridds_jar="/opt/gridss/gridss-2.13.2-gridss-jar-with-dependencies.jar"
+    gridss_jar="/opt/gridss/gridss-2.13.2-gridss-jar-with-dependencies.jar"
 
     """
 
@@ -75,7 +75,7 @@ process AssemblyRunGRIDSS {
         --jvmheap ${task.memory.toGiga() - 1}g \
         --otherjvmheap ${task.memory.toGiga() - 1}g \
         -r ${genomeFile} \
-        -j ${gridds_jar} \
+        -j ${gridss_jar} \
         -t 8 \
         -s assemble \
         -a assembly.bam \

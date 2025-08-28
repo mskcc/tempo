@@ -1,6 +1,6 @@
 process VariantCallGRIDSS {
     tag "${idTumor}_${idNormal}_VariantCall"
-    publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/GRIDDS", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi}"
+    publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/GRIDSS", mode: params.publishDirMode, pattern: "*.{vcf.gz,vcf.gz.tbi}"
     
     input:
     tuple path(normalBam), path(tumorBam),val(idTumor),val(baseTumor), path('mapT'), val(idNormal),val(baseNormal), path('mapN'),path('assembly1_'),path('assembly2_'),path('assembly3_'),path('assembly4_')
