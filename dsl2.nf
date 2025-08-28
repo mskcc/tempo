@@ -33,7 +33,8 @@ include { manta_wf }             from './modules/subworkflow/manta_wf'          
 include { msiSensor_wf }         from './modules/subworkflow/msiSensor_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { mutSig_wf }            from './modules/subworkflow/mutSig_wf'
 include { mdParse_wf }           from './modules/subworkflow/mdParse_wf'
-include { loh_wf }               from './modules/subworkflow/loh_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { hlaTyping_wf }         from './modules/subworkflow/hlaTyping_wf'        addParams(referenceMap: referenceMap, targetsMap: targetsMap)
+include { hlaLoH_wf }            from './modules/subworkflow/hlaLoH_wf'           addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { facets_wf }            from './modules/subworkflow/facets_wf'           addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { sv_wf }                from './modules/subworkflow/sv_wf'               addParams(referenceMap: referenceMap, targetsMap: targetsMap)
 include { snv_wf }               from './modules/subworkflow/snv_wf'              addParams(referenceMap: referenceMap, targetsMap: targetsMap)
@@ -58,7 +59,7 @@ WFs = params.workflows instanceof Boolean ? '' : params.workflows
 
 WFs = WFs.split(',').collect{it.trim().toLowerCase()}.unique()
 
-WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','sv','mutsig','germsnv','germsv','lohhla','facets','qc','msisensor', "neoantigen"] : WFs
+WFs = (!params.mapping && !params.bamMapping && aggregateParamIsFile) ? ['snv','sv','mutsig','germsnv','germsv','hlatyping','hlaLoH','facets','qc','msisensor', "neoantigen"] : WFs
 
 workflow {
   //Set flags for when each pipeline is required to run.
@@ -67,16 +68,17 @@ workflow {
   doWF_scatter         = ['snv', 'sv', 'mutsig', 'germsnv', 'neoantigen'].any(it -> it in WFs) ? true : false
   doWF_germSNV         = 'germsnv' in WFs ? true : false
   doWF_germSV          = 'germsv' in WFs ? true : false
-  doWF_facets          = ['lohhla', 'facets', 'snv', 'mutsig', 'germsnv', 'neoantigen'].any(it -> it in WFs) ? true : false
+  doWF_facets          = ['hlaloh', 'facets', 'snv', 'mutsig', 'germsnv', 'neoantigen'].any(it -> it in WFs) ? true : false
   doWF_SV              = 'sv' in WFs ? true : false
   doWF_facets          = doWF_SV && params.assayType == "genome" && ["hisens","purity"].contains(params.svcnv) ? true : doWF_facets
-  doWF_loh             = ['lohhla', 'mutsig', 'neoantigen'].any(it -> it in WFs) ? true : false
+  doWF_hlaTyping       = ['hlaloh', 'neoantigen', 'hlatyping'].any(it -> it in WFs) ? true : false
+  doWF_hlaLoH          = ['hlaloh', 'neoantigen'].any(it -> it in WFs) ? true : false
   doWF_SNV             = ['snv', 'mutsig', 'neoantigen'].any(it -> it in WFs) ? true : false
   doWF_neoantigen      = 'neoantigen' in WFs ? true : false
   doWF_QC              = 'qc' in WFs ? true : false
   doWF_msiSensor       = 'msisensor' in WFs ? true : false
   doWF_mutSig          = 'mutsig' in WFs ? true : false
-  doWF_mdParse         = (doWF_facets || doWF_loh || doWF_SNV || doWF_msiSensor || doWF_mutSig) ? true : false
+  doWF_mdParse         = (doWF_facets || doWF_hlaTyping || doWF_SNV || doWF_msiSensor || doWF_mutSig) ? true : false
 
   doWF_AggregateFromResult = false
   doWF_AggregateFromProcess = false
@@ -190,9 +192,14 @@ workflow {
       germlineSNV_wf(bams, bamsTumor, scatter_wf.out.mergedIList, facets_wf.out.facetsForMafAnno)
     }
 
-    if(doWF_loh)
+    if(doWF_hlaTyping)
     {
-      loh_wf(bams, bamFiles, facets_wf.out.facetsPurity)
+      hlaTyping_wf(bams)
+    }
+
+    if(doWF_hlaLoH)
+    {
+      hlaLoH_wf(hlaTyping_wf.out.hlaOutput, bamFiles, facets_wf.out.facetsPurity)
     }
 
     if(doWF_SNV)
@@ -202,7 +209,7 @@ workflow {
 
     if(doWF_neoantigen)
     {
-      neoantigen_wf(snv_wf.out.mafFile, loh_wf.out.hlaOutput)
+      neoantigen_wf(snv_wf.out.mafFile, hlaTyping_wf.out.hlaOutput)
     }
 
 
@@ -263,17 +270,19 @@ workflow {
 
     if(doWF_mdParse)
     {
-		bamFiles.map { [ it[0], it[1], it[2] ] }
-		.combine(doWF_facets ? facets_wf.out.facetsPurity : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
+	bamFiles.map { [ it[0], it[1], it[2] ] }
+	.combine(doWF_facets ? facets_wf.out.facetsPurity : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_SNV ? snv_wf.out.maf4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_facets ? facets_wf.out.FacetsQC4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_msiSensor ? msiSensor_wf.out.msi4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_mutSig ? mutSig_wf.out.mutSig4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_loh ? loh_wf.out.hlaOutput : bamFiles.map { [ ["placeHolder"], it[1], it[2], [] ] }, by: [1,2])
         .unique()
-        .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
-        [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
-      }.set{ mergedChannelMetaDataParser }
+        .map{ 
+	    idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
+            [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
+	}
+	.set{ mergedChannelMetaDataParser }
 
       mdParse_wf(mergedChannelMetaDataParser)
     }
@@ -317,7 +326,7 @@ workflow {
         doWF_neoantigen ? neoantigen_wf : false,
         doWF_SV && doWF_SNV && params.assayType == "genome" ? hrdetect_wf : false,
         doWF_SV && doWF_SNV && params.assayType == "genome" ? clonality_wf : false,
-        doWF_loh ? loh_wf : false,
+        doWF_hlaLoH ? hlaLoH_wf : false,
         doWF_mdParse ? mdParse_wf : false,
         doWF_germSNV ? germlineSNV_wf : false,
         doWF_germSV ? germlineSV_wf : false,
