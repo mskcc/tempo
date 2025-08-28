@@ -4,7 +4,7 @@
 include { PreprocessRunGRIDSS }   from '../process/SV/GRIDSS/PreprocessRunGRIDSS'
 include { AssemblyRunGRIDSS }     from '../process/SV/GRIDSS/AssemblyRunGRIDSS'
 include { VariantCallGRIDSS }     from '../process/SV/GRIDSS/VariantCallGRIDSS'
-include { FilterGRIPPS }          from '../process/SV/GRIDSS/FilterGRIPPS'
+//include { FilterGRIPPS }          from '../process/SV/GRIDSS/FilterGRIPPS'
 
 
 workflow gridss_wf {
