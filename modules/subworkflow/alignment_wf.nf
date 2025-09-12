@@ -1,7 +1,7 @@
 include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
 include { AlignReads }                 from '../process/Alignment/AlignReads'
 include { GATK4SPARK_MARKDUPLICATES } from '../nf-core/gatk4spark/markduplicates/main'
-include { GATK4_SETNMMDANDUQTAGS } from '../local/gatk4/setnmmdanduqtags/main'
+include { GATK4SPARK_SETNMMDANDUQTAGS } from '../local/gatk4spark/setnmmdanduqtags/main'
 include { GATK4_SPLITINTERVALS as BQSR_SPLITINTERVALS } from '../nf-core/gatk4/splitintervals/main'
 include { GATK4SPARK_BASERECALIBRATOR } from '../nf-core/gatk4spark/baserecalibrator/main'
 include { GATK4_GATHERBQSRREPORTS } from '../nf-core/gatk4/gatherbqsrreports/main'
@@ -207,10 +207,10 @@ workflow alignment_wf
 					 .map{[it[1] + [num_intervals:it[4]], it[2], it[3], it[5]]}
       // Channel Contains [meta, bam, bai, interval]
 
-      GATK4_SETNMMDANDUQTAGS(bam_and_intervals, referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict)
+      GATK4SPARK_SETNMMDANDUQTAGS(bam_and_intervals, referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict)
 
     // Join with the bai file
-      settags_bam_bai = GATK4_SETNMMDANDUQTAGS.out.bam_bai.map{[it[0], it[1], it[2], []]}
+      settags_bam_bai = GATK4SPARK_SETNMMDANDUQTAGS.out.bam_bai.map{[it[0], it[1], it[2], []]}
 
       GATK4SPARK_BASERECALIBRATOR(
 	     settags_bam_bai,
@@ -291,7 +291,7 @@ workflow alignment_wf
 
     // Gather versions of all tools used
       versions = versions.mix(GATK4SPARK_MARKDUPLICATES.out.versions)
-      versions = versions.mix(GATK4_SETNMMDANDUQTAGS.out.versions)
+      versions = versions.mix(GATK4SPARK_SETNMMDANDUQTAGS.out.versions)
       versions = versions.mix(GATK4SPARK_BASERECALIBRATOR.out.versions)
       versions = versions.mix(GATK4_GATHERBQSRREPORTS.out.versions)
       versions = versions.mix(GATK4SPARK_APPLYBQSR.out.versions)
