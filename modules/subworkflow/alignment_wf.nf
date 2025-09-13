@@ -216,7 +216,7 @@ workflow alignment_wf
           single:   it[0].num_intervals <= 1
           multiple: it[0].num_intervals > 1
       }
-bam_settags_to_merge_index.multiple.view()
+
       // Only when using intervals
       MERGE_SETTAGS_BAM(
 	  bam_settags_to_merge_index.multiple,
