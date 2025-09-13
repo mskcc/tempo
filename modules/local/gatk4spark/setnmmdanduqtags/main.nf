@@ -9,13 +9,13 @@ process GATK4SPARK_SETNMMDANDUQTAGS {
         'biocontainers/gatk4-spark:4.6.1.0--hdfd78af_0' }"
 
     input:
-    tuple val(meta), path(bam, name:"input/*"), path(bai, name:"input/*"), path(interval_list)
+    tuple val(meta), path(bam, name:"input/*"), path(bai, name:"input/*"), path(intervals)
     path fasta
     path fai
     path dict
 
     output:
-    tuple val(meta), path("*.bam"), path("*.bai"), emit: bam_bai
+    tuple val(meta), path("*.bam")	 	 , emit: bam
     path "versions.yml"                          , emit: versions
 
     when:
@@ -37,7 +37,7 @@ process GATK4SPARK_SETNMMDANDUQTAGS {
         --java-options "-Dsamjdk.compression_level=2 -Xmx${avail_mem}M -XX:-UsePerfData" \\
         PrintReadsSpark \\
         --input ${bam} \\
-        --intervals ${interval_list} \\
+        --intervals ${intervals} \\
         --reference ${fasta} \\
         --create-output-bam-index true \\
         --spark-master local[${task.cpus}] \\
@@ -46,7 +46,7 @@ process GATK4SPARK_SETNMMDANDUQTAGS {
         --java-options "-Dsamjdk.compression_level=2 -Dsamjdk.compression_level=1 -Xmx${avail_mem}M" \\
         SetNmMdAndUqTags \\
         $args \\
-        --CREATE_INDEX true \\
+        --CREATE_INDEX false \\
         --INPUT tmp.bam \\
         --OUTPUT ${prefix}.bam \\
         --REFERENCE_SEQUENCE ${fasta}
