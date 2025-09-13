@@ -234,7 +234,6 @@ workflow alignment_wf
 
       // Join with the bai file
       bam_bai_settags = bam_settags_all.join(INDEX_SETTAGS_BAM.out.bai, failOnDuplicate: true, failOnMismatch: true)
-bam_bai_settags.view()
       bam_settags_and_intervals = bam_bai_settags.map{[it[0].target, it[0], it[1], it[2]]}
 					 .combine(split_interval, by: 0)
 					 .transpose()
