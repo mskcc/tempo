@@ -5,7 +5,8 @@ process QcBamAggregate {
 
   input:
     tuple val(cohort), path(alfredIgnoreYTumor), path(alfredIgnoreYNormal), path(alfredIgnoreNTumor), path(alfredIgnoreNNormal), file(hsMetricsTumor), file(hsMetricsNormal)
-    
+    path(aggregate_qc_Rscript)
+
   output:
     path('alignment_qc.txt'), emit: alignmentQcAggregatedOutput
 
@@ -17,6 +18,6 @@ process QcBamAggregate {
     assayType = 'wgs'
   }
   """
-  Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R -n ${task.cpus} -a ${assayType}
+  Rscript --no-init-file ${aggregate_qc_Rscript} -n ${task.cpus} -a ${assayType}
   """
 }
