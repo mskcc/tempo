@@ -34,6 +34,7 @@ process QcCollectHsMetrics {
   """
   gatk CollectHsMetrics \
     ${javaOptions} \
+    --COVERAGE_CAP 1000 \
     --TMP_DIR ./ \
     --INPUT ${bam} \
     --OUTPUT ${idSample}.hs_metrics.txt \
