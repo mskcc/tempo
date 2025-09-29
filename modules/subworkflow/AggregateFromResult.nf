@@ -136,7 +136,7 @@ workflow aggregateFromResult
     inputAlfredIgnoreY.join(inputAlfredIgnoreN)
               .join(inputHsMetrics)
               .set{ inputQcBamAggregate }
-    QcBamAggregate(inputQcBamAggregate)
+    QcBamAggregate(inputQcBamAggregate, workflow.projectDir + "/containers/metadataparser/create-aggregate-qc-file.R")
 
     inputConpairConcord4Aggregate.join(inputConpairContami4Aggregate)
         .set{ inputQcConpairAggregate }
