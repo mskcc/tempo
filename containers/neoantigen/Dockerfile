@@ -1,14 +1,14 @@
 FROM ubuntu:18.04
 
 LABEL maintainer="Allan Bolipata <bolipatc@mskcc.org>, Evan Biederstedt <evan.biederstedt@gmail.com>, Yixiao Gong <gongy@mskcc.org>" \
-    version.image="0.3.2-hotfix" \
-    version.neoantigen-dev="0.3.2-hotfix" \
+    version.image="0.3.3" \
+    version.neoantigen-dev="0.3.3" \
     version.netMHC="4.0a" \
     version.netMHCpan="4.0a" \
     version.python="2.7.15rc1"
 
 ENV TMPDIR="/tmp"
-ENV NEOANTIGEN_VERSION 0.3.2-hotfix
+ENV NEOANTIGEN_VERSION="0.3.3"
 
 RUN apt-get update && apt-get install -y \
     tcsh \
@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y \
     wget \
     &&  apt-get clean && apt-get purge \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN pip install --upgrade pip setuptools
 
 # For copying netMHC and netMHCpan gz files for installation. This Dockerfile expects them to be in the same directory
 # NOTE: You will have to acquire them through their website, as they are not readily available for download from:
@@ -31,7 +33,7 @@ RUN tar -xvf /tmp/netMHC/netMHC-4.0a.Linux.tar.gz -C /usr/local/bin \
 
 # Install netMHC data
 RUN cd /usr/local/bin/netMHC-4.0/ \
-    && wget http://www.cbs.dtu.dk/services/NetMHC-4.0/data.tar.gz \
+    && wget https://services.healthtech.dtu.dk/services/NetMHC-4.0/data.tar.gz \
     && gunzip -c data.tar.gz | tar xvf - \
     && rm data.tar.gz
 
@@ -42,7 +44,7 @@ RUN tar -xvf /tmp/netMHC/netMHCpan-4.0a.Linux.tar.gz -C /usr/local/bin \
 
 # Install netMHCpan data; directory needed permission changes, drwxr-xr-x
 RUN cd /usr/local/bin/netMHCpan-4.0/ \
-    && wget http://www.cbs.dtu.dk/services/NetMHCpan-4.0/data.Linux.tar.gz \
+    && wget https://services.healthtech.dtu.dk/services/NetMHCpan-4.0/data.Linux.tar.gz \
     && tar -zxvf data.Linux.tar.gz \
     && chmod -R o+rx data/ \
     && rm -rf data.Linux.tar.gz
