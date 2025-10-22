@@ -1,6 +1,7 @@
 process RunPolysolver {
   tag "${idNormal}"
-  
+  publishDir "${params.outdir}/polysolver", mode: 'copy', enabled: false  // Disabled publishing
+
   input:
     tuple val(idNormal), val(target), path(bamNormal), path(baiNormal)
 

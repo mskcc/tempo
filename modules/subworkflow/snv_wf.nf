@@ -42,7 +42,6 @@ workflow snv_wf
     }
     .transpose()
     .set{ mergedChannelSomatic }
-
     RunMutect2(mergedChannelSomatic, 
           Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
 

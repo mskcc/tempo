@@ -2,7 +2,7 @@ process SomaticDellyCall {
   tag "${idTumor + "__" + idNormal + '@' + svType}"
 
   publishDir "${params.outDir}/somatic/${idTumor}__${idNormal}/delly", mode: params.publishDirMode, pattern: "*.delly.vcf.{gz,gz.tbi}"
-  
+  array 5
   input:
     each svType
     tuple val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal)

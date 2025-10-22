@@ -1,6 +1,6 @@
 process RunMutect2 {
   tag "${idTumor + "__" + idNormal + "@" + intervalBed.baseName}"
-
+  array params.scatterCount
   input:
     tuple val(id), val(idTumor), val(idNormal), val(target), path(bamTumor), path(baiTumor), path(bamNormal), path(baiNormal), path(intervalBed)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)

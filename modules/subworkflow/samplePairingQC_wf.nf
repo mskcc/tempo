@@ -51,6 +51,7 @@ workflow samplePairingQC_wf
 
     QcConpair(pileupConpair, Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict]))
     conpair4Aggregate = QcConpair.out.conpair4Aggregate.map{ ["placeHolder"] + it }
+    conpairOutput = QcConpair.out.conpairOutput.map{ ["placeHolder"] + it }
 
     if(runConpairAll){
       pileupT.combine(pileupN).unique().set{ pileupConpairAll }
