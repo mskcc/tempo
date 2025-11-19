@@ -5,7 +5,7 @@ include { GATK4_SPLITINTERVALS as BQSR_SPLITINTERVALS } from '../nf-core/gatk4/s
 include { GATK4SPARK_BASERECALIBRATOR } from '../nf-core/gatk4spark/baserecalibrator/main'
 include { GATK4_GATHERBQSRREPORTS } from '../nf-core/gatk4/gatherbqsrreports/main'
 include { GATK4SPARK_APPLYBQSR      } from '../nf-core/gatk4spark/applybqsr/main'
-include { SAMTOOLS_MERGE as MERGE_BAM       } from '../nf-core/samtools/merge/main'
+include { SAMTOOLS_MERGE as MERGE_BQSR_BAM       } from '../nf-core/samtools/merge/main'
 include { SAMTOOLS_INDEX as INDEX_BQSR_BAM } from '../nf-core/samtools/index/main'
 
 workflow alignment_wf
@@ -251,14 +251,14 @@ workflow alignment_wf
     }
 
     // Only when using intervals
-    MERGE_BAM(
+    MERGE_BQSR_BAM(
 	bam_to_merge_index.multiple,
 	Channel.fromPath(params.genomes[params.genome].genomeFile).collect().map{ it -> [ [ id:'fasta' ], it ] },
 	Channel.fromPath(params.genomes[params.genome].genomeIndex).collect().map{ it -> [ [ id:'fasta_fai' ], it ] }
     )
 
     // Mix intervals and no_intervals channels together
-    bam_all = MERGE_BAM.out.bam.mix(bam_to_merge_index.single.map{ meta, bam -> [ meta, bam[0] ] })
+    bam_all = MERGE_BQSR_BAM.out.bam.mix(bam_to_merge_index.single.map{ meta, bam -> [ meta, bam[0] ] })
 			       .map{ meta, bam -> [ meta - meta.subMap('num_intervals'), bam ] }
         // Remove no longer necessary field: num_intervals
 
@@ -288,7 +288,7 @@ workflow alignment_wf
       versions = versions.mix(GATK4SPARK_BASERECALIBRATOR.out.versions)
       versions = versions.mix(GATK4_GATHERBQSRREPORTS.out.versions)
       versions = versions.mix(GATK4SPARK_APPLYBQSR.out.versions)
-      versions = versions.mix(MERGE_BAM.out.versions.first())
+      versions = versions.mix(MERGE_BQSR_BAM.out.versions.first())
       versions = versions.mix(INDEX_BQSR_BAM.out.versions.first())
     }
     else{
