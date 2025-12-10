@@ -255,15 +255,19 @@ workflow {
 
     if(doWF_mdParse)
     {
-      mdParse_wf(
-        bamFiles.map { [ it[0], it[1], it[2] ] },
-        doWF_facets ? facets_wf.out.facetsPurity : bamFiles.map { [ it[0], it[1], it[2], null ] },
-        doWF_SNV ? snv_wf.out.maf4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
-        doWF_facets ? facets_wf.out.FacetsQC4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
-        doWF_msiSensor ? msiSensor_wf.out.msi4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
-        doWF_mutSig ? mutSig_wf.out.mutSig4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], null ] },
-        doWF_loh ? loh_wf.out.hlaOutput : bamFiles.map { [ ["placeHolder"], it[1], it[2], null ] }
-      )
+      	bamFiles.map { [ it[0], it[1], it[2] ] },
+		.combine(doWF_facets ? facets_wf.out.facetsPurity : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
+        .combine(doWF_SNV ? snv_wf.out.maf4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
+        .combine(doWF_facets ? facets_wf.out.FacetsQC4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
+        .combine(doWF_msiSensor ? msiSensor_wf.out.msi4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
+        .combine(doWF_mutSig ? mutSig_wf.out.mutSig4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
+        .combine(doWF_loh ? loh_wf.out.hlaOutput : bamFiles.map { [ ["placeHolder"], it[1], it[2], [] ] }, by: [1,2])
+        .unique()
+        .map{ idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
+        [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
+      }.set{ mergedChannelMetaDataParser }
+
+      mdParse_wf(mergedChannelMetaDataParser)
     }
 
     if(doWF_QC && params.pairing)
