@@ -255,7 +255,7 @@ workflow {
 
     if(doWF_mdParse)
     {
-      	bamFiles.map { [ it[0], it[1], it[2] ] },
+		bamFiles.map { [ it[0], it[1], it[2] ] },
 		.combine(doWF_facets ? facets_wf.out.facetsPurity : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_SNV ? snv_wf.out.maf4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_facets ? facets_wf.out.FacetsQC4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
