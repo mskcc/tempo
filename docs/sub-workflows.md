@@ -14,10 +14,12 @@ Possible subworkflow arguments are: Possible options are
 * `mutsig` 
 * `germSNV` 
 * `germSV`
-* `lohhla`
+* `hlaLoH`
 * `facets`
 * `qc`
-* `msisensor` 
+* `msisensor`
+* `hlatyping`
+* `neoantigen`
 
 ## Sub-Workflow Processes & Dependencies
 Each sub-workflow consists of one or more DSL2 style nextflow modules.  A sub-workflow acts as a wrapper that handles the input/output processing and module execution.  A description of the processes executed by each sub-workflow are provided below.
