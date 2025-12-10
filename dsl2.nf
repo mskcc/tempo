@@ -276,9 +276,9 @@ workflow {
         .combine(doWF_facets ? facets_wf.out.FacetsQC4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_msiSensor ? msiSensor_wf.out.msi4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
         .combine(doWF_mutSig ? mutSig_wf.out.mutSig4MetaDataParser : bamFiles.map { [ it[0], it[1], it[2], [] ] }, by: [0,1,2])
-        .combine(doWF_loh ? loh_wf.out.hlaOutput : bamFiles.map { [ ["placeHolder"], it[1], it[2], [] ] }, by: [1,2])
+        .combine(doWF_hlaTyping ? loh_wf.out.hlaOutput : bamFiles.map { [ ["placeHolder"], it[1], it[2], [] ] }, by: [1,2])
         .unique()
-        .map{ 
+        .map{
 	    idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile ->
             [idNormal, target, idTumor, purityOut, mafFile, qcOutput, msifile, mutSig, placeHolder, polysolverFile, targetsMap."$target".codingBed]
 	}
