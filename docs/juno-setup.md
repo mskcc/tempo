@@ -37,16 +37,16 @@ The command `which singularity` should return `/opt/local/singularity/3.1.1/bin/
 
 ## Java Version
 
-Nextflow requires Java version 8 or later. On Juno, you can load it using `module`:
+Nextflow requires Java version 11 or later. On Juno, you can load it using `module`:
 ```shell
-module load java/jdk1.8.0_202
+module load java/jdk-11.0.11
 ```
 or put it in your `PATH` by inserting this into your bash profile:
 ```shell
-export JAVA_HOME=/opt/common/CentOS_7/java/jdk1.8.0_202/
+export JAVA_HOME=/opt/common/CentOS_7/java/jdk-11.0.11/
 export PATH=$JAVA_HOME/bin:$PATH
 ```
-The call `which java` should return `/opt/common/CentOS_7/java/jdk1.8.0_202/bin/java` if you have done this correctly.
+The call `which java` should return `/opt/common/CentOS_7/java/jdk-11.0.11/bin/java` if you have done this correctly.
 
 ## Test Your Environment
 
@@ -59,4 +59,5 @@ nextflow run dsl2.nf \
     -profile test_singularity \
     --outDir results
     --aggregate
+    --workflows="SNV,qc,lohhla" \
 ```
