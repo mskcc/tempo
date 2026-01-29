@@ -69,7 +69,11 @@ workflow snv_wf
 
     SomaticAnnotateMaf(SomaticCombineChannel.out.mutationMergedVcf,
                         Channel.value([referenceMap.genomeFile, referenceMap.genomeIndex, referenceMap.genomeDict,
-                                        referenceMap.vepCache, referenceMap.isoforms]))
+                                        referenceMap.vepCache, referenceMap.isoforms]),
+                        ["test","test_singularity"].contains(workflow.profile) ?
+                            Channel.value([file(workflow.projectDir + "/containers/vcf2maf/oncokb_genes.json")]) :
+                            Channel.value([])
+                                        )
 
 
     hlaOutput.combine(SomaticAnnotateMaf.out.mafFile, by: [1,2]).set{ input4Neoantigen }

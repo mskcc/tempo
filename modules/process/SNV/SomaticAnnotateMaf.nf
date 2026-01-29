@@ -6,6 +6,7 @@ process SomaticAnnotateMaf {
   input:
     tuple val(idTumor), val(idNormal), val(target), path(vcfMerged)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict), path(vepCache), path(isoforms)
+    path(oncokb_genes) // used for test, test_singularity profile only
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.maf"), emit: mafFile
@@ -44,10 +45,16 @@ process SomaticAnnotateMaf {
     --output-maf ${outputPrefix}.raw.maf \
     --filter-vcf 0
     
+  if [ "${! ["test","test_singularity"].contains(workflow.profile) ? true : false}" == "true" ] ; then
   python /usr/bin/oncokb_annotator/MafAnnotator.py \
     -u "https://data-legacy.oncokb.aws.mskcc.org/api/v1/" \
     -i ${outputPrefix}.raw.maf \
     -o ${outputPrefix}.raw.oncokb.maf
+  else
+  echo -en "\$(head -2 ${outputPrefix}.raw.maf | tail -1)" > ${outputPrefix}.raw.oncokb.maf
+  echo -e "mutation_effect\\toncogenic\\tLEVEL_1\\tLEVEL_2A\\tLEVEL_2B\\tLEVEL_3A\\tLEVEL_3B\\tLEVEL_4\\tLEVEL_R1\\tLEVEL_R2\\tLEVEL_R3\\tHighest_level\\tcitations" >> ${outputPrefix}.raw.oncokb.maf
+  sed 's/\$/\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t/' ${outputPrefix}.raw.maf | tail -n +2 >> ${outputPrefix}.raw.oncokb.maf
+  fi
 
   Rscript --no-init-file /usr/bin/filter-somatic-maf.R \
     --tumor-vaf ${params.somaticVariant.tumorVaf} \
@@ -59,6 +66,6 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix} \
-    --onco "https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/"
+    --onco "${["test","test_singularity"].contains(workflow.profile) ? oncokb_genes : "https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/" }"
   """
 }
