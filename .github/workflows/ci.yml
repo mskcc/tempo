@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      NXF_VER: "25.08.0-edge"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clean up Disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+
+      - name: Set up Java (OpenJDK 8)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Ensure pip is up-to-date
+        run: python -m pip install --upgrade pip
+
+      - name: Set up Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: "${{ env.NXF_VER }}"
+
+      - name: Download and extract test-data
+        # If your data is public this will work. If it's private, see notes below.
+        run: |
+          wget -O test-data.tar.gz --no-check-certificate 'https://drive.usercontent.google.com/download?export=download&confirm=no_antivirus&id=13zUVw4BZ0_5QAW7zmdCsZ_CZDHbNxyMV'
+          tar -xzvf test-data.tar.gz
+
+      - name: Install Python deps (if requirements.txt exists)
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Run tests
+        run: |
+          python3 tests/test_runner.py tests/tests.json
+
