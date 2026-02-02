@@ -2,13 +2,13 @@ FROM halllab/bcftools:v1.9
 
 LABEL maintainer="Anne Marie Noronha (noronhaa@mskcc.org)" \
       version.ubuntu="18.04" \
-      version.delly="1.2.6" \
+      version.delly="1.5.0" \
       version.htslib="1.20" \
-      version.image="0.0.3"
+      version.image="0.0.4"
 
 # set the environment variables
-ENV delly_version 1.2.6
-ENV htslib_version 1.20
+ENV delly_version=1.5.0
+ENV htslib_version=1.20
 
 # APT repository has moved to archive. Sources needs to change.
 RUN sed -i /stretch-updates/d /etc/apt/sources.list
@@ -16,7 +16,7 @@ RUN sed -i "s/security.debian/archive.debian/g" /etc/apt/sources.list
 RUN sed -i "s/deb.debian/archive.debian/g" /etc/apt/sources.list
 
 # run update
-RUN apt-get update -y && apt-get install -y \
+RUN apt-get update -y && apt-get install -y --allow-unauthenticated \
     libnss-sss \
     curl \
     less \
@@ -43,7 +43,7 @@ RUN tar -xjf /usr/local/bin/htslib-${htslib_version}.tar.bz2 -C /usr/local/bin/
 RUN cd /usr/local/bin/htslib-${htslib_version}/ && ./configure
 RUN cd /usr/local/bin/htslib-${htslib_version}/ && make
 RUN cd /usr/local/bin/htslib-${htslib_version}/ && make install
-ENV LD_LIBRARY_PATH /usr/local/bin/htslib-${htslib_version}/
+ENV LD_LIBRARY_PATH=/usr/local/bin/htslib-${htslib_version}/
 
 # install delly
 WORKDIR /usr/local/bin
