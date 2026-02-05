@@ -1,0 +1,1725 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="CCS Research Pipeline for Whole-Genome and Whole-Exome Sequencing">
+      
+      
+      
+        <link rel="canonical" href="https://mskcc.github.io/tempo/enhancement-change_doc_hosting/variant-annotation-and-filtering/">
+      
+      
+        <link rel="prev" href="../wes-panel-of-normals/">
+      
+      
+        <link rel="next" href="../troubleshooting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Variant Annotation and Filtering - Tempo</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#variant-annotation-and-filtering" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tempo" class="md-header__button md-logo" aria-label="Tempo" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tempo
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Variant Annotation and Filtering
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mskcc/tempo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mskcc/tempo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+  Setup
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../running-the-pipeline/" class="md-tabs__link">
+          
+  
+  
+  Usage
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../outputs/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Outputs
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../bioinformatic-components/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Bioinformatic Components
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference-files/" class="md-tabs__link">
+          
+  
+  
+  Reference Resources
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Variant Annotation and Filtering
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../troubleshooting/" class="md-tabs__link">
+          
+  
+  
+  Help and Other Resources
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tempo" class="md-nav__button md-logo" aria-label="Tempo" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tempo
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mskcc/tempo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mskcc/tempo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Setup
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../juno-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Juno Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../running-the-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running the Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nextflow-basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nextflow Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../working-with-containers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working with Containers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Outputs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bioinformatic-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bioinformatic Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference Resources
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference Resources
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gnomad/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GnomAD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wes-panel-of-normals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WES Panel of Normals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Variant Annotation and Filtering
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Variant Annotation and Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#somatic-snvs-and-indels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Somatic SNVs and Indels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Somatic SNVs and Indels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#whitelisting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Whitelisting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clonality-and-zygosity-analyses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clonality and Zygosity Analyses
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Clonality and Zygosity Analyses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clonality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clonality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zygosity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zygosity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#germline-snvs-and-indels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Germline SNVs and Indels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Germline SNVs and Indels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zygosity-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zygosity Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#somatic-and-germline-svs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Somatic and Germline SVs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Somatic and Germline SVs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering-and-annotating-structural-variant-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering and annotating structural variant calls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#structural-variant-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structural Variant Classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bedpe-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BEDPE Format
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help and Other Resources
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Help and Other Resources
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing-to-tempo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../acknowledgements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#somatic-snvs-and-indels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Somatic SNVs and Indels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Somatic SNVs and Indels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#whitelisting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Whitelisting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clonality-and-zygosity-analyses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clonality and Zygosity Analyses
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Clonality and Zygosity Analyses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clonality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clonality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zygosity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zygosity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#germline-snvs-and-indels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Germline SNVs and Indels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Germline SNVs and Indels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#zygosity-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zygosity Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#somatic-and-germline-svs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Somatic and Germline SVs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Somatic and Germline SVs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering-and-annotating-structural-variant-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering and annotating structural variant calls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#structural-variant-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structural Variant Classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bedpe-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BEDPE Format
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="variant-annotation-and-filtering">Variant Annotation and Filtering</h1>
+<p>:::tip Note
+Hard-coded filter thresholds are viewable and editable in the configuration files here:
+* <a href="https://github.com/mskcc/tempo/blob/develop/conf/exome.config">Exomes</a>
+* <a href="https://github.com/mskcc/tempo/blob/develop/conf/genome.config">Genomes</a></p>
+<p>:::</p>
+<p>::: warning Be aware
+* These components of the pipeline are subject to constant change.
+* Users should be aware of the pitfalls and challenges of filtering somatic variant calls, which are not further discussed here.
+:::</p>
+<h2 id="somatic-snvs-and-indels">Somatic SNVs and Indels</h2>
+<p>Variant-level annotation, filtering, and flagging of variants with further filter flags occur in the <code>SomaticCombineChannel</code> and <code>SomaticAnnotateMaf</code> processes. The union of variants that pass the somatic scoring models intrinsic to the callers (<code>FILTER="PASS"</code> in the VCF files) are combined, giving precedence to MuTect2 for any site where both callers detected a variant. </p>
+<p>The functional effect of variants is predicted using <a href="https://www.ensembl.org/vep">VEP</a> using <a href="https://github.com/mskcc/vcf2maf">vcf2maf</a>, which also converts from VCF into a tab-delimited MAF file. See notes on use of <a href="../reference-files/#preferred-transcript-isoforms">preferred transcript isoforms</a> and <a href="https://useast.ensembl.org/info/docs/tools/vep/vep_formats.html#output">VEP annotation outputs</a>.</p>
+<p>The following columns are added to the final MAF file, in addition to those added during the VEP annotation:
+- <code>Strelka2FILTER</code>: Indicates that Strelka2 detected the variant but did not classify it as a somatic variant.
+- <code>gnomAD_FILTER</code>: Indicates that the variant was detected in the gnomAD workflow, but ultimately <em>not</em> classified as a <em>germline</em> variant. Note that this is not used in current filtering schema.
+- <code>RepeatMasker</code> and <code>EncodeDacMapability</code>: The variant locus is in a repeat, low-mappability, or hard-to-sequence region. More details in the <a href="../reference-files/#repeatmasker-and-mappability-blacklist">reference file description</a>.
+- <code>PoN</code>: Panel-of-normals, the number of normal samples in which the variant was detected. <a href="../wes-panel-of-normals/">More details on the implementation for exomes</a>. Under development for genomes, currently applies exome PoN. 
+- <code>Ref_Tri</code>: Trinucleotide context of SNVs, normalized to pyrimidine-to-purine transversions.
+- gnomAD allele frequencies, <a href="../gnomad/">more details here</a>:
+    - Exomes, columns named <code>non_cancer_*</code>: Allele counts (<code>AC</code>) and frequencies (<code>AF</code>) for the variant in the non-TCGA population and sub-populations of gnomAD.
+    - Genomes, columns named (<code>AC_*</code>|<code>AF_*</code>): Allele counts and frequencies for the variant in populations and sub-populations of gnomAD.
+- Raw allele counts: total and strand specific (<code>*_fwd</code> and <code>*_rev</code>) allele <code>count</code> and <code>depth</code> for tumor (<code>t_*</code>) and normal (<code>n_*</code>). These are unfiltered values, in contrast to those from the variant callers, generated by <a href="https://github.com/zengzheng123/GetBaseCountsMultiSample">GetBaseCountsMultiSample</a>.
+- <code>alt_bias</code>: For variants with a <em>raw</em> depth of at least 5 reads, this is true if all <em>raw</em> variant-supporting reads are on either the forward or reverse strand.
+- <code>ref_bias</code>: For variants with a <em>raw</em> depth of at least 5 reads, this is true if all <em>raw</em> reads are on either the forward or reverse strand.
+- Mutation hotspots, also see :
+    - <code>snv_hotspot</code>: SNV hotspots.
+    - <code>threeD_hotspot</code>: 3D hotspots, in contrast to abovementioned "linear" hotspots.
+    - <code>indel_hotspot</code> and <code>indel_hotspot_type</code>: In-frame indel indel hotspots, and indication of whether it overlaps a prior indel hotspot locus (<code>prior</code>) or overlaps an SNV hotspot (<code>novel</code>).
+    - <code>Hotspot</code>: <code>TRUE</code> if either a linear SNV or indel hotspot.
+- OncoKB annotation:
+    - <code>mutation_effect</code> and <code>oncogenic</code>: Indicate the functional effect of the mutation and whether it is deemed to be oncogenic
+    - <code>LEVEL_*</code> and <code>Highest_level</code>: Indicates whether there is any drug at the given level of actionability and which is the highest level of actionability, if any. Note that this is cancer-type agnostic in current implementation.
+    - <code>citations</code>: References for OncoKB annotation.
+::: Be aware
+* Because TEMPO is blind of the cancer type (<code>ONCOTREE_CODE</code>) when running, so Level1s and 2As can not be annotated. The highest level will be Level 2B. You will need to re-run <code>oncokb_annotator/MafAnnotator.py</code> with this information to get detailed oncokb level.
+:::
+- Variant caller metadata (development feature, subject to changes):
+    - MuTect2<sup>1</sup>:
+        - <code>MBQ</code>: Median base quality, comma-separated for reference and alternate allele.
+        - <code>MFRL</code>: Median fragment length, comma-separated for reference and alternate allele.
+        - <code>MMQ</code>: Median mapping quality, comma-separated for reference and alternate allele.
+        - <code>MPOS</code>: Median distance of variant from end of read.
+        - <code>OCM</code>: Number of reads whose original alignment does not match the reference.
+        - <code>RPA</code>: If tandem repeat, number of times repeated (can be comma-separated for reference and alternate allele).
+        - <code>STR</code>: Boolean, indicating that variant is a short tandem repeat.
+        - <code>ECNT</code>: Number of events in haplotype.
+    - Strelka2<sup>2</sup>:
+        - <code>MQ</code>: Root mean square mapping quality.
+        - <code>SNVSB</code>: Strand bias for somatic SNVs.
+        - <code>FDP</code>: Number of basecalls filtered from original read depth for tier 1* read counts, for tumor (<code>t_FDP</code>) and normal (<code>n_FDP</code>).
+        - <code>SUBDP</code>: Number of reads below tier 1 mapping-quality threshold aligned across site, for tumor (<code>t_SUBDP</code>) and normal (<code>n_SUBDP</code>).
+        - <code>RU</code>: If indel, smallest repeating sequence unit in inserted or deleted sequence.
+        - <code>IC</code>: If indel, number of times <code>RU</code> is repeated in variant.</p>
+<p>The <code>FILTER</code> column in the unfiltered MAF file, can contain any semi colon-separated combination of the following filter flags, or say <code>PASS</code>:
+- <code>part_of_mnv</code>: The variant is likely part of another called multi-nucleotide variant (MNV).
+- <code>multiallelic2</code>: Multiallelic loci, likely artifact. For variants called by Strelka2. The <code>2</code> is added due the presence of <code>multiallelic</code> flag in the MuTect2 VCFs.
+- <code>strand_bias</code>, variants likely artifactual due to strand bias:
+    - For variants called by Mutect2, if all supporting reads come from one strand and there are a least 10 reads on both strands in either normal or tumor sample.
+    - For variants called by Strelka2, if the total alternate read count is above 10 and all of these fall on either strand; or low mapping-quality variant suffering from bias in both supporting reads and total reads.
+- <code>caller_conflict</code>: Variant was detected by both callers, but did not pass Strelka2's thresholds for somatic variant calling.
+- The following read depth-based flags are parameterized according to the sequencing platform, see the <code>exome.config</code> and <code>genome.config</code> files.
+    - <code>low_vaf</code>: Variant falls below lower threshold for tumor variant allele fraction (VAF).
+    - <code>low_t_depth</code>: Variant falls below lower threshold for total depth in the tumor.
+    - <code>low_t_alt_count</code>: Variant falls below lower threshold for reads supporting variant allele in tumor.
+    - <code>low_n_depth</code>: Variant falls below lower threshold for total depth in normal.
+    - <code>high_n_alt_count</code>: Variant exceeds upper threshold for reads supporting variant allele normal.
+    - <code>mappability</code>/<code>repeatmasker</code>: Variant falls in blacklisted genomic region.
+    - <code>high_gnomad_pop_af</code>: Variant exceeds upper threshold for allele fraction in gnomAD.
+    - <code>PoN</code>: Variant exceeds upper threshold for count in panel of normals.
+    - <code>low_mapping_quality</code>: For indels called by Strelka2, variant falls below lower mapping quality threshold. </p>
+<p><small><sup>1</sup>See the MuTect2 documentation for more information: <a href="https://software.broadinstitute.org/gatk/documentation/article?id=11005">https://software.broadinstitute.org/gatk/documentation/article?id=11005</a></small>\
+<small><sup>2</sup>See the Strelka2 documentation for more information: <a href="https://github.com/Illumina/strelka/blob/v2.9.x/docs/userGuide/README.md">https://github.com/Illumina/strelka/blob/v2.9.x/docs/userGuide/README.md</a></small></p>
+<h3 id="whitelisting">Whitelisting</h3>
+<p>Mutational hotspots, where the value in <code>Hotspot</code> is <code>TRUE</code>, are retained in the filtered MAF file, if they:
+- Are flagged with <code>low_vaf</code> but the tumor VAF is at least 0.02.
+- Are flagged with <code>low_mapping_quality</code>, <code>low_t_depth</code>, or <code>strand_bias</code>.</p>
+<p><em>Note: Combinations of above filter flags results in filtering of the variant.</em></p>
+<h3 id="clonality-and-zygosity-analyses">Clonality and Zygosity Analyses</h3>
+<h4 id="clonality">Clonality</h4>
+<p>Clonality of SNVs and indels is estimated based on <a href="https://www.ncbi.nlm.nih.gov/pubmed/22544022">prior literature</a> using <a href="https://github.com/mskcc/facets-suite">facets-suite</a>. The cancer-cell fraction (CCF) annotation (columns <code>ccf_*</code>) contains these estimates for three presumed copy-number configurations of the mutation:
+1. Inferred CCF if mutation exists in number of copies expected from observed VAF and local ploidy.
+2. Inferred CCF if mutation is on the major allele.
+3. Inferred CCF if mutation exists in one copy.
+For each of these, error intervals and probabilities are provided.</p>
+<h4 id="zygosity">Zygosity</h4>
+<p>Tumor zygosity of SNVs and indels is estimated using the observed VAF and the expected VAF at the observed tumor purity and local copy number.</p>
+<h2 id="germline-snvs-and-indels">Germline SNVs and Indels</h2>
+<p>Variant-level annotation, filtering, and flagging of variants with further filter flags occur in the <code>GermlineCombineChannel</code> and <code>GermlineAnnotateMaf</code> processes. The union of variants that pass the filters intrinsic to the callers (<code>FILTER="PASS"</code> in the VCF files) are combined, giving precedence to HaplotypeCaller for any site where both callers detected a variant. See discussion elsewhere regarding <a href="https://gatkforums.broadinstitute.org/gatk/discussion/23216/how-to-filter-variants-either-with-vqsr-or-by-hard-filtering">single-sample filtering of HaplotypeCaller variant calls</a>.</p>
+<p>Functional effect predication and MAF file conversion is carried out as described above for somatic calls.</p>
+<p>In the final MAF, columns <code>Strelka2FILTER</code>, <code>gnomAD_FILTER</code>, <code>RepeatMasker</code> and <code>EncodeDacMapability</code> as well as allele frequencies and counts from gnomAD are identical as described for somatic variants. Note that the <code>gnomAF_FILTER</code> is used for filterig of germline variants, unlike for somatic variants.
+In addition, the following columns are added to the germline MAF:
+- <a href="https://www.brcaexchange.org">BRCA exchange</a> annotation:
+    - <code>brca_exchange_id</code>: Variant ID.
+    - <code>brca_exchange_enigma</code>: Annotation from the ENIGMA consortium.
+    - <code>brca_exchange_clinvar</code>: Annotation from ClinVar.
+- <code>ch_gene</code>: Boolean indicating whether the gene is associated with the presence of clonal hematopoiesis (CH) (<small><em>ASXL1</em>, <em>ATM</em>, <em>BCOR</em>, <em>CALR</em>, <em>CBL</em>, <em>CEBPA</em>, <em>CREBBP</em>, <em>DNMT3A</em>, <em>ETV6</em>, <em>EZH2</em>, <em>FLT3</em>, <em>GNAS</em>, <em>IDH1</em>, <em>IDH2</em>, <em>JAK2</em>, <em>KIT</em>, <em>KRAS</em>, <em>MPL</em>, <em>MYD88</em>, <em>NF1</em>, <em>NPM1</em>, <em>NRAS</em>, <em>PPM1D</em>, <em>RAD21</em>, <em>RUNX1</em>, <em>SETD2</em>, <em>SF3B1</em>, <em>SH2B3</em>, <em>SRSF2</em>, <em>STAG2</em>, <em>STAT3</em>, <em>TET2</em>, <em>TP53</em>, <em>U2AF1</em>, <em>WT1</em>, and <em>ZRSR2</em>)</small>
+- The following read depth-based flags are parameterized according to the sequencing platform, see the <code>exome.config</code> and <code>genome.config</code> files.
+    - <code>low_n_depth</code>: Variant falls below lower threshold for total depth in normal.
+    - <code>low_n_vaf</code>: Variant falls below lower threshold for normal VAF.
+    - <code>ch_mutation</code>: Variant occurs in CH gene and occurs below lower threshold for normal VAF and below tumor VAF 0.25.
+    - <code>t_in_n_contamination</code>: Tumor VAF is more than three-fold the normal VAF. </p>
+<h3 id="zygosity-analysis">Zygosity Analysis</h3>
+<p>Similar to somatic mutations, tumor zygosity of germline SNVs and indels is estimated using the observed VAF and the expected VAF at the observed tumor purity and local copy number. The difference between the two cases is the calculation of the expected tumor VAF of the variant.</p>
+<h2 id="somatic-and-germline-svs">Somatic and Germline SVs</h2>
+<p>Tempo uses two to four callers to identify structural variants. By default, the following callers are used regardless of assay type for both somatic and germline analysis:
+  - <a href="https://github.com/dellytools/delly">Delly</a> 
+  - <a href="https://github.com/Illumina/manta">Manta</a> 
+  - <a href="https://github.com/walaj/svaba">SvABA</a></p>
+<p>When the assay type is WGS, the following caller is used in addition for somatic variant calling only:
+  - <a href="https://github.com/cancerit/BRASS">BRASS</a></p>
+<p>The SV workflow in Tempo is significantly influenced by the <a href="https://www.nature.com/articles/s41586-020-1969-6">2020 PCAWG publication on whole genomes</a>. Similar to the workflow described in their paper, calls from each structural variant are provided to <a href="https://github.com/papaemmelab/mergeSVvcf/tree/master/mergesvvcf">mergesvvcf</a>, which converts each call to a normalized representation and merges them using a fixed window size of 200bp. Any two calls for which each breakpoint is less than 200bp away and matches relative directionality can be merged.</p>
+<h3 id="filtering-and-annotating-structural-variant-calls">Filtering and annotating structural variant calls</h3>
+<p>Using the read support information reported in Delly and Manta, the variants from those callers are subject to the following filters:
+- <code>tumor_read_supp</code>: The variant is supported by less than 5 discordant reads or less than 2 split reads in the tumor sample.
+- <code>normal_read_supp</code>: The variant is supported by any number of reads in the normal sample.</p>
+<p>From the merged callset, any variant is filtered based on a minimum number of supporting callers (1 for exome, 2 for genome). If a caller produced a filter flag for the variant, it is not considered to be a supporting caller.</p>
+<p>The merged callset is converted from vcf to bedpe using <a href="https://github.com/hall-lab/svtools/tree/master/svtools">svtools</a> and the following filters are applied:
+- <code>mappability</code> and <code>repeat_masker</code>: One or both breakends is in a repeat, low-mappability, or hard-to-sequence region. More details in the <a href="../reference-files/#repeatmasker-and-mappability-blacklist">reference file description</a>.
+- <code>pcawg_blacklist_bed</code>: One or both breakends is in a region that PCAWG has blacklisted. 
+- <code>pcawg_blacklist_bedpe</code>: The breakpoint is blacklisted by PCAWG.
+- <code>pcawg_blacklist_fb_bedpe</code>: The breakpoint is blacklisted by PCAWG and is likely a foldback artefact.
+- <code>pcawg_blacklist_te_bedpe</code>: The breakpoint is blacklisted by PCAWG and is likely a transposable element. </p>
+<p>The bed and bedpe files used for the flags <code>pcawg_blacklist_bed</code>,<code>pcawg_blacklist_bedpe</code>, <code>pcawg_blacklist_fb_bedpe</code> and <code>pcawg_blacklist_te_bedpe</code> are sourced from the <a href="https://bitbucket.org/weischenfeldt/pcawg_sv_merge/src/docker/data/blacklist_files/">SV merging tool used in the PCAWG paper</a>.</p>
+<p>In addition to filtering, Tempo also annotates the merged callset using the <a href="https://github.com/rhshah/iAnnotateSV">iAnnotateSV package</a>, and identifies possible cDNA contamination among deletion events that span splice sites. Possible cDNA contamination sites are not filtered.</p>
+<h3 id="structural-variant-classes">Structural Variant Classes</h3>
+<p>Each breakpoint is described on a single record of the bedpe file, with the coordinates and orientation of both breakends described.  The four types of breakends produced by Tempo are as follows:
+| Class              | Abbreviation | Description |
+| :---               | :---         | :---        |
+| Breakend           | BND          | Any event that cannot be described with one of the below terms. The majority of BND are usually translocations. |
+| Deletion           | DEL          | Loss of a segment that is spanned by two joined breakends either side. |
+| Tandem Duplication | DUP          | Extra copy of a segment immediately downstream of the template in the same orientation. |
+| Inversion          | INV          | A segment inserted into its original position, but in the opposite orientation. Simple inversions are balanced, but in complex inversions the second side of a dsDNA break may not be rescued. |</p>
+<h2 id="bedpe-format">BEDPE Format</h2>
+<p>After merging the variants from different callers, the variants are converted from vcf to bedpe file using <a href="https://github.com/hall-lab/svtools">svtools vcftobedpe</a>. Many downstream tools require bedpe or similar table formats. The PCAWG Working Group also makes use of the bedpe format. You can find more information about the bedpe file format <a href="https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bedpe-format">here</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
