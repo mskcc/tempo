@@ -65,6 +65,6 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix} \
-    --onco ${["test","test_singularity"].contains(workflow.profile) ? "<(echo '[]')" : "'https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/'" }
+    --onco ${["test","test_singularity"].contains(workflow.profile) ? "\$(echo '[]' > empty.json && echo empty.json)" : "'https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/'" }
   """
 }
