@@ -1,5 +1,0 @@
-[build]
-  # Force a real "build" to ensure Netlify reports "Success"
-  # We create a specific output directory to avoid deploying source files
-  command = "mkdir -p _site && echo '<html><body><h1>Moved to GitHub Actions</h1></body></html>' > _site/index.html"
-  publish = "_site"
