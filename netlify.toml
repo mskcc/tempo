@@ -1,0 +1,5 @@
+[build]
+  # This is a dummy command to make the legacy Netlify integration pass its checks.
+  # We have migrated to GitHub Actions for documentation hosting.
+  command = "mkdir -p dummy_site && echo 'Netlify integration is deprecated. See GitHub Actions.' > dummy_site/index.html"
+  publish = "dummy_site"
