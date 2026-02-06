@@ -6,7 +6,6 @@ process SomaticAnnotateMaf {
   input:
     tuple val(idTumor), val(idNormal), val(target), path(vcfMerged)
     tuple path(genomeFile), path(genomeIndex), path(genomeDict), path(vepCache), path(isoforms)
-    path(oncokb_genes) // used for test, test_singularity profile only
 
   output:
     tuple val(idTumor), val(idNormal), val(target), path("${outputPrefix}.maf"), emit: mafFile
@@ -66,6 +65,6 @@ process SomaticAnnotateMaf {
     --normal-panel-count ${params.somaticVariant.ponCount} \
     --maf-file ${outputPrefix}.raw.oncokb.maf \
     --output-prefix ${outputPrefix} \
-    --onco "${["test","test_singularity"].contains(workflow.profile) ? oncokb_genes : "https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/" }"
+    --onco ${["test","test_singularity"].contains(workflow.profile) ? "\$(echo '[]' > empty.json && echo empty.json)" : "'https://data-legacy.oncokb.aws.mskcc.org/api/v1/genes/'" }
   """
 }
