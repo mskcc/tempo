@@ -26,3 +26,4 @@ results/
 *.tsv
 docs/node_modules
 *.pyc
+site/

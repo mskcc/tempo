@@ -1,0 +1,74 @@
+site_name: Tempo
+site_description: CCS Research Pipeline for Whole-Genome and Whole-Exome Sequencing
+site_url: https://mskcc.github.io/tempo/
+
+extra:
+  version:
+    provider: mike
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light/dark mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+repo_name: mskcc/tempo
+repo_url: https://github.com/mskcc/tempo
+edit_uri: edit/develop/docs/
+
+nav:
+  - Home: README.md
+  - Setup:
+      - Installation: installation.md
+      - Juno Setup: juno-setup.md
+      - AWS Setup: aws-setup.md
+  - Usage:
+      - Running the Pipeline: running-the-pipeline.md
+      - Nextflow Basics: nextflow-basics.md
+      - Working with Containers: working-with-containers.md
+  - Outputs: outputs.md
+  - Bioinformatic Components: bioinformatic-components.md
+  - Reference Resources:
+      - Reference Files: reference-files.md
+      - GnomAD: gnomad.md
+      - WES Panel of Normals: wes-panel-of-normals.md
+  - Variant Annotation and Filtering: variant-annotation-and-filtering.md
+  - Help and Other Resources:
+      - Troubleshooting: troubleshooting.md
+      - AWS Glossary: aws-glossary.md
+      - Contributing: contributing-to-tempo.md
+      - Acknowledgements: acknowledgements.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.magiclink
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg

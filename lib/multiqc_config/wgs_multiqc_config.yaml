@@ -1,5 +1,4 @@
 custom_logo: 'tempoLogo.png'
-custom_logo_url: 'https://ccstempo.netlify.app/'
 custom_logo_title: 'CCS - Tempo'
 
 show_analysis_paths: False
@@ -105,7 +104,7 @@ custom_data:
         file_format: 'tsv'
         section_name: 'QC criteria'
         plot_type: 'table'
-        description: "These thresholds are used to calculate whether a sample is given a <b>Status</b> of 'pass', 'warn' or 'fail'. These metrics have been decided by the Tempo team and are intended for guidance only. Status of each sample is given in the General Statistics table. You can find more information about the metrics Tempo uses for QC <a href='https://ccstempo.netlify.app/bioinformatic-components.html#quality-control'>here</a>."
+        description: "These thresholds are used to calculate whether a sample is given a <b>Status</b> of 'pass', 'warn' or 'fail'. These metrics have been decided by the Tempo team and are intended for guidance only. Status of each sample is given in the General Statistics table. You can find more information about the metrics Tempo uses for QC in Tempo's documentation."
         pconfig:
             id: 'criteria_tab'
             namespace: 'criteria_tabby'
