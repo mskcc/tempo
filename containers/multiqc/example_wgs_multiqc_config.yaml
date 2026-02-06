@@ -1,5 +1,4 @@
 custom_logo: 'tempoLogo.png'
-custom_logo_url: 'https://ccstempo.netlify.app/'
 custom_logo_title: 'CCS - Tempo'
 
 show_analysis_paths: False

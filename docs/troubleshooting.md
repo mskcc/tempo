@@ -60,7 +60,7 @@ Caused by:
     FATAL:   Unable to pull docker://cmopipeline/variantcaller:1.0.0: conveyor failed to get: no descriptor found for reference "3sw08cr0yd460ygwyjn2p29y40lakjnw9y2nj5w20za960059fij5okthwc87l66"
 ```
 
-The error occurs when users are downloading pre-built images on Dockerhub via `singularity pull` for the first time, i.e. "pulling" singularity images for the first time. This situation can be avoided if you set the variable `NXF_SINGULARITY_CACHEDIR` to the subdirectory containing these images, which have already been downloaded on site. (Please read [Juno Setup](juno-setup.md) and [Working with Containers](working-with-coontainers.md) for more details on this topic.)
+The error occurs when users are downloading pre-built images on Dockerhub via `singularity pull` for the first time, i.e. "pulling" singularity images for the first time. This situation can be avoided if you set the variable `NXF_SINGULARITY_CACHEDIR` to the subdirectory containing these images, which have already been downloaded on site. (Please read [Juno Setup](juno-setup.md) and [Working with Containers](working-with-containers.md) for more details on this topic.)
 
 Another option would be to simply execute the command above, i.e. 
 

@@ -109,7 +109,7 @@ Read further details on these parameters [here](reference-files.md#genomic-inter
 
 If the user is using pre-processed BAMs, the input TSV file is a similar format as FASTQ mapping TSV file, with slight difference showing below.
 
-You must to give `--pariring <tsv>` and specify at least one [sub-workflow](sub-workflow.md) when beginning with BAM mapping files.
+You must to give `--pariring <tsv>` and specify at least one [sub-workflow](sub-workflows.md) when beginning with BAM mapping files.
 
 Example:
 
@@ -225,7 +225,7 @@ Here is a concrete example of a bsub command to process 25 WES TN pairs, running
 ```
 
 ::: warning Be aware
-Whereas a few exome samples finish within a few hours, larger batches and genomes will take .s. Allow for this by setting `-W` to a good amount of hours. The pipeline will die if the leader job does, but can be [resumed](running-the-pipelinf.md#modifying-or-resuming-pipeline-run) subsequently. 
+Whereas a few exome samples finish within a few hours, larger batches and genomes will take .s. Allow for this by setting `-W` to a good amount of hours. The pipeline will die if the leader job does, but can be [resumed](running-the-pipeline.md#modifying-or-resuming-pipeline-run) subsequently. 
 :::
 
 ### Running From a `screen` Session

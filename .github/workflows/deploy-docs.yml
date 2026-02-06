@@ -1,0 +1,100 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install MkDocs and Mike
+        run: |
+          pip install mkdocs-material mike
+
+      - name: Configure Git User
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      - name: Deploy via Mike
+        run: |
+          # Sync README.md to docs/index.md and fix relative links
+          # 1. Remove the symlink (if it exists)
+          rm -f docs/README.md
+          # 2. Copy the root README.md to docs/README.md (Home page)
+          cp README.md docs/README.md
+          # 3. Fix relative links: replace 'docs/' prefix with empty string in docs/README.md
+          #    This changes [Link](docs/file.md) -> [Link](file.md), which is correct inside docs/
+          sed -i 's|docs/||g' docs/README.md
+          
+          # Determine Version and Alias
+          VERSION="${{ github.ref_name }}"
+          # Sanitize VERSION: replace '/' with '-' because mike/gh-pages doesn't support slashes in folder names
+          VERSION="${VERSION//\//-}"
+          ALIAS=""
+          HIDDEN_FLAG=""
+          TITLE=""
+
+          if [[ "$VERSION" == "develop" ]]; then
+            VERSION="dev"
+            ALIAS="latest"
+            TITLE="Development"
+          elif [[ "$VERSION" == "master" || "$VERSION" == "main" ]]; then
+             # Mapping master/main to a specific stable alias if needed, or just keeping version name
+             TITLE="Stable"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+             TITLE="$VERSION"
+          else
+             # For ALL other branches (feature/*, bugfix/*, or random names)
+             # Hide them from the dropdown key using Mike properties
+             HIDDEN_FLAG="--prop-set hidden=true"
+             TITLE="Preview: $VERSION"
+          fi
+          
+          echo "Deploying Version: $VERSION (Title: $TITLE, Alias: $ALIAS)"
+
+          # Build arguments
+          ARGS="$VERSION"
+          [ -n "$ALIAS" ] && ARGS="$ARGS $ALIAS"
+          ARGS="$ARGS --title=\"$TITLE\""
+          [ -n "$HIDDEN_FLAG" ] && ARGS="$ARGS $HIDDEN_FLAG"
+
+          # Execute deploy
+          # Note: We use eval to properly handle the quoted title string
+          eval mike deploy --push --update-aliases $ARGS
+          
+          echo "Documentation deployed."
+          if [ -n "$HIDDEN_FLAG" ]; then
+             echo "Hidden Preview URL: https://mskcc.github.io/tempo/$VERSION/"
+          else
+             echo "Public URL: https://mskcc.github.io/tempo/$VERSION/"
+          fi
+
+      - name: Comment on PR
+        if: github.ref_name != 'develop' && github.ref_name != 'master' && github.ref_name != 'main' && !startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL: https://mskcc.github.io/tempo/${{ github.ref_name }}/
+        run: |
+          gh pr comment ${{ github.ref_name }} --body "🤖 **Documentation Preview**<br>The documentation for this branch has been deployed!<br>Preview: $URL" || echo "No PR found for this branch"

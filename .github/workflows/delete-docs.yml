@@ -1,0 +1,48 @@
+name: Delete Documentation Version
+
+on:
+  delete:
+
+permissions:
+  contents: write
+
+jobs:
+  delete-version:
+    # Only run if a branch was deleted (not a tag)
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install MkDocs and Mike
+        run: |
+          pip install mkdocs-material mike
+
+      - name: Configure Git User
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      - name: Delete Version
+        run: |
+          BRANCH_NAME="${{ github.event.ref }}"
+          
+          # Handle special case: if 'develop' branch is deleted (unlikely, but safe to handle)
+          if [ "$BRANCH_NAME" == "develop" ]; then
+             VERSION="dev"
+          else
+             VERSION="$BRANCH_NAME"
+          fi
+          
+          echo "Deleting documentation version: $VERSION"
+          
+          # Mike delete will fail if the version doesn't exist, so we allow failure or check first.
+          # We use || true to prevent the workflow from failing if the doc version didn't exist.
+          mike delete --push $VERSION || echo "Version $VERSION not found or already deleted."
