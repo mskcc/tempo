@@ -90,7 +90,8 @@ if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_si
 publishAll = params.publishAll
 outDir     = file(params.outDir).toAbsolutePath()
 outname = params.outname
-runGermline = params.germline
+runGermline = params.germline != false ? true : params.germline
+runGermlineFile = params.germline 
 runSomatic = params.somatic
 runQC = params.QC
 runAggregate = params.aggregate
@@ -749,7 +750,18 @@ if (params.pairing) {
 			def normalBai = item[4]
 			return [ idNormal, target, normalBam, normalBai ] }
 	.unique()
-	.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+	//.into{ bams4Haplotypecaller; bamsNormal4Polysolver; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
+  .into{bamsNormal4Polysolver; bams4GermlineAnalysis}
+
+  if (runGermline != false && file(runGermlineFile.toString()).exists() ){
+    if (params.watch == false) {
+      TempoUtils.extractGermlineSamples(file(runGermlineFile)).set{ germlineFilter }
+    } else {
+      watchGermline(file(runGermlineFile)).set{ germlineFilter }
+    }
+    bams4GermlineAnalysis.combine(germlineFilter, by:[0]).set{bams4GermlineAnalysis}
+  }
+  bams4GermlineAnalysis.into{bams4Haplotypecaller; bamsForStrelkaGermline; bamsForMantaGermline; bamsForDellyGermline }
 
 
   bamsTumor4Combine.combine(bamsNormal4Combine, by: [0,1,2])
@@ -3134,8 +3146,9 @@ else if(!(runAggregate == false)) {
                        cohortSomaticAggregateLOHHLA1;
                        cohortSomaticAggregateMetadata;
                        cohortGermlineAggregateMaf;
-                       cohortGermlineAggregateSv;
-                       cohortGermlineAggregateSv1;
+                       //cohortGermlineAggregateSv;
+                       //cohortGermlineAggregateSv1;
+                       cohortGermlineAggregateFilter;
                        cohortQcBamAggregate;
                        cohortQcBamAggregate1;
                        cohortQcBamAggregate2;
@@ -3160,6 +3173,25 @@ else if(!(runAggregate == false)) {
   inputSomaticAggregateMetadata = cohortSomaticAggregateMetadata.combine(MetaData4Aggregate, by:[1,2]).groupTuple(by:[2])
 
   if (runGermline){
+    if ( file(runGermlineFile.toString()).exists() ){
+    cohortGermlineAggregateFilter
+      .groupTuple()
+      .map{cohort, idTumor, idNormal -> 
+        def filterIdTumor = []
+        def filterIdNormal = []
+       def intersectLists = idNormal.intersect(germline2List(runGermlineFile))
+       idTumor.eachWithIndex{ item, index ->
+          if ( intersectLists.contains(idNormal[index]) ) {
+             filterIdTumor  += item
+             filterIdNormal += idNormal[index]
+          }
+       }
+      [cohort, filterIdTumor, filterIdNormal]
+    }.map{ cohort, idTumor, idNormal
+      -> tuple( groupKey(cohort, idTumor instanceof Collection ? idTumor.size() : 1), idTumor, idNormal)
+    }.transpose()
+    .into{cohortGermlineAggregateSv; cohortGermlineAggregateSv1}
+    } else { cohortGermlineAggregateFilter.into{ cohortGermlineAggregateSv; cohortGermlineAggregateSv1 } }
   inputGermlineAggregateMaf = cohortGermlineAggregateMaf.combine(mafFile4AggregateGermline, by:[1,2]).groupTuple(by:[2])
   inputGermlineAggregateSv = cohortGermlineAggregateSv.combine(dellyMantaCombined4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
   inputGermlineAggregateSvTbi = cohortGermlineAggregateSv1.combine(dellyMantaCombinedTbi4AggregateGermline, by:[2]).groupTuple(by:[1]).map{[it[1], it[5].unique()]}
@@ -4006,4 +4038,30 @@ def watchAggregate(tsvFile) {
          }
          .transpose()
 	 .unique()
+}
+
+def watchGermline(tsvFile) {
+  Channel.watchPath(file(tsvFile), 'create, modify')
+         .splitCsv(sep: '\t', header: true)
+         .unique()
+         .map{ row ->
+              def idNormal = row.NORMAL_ID
+              if(!TempoUtils.checkNumberOfItem(row, 1, file(tsvFile))){}
+              idNormal
+         }
+         .unique()
+}
+def germline2List(tsvFile){
+  def parsedFile = false
+  def germlineList = []
+  TempoUtils.extractGermlineSamples(tsvFiles)
+  .collect()
+  .subscribe{ row ->
+    parsedFile = true
+    germlineList = row
+  }
+  while ( ! parsedFile ){
+    sleep(500)
+  }
+  return germlineList
 }
