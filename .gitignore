@@ -19,6 +19,10 @@ nf.*
 *.gz
 *.bam.*
 Result/
+Results/
+result/
+results/
 *.Rhistory
 *.tsv
 docs/node_modules
+*.pyc

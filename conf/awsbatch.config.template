@@ -20,8 +20,8 @@ executor {
 process {
   queue = <AWS-BATCH-QUEUE-ARN>
   scratch = true
-  errorStrategy = { task.attempt <= 3 ? 'retry' : 'ignore' }
   maxRetries = 3
+  errorStrategy = { task.attempt <= process.maxRetries ? 'retry' : 'ignore' }
 }
 
 params {

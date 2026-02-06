@@ -22,7 +22,8 @@ outDir/bams/
 │   ├── collecthsmetrics
 │   ├── fastp
 │   ├── multiqc
-│   └── pileup
+│   ├── pileup
+│   └── qualimap
 ├── DU874145-T
 │   ├── DU874145-T.bam
 │   └── DU874145-T.bam.bai
@@ -35,6 +36,7 @@ These outputs are:
 - `collectshsmetrics`: For exomes, per-sample hybridisation-selection metrics in the.
 - `pileup`: Per tumor-normal-pair, the Conpair-generated SNP pileup files.
 - `multiqc`: A summary report of FASTQ/BAM QC metrics from Picard, fastp and other tools. 
+- `qualimap`: Per-sample BAM file alignment metrics in text and html files.
 
 ## Somatic data
 
@@ -43,41 +45,58 @@ The result of the somatic analyses is output in summarized forms in the `somatic
 ```shell
 outDir/somatic
 ├── DU874145-T__DU874145-N
+│   ├── brass
 │   ├── combined_mutations
 │   ├── combined_svs
 │   ├── conpair
 │   ├── delly
 │   ├── facets
+│   ├── hrdetect
 │   ├── lohhla
 │   ├── manta
 │   ├── meta_data
 │   ├── multiqc
 │   ├── mutect2
 │   ├── neoantigen
-│   └── strelka2
+│   ├── strelka2
+│   ├── svaba
+|   └── svclone
 └── DU874146-T__DU874146-N
+    ├── brass
     ├── combined_mutations
     ├── combined_svs
+    ├── conpair
     ├── delly
     ├── facets
+    ├── hrdetect
     ├── lohhla
     ├── manta
     ├── meta_data
     ├── multiqc
     ├── mutect2
     ├── neoantigen
-    └── strelka2
+    ├── strelka2
+    ├── svaba
+    └── svclone
 ```
 
 These outputs are:
+- `brass`: BRASS SV caller output. WGS only.
 - `combined_mutatations`: unfiltered and final filtered maf per tumor-normal pair.
   - `*.somatic.unfiltered.maf`: Unfiltered mutations `generated in the SomaticAnnotateMaf`.
   - `*.somatic.final.maf`: Filtered mutations from MuTect2 and Strelka2, annotated with mutational effects, neoantigen predictions, and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#somatic-snvs-and-indels).
-  - `intermidiate_files/*`: 3 intermidiate vcf files contains all mutations before any filter after mutect and strelka, mutations after `filter-vcf.py`, and mutations after bcftools filter by `FILTER=PASS`.
-- `combined_svs`: Combined Delly and Manta SV calls.
+  - `intermediate_files/*`: 3 intermediate vcf files contains all mutations before any filter after mutect and strelka, mutations after `filter-vcf.py`, and mutations after bcftools filter by `FILTER=PASS`.
+- `combined_svs`: Combined BRASS (WGS only), Delly, Manta and SvABA SV calls.
+  - `*.unfiltered.bedpe`: Unfiltered combined somatic SVs.
+  - `*.final.bedpe`: Filtered combined somatic SVs.
+  - `intermediate_files/*`: 3 intermediate combined SV files:
+    - `*.merged.raw.vcf.gz`: Raw output of `mergesvvcf`.
+    - `*.merged.vcf.gz`: Reformatted output of `mergesvvcf` where events with number of PASSing callers lower than minimum are filtered out.
+    - `*.combined.bedpe`: Merged vcf calls converted to bedpe using `svtools vcftobedpe`.
 - `conpair`: Per tumor-normal-pair, the Conpair-generated concordance and contamination files.
 - `delly`: Delly output.
 - `facets`: Individual copy-number profiles from FACETS, per tumor-normal pair.
+- `hrdetect`: Detection of BRCA1/BRCA2-deficiency. WGS only.
 - `lohhla`: LOHHLA output.
 - `manta`: Manta output.
 - `meta_data`: Summarized meta_data file which includes the following results:
@@ -91,7 +110,9 @@ These outputs are:
 - `multiqc`: A summary report of tumor/normal pair QC metrics from Conpair and Facets.
 - `mutect2`: Manta output.
 - `neoantigens`: Neoantigen predictions from NetMHCpan per sample.
-- `strelka2`: Manta output.
+- `strelka2`: Strelka2 output.
+- `svaba`: SvABA SV caller output.
+- `svclone`: clustering output of structural variants. WGS only.
 
 ::: warning Be aware
 * LOHHLA is temporarily disabled due to a bug need future investigation. It will be enabled again in the future release.
@@ -109,25 +130,34 @@ outDir/germline/
 │   ├── delly
 │   ├── haplotypecaller
 │   ├── manta
-│   └── strelka2
+│   ├── strelka2
+│   └── svaba
 └── DU874146-N
     ├── combined_mutations
     ├── combined_svs
     ├── delly
     ├── haplotypecaller
     ├── manta
-    └── strelka2
+    ├── strelka2
+    └── svaba
 ```
 
 These outputs are:
 - `combined_mutatations`: unfiltered and final filtered maf per tumor-normal pair.
-  - `*.germline.unfiltered.maf`: Unfiltered mutations `generated in the GermlineAnnotateMaf`.
+  - `*.germline.unfiltered.maf`: Unfiltered mutations generated in the `GermlineAnnotateMaf`.
   - `*.germline.final.maf`: Filtered mutations from HaplotypeCaller and Strelka2, annotated with mutational effects and zygosity, as [described elsewhere](variant-annotation-and-filtering.md#germline-snvs-and-indels).
-  - `intermidiate_files/*`: 3 intermidiate vcf files contains all mutations before any filter after mutect and strelka, mutations after bcftools filter by `FILTER=PASS`, and gnomAD filter.
-- `combined_svs`: Combined Delly and Manta SV calls.
+  - `intermediate_files/*`: 3 intermediate vcf files contains all mutations before any filter after mutect and strelka, mutations after bcftools filter by `FILTER=PASS`, and gnomAD filter.
+- `combined_svs`: Combined Delly, Manta and SvABA SV calls per normal sample.
+  - `*.unfiltered.bedpe`: Unfiltered germline SVs from combined Delly, Manta and SvABA SV calls.
+  - `*.final.bedpe`: Filtered germline SVs from combined Delly, Manta and SvABA SV calls
+  - `intermediate_files/*`: 3 intermediate combined SV files:
+    - `*.merged.raw.vcf.gz`: Raw output of `mergesvvcf`.
+    - `*.merged.vcf.gz`: Reformatted output of `mergesvvcf` where events with number of PASSing callers lower than minimum are filtered out.
+    - `*.combined.bedpe`: Merged vcf calls converted to bedpe using `svtools vcftobedpe`.
 - `delly`: Delly output.
 - `manta`: Manta output.
-- `strelka2`: Manta output.
+- `strelka2`: Strelka2 output.
+- `svaba`: SvABA SV caller output.
 
 ## Cohort Level Outputs
 
@@ -146,16 +176,19 @@ outDir/cohort_level/
 │   ├── contamination_qc.txt
 │   ├── DNA.IntegerCPN_CI.txt
 │   ├── HLAlossPrediction_CI.txt
+│   ├── hrdetect.tsv
 │   ├── multiqc_report.html
 │   ├── multiqc_data.zip
 │   ├── mut_germline.maf
 │   ├── mut_somatic.maf
 │   ├── mut_somatic_neoantigens.txt
 │   ├── sample_data.txt
-│   ├── sv_germline.vcf.gz
-│   ├── sv_germline.vcf.gz.tbi
-│   ├── sv_somatic.vcf.gz
-│   └── sv_somatic.vcf.gz.tbi
+│   ├── svclone_sv_cluster_certainty.tsv
+│   ├── svclone_snv_cluster_certainty.tsv
+│   ├── sv_catalogues.pdf
+│   ├── sv_exposures.tsv
+│   ├── sv_germline.bedpe
+│   └── sv_somatic.bedpe
 ├── cohort2
 │   ├── alignment_qc.txt
 │   ├── cna_armlevel.txt
