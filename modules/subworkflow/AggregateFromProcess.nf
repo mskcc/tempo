@@ -279,7 +279,7 @@ workflow aggregateFromProcess
               .join(inputHsMetrics)
               .set{ inputQcBamAggregate }
 
-    QcBamAggregate(inputQcBamAggregate)
+    QcBamAggregate(inputQcBamAggregate, workflow.projectDir + "/containers/metadataparser/create-aggregate-qc-file.R")
   }
 
   if (conpair4Aggregate) {

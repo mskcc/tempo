@@ -8,6 +8,13 @@
 ## version = 0.2.1
 ## status  = Dev
 
+install.packages("remotes", repos = "https://cloud.r-project.org", lib = "./")
+library(remotes, lib = "./")
+remotes::install_version("bit", version = "1.1-12", repos = "https://cloud.r-project.org", lib = "./")
+remotes::install_version("bit64", version = "0.9-7", repos = "https://cloud.r-project.org", lib = "./")
+library(bit, lib = "./")
+library(bit64, lib = "./")
+
 suppressPackageStartupMessages({
     library(data.table)
     library(parallel)
@@ -30,7 +37,7 @@ args = parser$parse_args()
 
 ## Parse Alfred output ----------------------------------------------------------------------------------------------
 read_alfred_qc = function(file) {
-    input_file = fread(cmd = paste('zgrep ^ME', file, '| cut -f 2-')) 
+    input_file = fread(cmd = paste('zgrep ^ME', file, '| cut -f 2-'), integer64 = "numeric") 
     ## define column TotalReads
     input_file[, TotalReads := round(`#Mapped`/MappedFraction)]
     ##
