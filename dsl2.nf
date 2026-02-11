@@ -20,7 +20,6 @@ params.startEpoch = new Date().getTime()
 
 //Utility Includes
 include { defineReferenceMap; loadTargetReferences } from './modules/function/define_maps'
-include { touchInputs; watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from './modules/function/watch_inputs'
 
 pairingQc    = params.pairing
 referenceMap = defineReferenceMap()
@@ -109,16 +108,6 @@ workflow {
   if(params.pairing && !params.mapping && !params.bamMapping){
     println "ERROR: When --pairing [tsv], --mapping/--bamMapping [tsv] must be provided."
     exit 1
-  }
-
-  if (params.watch == true) {
-    epochMap = [:]
-    for (i in ["mapping","bamMapping","pairing","aggregate"]) {
-      if (file(params."${i}".toString()).exists()){ 
-	epochMap[file(params."${i}").toRealPath()] = 0 
-      }
-    }
-    touchInputs(params.chunkSizeLimit, epochMap)
   }
 
   if (doWF_AggregateFromResult){

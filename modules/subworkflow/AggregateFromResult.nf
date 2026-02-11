@@ -12,7 +12,7 @@ include { SomaticAggregateSvSignatures }       from '../process/Aggregate/Somati
 include { SomaticAggregateHRDetect }           from '../process/Aggregate/SomaticAggregateHRDetect'
 include { SomaticAggregateSVclone }            from '../process/Aggregate/SomaticAggregateSVclone'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
-include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
+include { watchAggregateWithResult }           from '../function/read_inputs_interval'
 
 workflow aggregateFromResult
 {
@@ -44,8 +44,8 @@ workflow aggregateFromResult
         .set{ inputAggregate }
     }
     else{
-      watchAggregateWithResult(file(aggregateFile, checkIfExists: true))
-        .set{ inputAggregate }
+      read_inputs_channel = Channel.interval(params.touchInputsInterval * 60 + 's').view()
+      inputAggregate = watchAggregateWithResult(read_inputs_channel).aggregate_ch
     }
 
     inputAggregate.multiMap{ cohort, idTumor, idNormal, path ->

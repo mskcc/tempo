@@ -12,7 +12,7 @@ include { SomaticAggregateSvSignatures }       from '../process/Aggregate/Somati
 include { SomaticAggregateHRDetect }           from '../process/Aggregate/SomaticAggregateHRDetect'
 include { SomaticAggregateSVclone }            from '../process/Aggregate/SomaticAggregateSVclone'
 include { CohortRunMultiQC }                   from '../process/Aggregate/CohortRunMultiQC'
-include { watchMapping; watchBamMapping; watchPairing; watchAggregateWithResult; watchAggregate } from '../function/watch_inputs.nf'
+include { watchAggregate }                     from '../function/read_inputs_interval'
 
 workflow aggregateFromProcess
 {
@@ -47,8 +47,8 @@ workflow aggregateFromProcess
 		  .set{inputAggregate}
       }
       else{
-        watchAggregate(file(runAggregate, checkIfExists: false))
-	              .set{inputAggregate}
+	read_inputs_channel = Channel.interval(params.touchInputsInterval * 60 + 's').view()
+        inputAggregate = watchAggregate(read_inputs_channel).aggregate_ch.view()
       }
     }
     else {
