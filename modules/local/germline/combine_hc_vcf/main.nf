@@ -8,7 +8,9 @@ process GERMLINE_COMBINE_HC_VCF {
 
     input:
     tuple val(meta), path(vcfs), path(tbis)
-    tuple val(meta2), path(fasta), path(fai), path(dict)
+    tuple val(meta2), path(fasta)
+    tuple val(meta3), path(fai)
+    tuple val(meta4), path(dict)
 
     output:
     tuple val(meta), path("${prefix}.haplotypecaller.vcf.gz"), path("${prefix}.haplotypecaller.vcf.gz.tbi"), emit: vcf

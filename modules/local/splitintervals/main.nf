@@ -7,7 +7,9 @@ process SPLIT_INTERVALS {
         'broadinstitute/gatk:4.1.0.0' }"
 
     input:
-    tuple val(meta), path(fasta), path(fai), path(dict)
+    tuple val(meta), path(fasta)
+    tuple val(meta2), path(fai)
+    tuple val(meta3), path(dict)
     path(intervals)
     val(scatter_count)
 

@@ -26,6 +26,7 @@ include { GATK4_CALCULATECONTAMINATION                 } from '../modules/nf-cor
 include { GATK4_LEARNREADORIENTATIONMODEL              } from '../modules/nf-core/gatk4/learnreadorientationmodel/main'
 include { GATK4_FILTERMUTECTCALLS                      } from '../modules/nf-core/gatk4/filtermutectcalls/main'
 include { GATK4_HAPLOTYPECALLER                        } from '../modules/nf-core/gatk4/haplotypecaller/main'
+include { GATK4_MERGEVCFS                              } from '../modules/nf-core/gatk4/mergevcfs/main'
 include { STRELKA_SOMATIC                              } from '../modules/nf-core/strelka/somatic/main'
 include { MANTA_SOMATIC                                } from '../modules/nf-core/manta/somatic/main'
 include { ENSEMBLVEP_VEP                               } from '../modules/nf-core/ensemblvep/vep/main'
@@ -83,6 +84,9 @@ include { GERMLINE_FACETS_ANNOTATION  } from '../modules/local/germline/facets_a
 include { FACETS_PREVIEW_QC           } from '../modules/local/facets/preview_qc/main'
 include { NEOANTIGEN                  } from '../modules/local/neoantigen/main'
 include { MUTSIG                      } from '../modules/local/mutsig/main'
+include { SPLIT_INTERVALS             } from '../modules/local/splitintervals/main'
+include { GERMLINE_COMBINE_HC_VCF     } from '../modules/local/germline/combine_hc_vcf/main'
+include { GATK4_MERGEMUTECTSTATS     } from '../modules/local/gatk4/mergemutectstats/main'
 include { METADATA_PARSER             } from '../modules/local/metadata_parser/main'
 
 // New Phase 2 local modules — QC & Reporting
@@ -90,6 +94,7 @@ include { ALFRED                      } from '../modules/local/alfred/main'
 include { CONPAIR_ALL                 } from '../modules/local/conpair/all/main'
 include { MULTIQC_SAMPLE              } from '../modules/local/multiqc/sample/main'
 include { MULTIQC_SOMATIC             } from '../modules/local/multiqc/somatic/main'
+include { MULTIQC_COHORT              } from '../modules/local/multiqc/cohort/main'
 
 // New Phase 2 local modules — Aggregation
 include { AGGREGATE_SOMATIC_MAF         } from '../modules/local/aggregate/somatic_maf/main'
@@ -431,24 +436,49 @@ workflow TEMPO {
     }
 
     // =============================================
+    // SPLIT INTERVALS (shared by Mutect2 + HaplotypeCaller scatter-gather)
+    // =============================================
+
+    if (doWF_SNV || doWF_germSNV) {
+        ch_intervals = params.intervals
+            ? Channel.value(file(params.intervals, checkIfExists: true))
+            : (params.target_intervals
+                ? Channel.value(file(params.target_intervals, checkIfExists: true))
+                : Channel.value([]))
+
+        SPLIT_INTERVALS (
+            ch_fasta,
+            ch_fasta_fai,
+            ch_dict,
+            ch_intervals,
+            params.scatter_count
+        )
+        ch_versions = ch_versions.mix(SPLIT_INTERVALS.out.versions)
+    }
+
+    // =============================================
     // SOMATIC SNV/INDEL CALLING
     // =============================================
 
     if (doWF_SNV) {
 
         //
-        // MODULE: Mutect2
+        // MODULE: Mutect2 — scattered across intervals
         //
-        ch_tumor_normal_pair
-            .map { meta, tbam, tbai, nbam, nbai ->
-                [ meta, [tbam, nbam], [tbai, nbai], [] ]
-            }
-            .set { ch_mutect2_input }
-
         // Prepare fai+gzi tuple
         ch_fasta_fai
             .map { meta, fai -> [ meta, fai, [] ] }
             .set { ch_fai_gzi }
+
+        ch_tumor_normal_pair
+            .combine(SPLIT_INTERVALS.out.interval_lists.flatten())
+            .map { meta, tbam, tbai, nbam, nbai, interval ->
+                def new_meta = meta.clone()
+                new_meta.id = "${meta.id}_${interval.baseName}"
+                new_meta.original_id = meta.id
+                [ new_meta, [tbam, nbam], [tbai, nbai], interval ]
+            }
+            .set { ch_mutect2_input }
 
         GATK4_MUTECT2 (
             ch_mutect2_input,
@@ -462,6 +492,45 @@ workflow TEMPO {
             ch_pon.map{ it[1] },
             ch_pon_tbi.map{ it[1] }
         )
+
+        //
+        // Gather scattered Mutect2 results — merge VCFs, stats, and f1r2
+        //
+        GATK4_MUTECT2.out.vcf
+            .map { meta, vcf -> [ meta.original_id ?: meta.id, vcf ] }
+            .groupTuple()
+            .map { original_id, vcfs ->
+                def meta = [id: original_id]
+                [ meta, vcfs ]
+            }
+            .set { ch_mutect2_vcf_gather }
+
+        GATK4_MERGEVCFS (
+            ch_mutect2_vcf_gather,
+            ch_dict
+        )
+
+        GATK4_MUTECT2.out.stats
+            .map { meta, stats -> [ meta.original_id ?: meta.id, stats ] }
+            .groupTuple()
+            .map { original_id, stats ->
+                def meta = [id: original_id]
+                [ meta, stats ]
+            }
+            .set { ch_mutect2_stats_gather }
+
+        GATK4_MERGEMUTECTSTATS (
+            ch_mutect2_stats_gather
+        )
+
+        GATK4_MUTECT2.out.f1r2
+            .map { meta, f1r2 -> [ meta.original_id ?: meta.id, f1r2 ] }
+            .groupTuple()
+            .map { original_id, f1r2s ->
+                def meta = [id: original_id]
+                [ meta, f1r2s ]
+            }
+            .set { ch_mutect2_f1r2_gather }
 
         //
         // MODULE: GetPileupSummaries (tumor)
@@ -512,18 +581,18 @@ workflow TEMPO {
         GATK4_CALCULATECONTAMINATION ( ch_contamination_input )
 
         //
-        // MODULE: LearnReadOrientationModel
+        // MODULE: LearnReadOrientationModel (on gathered f1r2)
         //
         GATK4_LEARNREADORIENTATIONMODEL (
-            GATK4_MUTECT2.out.f1r2
+            ch_mutect2_f1r2_gather
         )
 
         //
-        // MODULE: FilterMutectCalls
+        // MODULE: FilterMutectCalls (on merged VCF + merged stats)
         //
-        GATK4_MUTECT2.out.vcf
-            .join(GATK4_MUTECT2.out.tbi)
-            .join(GATK4_MUTECT2.out.stats)
+        GATK4_MERGEVCFS.out.vcf
+            .join(GATK4_MERGEVCFS.out.tbi)
+            .join(GATK4_MERGEMUTECTSTATS.out.stats)
             .join(GATK4_LEARNREADORIENTATIONMODEL.out.artifactprior)
             .join(GATK4_CALCULATECONTAMINATION.out.contamination)
             .join(GATK4_CALCULATECONTAMINATION.out.segmentation)
@@ -948,16 +1017,17 @@ workflow TEMPO {
 
     if (doWF_germSNV) {
         //
-        // MODULE: GATK4 HaplotypeCaller
-        // input: tuple val(meta), path(input), path(input_index), path(intervals), path(dragstr_model)
-        //        tuple val(meta2), path(fasta)
-        //        tuple val(meta3), path(fai)
-        //        tuple val(meta4), path(dict)
-        //        tuple val(meta5), path(dbsnp)
-        //        tuple val(meta6), path(dbsnp_tbi)
+        // MODULE: GATK4 HaplotypeCaller — scattered across intervals
+        // Each normal BAM is combined with each interval for parallel execution
         //
         ch_recal_branched.normal
-            .map { meta, bam, bai -> [ meta, bam, bai, [], [] ] }
+            .combine(SPLIT_INTERVALS.out.interval_lists.flatten())
+            .map { meta, bam, bai, interval ->
+                def new_meta = meta.clone()
+                new_meta.id = "${meta.id}_${interval.baseName}"
+                new_meta.original_id = meta.id
+                [ new_meta, bam, bai, interval, [] ]
+            }
             .set { ch_hc_input }
 
         GATK4_HAPLOTYPECALLER (
@@ -968,6 +1038,32 @@ workflow TEMPO {
             ch_dbsnp,
             ch_dbsnp_tbi
         )
+
+        //
+        // MODULE: GERMLINE_COMBINE_HC_VCF — gather scattered HaplotypeCaller VCFs
+        // Groups VCFs by original sample ID, then concat + normalize + dedup
+        //
+        GATK4_HAPLOTYPECALLER.out.vcf
+            .map { meta, vcf -> [ meta.original_id ?: meta.id, vcf ] }
+            .groupTuple()
+            .join(
+                GATK4_HAPLOTYPECALLER.out.tbi
+                    .map { meta, tbi -> [ meta.original_id ?: meta.id, tbi ] }
+                    .groupTuple()
+            )
+            .map { original_id, vcfs, tbis ->
+                def meta = [id: original_id, sample: original_id]
+                [ meta, vcfs, tbis ]
+            }
+            .set { ch_hc_combine_input }
+
+        GERMLINE_COMBINE_HC_VCF (
+            ch_hc_combine_input,
+            ch_fasta,
+            ch_fasta_fai,
+            ch_dict
+        )
+        ch_versions = ch_versions.mix(GERMLINE_COMBINE_HC_VCF.out.versions.first())
 
         //
         // MODULE: Strelka2 germline
@@ -994,13 +1090,9 @@ workflow TEMPO {
 
         //
         // MODULE: Germline Combine Channel (HaplotypeCaller + Strelka2 union merge)
+        // Uses combined HC VCF (post scatter-gather) joined with Strelka2 output
         //
-        //
-        // MODULE: Germline Combine Channel (HaplotypeCaller + Strelka2 union merge)
-        //
-        // Join HC output with Strelka2 germline output
-        GATK4_HAPLOTYPECALLER.out.vcf
-            .join(GATK4_HAPLOTYPECALLER.out.tbi)
+        GERMLINE_COMBINE_HC_VCF.out.vcf
             .join(STRELKA2_GERMLINE.out.vcf.map { meta, vcf, tbi -> [ meta, vcf, tbi ] })
             .map { meta, hc_vcf, hc_tbi, strelka_vcf, strelka_tbi ->
                 [ meta.patient, meta, hc_vcf, hc_tbi, strelka_vcf, strelka_tbi ]
@@ -1811,6 +1903,22 @@ workflow TEMPO {
 
             AGGREGATE_QC_CONPAIR ( ch_aggregate_qc_conpair_input )
         }
+
+        //
+        // MODULE: MULTIQC_COHORT — cohort-level MultiQC report from all QC outputs
+        // Collect per-sample multiqc reports + individual QC outputs for cohort-level summary
+        //
+        MULTIQC_SAMPLE.out.multiqc_report
+            .map { meta, html, data -> [ html, data ] }
+            .flatMap()
+            .mix(
+                doWF_QC ? CONPAIR_ALL.out.conpair_output.map { meta, conc, cont -> [ conc, cont ] }.flatMap() : Channel.empty()
+            )
+            .collect()
+            .set { ch_cohort_multiqc_input }
+
+        MULTIQC_COHORT ( ch_cohort_multiqc_input )
+        ch_versions = ch_versions.mix(MULTIQC_COHORT.out.versions)
     }
 
     emit:
