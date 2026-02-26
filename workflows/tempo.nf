@@ -4,9 +4,6 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-//
-// MODULE: Installed from nf-core/modules
-//
 include { FASTQC                                       } from '../modules/nf-core/fastqc/main'
 include { MULTIQC                                      } from '../modules/nf-core/multiqc/main'
 include { FASTP                                        } from '../modules/nf-core/fastp/main'
@@ -35,9 +32,6 @@ include { MSISENSORPRO_MSISOMATIC                      } from '../modules/nf-cor
 include { PICARD_COLLECTHSMETRICS                      } from '../modules/nf-core/picard/collecthsmetrics/main'
 include { QUALIMAP_BAMQC                               } from '../modules/nf-core/qualimap/bamqc/main'
 
-//
-// MODULE: Local modules (Tempo-specific, no nf-core equivalent)
-//
 include { POLYSOLVER                  } from '../modules/local/polysolver/main'
 include { LOHHLA                      } from '../modules/local/lohhla/main'
 include { SNPPILEUP                   } from '../modules/local/snppileup/main'
@@ -47,6 +41,7 @@ include { CONPAIR_CONCORDANCE         } from '../modules/local/conpair/concordan
 include { VCF2MAF                     } from '../modules/local/vcf2maf/main'
 include { DELLY_CALL_SOMATIC          } from '../modules/local/delly/call/main'
 include { DELLY_COMBINE               } from '../modules/local/delly/combine/main'
+include { DELLY_COMBINE as DELLY_COMBINE_GERMLINE } from '../modules/local/delly/combine/main'
 include { DELLY_CALL_GERMLINE         } from '../modules/local/delly/call_germline/main'
 include { STRELKA2_COMBINE_SOMATIC    } from '../modules/local/strelka2/combine_somatic/main'
 include { SOMATIC_COMBINE_CHANNEL     } from '../modules/local/somatic/combine_channel/main'
@@ -185,10 +180,6 @@ workflow TEMPO {
     // RAW READ QC
     // =============================================
 
-    //
-    // MODULE: FastQC
-    // input: tuple val(meta), path(reads)
-    //
     FASTQC ( ch_reads )
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]})
 
@@ -196,13 +187,6 @@ workflow TEMPO {
     // PREPROCESSING: TRIM + ALIGN + SORT
     // =============================================
 
-    //
-    // MODULE: fastp
-    // input: tuple val(meta), path(reads), path(adapter_fasta)
-    //        val discard_trimmed_pass
-    //        val save_trimmed_fail
-    //        val save_merged
-    //
     ch_reads
         .map { meta, reads -> [ meta, reads, [] ] }
         .set { ch_fastp_input }
@@ -215,13 +199,6 @@ workflow TEMPO {
     )
     ch_multiqc_files = ch_multiqc_files.mix(FASTP.out.json.collect{it[1]})
 
-    //
-    // MODULE: BWA-MEM2
-    // input: tuple val(meta), path(reads)
-    //        tuple val(meta2), path(index)
-    //        tuple val(meta3), path(fasta)
-    //        val sort_bam
-    //
     BWAMEM2_MEM (
         FASTP.out.reads,
         ch_bwa_index,
@@ -229,22 +206,12 @@ workflow TEMPO {
         true   // sort_bam
     )
 
-    //
-    // MODULE: Samtools sort
-    // input: tuple val(meta), path(bam)
-    //        tuple val(meta2), path(fasta)
-    //        val index_format
-    //
     SAMTOOLS_SORT (
         BWAMEM2_MEM.out.bam,
         ch_fasta,
-        []  // index_format - use default
+        []
     )
 
-    //
-    // MODULE: Samtools index
-    // input: tuple val(meta), path(input)
-    //
     SAMTOOLS_INDEX_SORTED ( SAMTOOLS_SORT.out.bam )
 
     // =============================================
@@ -266,11 +233,6 @@ workflow TEMPO {
         }
         .set { ch_bams_to_merge }
 
-    //
-    // MODULE: Samtools merge
-    // input: tuple val(meta), path(input_files, stageAs: "?/*")
-    //        tuple val(meta2), path(fasta), path(fai), path(gzi)
-    //
     ch_fasta
         .combine(ch_fasta_fai.map{ it[1] })
         .map { meta, fasta, fai -> [ meta, fasta, fai, [] ] }
@@ -292,12 +254,6 @@ workflow TEMPO {
     // MARK DUPLICATES
     // =============================================
 
-    //
-    // MODULE: GATK4 MarkDuplicates
-    // input: tuple val(meta), path(bam)
-    //        path fasta
-    //        path fasta_fai
-    //
     GATK4_MARKDUPLICATES (
         ch_bams_merged,
         ch_fasta.map{ it[1] },
@@ -312,15 +268,6 @@ workflow TEMPO {
     // BASE QUALITY SCORE RECALIBRATION
     // =============================================
 
-    //
-    // MODULE: GATK4 BaseRecalibrator
-    // input: tuple val(meta), path(input), path(input_index), path(intervals)
-    //        tuple val(meta2), path(fasta)
-    //        tuple val(meta3), path(fai)
-    //        tuple val(meta4), path(dict)
-    //        tuple val(meta5), path(known_sites)
-    //        tuple val(meta6), path(known_sites_tbi)
-    //
     GATK4_MARKDUPLICATES.out.bam
         .join(SAMTOOLS_INDEX_MD.out.bai)
         .map { meta, bam, bai -> [ meta, bam, bai, [] ] }  // empty intervals
@@ -350,13 +297,6 @@ workflow TEMPO {
         ch_known_sites_tbi
     )
 
-    //
-    // MODULE: GATK4 ApplyBQSR
-    // input: tuple val(meta), path(input), path(input_index), path(bqsr_table), path(intervals)
-    //        path fasta
-    //        path fai
-    //        path dict
-    //
     GATK4_MARKDUPLICATES.out.bam
         .join(SAMTOOLS_INDEX_MD.out.bai)
         .join(GATK4_BASERECALIBRATOR.out.table)
@@ -418,9 +358,6 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_manta) {
-        //
-        // MODULE: Manta somatic (provides indel candidates for Strelka2 + SV calls)
-        //
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai ->
                 [ meta, nbam, nbai, tbam, tbai, [], [] ]
@@ -431,7 +368,7 @@ workflow TEMPO {
             ch_manta_input,
             ch_fasta,
             ch_fasta_fai,
-            []  // config
+            []
         )
     }
 
@@ -462,10 +399,6 @@ workflow TEMPO {
 
     if (doWF_SNV) {
 
-        //
-        // MODULE: Mutect2 — scattered across intervals
-        //
-        // Prepare fai+gzi tuple
         ch_fasta_fai
             .map { meta, fai -> [ meta, fai, [] ] }
             .set { ch_fai_gzi }
@@ -494,7 +427,6 @@ workflow TEMPO {
         )
 
         //
-        // Gather scattered Mutect2 results — merge VCFs, stats, and f1r2
         //
         GATK4_MUTECT2.out.vcf
             .map { meta, vcf -> [ meta.original_id ?: meta.id, vcf ] }
@@ -532,9 +464,6 @@ workflow TEMPO {
             }
             .set { ch_mutect2_f1r2_gather }
 
-        //
-        // MODULE: GetPileupSummaries (tumor)
-        //
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai ->
                 [ meta, tbam, tbai, [] ]
@@ -550,9 +479,6 @@ workflow TEMPO {
             ch_germline_resource_tbi.map{ it[1] }
         )
 
-        //
-        // MODULE: GetPileupSummaries (normal)
-        //
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai ->
                 [ meta, nbam, nbai, [] ]
@@ -568,9 +494,6 @@ workflow TEMPO {
             ch_germline_resource_tbi.map{ it[1] }
         )
 
-        //
-        // MODULE: CalculateContamination
-        //
         GETPILEUPSUMMARIES_TUMOR.out.table
             .join(GETPILEUPSUMMARIES_NORMAL.out.table)
             .map { meta, tumor_table, normal_table ->
@@ -580,16 +503,10 @@ workflow TEMPO {
 
         GATK4_CALCULATECONTAMINATION ( ch_contamination_input )
 
-        //
-        // MODULE: LearnReadOrientationModel (on gathered f1r2)
-        //
         GATK4_LEARNREADORIENTATIONMODEL (
             ch_mutect2_f1r2_gather
         )
 
-        //
-        // MODULE: FilterMutectCalls (on merged VCF + merged stats)
-        //
         GATK4_MERGEVCFS.out.vcf
             .join(GATK4_MERGEVCFS.out.tbi)
             .join(GATK4_MERGEMUTECTSTATS.out.stats)
@@ -608,9 +525,6 @@ workflow TEMPO {
             ch_dict
         )
 
-        //
-        // MODULE: Strelka2 somatic (uses Manta indel candidates)
-        //
         ch_tumor_normal_pair
             .join(MANTA_SOMATIC.out.candidate_small_indels_vcf)
             .join(MANTA_SOMATIC.out.candidate_small_indels_vcf_tbi)
@@ -625,9 +539,6 @@ workflow TEMPO {
             ch_fasta_fai.map{ it[1] }
         )
 
-        //
-        // MODULE: Combine Strelka2 SNVs + Indels into single VCF
-        //
         STRELKA_SOMATIC.out.vcf_snvs
             .join(STRELKA_SOMATIC.out.vcf_snvs_tbi)
             .join(STRELKA_SOMATIC.out.vcf_indels)
@@ -643,9 +554,6 @@ workflow TEMPO {
             ch_fasta_fai
         )
 
-        //
-        // MODULE: Somatic Combine Channel (Mutect2 + Strelka2 union merge with annotations)
-        //
         GATK4_FILTERMUTECTCALLS.out.vcf
             .join(GATK4_FILTERMUTECTCALLS.out.tbi)
             .join(
@@ -659,7 +567,6 @@ workflow TEMPO {
             }
             .set { ch_somatic_combine_input }
 
-        // Reference annotation files (optional, from params)
         ch_repeat_masker = params.repeat_masker
             ? Channel.value(file(params.repeat_masker, checkIfExists: true))
             : Channel.value([])
@@ -700,9 +607,6 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(SOMATIC_COMBINE_CHANNEL.out.versions.first())
 
-        //
-        // MODULE: Ensembl VEP annotation
-        //
         GATK4_FILTERMUTECTCALLS.out.vcf
             .map { meta, vcf -> [ meta, vcf, [] ] }
             .set { ch_vep_input }
@@ -714,12 +618,9 @@ workflow TEMPO {
             params.vep_cache_version ?: '110',
             params.vep_cache    ? Channel.value(file(params.vep_cache, checkIfExists: true)) : Channel.value([]),
             ch_fasta,
-            []  // extra_files
+            []
         )
 
-        //
-        // MODULE: vcf2maf
-        //
         VCF2MAF (
             ENSEMBLVEP_VEP.out.vcf,
             ch_fasta.map{ it[1] },
@@ -733,10 +634,7 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_SV) {
-        //
-        // MODULE: Delly somatic SV calling (split by SV type, then merge)
         // Calls each SV type separately for parallelism and fault tolerance,
-        // applies somatic + read support filtering, then merges per sample pair
         //
 
         // SV types to call in parallel
@@ -756,9 +654,6 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(DELLY_CALL_SOMATIC.out.versions.first())
 
-        //
-        // MODULE: Delly combine - merge all SV types per sample pair
-        //
         DELLY_CALL_SOMATIC.out.vcf
             .groupTuple(by: 0)
             .map { meta, svTypes, vcfs, tbis ->
@@ -769,27 +664,6 @@ workflow TEMPO {
         DELLY_COMBINE ( ch_delly_combine_input )
         ch_versions = ch_versions.mix(DELLY_COMBINE.out.versions.first())
 
-        //
-        // MODULE: Merge Delly + Manta somatic SVs
-        // Concatenates Delly and Manta VCFs, filters PASS on canonical chromosomes
-        //
-        if (doWF_manta) {
-            // Merge Delly + Manta somatic SVs (requires Manta output)
-            DELLY_COMBINE.out.vcf
-                .join(MANTA_SOMATIC.out.diploid_sv_vcf)
-                .join(MANTA_SOMATIC.out.diploid_sv_vcf_tbi)
-                .map { meta, delly_vcf, delly_tbi, manta_vcf, manta_tbi ->
-                    [ meta, delly_vcf, delly_tbi, manta_vcf, manta_tbi ]
-                }
-                .set { ch_sv_merge_input }
-
-            SOMATIC_MERGE_SV ( ch_sv_merge_input )
-            ch_versions = ch_versions.mix(SOMATIC_MERGE_SV.out.versions.first())
-        }
-
-        //
-        // MODULE: SvABA somatic SV calling
-        //
         SVABA_SOMATIC (
             ch_tumor_normal_pair,
             ch_fasta.map{ it[1] },
@@ -798,49 +672,22 @@ workflow TEMPO {
         )
 
         //
-        // MODULE: VCF2BEDPE somatic (Manta+Delly merged VCF → BEDPE)
+        // Exome: Delly + Manta + SvABA (3 callers)
+        // WGS:   + BRASS (4 callers, added in WGS block below)
         //
         if (doWF_manta) {
-            SVTOOLS_VCF2BEDPE_SOMATIC (
-                SOMATIC_MERGE_SV.out.vcf
-            )
-
-            //
-            // MODULE: iAnnotateSV somatic (annotate BEDPE with blacklists + gene annotations)
-            //
-            ch_splice_sites = params.splice_sites
-                ? Channel.value(file(params.splice_sites, checkIfExists: true))
-                : Channel.value([])
-            ch_sv_blacklist_bed = params.sv_blacklist_bed
-                ? Channel.value(file(params.sv_blacklist_bed, checkIfExists: true))
-                : Channel.value([])
-            ch_sv_blacklist_bedpe = params.sv_blacklist_bedpe
-                ? Channel.value(file(params.sv_blacklist_bedpe, checkIfExists: true))
-                : Channel.value([])
-            ch_sv_blacklist_foldback_bedpe = params.sv_blacklist_foldback_bedpe
-                ? Channel.value(file(params.sv_blacklist_foldback_bedpe, checkIfExists: true))
-                : Channel.value([])
-            ch_sv_blacklist_te_bedpe = params.sv_blacklist_te_bedpe
-                ? Channel.value(file(params.sv_blacklist_te_bedpe, checkIfExists: true))
-                : Channel.value([])
-
-            IANNOTATESV_SOMATIC (
-                SVTOOLS_VCF2BEDPE_SOMATIC.out.bedpe,
-                ch_repeat_masker,
-                ch_mapability_blacklist,
-                ch_sv_blacklist_bed,
-                ch_sv_blacklist_bedpe,
-                ch_sv_blacklist_foldback_bedpe,
-                ch_sv_blacklist_te_bedpe,
-                ch_splice_sites,
-                params.genome ?: 'GRCh37'
-            )
-
-            //
-            // MODULE: ClusterSV (cluster breakpoints)
-            //
-            CLUSTERSV ( IANNOTATESV_SOMATIC.out.bedpe_pass, params.genome ?: 'GRCh37' )
-
+            DELLY_COMBINE.out.vcf
+                .map { meta, vcf, tbi -> [ meta, vcf, tbi, "delly" ] }
+                .mix(
+                    MANTA_SOMATIC.out.diploid_sv_vcf
+                        .join(MANTA_SOMATIC.out.diploid_sv_vcf_tbi)
+                        .map { meta, vcf, tbi -> [ meta, vcf, tbi, "manta" ] }
+                )
+                .mix(
+                    SVABA_SOMATIC.out.vcf
+                        .map { meta, vcf, tbi -> [ meta, vcf, tbi, "svaba" ] }
+                )
+                .set { ch_somatic_sv_callers_base }
         }
     }
 
@@ -849,20 +696,12 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_facets) {
-        //
-        // MODULE: SNP-Pileup (local)
-        // input: tuple val(meta), path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai)
-        //        path facets_vcf
-        //
         SNPPILEUP (
             ch_tumor_normal_pair,
             params.facets_vcf ? Channel.value(file(params.facets_vcf, checkIfExists: true)) : Channel.value([])
         )
         ch_versions = ch_versions.mix(SNPPILEUP.out.versions.first())
 
-        //
-        // MODULE: FACETS (local)
-        //
         FACETS ( SNPPILEUP.out.pileup )
         ch_versions = ch_versions.mix(FACETS.out.versions.first())
     }
@@ -872,16 +711,10 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_facets) {
-        //
-        // MODULE: FACETS Preview QC
-        //
         FACETS_PREVIEW_QC (
             FACETS.out.facets_output
         )
 
-        //
-        // MODULE: Somatic FACETS Annotation (annotate MAF with CN + zygosity)
-        // Requires both FACETS hisens_rdata and somatic MAF from VCF2MAF
         //
         if (doWF_SNV) {
             FACETS.out.hisens_rdata
@@ -896,45 +729,13 @@ workflow TEMPO {
     }
 
     // =============================================
-    // SVCircos (circos plot visualization)
-    // Requires both SV annotated BEDPE and FACETS CNV output
-    // =============================================
-
-    if (doWF_SV && doWF_facets) {
-        IANNOTATESV_SOMATIC.out.bedpe_pass
-            .join(FACETS.out.hisens_seg)
-            .set { ch_svcircos_input }
-
-        SVCIRCOS ( ch_svcircos_input, params.genome ?: 'GRCh37' )
-    }
-
-    // =============================================
-    // MUTATION SIGNATURES (moved before blocks that depend on LOH/MSI)
+    // MUTATION SIGNATURES
     // =============================================
 
     if (doWF_mutSig) {
-        //
-        // MODULE: Mutational Signatures (tempoSig)
-        //
         if (doWF_facets && doWF_SNV) {
             MUTSIG ( SOMATIC_FACETS_ANNOTATION.out.final_maf )
         }
-    }
-
-    // =============================================
-    // SVCLONE
-    // =============================================
-
-    if (doWF_SV && doWF_facets && doWF_SNV && doWF_manta) {
-        // SVclone needs: tumor/normal BAMs, annotated BEDPE, somatic MAF, FACETS CNV + ploidy
-        ch_tumor_normal_pair
-            .join(IANNOTATESV_SOMATIC.out.bedpe_pass)
-            .join(SOMATIC_FACETS_ANNOTATION.out.final_maf)
-            .join(FACETS.out.hisens_seg)
-            .join(FACETS.out.purity)
-            .set { ch_svclone_input }
-
-        SVCLONE ( ch_svclone_input )
     }
 
     // =============================================
@@ -942,15 +743,8 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_msiSensor) {
-        //
-        // MODULE: MSIsensor-pro scan
-        // input: tuple val(meta), path(fasta)
-        //
         MSISENSORPRO_SCAN ( ch_fasta )
 
-        //
-        // MODULE: MSIsensor-pro msi somatic
-        // input: tuple val(meta), path(normal), path(normal_index),
         //              path(tumor), path(tumor_index), path(intervals)
         //        tuple val(meta2), path(fasta)
         //        path(msisensor_scan)
@@ -973,23 +767,15 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_loh) {
-        //
-        // MODULE: Polysolver (local) - HLA typing on normal BAMs
-        // input: tuple val(meta), path(bam), path(bai)
-        //
         POLYSOLVER (
             ch_recal_branched.normal.map { meta, bam, bai -> [ meta, bam, bai ] }
         )
         ch_versions = ch_versions.mix(POLYSOLVER.out.versions.first())
 
-        //
-        // MODULE: LOHHLA (local) - HLA LOH detection
-        // input: tuple val(meta), path(tumor_bam), path(tumor_bai),
         //              path(normal_bam), path(normal_bai), path(hla_types)
         //        path hla_fasta
         //        path hla_dat
         //
-        // Pair tumor-normal with Polysolver HLA types from normal
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai ->
                 [ meta.normal_id, meta, tbam, tbai, nbam, nbai ]
@@ -1016,10 +802,6 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_germSNV) {
-        //
-        // MODULE: GATK4 HaplotypeCaller — scattered across intervals
-        // Each normal BAM is combined with each interval for parallel execution
-        //
         ch_recal_branched.normal
             .combine(SPLIT_INTERVALS.out.interval_lists.flatten())
             .map { meta, bam, bai, interval ->
@@ -1039,8 +821,6 @@ workflow TEMPO {
             ch_dbsnp_tbi
         )
 
-        //
-        // MODULE: GERMLINE_COMBINE_HC_VCF — gather scattered HaplotypeCaller VCFs
         // Groups VCFs by original sample ID, then concat + normalize + dedup
         //
         GATK4_HAPLOTYPECALLER.out.vcf
@@ -1065,11 +845,6 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(GERMLINE_COMBINE_HC_VCF.out.versions.first())
 
-        //
-        // MODULE: Strelka2 germline
-        // input: tuple val(meta), path(bam), path(bai)
-        //        tuple val(meta2), path(fasta)
-        //        tuple val(meta3), path(fai)
         //        path(call_regions), path(call_regions_tbi)
         //
         ch_call_regions = params.call_regions
@@ -1088,9 +863,6 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(STRELKA2_GERMLINE.out.versions.first())
 
-        //
-        // MODULE: Germline Combine Channel (HaplotypeCaller + Strelka2 union merge)
-        // Uses combined HC VCF (post scatter-gather) joined with Strelka2 output
         //
         GERMLINE_COMBINE_HC_VCF.out.vcf
             .join(STRELKA2_GERMLINE.out.vcf.map { meta, vcf, tbi -> [ meta, vcf, tbi ] })
@@ -1112,7 +884,6 @@ workflow TEMPO {
             }
             .set { ch_germline_combine_input }
 
-        // Reference annotation files for germline
         ch_repeat_masker_germ = params.repeat_masker
             ? Channel.value(file(params.repeat_masker, checkIfExists: true))
             : Channel.value([])
@@ -1145,9 +916,6 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(GERMLINE_COMBINE_CHANNEL.out.versions.first())
 
-        //
-        // MODULE: Germline VEP + MAF annotation
-        //
         ch_germline_vep_cache = params.vep_cache
             ? Channel.value(file(params.vep_cache, checkIfExists: true))
             : Channel.value([])
@@ -1171,9 +939,6 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_germSV) {
-        //
-        // MODULE: Delly germline SV calling (split by SV type)
-        //
         ch_sv_types_germline = Channel.from("DEL", "DUP", "INV", "BND", "INS")
 
         ch_delly_exclude_germline = params.delly_exclude_regions
@@ -1189,9 +954,6 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(DELLY_CALL_GERMLINE.out.versions.first())
 
-        //
-        // MODULE: Manta germline
-        //
         ch_manta_germline_regions = params.sv_calling_include_regions
             ? Channel.value(file(params.sv_calling_include_regions, checkIfExists: true))
             : Channel.value([])
@@ -1208,24 +970,14 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(MANTA_GERMLINE.out.versions.first())
 
-        //
-        // MODULE: Merge Delly + Manta germline SVs
-        //
         DELLY_CALL_GERMLINE.out.vcf
             .groupTuple(by: 0)
             .map { meta, svTypes, vcfs, tbis -> [ meta, vcfs, tbis ] }
-            .combine(MANTA_GERMLINE.out.vcf.map { meta, vcf, tbi -> [ meta, vcf, tbi ] }, by: 0)
-            .map { meta, delly_vcfs, delly_tbis, manta_vcf, manta_tbi ->
-                [ meta, delly_vcfs, delly_tbis, manta_vcf, manta_tbi ]
-            }
-            .set { ch_germline_sv_merge_input }
+            .set { ch_delly_combine_germline_input }
 
-        GERMLINE_MERGE_SV ( ch_germline_sv_merge_input )
-        ch_versions = ch_versions.mix(GERMLINE_MERGE_SV.out.versions.first())
+        DELLY_COMBINE_GERMLINE ( ch_delly_combine_germline_input )
+        ch_versions = ch_versions.mix(DELLY_COMBINE_GERMLINE.out.versions.first())
 
-        //
-        // MODULE: SvABA germline SV calling
-        //
         SVABA_GERMLINE (
             ch_recal_branched.normal,
             ch_fasta.map{ it[1] },
@@ -1234,15 +986,30 @@ workflow TEMPO {
         )
 
         //
-        // MODULE: VCF2BEDPE germline
         //
+        DELLY_COMBINE_GERMLINE.out.vcf
+            .map { meta, vcf, tbi -> [ meta, vcf, tbi, "delly" ] }
+            .mix(
+                MANTA_GERMLINE.out.vcf
+                    .map { meta, vcf, tbi -> [ meta, vcf, tbi, "manta" ] }
+            )
+            .mix(
+                SVABA_GERMLINE.out.vcf
+                    .map { meta, vcf, tbi -> [ meta, vcf, tbi, "svaba" ] }
+            )
+            .groupTuple(by: 0, size: 3)
+            .map { meta, vcfs, tbis, callers ->
+                [ meta, vcfs, tbis, callers ]
+            }
+            .set { ch_germline_sv_merge_input }
+
+        GERMLINE_MERGE_SV ( ch_germline_sv_merge_input )
+        ch_versions = ch_versions.mix(GERMLINE_MERGE_SV.out.versions.first())
+
         SVTOOLS_VCF2BEDPE_GERMLINE (
             GERMLINE_MERGE_SV.out.vcf
         )
 
-        //
-        // MODULE: iAnnotateSV germline
-        //
         ch_splice_sites_germ = params.splice_sites
             ? Channel.value(file(params.splice_sites, checkIfExists: true))
             : Channel.value([])
@@ -1304,7 +1071,6 @@ workflow TEMPO {
             ? Channel.value(file(params.neoantigen_cds, checkIfExists: true))
             : Channel.value([])
 
-        // Pair polysolver output with somatic MAF
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai -> [ meta.normal_id, meta ] }
             .combine(
@@ -1366,9 +1132,6 @@ workflow TEMPO {
     // =============================================
 
     if (isWGS && doWF_SV) {
-        //
-        // MODULE: ASCAT AlleleCount (Somatic CNV calling - WGS only)
-        //
         ASCAT_ALLELECOUNT (
             ch_tumor_normal_pair,
             ch_fasta.map{ it[1] },
@@ -1376,9 +1139,6 @@ workflow TEMPO {
             params.snp_gc_corrections ? Channel.value(file(params.snp_gc_corrections, checkIfExists: true)) : Channel.value(file('NO_FILE'))
         )
 
-        //
-        // MODULE: ASCAT Run (Somatic CNV calling - WGS only)
-        //
         ASCAT_ALLELECOUNT.out.alleles
             .groupTuple(by: 0)
             .map { meta, allele_counts ->
@@ -1398,8 +1158,6 @@ workflow TEMPO {
             params.snp_gc_corrections ? Channel.value(file(params.snp_gc_corrections, checkIfExists: true)) : Channel.value(file('NO_FILE'))
         )
 
-        //
-        // MODULE: BRASS GenerateBas (Somatic rearrangement annotation - WGS only)
         // Run separately on tumor and normal BAMs
         //
         ch_recal_bam_bai
@@ -1419,9 +1177,6 @@ workflow TEMPO {
             ch_fasta_fai.map{ it[1] }
         )
 
-        //
-        // MODULE: BRASS Input (Somatic rearrangement annotation - WGS only)
-        // Requires tumor + normal BAS files
         //
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai -> [ meta.tumor_id, meta, tbam, tbai, nbam, nbai ] }
@@ -1453,9 +1208,6 @@ workflow TEMPO {
             params.vagrent_ref_dir ? Channel.value(file(params.vagrent_ref_dir, checkIfExists: true)) : Channel.value(file('NO_FILE'))
         )
 
-        //
-        // MODULE: BRASS Cover (Somatic rearrangement annotation - WGS only)
-        //
         BRASS_COVER (
             ch_brass_input_input,
             ch_fasta.map{ it[1] },
@@ -1464,8 +1216,6 @@ workflow TEMPO {
             params.vagrent_ref_dir ? Channel.value(file(params.vagrent_ref_dir, checkIfExists: true)) : Channel.value(file('NO_FILE'))
         )
 
-        //
-        // MODULE: BRASS Run (Somatic rearrangement annotation - WGS only)
         // Combines BRASS input + cover outputs with BAMs + ASCAT results
         //
         ch_tumor_normal_pair
@@ -1505,45 +1255,111 @@ workflow TEMPO {
         )
 
         //
-        // MODULE: HRDetect (Homologous recombination deficiency detection - WGS only)
-        // Requires: somatic MAF + FACETS CNV + annotated BEDPE + HRdetect script
-        //
-        if (doWF_SNV && doWF_facets && doWF_manta) {
-            ch_hrdetect_script = params.hrdetect_script
-                ? Channel.value(file(params.hrdetect_script, checkIfExists: true))
-                : Channel.value(file('NO_FILE'))
-
-            SOMATIC_FACETS_ANNOTATION.out.final_maf
-                .join(FACETS.out.hisens_seg)
-                .join(IANNOTATESV_SOMATIC.out.bedpe_pass)
-                .map { meta, maf, cnv, bedpe ->
-                    [ meta, maf, cnv, bedpe ]
-                }
-                .set { ch_hrdetect_input }
-
-            HRDETECT (
-                ch_hrdetect_input,
-                ch_hrdetect_script
-            )
-        }
-
-        //
-        // MODULE: SV Signatures (Somatic rearrangement signatures - WGS only)
-        // Requires: annotated BEDPE + SV signature script
+        // WGS: Add BRASS to the SV callers channel for 4-caller merge
         //
         if (doWF_manta) {
+            ch_somatic_sv_callers_base
+                .mix(
+                    BRASS_RUN.out.brass_vcf
+                        .map { meta, vcf, tbi -> [ meta, vcf, tbi, "brass" ] }
+                )
+                .set { ch_somatic_sv_callers_with_brass }
+        }
+    }
+
+    // =============================================
+    // SOMATIC SV MERGE + ANNOTATION
+    // Runs after WGS block so BRASS is available for WGS
+    // Exome: 3 callers (Delly+Manta+SvABA), WGS: 4 callers (+BRASS)
+    // =============================================
+
+    if (doWF_SV && doWF_manta) {
+        def sv_caller_count = isWGS ? 4 : 3
+        def ch_sv_callers_final = isWGS ? ch_somatic_sv_callers_with_brass : ch_somatic_sv_callers_base
+
+        ch_sv_callers_final
+            .groupTuple(by: 0, size: sv_caller_count)
+            .map { meta, vcfs, tbis, callers -> [ meta, vcfs, tbis, callers ] }
+            .set { ch_sv_merge_input }
+
+        SOMATIC_MERGE_SV ( ch_sv_merge_input )
+        ch_versions = ch_versions.mix(SOMATIC_MERGE_SV.out.versions.first())
+
+        // VCF2BEDPE somatic
+        SVTOOLS_VCF2BEDPE_SOMATIC ( SOMATIC_MERGE_SV.out.vcf )
+
+        // iAnnotateSV somatic
+        ch_splice_sites = params.splice_sites
+            ? Channel.value(file(params.splice_sites, checkIfExists: true))
+            : Channel.value([])
+        ch_sv_blacklist_bed = params.sv_blacklist_bed
+            ? Channel.value(file(params.sv_blacklist_bed, checkIfExists: true))
+            : Channel.value([])
+        ch_sv_blacklist_bedpe = params.sv_blacklist_bedpe
+            ? Channel.value(file(params.sv_blacklist_bedpe, checkIfExists: true))
+            : Channel.value([])
+        ch_sv_blacklist_foldback_bedpe = params.sv_blacklist_foldback_bedpe
+            ? Channel.value(file(params.sv_blacklist_foldback_bedpe, checkIfExists: true))
+            : Channel.value([])
+        ch_sv_blacklist_te_bedpe = params.sv_blacklist_te_bedpe
+            ? Channel.value(file(params.sv_blacklist_te_bedpe, checkIfExists: true))
+            : Channel.value([])
+
+        IANNOTATESV_SOMATIC (
+            SVTOOLS_VCF2BEDPE_SOMATIC.out.bedpe,
+            ch_repeat_masker, ch_mapability_blacklist,
+            ch_sv_blacklist_bed, ch_sv_blacklist_bedpe,
+            ch_sv_blacklist_foldback_bedpe, ch_sv_blacklist_te_bedpe,
+            ch_splice_sites, params.genome ?: 'GRCh37'
+        )
+
+        // ClusterSV (cluster breakpoints)
+        CLUSTERSV ( IANNOTATESV_SOMATIC.out.bedpe_pass, params.genome ?: 'GRCh37' )
+
+        // WGS-only: HRDetect + SV Signatures
+        if (isWGS) {
+            if (doWF_SNV && doWF_facets) {
+                ch_hrdetect_script = params.hrdetect_script
+                    ? Channel.value(file(params.hrdetect_script, checkIfExists: true))
+                    : Channel.value(file('NO_FILE'))
+                SOMATIC_FACETS_ANNOTATION.out.final_maf
+                    .join(FACETS.out.hisens_seg)
+                    .join(IANNOTATESV_SOMATIC.out.bedpe_pass)
+                    .map { meta, maf, cnv, bedpe -> [ meta, maf, cnv, bedpe ] }
+                    .set { ch_hrdetect_input }
+                HRDETECT ( ch_hrdetect_input, ch_hrdetect_script )
+            }
+
             ch_svsig_script = params.sv_signature_script
                 ? Channel.value(file(params.sv_signature_script, checkIfExists: true))
                 : Channel.value(file('NO_FILE'))
-
-            IANNOTATESV_SOMATIC.out.bedpe_pass
-                .set { ch_svsig_input }
-
-            SV_SIGNATURES (
-                ch_svsig_input,
-                ch_svsig_script
-            )
+            SV_SIGNATURES ( IANNOTATESV_SOMATIC.out.bedpe_pass, ch_svsig_script )
         }
+    }
+
+    // =============================================
+    // SVCircos (circos plot visualization)
+    // =============================================
+
+    if (doWF_SV && doWF_facets && doWF_manta) {
+        IANNOTATESV_SOMATIC.out.bedpe_pass
+            .join(FACETS.out.hisens_seg)
+            .set { ch_svcircos_input }
+        SVCIRCOS ( ch_svcircos_input, params.genome ?: 'GRCh37' )
+    }
+
+    // =============================================
+    // SVCLONE
+    // =============================================
+
+    if (doWF_SV && doWF_facets && doWF_SNV && doWF_manta) {
+        ch_tumor_normal_pair
+            .join(IANNOTATESV_SOMATIC.out.bedpe_pass)
+            .join(SOMATIC_FACETS_ANNOTATION.out.final_maf)
+            .join(FACETS.out.hisens_seg)
+            .join(FACETS.out.purity)
+            .set { ch_svclone_input }
+        SVCLONE ( ch_svclone_input )
     }
 
     // =============================================
@@ -1551,14 +1367,6 @@ workflow TEMPO {
     // =============================================
 
     if (doWF_QC) {
-        //
-        // MODULE: Picard CollectHsMetrics (nf-core)
-        // input: tuple val(meta), path(bam), path(bai), path(bait_intervals), path(target_intervals)
-        //        tuple val(meta2), path(ref)
-        //        tuple val(meta3), path(ref_fai)
-        //        tuple val(meta4), path(ref_dict)
-        //        tuple val(meta5), path(ref_gzi)
-        //
         ch_recal_bam_bai
             .map { meta, bam, bai ->
                 [ meta, bam, bai, params.bait_intervals ? file(params.bait_intervals) : [], params.target_intervals ? file(params.target_intervals) : [] ]
@@ -1574,23 +1382,11 @@ workflow TEMPO {
         )
         ch_multiqc_files = ch_multiqc_files.mix(PICARD_COLLECTHSMETRICS.out.metrics.collect{it[1]})
 
-        //
-        // MODULE: Qualimap BAM QC (nf-core)
-        // input: tuple val(meta), path(bam)
-        //        path gff
-        //
         QUALIMAP_BAMQC (
             ch_recal_bam_bai.map { meta, bam, bai -> [ meta, bam ] },
-            []  // gff
+            []
         )
 
-        //
-        // MODULE: Conpair pileup (local) - run on all recalibrated BAMs
-        // input: tuple val(meta), path(bam), path(bai)
-        //        path fasta
-        //        path fasta_fai
-        //        path dict
-        //
         CONPAIR_PILEUP (
             ch_recal_bam_bai.map { meta, bam, bai -> [ meta, bam, bai ] },
             ch_fasta.map{ it[1] },
@@ -1599,10 +1395,6 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(CONPAIR_PILEUP.out.versions.first())
 
-        //
-        // MODULE: Conpair concordance (local) - pair tumor/normal pileups
-        // input: tuple val(meta), path(tumor_pileup), path(normal_pileup)
-        //
         CONPAIR_PILEUP.out.pileup
             .branch {
                 tumor:  it[0].status == 1
@@ -1630,9 +1422,6 @@ workflow TEMPO {
         CONPAIR_CONCORDANCE ( ch_conpair_concordance_input )
         ch_versions = ch_versions.mix(CONPAIR_CONCORDANCE.out.versions.first())
 
-        //
-        // MODULE: Conpair All (combined concordance + contamination)
-        //
         CONPAIR_ALL (
             ch_conpair_concordance_input,
             ch_fasta.map{ it[1] },
@@ -1640,9 +1429,6 @@ workflow TEMPO {
             ch_dict.map{ it[1] }
         )
 
-        //
-        // MODULE: Alfred QC (BAM quality metrics)
-        //
         ch_recal_bam_bai
             .map { meta, bam, bai ->
                 def targets = params.target_intervals ? file(params.target_intervals) : file('NO_FILE')
@@ -1656,9 +1442,6 @@ workflow TEMPO {
             ch_fasta.map{ it[1] }
         )
 
-        //
-        // MODULE: MultiQC Sample-level report
-        // Per-sample QC metrics aggregation
         //
         ch_multiqc_sample_configs = Channel.fromPath("$projectDir/assets/multiqc_config.yml", checkIfExists: true)
 
@@ -1688,8 +1471,6 @@ workflow TEMPO {
             ch_multiqc_sample_configs.toList()
         )
 
-        //
-        // MODULE: MultiQC Somatic pair-level report
         // Per tumor-normal pair QC metrics aggregation
         //
         if (doWF_SNV && doWF_facets) {
@@ -1718,9 +1499,6 @@ workflow TEMPO {
         ch_multiqc_custom_config   = params.multiqc_config ? Channel.fromPath(params.multiqc_config, checkIfExists: true) : Channel.empty()
         ch_multiqc_logo            = params.multiqc_logo   ? Channel.fromPath(params.multiqc_logo, checkIfExists: true)   : Channel.empty()
 
-        //
-        // MODULE: MultiQC (nf-core)
-        // input: path multiqc_files, stageAs: "?/*"
         //        path(multiqc_config)
         //        path(extra_multiqc_config)
         //        path(multiqc_logo)
@@ -1733,7 +1511,7 @@ workflow TEMPO {
             ch_multiqc_custom_config.toList(),
             ch_multiqc_logo.toList(),
             [],  // replace_names
-            []   // sample_names
+            []
         )
     }
 
@@ -1742,9 +1520,6 @@ workflow TEMPO {
     // =============================================
 
     if (params.aggregate) {
-        //
-        // MODULE: Aggregate Somatic MAF (union of all somatic MAF files)
-        //
         if (doWF_SNV && doWF_facets) {
             SOMATIC_FACETS_ANNOTATION.out.final_maf
                 .map { meta, maf -> maf }
@@ -1754,9 +1529,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_MAF ( ch_aggregate_somatic_maf_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic SV (union of all somatic SV BEDPE files)
-        //
         if (doWF_SV && doWF_manta) {
             IANNOTATESV_SOMATIC.out.bedpe_pass
                 .map { meta, bedpe -> bedpe }
@@ -1766,9 +1538,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_SV ( ch_aggregate_somatic_sv_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic FACETS (union of all FACETS CNV files)
-        //
         if (doWF_facets) {
             FACETS.out.hisens_seg
                 .map { meta, seg -> seg }
@@ -1778,9 +1547,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_FACETS ( ch_aggregate_somatic_facets_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic NetMHC (neoantigen predictions)
-        //
         if (doWF_loh && doWF_SNV) {
             NEOANTIGEN.out.predictions
                 .map { meta, neo -> neo }
@@ -1790,9 +1556,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_NETMHC ( ch_aggregate_somatic_netmhc_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic Metadata (clinical metadata summary)
-        //
         if (doWF_mdParse) {
             METADATA_PARSER.out.metadata
                 .map { meta, metadata -> metadata }
@@ -1802,9 +1565,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_METADATA ( ch_aggregate_somatic_metadata_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic LOH/HLA (union of LOH HLA output)
-        //
         if (doWF_loh) {
             LOHHLA.out.predictions
                 .map { meta, summary -> summary }
@@ -1814,9 +1574,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_LOHHLA ( ch_aggregate_somatic_lohhla_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic HRDetect (homologous recombination deficiency)
-        //
         if (isWGS && doWF_SV && doWF_SNV && doWF_facets) {
             HRDETECT.out.hrdetect_output
                 .map { meta, hrdetect -> hrdetect }
@@ -1826,9 +1583,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_HRDETECT ( ch_aggregate_somatic_hrdetect_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic SVClone (clonal SV analysis)
-        //
         if (doWF_SV && doWF_facets && doWF_SNV && doWF_manta) {
             SVCLONE.out.cluster_certainty
                 .map { meta, sv_cert, snv_cert -> [ sv_cert, snv_cert ] }
@@ -1838,9 +1592,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_SVCLONE ( ch_aggregate_somatic_svclone_input )
         }
 
-        //
-        // MODULE: Aggregate Somatic SV Signatures (rearrangement signatures)
-        //
         if (isWGS && doWF_SV && doWF_manta) {
             SV_SIGNATURES.out.sv_signatures
                 .map { meta, sigs -> sigs }
@@ -1850,9 +1601,6 @@ workflow TEMPO {
             AGGREGATE_SOMATIC_SVSIGNATURES ( ch_aggregate_somatic_svsignatures_input )
         }
 
-        //
-        // MODULE: Aggregate Germline MAF (union of all germline MAF files)
-        //
         if (doWF_germSNV) {
             GERMLINE_ANNOTATE_MAF.out.maf_file
                 .map { meta, maf -> maf }
@@ -1862,9 +1610,6 @@ workflow TEMPO {
             AGGREGATE_GERMLINE_MAF ( ch_aggregate_germline_maf_input )
         }
 
-        //
-        // MODULE: Aggregate Germline SV (union of all germline SV BEDPE files)
-        //
         if (doWF_germSV) {
             IANNOTATESV_GERMLINE.out.bedpe_pass
                 .map { meta, bedpe -> bedpe }
@@ -1874,9 +1619,6 @@ workflow TEMPO {
             AGGREGATE_GERMLINE_SV ( ch_aggregate_germline_sv_input )
         }
 
-        //
-        // MODULE: Aggregate QC BAM (union of BAM quality metrics)
-        //
         if (doWF_QC) {
             ALFRED.out.alfred_qc
                 .map { meta, rg_n, rg_y -> [ rg_n, rg_y ] }
@@ -1892,9 +1634,6 @@ workflow TEMPO {
             AGGREGATE_QC_BAM ( ch_aggregate_alfred_input, ch_aggregate_hsmetrics_input )
         }
 
-        //
-        // MODULE: Aggregate QC Conpair (concordance metrics across cohort)
-        //
         if (doWF_QC) {
             CONPAIR_CONCORDANCE.out.concordance
                 .map { meta, concordance -> concordance }
@@ -1904,8 +1643,6 @@ workflow TEMPO {
             AGGREGATE_QC_CONPAIR ( ch_aggregate_qc_conpair_input )
         }
 
-        //
-        // MODULE: MULTIQC_COHORT — cohort-level MultiQC report from all QC outputs
         // Collect per-sample multiqc reports + individual QC outputs for cohort-level summary
         //
         MULTIQC_SAMPLE.out.multiqc_report

@@ -19,7 +19,7 @@ process CLUSTERSV {
 
     script:
     prefix = task.ext.prefix ?: "${meta.id}"
-    def genome_ = genome == 'GRCh37' ? 'hg19' : (genome == 'GRCh38' ? 'hg38' : genome)
+    def genome_ = (genome == 'GRCh37' || genome == 'smallGRCh37') ? 'hs37d5' : 'hg38'
     """
     mkdir -p tmp
     grep -v "^#" ${bedpe} | cut -f 1-10 > tmp/${prefix}.bedpe

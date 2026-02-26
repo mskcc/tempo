@@ -23,10 +23,11 @@ process SV_SIGNATURES {
 
     script:
     def prefix = "${meta.tumor_id}__${meta.normal_id}"
+    def genome_version = params.genome == 'GRCh38' ? 'hg38' : 'hg19'
     """
     Rscript ${sv_signature_script} \\
         -i ${bedpe} \\
-        -g genome \\
+        -g ${genome_version} \\
         -n ${task.cpus} \\
         -s ${prefix} \\
         -o .
