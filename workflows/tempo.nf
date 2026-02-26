@@ -8,6 +8,7 @@ include { FASTQC                                       } from '../modules/nf-cor
 include { MULTIQC                                      } from '../modules/nf-core/multiqc/main'
 include { FASTP                                        } from '../modules/nf-core/fastp/main'
 include { BWAMEM2_MEM                                  } from '../modules/nf-core/bwamem2/mem/main'
+include { EXTRACT_READ_GROUP                             } from '../modules/local/extract_read_group/main'
 include { SAMTOOLS_SORT                                } from '../modules/nf-core/samtools/sort/main'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_SORTED       } from '../modules/nf-core/samtools/index/main'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_MD           } from '../modules/nf-core/samtools/index/main'
@@ -51,7 +52,7 @@ include { MANTA_GERMLINE              } from '../modules/local/manta/germline/ma
 include { GERMLINE_MERGE_SV           } from '../modules/local/germline/merge_sv/main'
 include { GERMLINE_COMBINE_CHANNEL    } from '../modules/local/germline/combine_channel/main'
 
-// New Phase 2 local modules — SV pipeline
+// SV pipeline modules
 include { SVABA_SOMATIC               } from '../modules/local/svaba/somatic/main'
 include { SVABA_GERMLINE              } from '../modules/local/svaba/germline/main'
 include { SVTOOLS_VCF2BEDPE_SOMATIC   } from '../modules/local/svtools/vcf2bedpe_somatic/main'
@@ -62,7 +63,7 @@ include { CLUSTERSV                   } from '../modules/local/clustersv/main'
 include { SVCIRCOS                    } from '../modules/local/svcircos/main'
 include { SVCLONE                     } from '../modules/local/svclone/main'
 
-// New Phase 2 local modules — WGS-only (ASCAT + BRASS + HRDetect)
+// WGS-only modules (ASCAT + BRASS + HRDetect)
 include { ASCAT_ALLELECOUNT           } from '../modules/local/ascat/allelecount/main'
 include { ASCAT_RUN                   } from '../modules/local/ascat/run/main'
 include { BRASS_GENERATE_BAS          } from '../modules/local/brass/generate_bas/main'
@@ -72,7 +73,7 @@ include { BRASS_RUN                   } from '../modules/local/brass/run/main'
 include { HRDETECT                    } from '../modules/local/hrdetect/main'
 include { SV_SIGNATURES               } from '../modules/local/svsignatures/main'
 
-// New Phase 2 local modules — Annotation & Signatures
+// Annotation & Signatures modules
 include { GERMLINE_ANNOTATE_MAF       } from '../modules/local/germline/annotate_maf/main'
 include { SOMATIC_FACETS_ANNOTATION   } from '../modules/local/somatic/facets_annotation/main'
 include { GERMLINE_FACETS_ANNOTATION  } from '../modules/local/germline/facets_annotation/main'
@@ -84,14 +85,14 @@ include { GERMLINE_COMBINE_HC_VCF     } from '../modules/local/germline/combine_
 include { GATK4_MERGEMUTECTSTATS     } from '../modules/local/gatk4/mergemutectstats/main'
 include { METADATA_PARSER             } from '../modules/local/metadata_parser/main'
 
-// New Phase 2 local modules — QC & Reporting
+// QC & Reporting modules
 include { ALFRED                      } from '../modules/local/alfred/main'
 include { CONPAIR_ALL                 } from '../modules/local/conpair/all/main'
 include { MULTIQC_SAMPLE              } from '../modules/local/multiqc/sample/main'
 include { MULTIQC_SOMATIC             } from '../modules/local/multiqc/somatic/main'
 include { MULTIQC_COHORT              } from '../modules/local/multiqc/cohort/main'
 
-// New Phase 2 local modules — Aggregation
+// Aggregation modules
 include { AGGREGATE_SOMATIC_MAF         } from '../modules/local/aggregate/somatic_maf/main'
 include { AGGREGATE_SOMATIC_SV          } from '../modules/local/aggregate/somatic_sv/main'
 include { AGGREGATE_SOMATIC_FACETS      } from '../modules/local/aggregate/somatic_facets/main'
@@ -115,20 +116,20 @@ include { AGGREGATE_QC_CONPAIR         } from '../modules/local/aggregate/qc_con
 workflow TEMPO {
 
     take:
-    ch_input            // channel: samplesheet parsed rows [ meta, fastq_1, fastq_2 ]
-    ch_fasta            // channel: [ val(meta), path(fasta) ]
-    ch_fasta_fai        // channel: [ val(meta), path(fai) ]
-    ch_dict             // channel: [ val(meta), path(dict) ]
-    ch_bwa_index        // channel: [ val(meta), path(index) ]
-    ch_dbsnp            // channel: [ val(meta), path(vcf) ]
-    ch_dbsnp_tbi        // channel: [ val(meta), path(tbi) ]
-    ch_known_indels     // channel: [ val(meta), path(vcf) ]
-    ch_known_indels_tbi // channel: [ val(meta), path(tbi) ]
-    ch_germline_resource     // channel: [ val(meta), path(vcf) ]
-    ch_germline_resource_tbi // channel: [ val(meta), path(tbi) ]
-    ch_intervals        // channel: [ path(intervals) ]
-    ch_pon              // channel: [ val(meta), path(vcf) ]
-    ch_pon_tbi          // channel: [ val(meta), path(tbi) ]
+    ch_input            // samplesheet parsed rows [ meta, fastq_1, fastq_2 ]
+    ch_fasta            // [ val(meta), path(fasta) ]
+    ch_fasta_fai        // [ val(meta), path(fai) ]
+    ch_dict             // [ val(meta), path(dict) ]
+    ch_bwa_index        // [ val(meta), path(index) ]
+    ch_dbsnp            // [ val(meta), path(vcf) ]
+    ch_dbsnp_tbi        // [ val(meta), path(tbi) ]
+    ch_known_indels     // [ val(meta), path(vcf) ]
+    ch_known_indels_tbi // [ val(meta), path(tbi) ]
+    ch_germline_resource     // [ val(meta), path(vcf) ]
+    ch_germline_resource_tbi // [ val(meta), path(tbi) ]
+    ch_intervals        // [ path(intervals) ]
+    ch_pon              // [ val(meta), path(vcf) ]
+    ch_pon_tbi          // [ val(meta), path(tbi) ]
 
     main:
 
@@ -136,9 +137,8 @@ workflow TEMPO {
     ch_multiqc_files = Channel.empty()
 
     // =============================================
-    // WORKFLOW CONTROL FLAGS (mirrors original Tempo dsl2.nf)
+    // WORKFLOW CONTROL FLAGS
     // =============================================
-
     // Parse --workflows string into boolean flags
     def WFs = params.workflows instanceof Boolean ? '' : (params.workflows ?: '')
     def wfList = WFs.split(',').collect{ it.trim().toLowerCase() }.unique().findAll{ it }
@@ -162,16 +162,10 @@ workflow TEMPO {
     if (doWF_SV && isWGS && ['hisens','purity'].contains(params.svcnv)) {
         doWF_facets = true
     }
-
-    //
     // Parse samplesheet and group by patient/sample
-    //
     ch_input
         .map { meta, fastq_1, fastq_2 ->
-            def new_meta = meta + [
-                id:         meta.sample,
-                read_group: "@RG\\tID:${meta.sample}_${meta.lane}\\tSM:${meta.sample}\\tPL:ILLUMINA\\tLB:${meta.sample}"
-            ]
+            def new_meta = meta + [ id: meta.sample ]
             [ new_meta, [ fastq_1, fastq_2 ] ]
         }
         .set { ch_reads }
@@ -199,8 +193,21 @@ workflow TEMPO {
     )
     ch_multiqc_files = ch_multiqc_files.mix(FASTP.out.json.collect{it[1]})
 
+    // Extract read group ID from FASTQ header
+    EXTRACT_READ_GROUP ( FASTP.out.reads )
+
+    FASTP.out.reads
+        .join(EXTRACT_READ_GROUP.out.read_group)
+        .map { meta, reads, rg_id ->
+            def new_meta = meta + [
+                read_group: "@RG\\tID:${rg_id.trim()}\\tSM:${meta.sample}\\tLB:${meta.sample}\\tPL:ILLUMINA"
+            ]
+            [ new_meta, reads ]
+        }
+        .set { ch_reads_with_rg }
+
     BWAMEM2_MEM (
-        FASTP.out.reads,
+        ch_reads_with_rg,
         ch_bwa_index,
         ch_fasta,
         true   // sort_bam
@@ -217,10 +224,7 @@ workflow TEMPO {
     // =============================================
     // MULTI-LANE MERGE
     // =============================================
-
-    //
     // Group BAMs by sample for merging (multi-lane)
-    //
     SAMTOOLS_SORT.out.bam
         .map { meta, bam ->
             def new_meta = meta.subMap('patient', 'sample', 'status', 'sex') + [id: meta.sample]
@@ -321,7 +325,6 @@ workflow TEMPO {
     // =============================================
     // TUMOR-NORMAL PAIRING
     // =============================================
-
     ch_recal_bam_bai
         .branch {
             tumor:  it[0].status == 1
@@ -1216,8 +1219,7 @@ workflow TEMPO {
             params.vagrent_ref_dir ? Channel.value(file(params.vagrent_ref_dir, checkIfExists: true)) : Channel.value(file('NO_FILE'))
         )
 
-        // Combines BRASS input + cover outputs with BAMs + ASCAT results
-        //
+        // Combine BRASS with BAMs + ASCAT
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai -> [ meta.tumor_id, meta, tbam, tbai, nbam, nbai ] }
             .combine(
