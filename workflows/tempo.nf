@@ -83,8 +83,6 @@ include { GERMLINE_FACETS_ANNOTATION  } from '../modules/local/germline/facets_a
 include { FACETS_PREVIEW_QC           } from '../modules/local/facets/preview_qc/main'
 include { NEOANTIGEN                  } from '../modules/local/neoantigen/main'
 include { MUTSIG                      } from '../modules/local/mutsig/main'
-include { GERMLINE_COMBINE_HC_VCF     } from '../modules/local/germline/combine_hc_vcf/main'
-include { SPLIT_INTERVALS             } from '../modules/local/splitintervals/main'
 include { METADATA_PARSER             } from '../modules/local/metadata_parser/main'
 
 // New Phase 2 local modules — QC & Reporting
@@ -92,7 +90,6 @@ include { ALFRED                      } from '../modules/local/alfred/main'
 include { CONPAIR_ALL                 } from '../modules/local/conpair/all/main'
 include { MULTIQC_SAMPLE              } from '../modules/local/multiqc/sample/main'
 include { MULTIQC_SOMATIC             } from '../modules/local/multiqc/somatic/main'
-include { MULTIQC_COHORT              } from '../modules/local/multiqc/cohort/main'
 
 // New Phase 2 local modules — Aggregation
 include { AGGREGATE_SOMATIC_MAF         } from '../modules/local/aggregate/somatic_maf/main'
@@ -1817,7 +1814,8 @@ workflow TEMPO {
     }
 
     emit:
-    versions = ch_versions
+    versions       = ch_versions
+    multiqc_report = MULTIQC.out.report
 }
 
 /*
