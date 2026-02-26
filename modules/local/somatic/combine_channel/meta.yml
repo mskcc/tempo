@@ -1,0 +1,157 @@
+name: "somatic_combine_channel"
+description: Combine and annotate MuTect2 and Strelka2 somatic variant calls
+keywords:
+  - somatic
+  - snv
+  - indel
+  - annotation
+  - filtering
+tools:
+  - bcftools:
+      description: VCF filtering and manipulation
+      homepage: "https://samtools.github.io/bcftools/"
+      documentation: "https://samtools.github.io/bcftools/"
+      licence: ["MIT"]
+  - vt:
+      description: VCF toolkit for structural variants and other variations
+      homepage: "https://genome.sph.umich.edu/wiki/Vt"
+      documentation: "https://genome.sph.umich.edu/wiki/Vt"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1', tumor_id:'tumor1', normal_id:'normal1' ]`
+  - - mutect_vcf:
+        type: file
+        description: MuTect2 VCF file
+        pattern: "*.vcf.gz"
+  - - mutect_tbi:
+        type: file
+        description: MuTect2 VCF index file
+        pattern: "*.vcf.gz.tbi"
+  - - tumor_bam:
+        type: file
+        description: Tumor BAM file
+        pattern: "*.bam"
+  - - tumor_bai:
+        type: file
+        description: Tumor BAM index file
+        pattern: "*.bai"
+  - - normal_bam:
+        type: file
+        description: Normal BAM file
+        pattern: "*.bam"
+  - - normal_bai:
+        type: file
+        description: Normal BAM index file
+        pattern: "*.bai"
+  - - strelka_vcf:
+        type: file
+        description: Strelka2 VCF file
+        pattern: "*.vcf.gz"
+  - - strelka_tbi:
+        type: file
+        description: Strelka2 VCF index file
+        pattern: "*.vcf.gz.tbi"
+  - - meta2:
+        type: map
+        description: Reference FASTA metadata
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - meta3:
+        type: map
+        description: FASTA index metadata
+  - - fai:
+        type: file
+        description: FASTA index file
+        pattern: "*.fai"
+  - - repeat_masker:
+        type: file
+        description: RepeatMasker annotation BED file
+        pattern: "*.bed.gz"
+  - - repeat_masker_tbi:
+        type: file
+        description: RepeatMasker BED index file
+        pattern: "*.bed.gz.tbi"
+  - - mapability_blacklist:
+        type: file
+        description: Mapability blacklist BED file
+        pattern: "*.bed.gz"
+  - - mapability_blacklist_tbi:
+        type: file
+        description: Mapability blacklist index file
+        pattern: "*.bed.gz.tbi"
+  - - pon:
+        type: file
+        description: Panel of normals VCF file
+        pattern: "*.vcf.gz"
+  - - pon_tbi:
+        type: file
+        description: Panel of normals index file
+        pattern: "*.vcf.gz.tbi"
+  - - gnomad:
+        type: file
+        description: gnomAD VCF file for population frequency annotation
+        pattern: "*.vcf.gz"
+  - - gnomad_tbi:
+        type: file
+        description: gnomAD VCF index file
+        pattern: "*.vcf.gz.tbi"
+output:
+  - pass_vcf:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.pass.vcf":
+          type: file
+          description: PASS variants with raw read counts
+          pattern: "*.pass.vcf"
+  - union_annot:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.union.annot.vcf.gz":
+          type: file
+          description: Annotated union of MuTect2 and Strelka2 calls
+          pattern: "*.union.annot.vcf.gz"
+    - - "*.union.annot.vcf.gz.tbi":
+          type: file
+          description: Index of annotated union VCF
+          pattern: "*.union.annot.vcf.gz.tbi"
+  - union_annot_filter:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.union.annot.filter.vcf.gz":
+          type: file
+          description: Filtered annotated union VCF
+          pattern: "*.union.annot.filter.vcf.gz"
+    - - "*.union.annot.filter.vcf.gz.tbi":
+          type: file
+          description: Index of filtered annotated union VCF
+          pattern: "*.union.annot.filter.vcf.gz.tbi"
+  - union_annot_filter_pass:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.union.annot.filter.pass.vcf.gz":
+          type: file
+          description: PASS filtered annotated union VCF
+          pattern: "*.union.annot.filter.pass.vcf.gz"
+    - - "*.union.annot.filter.pass.vcf.gz.tbi":
+          type: file
+          description: Index of PASS filtered annotated union VCF
+          pattern: "*.union.annot.filter.pass.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

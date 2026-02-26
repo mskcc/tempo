@@ -1,0 +1,71 @@
+name: "strelka2_germline"
+description: Germline variant calling with Strelka2
+keywords:
+  - germline
+  - snv
+  - indel
+  - strelka2
+tools:
+  - strelka2:
+      description: Somatic and germline variant caller
+      homepage: "https://github.com/Illumina/strelka"
+      documentation: "https://github.com/Illumina/strelka"
+      licence: ["Illumina"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1' ]`
+  - - bam:
+        type: file
+        description: Input BAM file
+        pattern: "*.bam"
+  - - bai:
+        type: file
+        description: BAM index file
+        pattern: "*.bai"
+  - - meta2:
+        type: map
+        description: Reference FASTA metadata
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - meta3:
+        type: map
+        description: FASTA index metadata
+  - - fai:
+        type: file
+        description: FASTA index file
+        pattern: "*.fai"
+  - - call_regions:
+        type: file
+        description: Call regions BED file (optional)
+        pattern: "*.bed.gz"
+  - - call_regions_tbi:
+        type: file
+        description: Call regions index file (optional)
+        pattern: "*.bed.gz.tbi"
+output:
+  - vcf:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.strelka2.vcf.gz":
+          type: file
+          description: Germline variant calls VCF file
+          pattern: "*.strelka2.vcf.gz"
+    - - "*.strelka2.vcf.gz.tbi":
+          type: file
+          description: Index of VCF file
+          pattern: "*.strelka2.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

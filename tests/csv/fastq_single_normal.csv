@@ -1,0 +1,2 @@
+patient,sex,status,sample,lane,fastq_1,fastq_2
+test_patient,XX,0,test_normal,lane_1,https://raw.githubusercontent.com/nf-core/test-datasets/modules/data/genomics/homo_sapiens/illumina/fastq/test_1.fastq.gz,https://raw.githubusercontent.com/nf-core/test-datasets/modules/data/genomics/homo_sapiens/illumina/fastq/test_2.fastq.gz

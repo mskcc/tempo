@@ -1,77 +1,112 @@
 # mskcc/tempo: Usage
 
-> _Documentation of pipeline parameters is generated automatically from the pipeline schema and can no longer be found in markdown files._
-
 ## Introduction
 
-<!-- TODO nf-core: Add documentation about anything specific to running your pipeline. For general topics, please point to (and add to) the main nf-core website. -->
+The TEMPO (Tumor Exome aNalysis Pipeline Or-iented) pipeline is a comprehensive nf-core workflow for processing paired-end whole exome or genome sequencing data from tumor and normal samples. It performs quality control, alignment, somatic and germline variant calling, copy number analysis, microsatellite instability assessment, and HLA typing.
 
-## Samplesheet input
+## Samplesheet Input
 
-You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row as shown in the examples below.
+### Format and Requirements
 
-```bash
---input '[path to samplesheet file]'
+The pipeline requires a CSV (comma-separated values) samplesheet specified via the `--input` parameter. This file defines all sample information and sequencing data paths required for the analysis.
+
+### Columns
+
+| Column | Description | Valid Values |
+|--------|-------------|--------------|
+| `patient` | Unique patient identifier | Alphanumeric string |
+| `sample` | Unique sample identifier within patient | Alphanumeric string |
+| `status` | Sample type classification | `0` (normal), `1` (tumor) |
+| `sex` | Biological sex for sex chromosome analysis | `XX`, `XY`, `NA` |
+| `lane` | Sequencing lane identifier | Alphanumeric string (e.g., `L001`, `L002`) |
+| `fastq_1` | Path to first read FASTQ file | Full absolute path to `*_R1.fastq.gz` |
+| `fastq_2` | Path to second read FASTQ file | Full absolute path to `*_R2.fastq.gz` |
+
+### Example Samplesheet
+
+```csv
+patient,sample,status,sex,lane,fastq_1,fastq_2
+patient1,sample1_normal,0,XX,L001,/path/to/normal_R1.fastq.gz,/path/to/normal_R2.fastq.gz
+patient1,sample1_tumor,1,XX,L001,/path/to/tumor_R1.fastq.gz,/path/to/tumor_R2.fastq.gz
+patient2,sample2_normal,0,XY,L001,/path/to/normal_R1.fastq.gz,/path/to/normal_R2.fastq.gz
+patient2,sample2_tumor,1,XY,L001,/path/to/tumor_R1.fastq.gz,/path/to/tumor_R2.fastq.gz
+patient2,sample2_tumor,1,XY,L002,/path/to/tumor_R1.fastq.gz,/path/to/tumor_R2.fastq.gz
 ```
 
-### Multiple runs of the same sample
+### Validation Rules
 
-The `sample` identifiers have to be the same when you have re-sequenced the same sample more than once e.g. to increase sequencing depth. The pipeline will concatenate the raw reads before performing any downstream analysis. Below is an example for the same sample sequenced across 3 lanes:
+- **One normal per patient**: Each patient MUST have exactly one normal sample (status=0)
+- **One or more tumors per patient**: Each patient MUST have at least one tumor sample (status=1)
+- **Multi-lane samples**: If a sample was sequenced across multiple lanes, provide separate rows with identical patient, sample, and status but different lane values and FASTQ paths. The pipeline will automatically concatenate reads from multiple lanes.
+- **Path requirements**: FASTQ file paths must be absolute paths to gzip-compressed files (.fastq.gz or .fq.gz)
+- **File existence**: All specified FASTQ files must exist and be readable before running the pipeline
 
-```console
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L003_R1_001.fastq.gz,AEG588A1_S1_L003_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L004_R1_001.fastq.gz,AEG588A1_S1_L004_R2_001.fastq.gz
-```
+### Sample Relationships
 
-### Full samplesheet
+The pipeline processes tumor-normal pairs. Each tumor sample is paired with the single normal sample from the same patient for somatic variant calling and quality control. For patients with multiple tumor samples, each tumor is independently compared to the same normal sample.
 
-The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet. The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 3 columns to match those defined in the table below.
+## Running the Pipeline
 
-A final samplesheet file consisting of both single- and paired-end data may look something like the one below. This is for 6 samples, where `TREATMENT_REP3` has been sequenced twice.
-
-```console
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP2,AEG588A2_S2_L002_R1_001.fastq.gz,AEG588A2_S2_L002_R2_001.fastq.gz
-CONTROL_REP3,AEG588A3_S3_L002_R1_001.fastq.gz,AEG588A3_S3_L002_R2_001.fastq.gz
-TREATMENT_REP1,AEG588A4_S4_L003_R1_001.fastq.gz,
-TREATMENT_REP2,AEG588A5_S5_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L004_R1_001.fastq.gz,
-```
-
-| Column    | Description                                                                                                                                                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sample`  | Custom sample name. This entry will be identical for multiple sequencing libraries/runs from the same sample. Spaces in sample names are automatically converted to underscores (`_`). |
-| `fastq_1` | Full path to FastQ file for Illumina short reads 1. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
-| `fastq_2` | Full path to FastQ file for Illumina short reads 2. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
-
-An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
-
-## Running the pipeline
+### Basic Execution
 
 The typical command for running the pipeline is as follows:
 
 ```bash
-nextflow run mskcc/tempo --input samplesheet.csv --outdir <OUTDIR> --genome GRCh37 -profile docker
+nextflow run mskcc/tempo --input samplesheet.csv --outdir results -profile singularity
 ```
 
-This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
+This will launch the pipeline with the `singularity` configuration profile, which is recommended for HPC environments.
 
-Note that the pipeline will create the following files in your working directory:
+### On Juno Cluster
+
+For users on the MSK Juno cluster with preconfigured settings:
+
+```bash
+nextflow run mskcc/tempo --input samplesheet.csv --outdir results -profile juno
+```
+
+### Test Run
+
+For testing the pipeline with provided sample data:
+
+```bash
+nextflow run mskcc/tempo -profile test,docker --outdir results
+```
+
+The test profile includes pre-configured inputs and reference files for validation.
+
+### Resume Previous Run
+
+To resume an interrupted run from the last successful task:
+
+```bash
+nextflow run mskcc/tempo --input samplesheet.csv --outdir results -profile singularity -resume
+```
+
+### Working Directory Structure
+
+The pipeline will create the following files in your working directory:
 
 ```bash
 work                # Directory containing the nextflow working files
-<OUTDIR>            # Finished results in specified location (defined with --outdir)
+results             # Finished results in specified location (defined with --outdir)
 .nextflow_log       # Log file from Nextflow
 # Other nextflow hidden files, eg. history of pipeline runs and old logs.
 ```
 
-### Updating the pipeline
+### Common Command-Line Parameters
 
-When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
+| Parameter | Description | Default | Required |
+|-----------|-------------|---------|----------|
+| `--input` | Path to samplesheet CSV | - | Yes |
+| `--outdir` | Output directory | `./results` | No |
+| `-profile` | Configuration profile (singularity, docker, juno, test) | - | Yes |
+| `-resume` | Resume from last successful task | false | No |
+| `-r` | Specific pipeline version | Latest | No |
+
+### Updating the Pipeline
+
+When you run the pipeline command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available, even if the pipeline has been updated. To ensure you're running the latest version:
 
 ```bash
 nextflow pull mskcc/tempo
@@ -79,190 +114,265 @@ nextflow pull mskcc/tempo
 
 ### Reproducibility
 
-It is a good idea to specify a pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
+It is a best practice to specify a pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used, allowing for reproducible analyses.
 
-First, go to the [mskcc/tempo releases page](https://github.com/mskcc/tempo/releases) and find the latest pipeline version - numeric only (eg. `1.3.1`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`. Of course, you can switch to another version by changing the number after the `-r` flag.
+To specify a version, first visit the [mskcc/tempo releases page](https://github.com/mskcc/tempo/releases) and find the desired version number (e.g., `1.3.1`). Then use the `-r` flag when running:
 
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future. For example, at the bottom of the MultiQC reports.
+```bash
+nextflow run mskcc/tempo -r 1.3.1 --input samplesheet.csv --outdir results -profile singularity
+```
 
-## Core Nextflow arguments
+The version number will be logged in execution reports and MultiQC output for future reference.
+
+## Reference Genomes
+
+### Default Genome
+
+GRCh37 (hg19) is the default reference genome used by the pipeline. All results are reported against this build unless otherwise specified.
+
+### Custom Reference Genomes
+
+To use a different reference genome, you must provide the following required files:
+
+### Required Reference Files
+
+| Parameter | Description | Format |
+|-----------|-------------|--------|
+| `--fasta` | Reference genome FASTA file | FASTA (.fa or .fasta) |
+| `--fasta_fai` | FASTA index file | Generated with `samtools faidx` |
+| `--dict` | Dictionary file | Generated with `picard CreateSequenceDictionary` |
+| `--bwa_index` | BWA index files | Prefix for `*.amb`, `*.ann`, `*.bwt`, `*.pac`, `*.sa` files |
+| `--dbsnp` | dbSNP known variants | VCF (.vcf.gz) |
+| `--known_indels` | Known indel locations | VCF (.vcf.gz) (e.g., Mills and 1000G gold standard) |
+| `--germline_resource` | Germline variants for contamination filtering | VCF (.vcf.gz) (e.g., gnomAD) |
+| `--intervals` | Target regions for analysis | BED or interval_list format |
+
+### TEMPO-Specific Reference Files
+
+| Parameter | Description | Format |
+|-----------|-------------|--------|
+| `--facets_vcf` | Common SNP VCF for FACETS copy number analysis | VCF (.vcf.gz) |
+| `--msi_sensor_list` | Microsatellite list for MSIsensor-pro scoring | List format |
+| `--vep_cache` | VEP (Variant Effect Predictor) annotation cache | Directory |
+| `--hla_fasta` | HLA reference sequences for HLA typing | FASTA |
+
+### Example Reference Configuration
+
+```bash
+nextflow run mskcc/tempo \
+  --input samplesheet.csv \
+  --outdir results \
+  -profile singularity \
+  --fasta /path/to/GRCh37.fa \
+  --fasta_fai /path/to/GRCh37.fa.fai \
+  --dict /path/to/GRCh37.dict \
+  --bwa_index /path/to/bwa_index/GRCh37 \
+  --dbsnp /path/to/dbsnp_146.vcf.gz \
+  --known_indels /path/to/Mills_and_1000G_gold_standard.indels.vcf.gz \
+  --germline_resource /path/to/af-only-gnomad.vcf.gz \
+  --intervals /path/to/exome.bed \
+  --facets_vcf /path/to/facets_snps.vcf.gz \
+  --msi_sensor_list /path/to/msi_sensor.list \
+  --vep_cache /path/to/vep_cache \
+  --hla_fasta /path/to/hla.fasta
+```
+
+## Pipeline Options
+
+### Assay Type
+
+Specify the sequencing assay type. This affects the analysis approach and reference regions used:
+
+```bash
+--assay_type exome    # (default) Whole exome sequencing
+--assay_type genome   # Whole genome sequencing
+```
+
+### Skip Options
+
+Skip specific analysis modules to reduce runtime or for debugging purposes:
+
+```bash
+--skip_somatic_snv      # Skip Mutect2 and Strelka2 somatic SNV calling
+--skip_somatic_sv       # Skip Manta and Delly structural variant calling
+--skip_facets           # Skip FACETS copy number analysis
+--skip_msi              # Skip MSIsensor-pro microsatellite instability analysis
+--skip_polysolver       # Skip Polysolver HLA typing
+--skip_lohhla           # Skip LOHHLA HLA loss of heterozygosity analysis
+--skip_germline_snv     # Skip HaplotypeCaller germline SNV calling
+--skip_qc               # Skip Conpair concordance/contamination check
+--skip_multiqc          # Skip MultiQC report generation
+```
+
+### Quality Control Options
+
+```bash
+--min_reads_unmapped        # Minimum percentage of unmapped reads to flag QC warning
+--contamination_threshold   # Conpair contamination threshold for warning (default: 0.05)
+```
+
+### Variant Calling Options
+
+```bash
+--mutect2_extra_args        # Extra arguments to pass to Mutect2
+--strelka_extra_args        # Extra arguments to pass to Strelka2
+--manta_extra_args          # Extra arguments to pass to Manta
+```
+
+## Core Nextflow Arguments
 
 > **NB:** These options are part of Nextflow and use a _single_ hyphen (pipeline parameters use a double-hyphen).
 
 ### `-profile`
 
-Use this parameter to choose a configuration profile. Profiles can give configuration presets for different compute environments.
+Use this parameter to choose a configuration profile. Profiles provide configuration presets for different compute environments and container technologies.
 
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Conda) - see below.
+Available profiles include:
 
-> We highly recommend the use of Docker or Singularity containers for full pipeline reproducibility, however when this is not possible, Conda is also supported.
+- `test` - Complete configuration for automated testing with test data
+- `docker` - Use Docker containers (recommended for local machines)
+- `singularity` - Use Singularity containers (recommended for HPC clusters)
+- `juno` - MSK Juno cluster specific configuration
+- `podman` - Use Podman containers
+- `shifter` - Use Shifter containers (NERSC)
+- `charliecloud` - Use Charliecloud containers
+- `conda` - Use Conda environment (not recommended for reproducibility)
 
-The pipeline also dynamically loads configurations from [https://github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutional clusters available at run time. For more information and to see if your system is available in these configs please see the [nf-core/configs documentation](https://github.com/nf-core/configs#documentation).
-
-Note that multiple profiles can be loaded, for example: `-profile test,docker` - the order of arguments is important!
-They are loaded in sequence, so later profiles can overwrite earlier profiles.
-
-If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results on different machines dependent on the computer enviroment.
-
-- `test`
-  - A profile with a complete configuration for automated testing
-  - Includes links to test data so needs no other parameters
-- `docker`
-  - A generic configuration profile to be used with [Docker](https://docker.com/)
-- `singularity`
-  - A generic configuration profile to be used with [Singularity](https://sylabs.io/docs/)
-- `podman`
-  - A generic configuration profile to be used with [Podman](https://podman.io/)
-- `shifter`
-  - A generic configuration profile to be used with [Shifter](https://nersc.gitlab.io/development/shifter/how-to-use/)
-- `charliecloud`
-  - A generic configuration profile to be used with [Charliecloud](https://hpc.github.io/charliecloud/)
-- `conda`
-  - A generic configuration profile to be used with [Conda](https://conda.io/docs/). Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity, Podman, Shifter or Charliecloud.
+Multiple profiles can be combined: `-profile test,docker` (order matters - later profiles override earlier ones).
 
 ### `-resume`
 
-Specify this when restarting a pipeline. Nextflow will use cached results from any pipeline steps where the inputs are the same, continuing from where it got to previously. For input to be considered the same, not only the names must be identical but the files' contents as well. For more info about this parameter, see [this blog post](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html).
+Specify this when restarting a pipeline. Nextflow will use cached results from pipeline steps where inputs are identical, continuing from the last successful task. This is useful for recovering from temporary failures.
 
-You can also supply a run name to resume a specific run: `-resume [run-name]`. Use the `nextflow log` command to show previous run names.
+```bash
+nextflow run mskcc/tempo --input samplesheet.csv -resume
+```
+
+You can also resume a specific named run:
+
+```bash
+nextflow run mskcc/tempo --input samplesheet.csv -resume [run-name]
+```
+
+Use `nextflow log` to view previous run names.
 
 ### `-c`
 
-Specify the path to a specific config file (this is a core Nextflow command). See the [nf-core website documentation](https://nf-co.re/usage/configuration) for more information.
+Specify a custom Nextflow configuration file to override default settings:
 
-## Custom configuration
-
-### Resource requests
-
-Whilst the default requirements set within the pipeline will hopefully work for most people and with most input data, you may find that you want to customise the compute resources that the pipeline requests. Each step in the pipeline has a default set of requirements for number of CPUs, memory and time. For most of the steps in the pipeline, if the job exits with any of the error codes specified [here](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/conf/base.config#L18) it will automatically be resubmitted with higher requests (2 x original, then 3 x original). If it still fails after the third attempt then the pipeline execution is stopped.
-
-For example, if the nf-core/rnaseq pipeline is failing after multiple re-submissions of the `STAR_ALIGN` process due to an exit code of `137` this would indicate that there is an out of memory issue:
-
-```console
-[62/149eb0] NOTE: Process `NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN (WT_REP1)` terminated with an error exit status (137) -- Execution is retried (1)
-Error executing process > 'NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN (WT_REP1)'
-
-Caused by:
-    Process `NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN (WT_REP1)` terminated with an error exit status (137)
-
-Command executed:
-    STAR \
-        --genomeDir star \
-        --readFilesIn WT_REP1_trimmed.fq.gz  \
-        --runThreadN 2 \
-        --outFileNamePrefix WT_REP1. \
-        <TRUNCATED>
-
-Command exit status:
-    137
-
-Command output:
-    (empty)
-
-Command error:
-    .command.sh: line 9:  30 Killed    STAR --genomeDir star --readFilesIn WT_REP1_trimmed.fq.gz --runThreadN 2 --outFileNamePrefix WT_REP1. <TRUNCATED>
-Work dir:
-    /home/pipelinetest/work/9d/172ca5881234073e8d76f2a19c88fb
-
-Tip: you can replicate the issue by changing to the process work dir and entering the command `bash .command.run`
+```bash
+nextflow run mskcc/tempo --input samplesheet.csv -c custom.config
 ```
 
-#### For beginners
+See the [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for more information.
 
-A first step to bypass this error, you could try to increase the amount of CPUs, memory, and time for the whole pipeline. Therefor you can try to increase the resource for the parameters `--max_cpus`, `--max_memory`, and `--max_time`. Based on the error above, you have to increase the amount of memory. Therefore you can go to the [parameter documentation of rnaseq](https://nf-co.re/rnaseq/3.9/parameters) and scroll down to the `show hidden parameter` button to get the default value for `--max_memory`. In this case 128GB, you than can try to run your pipeline again with `--max_memory 200GB -resume` to skip all process, that were already calculated. If you can not increase the resource of the complete pipeline, you can try to adapt the resource for a single process as mentioned below.
+## Configuration and Advanced Options
 
-#### Advanced option on process level
+### Nextflow Configuration File
 
-To bypass this error you would need to find exactly which resources are set by the `STAR_ALIGN` process. The quickest way is to search for `process STAR_ALIGN` in the [nf-core/rnaseq Github repo](https://github.com/nf-core/rnaseq/search?q=process+STAR_ALIGN).
-We have standardised the structure of Nextflow DSL2 pipelines such that all module files will be present in the `modules/` directory and so, based on the search results, the file we want is `modules/nf-core/star/align/main.nf`.
-If you click on the link to that file you will notice that there is a `label` directive at the top of the module that is set to [`label process_high`](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/modules/nf-core/software/star/align/main.nf#L9).
-The [Nextflow `label`](https://www.nextflow.io/docs/latest/process.html#label) directive allows us to organise workflow processes in separate groups which can be referenced in a configuration file to select and configure subset of processes having similar computing requirements.
-The default values for the `process_high` label are set in the pipeline's [`base.config`](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/conf/base.config#L33-L37) which in this case is defined as 72GB.
-Providing you haven't set any other standard nf-core parameters to **cap** the [maximum resources](https://nf-co.re/usage/configuration#max-resources) used by the pipeline then we can try and bypass the `STAR_ALIGN` process failure by creating a custom config file that sets at least 72GB of memory, in this case increased to 100GB.
-The custom config below can then be provided to the pipeline via the [`-c`](#-c) parameter as highlighted in previous sections.
+Store pipeline parameters in a configuration file for consistent and reproducible runs across multiple executions:
+
+```groovy
+// nextflow.config
+params {
+  input = 'samplesheet.csv'
+  outdir = 'results'
+  assay_type = 'exome'
+
+  // Reference files
+  fasta = '/path/to/GRCh37.fa'
+  fasta_fai = '/path/to/GRCh37.fa.fai'
+  dict = '/path/to/GRCh37.dict'
+  bwa_index = '/path/to/bwa_index/GRCh37'
+  dbsnp = '/path/to/dbsnp_146.vcf.gz'
+  known_indels = '/path/to/Mills_and_1000G_gold_standard.indels.vcf.gz'
+  germline_resource = '/path/to/af-only-gnomad.vcf.gz'
+  intervals = '/path/to/exome.bed'
+  facets_vcf = '/path/to/facets_snps.vcf.gz'
+  msi_sensor_list = '/path/to/msi_sensor.list'
+  vep_cache = '/path/to/vep_cache'
+  hla_fasta = '/path/to/hla.fasta'
+}
+
+process {
+  executor = 'slurm'
+  queue = 'default'
+  memory = '4 GB'
+  cpus = 4
+}
+```
+
+Then run with:
+
+```bash
+nextflow run mskcc/tempo -profile singularity
+```
+
+### Resource Requests
+
+Each step in the pipeline has default CPU, memory, and time requirements. If a process fails with specific error codes, Nextflow will automatically retry with increased resources (2x then 3x the original).
+
+To globally adjust resources:
+
+```bash
+nextflow run mskcc/tempo --input samplesheet.csv --max_memory 200GB --max_cpus 16
+```
+
+### Updating Containers
+
+To use a different version of a specific tool, create a custom configuration file:
 
 ```nextflow
 process {
-    withName: 'NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN' {
-        memory = 100.GB
+    withName: PROCESS_NAME {
+        container = 'quay.io/biocontainers/tool:version'
     }
 }
 ```
 
-> **NB:** We specify the full process name i.e. `NFCORE_RNASEQ:RNASEQ:ALIGN_STAR:STAR_ALIGN` in the config file because this takes priority over the short name (`STAR_ALIGN`) and allows existing configuration using the full process name to be correctly overridden.
->
-> If you get a warning suggesting that the process selector isn't recognised check that the process name has been specified correctly.
-
-### Updating containers (advanced users)
-
-The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. If for some reason you need to use a different version of a particular tool with the pipeline then you just need to identify the `process` name and override the Nextflow `container` definition for that process using the `withName` declaration. For example, in the [nf-core/viralrecon](https://nf-co.re/viralrecon) pipeline a tool called [Pangolin](https://github.com/cov-lineages/pangolin) has been used during the COVID-19 pandemic to assign lineages to SARS-CoV-2 genome sequenced samples. Given that the lineage assignments change quite frequently it doesn't make sense to re-release the nf-core/viralrecon everytime a new version of Pangolin has been released. However, you can override the default container used by the pipeline by creating a custom config file and passing it as a command-line argument via `-c custom.config`.
-
-1. Check the default version used by the pipeline in the module file for [Pangolin](https://github.com/nf-core/viralrecon/blob/a85d5969f9025409e3618d6c280ef15ce417df65/modules/nf-core/software/pangolin/main.nf#L14-L19)
-2. Find the latest version of the Biocontainer available on [Quay.io](https://quay.io/repository/biocontainers/pangolin?tag=latest&tab=tags)
-3. Create the custom config accordingly:
-
-   - For Docker:
-
-     ```nextflow
-     process {
-         withName: PANGOLIN {
-             container = 'quay.io/biocontainers/pangolin:3.0.5--pyhdfd78af_0'
-         }
-     }
-     ```
-
-   - For Singularity:
-
-     ```nextflow
-     process {
-         withName: PANGOLIN {
-             container = 'https://depot.galaxyproject.org/singularity/pangolin:3.0.5--pyhdfd78af_0'
-         }
-     }
-     ```
-
-   - For Conda:
-
-     ```nextflow
-     process {
-         withName: PANGOLIN {
-             conda = 'bioconda::pangolin=3.0.5'
-         }
-     }
-     ```
-
-> **NB:** If you wish to periodically update individual tool-specific results (e.g. Pangolin) generated by the pipeline then you must ensure to keep the `work/` directory otherwise the `-resume` ability of the pipeline will be compromised and it will restart from scratch.
-
-### nf-core/configs
-
-In most cases, you will only need to create a custom config as a one-off but if you and others within your organisation are likely to be running nf-core pipelines regularly and need to use the same settings regularly it may be a good idea to request that your custom config file is uploaded to the `nf-core/configs` git repository. Before you do this please can you test that the config file works with your pipeline of choice using the `-c` parameter. You can then create a pull request to the `nf-core/configs` repository with the addition of your config file, associated documentation file (see examples in [`nf-core/configs/docs`](https://github.com/nf-core/configs/tree/master/docs)), and amending [`nfcore_custom.config`](https://github.com/nf-core/configs/blob/master/nfcore_custom.config) to include your custom profile.
-
-See the main [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for more information about creating your own configuration files.
-
-If you have any questions or issues please send us a message on [Slack](https://nf-co.re/join/slack) on the [`#configs` channel](https://nfcore.slack.com/channels/configs).
-
-## Azure Resource Requests
-
-To be used with the `azurebatch` profile by specifying the `-profile azurebatch`.
-We recommend providing a compute `params.vm_type` of `Standard_D16_v3` VMs by default but these options can be changed if required.
-
-Note that the choice of VM size depends on your quota and the overall workload during the analysis.
-For a thorough list, please refer the [Azure Sizes for virtual machines in Azure](https://docs.microsoft.com/en-us/azure/virtual-machines/sizes).
-
-## Running in the background
-
-Nextflow handles job submissions and supervises the running jobs. The Nextflow process must run until the pipeline is finished.
-
-The Nextflow `-bg` flag launches Nextflow in the background, detached from your terminal so that the workflow does not stop if you log out of your session. The logs are saved to a file.
-
-Alternatively, you can use `screen` / `tmux` or similar tool to create a detached session which you can log back into at a later time.
-Some HPC setups also allow you to run nextflow within a cluster job submitted your job scheduler (from where it submits more jobs).
-
-## Nextflow memory requirements
-
-In some cases, the Nextflow Java virtual machines can start to request a large amount of memory.
-We recommend adding the following line to your environment to limit this (typically in `~/.bashrc` or `~./bash_profile`):
+Then pass it to the pipeline:
 
 ```bash
-NXF_OPTS='-Xms1g -Xmx4g'
+nextflow run mskcc/tempo -c custom.config --input samplesheet.csv
 ```
+
+### Running in the Background
+
+Use Nextflow's background mode or terminal multiplexers to run long pipelines:
+
+```bash
+# Using Nextflow background mode
+nextflow run mskcc/tempo --input samplesheet.csv -bg
+
+# Using screen
+screen -S tempo_run
+nextflow run mskcc/tempo --input samplesheet.csv
+# Detach with Ctrl+A then D
+```
+
+### Nextflow Memory Configuration
+
+To limit Nextflow JVM memory usage, add to your shell profile (`~/.bashrc` or `~/.bash_profile`):
+
+```bash
+export NXF_OPTS='-Xms1g -Xmx4g'
+```
+
+## Troubleshooting
+
+### Common Issues
+
+- **Missing reference files**: Ensure all `--*` reference parameters are specified and point to valid, readable files
+- **FASTQ path errors**: Verify that all paths in samplesheet are absolute paths to existing gzip-compressed files
+- **Samplesheet validation failures**: Check that each patient has exactly one normal (status=0) and at least one tumor (status=1) sample
+- **Out of memory errors (exit code 137)**: Increase memory allocation with `--max_memory`
+- **Container issues**: Ensure Docker or Singularity is properly installed and configured
+- **Resume failures**: Clean the `work/` directory if encountering resume issues, then restart from the beginning
+
+### Getting Help
+
+For additional support:
+- Visit the [mskcc/tempo GitHub repository](https://github.com/mskcc/tempo)
+- Check existing issues and discussions
+- Review the [nf-core documentation](https://nf-co.re/)
+- Consult the pipeline's troubleshooting guide

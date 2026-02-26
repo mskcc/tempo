@@ -1,0 +1,85 @@
+name: "delly_call"
+description: Somatic SV calling with DELLY
+keywords:
+  - somatic
+  - structural-variants
+  - delly
+tools:
+  - delly:
+      description: Integrated structural variant prediction method
+      homepage: "https://github.com/dellytools/delly"
+      documentation: "https://github.com/dellytools/delly"
+      licence: ["BSD-3-Clause"]
+  - bcftools:
+      description: VCF filtering and manipulation
+      homepage: "https://samtools.github.io/bcftools/"
+      documentation: "https://samtools.github.io/bcftools/"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1', tumor_id:'tumor1', normal_id:'normal1' ]`
+  - - tumor_bam:
+        type: file
+        description: Tumor BAM file
+        pattern: "*.bam"
+  - - tumor_bai:
+        type: file
+        description: Tumor BAM index file
+        pattern: "*.bai"
+  - - normal_bam:
+        type: file
+        description: Normal BAM file
+        pattern: "*.bam"
+  - - normal_bai:
+        type: file
+        description: Normal BAM index file
+        pattern: "*.bai"
+  - - svType:
+        type: string
+        description: SV type to call (DEL, DUP, INV, BND, INS)
+  - - meta2:
+        type: map
+        description: Reference FASTA metadata
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - meta3:
+        type: map
+        description: FASTA index metadata
+  - - fai:
+        type: file
+        description: FASTA index file
+        pattern: "*.fai"
+  - - exclude_bed:
+        type: file
+        description: BED file with regions to exclude (optional)
+        pattern: "*.bed"
+output:
+  - vcf:
+    - - meta:
+          type: map
+          description: Sample metadata with SV type information
+    - - svType:
+          type: string
+          description: SV type
+    - - "*.delly.vcf.gz":
+          type: file
+          description: Compressed VCF file with somatic SV calls
+          pattern: "*.delly.vcf.gz"
+    - - "*.delly.vcf.gz.tbi":
+          type: file
+          description: Tabix index of VCF file
+          pattern: "*.delly.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

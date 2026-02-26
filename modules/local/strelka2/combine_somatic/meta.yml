@@ -1,0 +1,76 @@
+name: "strelka2_combine_somatic"
+description: Combine Strelka2 SNV and indel calls
+keywords:
+  - somatic
+  - snv
+  - indel
+  - strelka2
+tools:
+  - strelka2:
+      description: Somatic and germline variant caller
+      homepage: "https://github.com/Illumina/strelka"
+      documentation: "https://github.com/Illumina/strelka"
+      licence: ["Illumina"]
+  - bcftools:
+      description: VCF filtering and manipulation
+      homepage: "https://samtools.github.io/bcftools/"
+      documentation: "https://samtools.github.io/bcftools/"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1', tumor_id:'tumor1', normal_id:'normal1' ]`
+  - - snv_vcf:
+        type: file
+        description: Strelka2 SNV VCF file
+        pattern: "*.vcf.gz"
+  - - snv_tbi:
+        type: file
+        description: Strelka2 SNV VCF index file
+        pattern: "*.vcf.gz.tbi"
+  - - indel_vcf:
+        type: file
+        description: Strelka2 indel VCF file
+        pattern: "*.vcf.gz"
+  - - indel_tbi:
+        type: file
+        description: Strelka2 indel VCF index file
+        pattern: "*.vcf.gz.tbi"
+  - - meta2:
+        type: map
+        description: Reference FASTA metadata
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - meta3:
+        type: map
+        description: FASTA index metadata
+  - - fai:
+        type: file
+        description: FASTA index file
+        pattern: "*.fai"
+output:
+  - vcf:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.strelka2.vcf.gz":
+          type: file
+          description: Combined Strelka2 SNV and indel VCF file
+          pattern: "*.strelka2.vcf.gz"
+    - - "*.strelka2.vcf.gz.tbi":
+          type: file
+          description: Index of combined VCF file
+          pattern: "*.strelka2.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

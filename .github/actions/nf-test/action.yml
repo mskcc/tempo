@@ -1,0 +1,44 @@
+name: "Run nf-test"
+description: "Run nf-test for a specific shard"
+
+inputs:
+  shard:
+    description: "Test file to run"
+    required: true
+  profile:
+    description: "Nextflow profile to use"
+    required: true
+    default: "docker"
+  nextflow_version:
+    description: "Nextflow version to install"
+    required: true
+    default: "24.04.2"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Nextflow
+      uses: nf-core/setup-nextflow@v2
+      with:
+        version: ${{ inputs.nextflow_version }}
+
+    - name: Install nf-test
+      shell: bash
+      run: |
+        wget -qO- https://code.askimed.com/install/nf-test | bash -s -- --version 0.9.2
+        sudo mv nf-test /usr/local/bin/
+
+    - name: Run nf-test
+      shell: bash
+      run: |
+        nf-test test \
+          --profile=${{ inputs.profile }} \
+          --tap=test.tap \
+          ${{ inputs.shard }}
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: nf-test-${{ hashFiles(inputs.shard) }}
+        path: test.tap

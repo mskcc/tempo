@@ -1,15 +1,36 @@
 repository_type: pipeline
+nf_core_version: "3.5.2"
 lint:
-  files_exist:
-  - CODE_OF_CONDUCT.md
-  - assets/nf-core-tempo_logo_light.png
-  - docs/images/nf-core-tempo_logo_light.png
-  - docs/images/nf-core-tempo_logo_dark.png
-  - .github/ISSUE_TEMPLATE/config.yml
-  - .github/workflows/awstest.yml
-  - .github/workflows/awsfulltest.yml
+  actions_schema_validation: false
+  actions_awstest: false
+  actions_awsfulltest: false
+  actions_nf_test: false
+  files_unchanged: false
+  template_strings: false
+  nf_test_content: false
+  rocrate_readme_sync: false
+  multiqc_config: false
   nextflow_config:
-  - manifest.name
-  - manifest.homePage
-  multiqc_config:
-  - report_comment
+    # MSKCC branding - not nf-core branded pipeline
+    - manifest.name
+    - manifest.homePage
+    - custom_config
+    # Tempo uses params for max resources (needed for IRIS cluster overrides)
+    - params.max_cpus
+    - params.max_memory
+    - params.max_time
+    - params.validationSchemaIgnoreParams
+  files_exist:
+    - "CODE_OF_CONDUCT.md"
+    - "CONTRIBUTING.md"
+    - "docs/README.md"
+    - ".github/workflows/ci.yml"
+    - ".github/ISSUE_TEMPLATE/bug_report.yml"
+    - ".github/ISSUE_TEMPLATE/feature_request.yml"
+    - ".github/ISSUE_TEMPLATE/question.yml"
+    - ".github/ISSUE_TEMPLATE/config.yml"
+    - "assets/nf-core-logo.png"
+    - "assets/sendgrid_logo.png"
+    - "assets/nf-core-tempo_logo_light.png"
+    - "docs/images/nf-core-tempo_logo_light.png"
+    - "docs/images/nf-core-tempo_logo_dark.png"

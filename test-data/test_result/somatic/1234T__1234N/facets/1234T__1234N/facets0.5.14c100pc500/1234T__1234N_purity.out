@@ -1,0 +1,27 @@
+# INPUT PARAMETERS GIVEN
+# TAG = 1234T__1234N_purity
+# Facets version = 0.5.14
+# Input = 1234T__1234N.snp_pileup.gz
+# Seed = 100
+# snp.nbhd = 250 
+# ndepth = 35 
+# purity_cval = 500
+# unmatched = FALSE 
+# cval = 100
+# min.nhet = 25
+# genome = hg19
+# tumor_id = 
+
+# LOADED MODULE INFO
+# Facets version = 0.5.14
+
+
+# FACETS OUTPUT
+# Purity = NA
+# Ploidy = 2 
+# dipLogR = 0.0013
+# dipt = -1
+# loglik = 
+# output flags
+# mafR not sufficiently small; mafR<0.09 in less than 10% genome
+

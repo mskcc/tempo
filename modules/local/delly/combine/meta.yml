@@ -1,0 +1,48 @@
+name: "delly_combine"
+description: Merge DELLY SV calls across SV types
+keywords:
+  - structural-variants
+  - delly
+  - merge
+tools:
+  - bcftools:
+      description: VCF filtering and manipulation
+      homepage: "https://samtools.github.io/bcftools/"
+      documentation: "https://samtools.github.io/bcftools/"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1' ]`
+  - - vcfs:
+        type: file
+        description: Array of VCF files to merge
+        pattern: "*.vcf.gz"
+  - - tbis:
+        type: file
+        description: Array of VCF index files
+        pattern: "*.vcf.gz.tbi"
+output:
+  - vcf:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.delly.vcf.gz":
+          type: file
+          description: Merged and compressed VCF file
+          pattern: "*.delly.vcf.gz"
+    - - "*.delly.vcf.gz.tbi":
+          type: file
+          description: Tabix index of merged VCF file
+          pattern: "*.delly.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

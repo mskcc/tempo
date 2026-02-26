@@ -1,0 +1,141 @@
+name: "germline_combine_channel"
+description: Combine and annotate HaplotypeCaller and Strelka2 germline variant calls
+keywords:
+  - germline
+  - snv
+  - indel
+  - annotation
+  - filtering
+tools:
+  - bcftools:
+      description: VCF filtering and manipulation
+      homepage: "https://samtools.github.io/bcftools/"
+      documentation: "https://samtools.github.io/bcftools/"
+      licence: ["MIT"]
+  - vt:
+      description: VCF toolkit for structural variants and other variations
+      homepage: "https://genome.sph.umich.edu/wiki/Vt"
+      documentation: "https://genome.sph.umich.edu/wiki/Vt"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1', tumor_id:'tumor1', normal_id:'normal1' ]`
+  - - hc_vcf:
+        type: file
+        description: HaplotypeCaller VCF file
+        pattern: "*.vcf.gz"
+  - - hc_tbi:
+        type: file
+        description: HaplotypeCaller VCF index file
+        pattern: "*.vcf.gz.tbi"
+  - - strelka_vcf:
+        type: file
+        description: Strelka2 VCF file
+        pattern: "*.vcf.gz"
+  - - strelka_tbi:
+        type: file
+        description: Strelka2 VCF index file
+        pattern: "*.vcf.gz.tbi"
+  - - tumor_bam:
+        type: file
+        description: Tumor/sample BAM file
+        pattern: "*.bam"
+  - - tumor_bai:
+        type: file
+        description: Tumor/sample BAM index file
+        pattern: "*.bai"
+  - - meta2:
+        type: map
+        description: Reference FASTA metadata
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - meta3:
+        type: map
+        description: FASTA index metadata
+  - - fai:
+        type: file
+        description: FASTA index file
+        pattern: "*.fai"
+  - - repeat_masker:
+        type: file
+        description: RepeatMasker annotation BED file
+        pattern: "*.bed.gz"
+  - - repeat_masker_tbi:
+        type: file
+        description: RepeatMasker BED index file
+        pattern: "*.bed.gz.tbi"
+  - - mapability_blacklist:
+        type: file
+        description: Mapability blacklist BED file
+        pattern: "*.bed.gz"
+  - - mapability_blacklist_tbi:
+        type: file
+        description: Mapability blacklist index file
+        pattern: "*.bed.gz.tbi"
+  - - gnomad:
+        type: file
+        description: gnomAD VCF file for population frequency annotation
+        pattern: "*.vcf.gz"
+  - - gnomad_tbi:
+        type: file
+        description: gnomAD VCF index file
+        pattern: "*.vcf.gz.tbi"
+output:
+  - germline_vcf:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.germline.vcf":
+          type: file
+          description: Merged germline variants (uncompressed)
+          pattern: "*.germline.vcf"
+  - union:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.union.vcf.gz":
+          type: file
+          description: Union of HC and Strelka2 calls (annotated)
+          pattern: "*.union.vcf.gz"
+    - - "*.union.vcf.gz.tbi":
+          type: file
+          description: Index of union VCF
+          pattern: "*.union.vcf.gz.tbi"
+  - union_pass:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.union.pass.vcf.gz":
+          type: file
+          description: PASS variants from union
+          pattern: "*.union.pass.vcf.gz"
+    - - "*.union.pass.vcf.gz.tbi":
+          type: file
+          description: Index of PASS variants
+          pattern: "*.union.pass.vcf.gz.tbi"
+  - germline_vcf_gz:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.germline.vcf.gz":
+          type: file
+          description: Merged germline variants (compressed)
+          pattern: "*.germline.vcf.gz"
+    - - "*.germline.vcf.gz.tbi":
+          type: file
+          description: Index of compressed germline VCF
+          pattern: "*.germline.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

@@ -1,0 +1,77 @@
+name: "delly_call_germline"
+description: Germline SV calling with DELLY
+keywords:
+  - germline
+  - structural-variants
+  - delly
+tools:
+  - delly:
+      description: Integrated structural variant prediction method
+      homepage: "https://github.com/dellytools/delly"
+      documentation: "https://github.com/dellytools/delly"
+      licence: ["BSD-3-Clause"]
+  - bcftools:
+      description: VCF filtering and manipulation
+      homepage: "https://samtools.github.io/bcftools/"
+      documentation: "https://samtools.github.io/bcftools/"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1' ]`
+  - - bam:
+        type: file
+        description: Input BAM file
+        pattern: "*.bam"
+  - - bai:
+        type: file
+        description: BAM index file
+        pattern: "*.bai"
+  - - svType:
+        type: string
+        description: SV type to call (DEL, DUP, INV, BND, INS)
+  - - meta2:
+        type: map
+        description: Reference FASTA metadata
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - meta3:
+        type: map
+        description: FASTA index metadata
+  - - fai:
+        type: file
+        description: FASTA index file
+        pattern: "*.fai"
+  - - exclude_bed:
+        type: file
+        description: BED file with regions to exclude (optional)
+        pattern: "*.bed"
+output:
+  - vcf:
+    - - meta:
+          type: map
+          description: Sample metadata with SV type information
+    - - svType:
+          type: string
+          description: SV type
+    - - "*.delly.vcf.gz":
+          type: file
+          description: Compressed VCF file with germline SV calls
+          pattern: "*.delly.vcf.gz"
+    - - "*.delly.vcf.gz.tbi":
+          type: file
+          description: Tabix index of VCF file
+          pattern: "*.delly.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

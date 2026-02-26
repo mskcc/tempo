@@ -1,101 +1,84 @@
-[![Cite with Zenodo](http://img.shields.io/badge/DOI-10.5281/zenodo.XXXXXXX-1073c8?labelColor=000000)](https://doi.org/10.5281/zenodo.XXXXXXX)
+# mskcc/tempo
 
-[![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A522.10.1-23aa62.svg)](https://www.nextflow.io/)
-[![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
+[![Nextflow](https://img.shields.io/badge/nextflow%20-%E2%89%A524.04.2-23aa62.svg?colorB=0c3173)](https://www.nextflow.io/)
 [![run with docker](https://img.shields.io/badge/run%20with-docker-0db7ed?labelColor=000000&logo=docker)](https://www.docker.com/)
-[![run with singularity](https://img.shields.io/badge/run%20with-singularity-1d355c.svg?labelColor=000000)](https://sylabs.io/docs/)
-[![Launch on Nextflow Tower](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Nextflow%20Tower-%234256e7)](https://tower.nf/launch?pipeline=https://github.com/mskcc/tempo)
+[![run with singularity](https://img.shields.io/badge/run%20with-singularity-1d355c.svg?labelColor=000000)](https://sylabs.io/singularity/)
+[![run with apptainer](https://img.shields.io/badge/run%20with-apptainer-1d355c.svg?labelColor=000000)](https://apptainer.org/)
 
 ## Introduction
 
-# Time-Efficient Mutational Profiling in Oncology (Tempo)
+**Tempo** (Time-Efficient Mutational Profiling in Oncology) is a comprehensive Nextflow pipeline for processing whole-exome and whole-genome sequencing (WES/WGS) data from tumor-normal pairs in cancer genomics research. Developed by the MSKCC Center for Molecular Oncology, Tempo implements nf-core best practices and supports both high-performance computing environments (Juno HPC at MSKCC with SLURM + Singularity) and cloud deployment (AWS).
 
-Tempo is a computational pipeline for processing data of paired-end whole-exome (WES) and whole-genome sequencing (WGS) of human cancer samples with matched normals. Its components are containerized and the pipeline runs on the [Juno high-performance computing cluster](http://mskcchpc.org/display/CLUS/Juno+Cluster+Guide) at Memorial Sloan Kettering Cancer Center and on [Amazon Web Services (AWS)](https://aws.amazon.com). The pipeline was written by members of the [Center for Molecular Oncology](https://www.mskcc.org/research-programs/molecular-oncology).
+The pipeline performs end-to-end analysis including quality control, read alignment, somatic variant calling, structural variant detection, copy number analysis, MSI detection, HLA typing, and comprehensive reporting.
 
-The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It uses Docker/Singularity containers making installation trivial and results highly reproducible. The [Nextflow DSL2](https://www.nextflow.io/docs/latest/dsl2.html) implementation of this pipeline uses one container per process which makes it much easier to maintain and update software dependencies. Where possible, these processes have been submitted to and installed from [nf-core/modules](https://github.com/nf-core/modules) in order to make them available to all nf-core pipelines, and to everyone within the Nextflow community!
+## Pipeline Summary
 
-These pages contain instructions on how to run the Tempo pipeline. It also contains documentation on the bioinformatic components in the pipeline, some motivation for various parameter choices, plus an outline describing the reference resources used. 
+Tempo performs the following analysis steps:
 
-If there are any questions or comments, you are welcome to [raise an issue](https://github.com/mskcc/tempo/issues/new?title=[User%20question]).
+1. **Read Quality Control** — FastQC quality assessment of raw sequencing reads
+2. **Adapter Trimming** — Adapter and low-quality base removal using fastp
+3. **Read Alignment** — Alignment to reference genome using BWA-MEM2
+4. **Post-Alignment Processing** — Duplicate marking (MarkDuplicates) and base quality score recalibration (BQSR)
+5. **Somatic SNV/Indel Calling** — Variant calling using Mutect2 and Strelka2
+6. **Somatic Structural Variant Calling** — SV detection using Manta and Delly
+7. **Copy Number Analysis** — Copy number segment analysis using FACETS
+8. **Microsatellite Instability (MSI) Detection** — MSI status determination using MSIsensor-pro
+9. **HLA Typing** — HLA allele inference using Polysolver
+10. **HLA Loss of Heterozygosity (LOH)** — HLA-specific LOH analysis using LOHHLA
+11. **Germline Variant Calling** — Germline variant discovery using HaplotypeCaller
+12. **Quality Control and Reporting** — Sample concordance assessment (Conpair) and comprehensive QC report generation (MultiQC)
 
-<small>Note: Tempo currently only supports human samples. The pipeline has only been tested for exome and genome sequencing experiments, and all reference files are in build GRCh37 of the human genome.</small>
+## Quick Start
 
-On release, automated continuous integration tests run the pipeline on a full-sized dataset on the AWS cloud infrastructure. This ensures that the pipeline runs on AWS, has sensible resource allocation defaults set to run on real-world datasets, and permits the persistent storage of results to benchmark between pipeline releases and other analysis sources.
+1. **Install Nextflow** (version 24.04.2 or later)
 
----
+   ```bash
+   curl -s https://get.nextflow.io | bash
+   ```
 
-## Table of Contents
+2. **Pull the pipeline**
 
-### 1. Getting Started
+   ```bash
+   nextflow pull mskcc/tempo
+   ```
 
-#### 1.1. Setup
-* [Installation](docs/installation.md)
-* [Setup on Juno](docs/juno-setup.md)
-* [Setup on AWS](docs/aws-setup.md)
+3. **Run with test profile**
 
-#### 1.2. Usage
-* [Running the Pipeline](docs/running-the-pipeline.md)
-    * [Overview](docs/running-the-pipeline.md#overview)
-    * [Input Files](docs/running-the-pipeline.md#input-files)
-    * [Execution Mode](docs/running-the-pipeline.md#execution-mode)
-    * [Modifying or Resuming Pipeline Run](docs/running-the-pipeline.md#modifying-or-resuming-pipeline-run)
-    * [After Successful Run](docs/running-the-pipeline.md#after-successful-run)
-* [Nextflow Basics](docs/nextflow-basics.md)
-* [Working With Containers](docs/working-with-containers.md)
+   ```bash
+   nextflow run mskcc/tempo -profile test,docker
+   ```
 
-#### 1.3 Outputs
-* [BAM Files](docs/outputs.md#bam-files)
-* [QC Outputs](docs/outputs.md#qc-outputs)
-* [Somatic Data](docs/outputs.md#somatic-data)
-* [Germline Data](docs/outputs.md#germline-data)
-* [Cohort Level Outputs](docs/outputs.md#cohort-level-outputs)
+   Replace `docker` with `singularity` or `apptainer` as needed for your environment.
 
-### 2. Pipeline contents
+## Usage
 
-#### 2.1. Bioinformatic Components
-* [Read Alignment](docs/bioinformatic-components.md#read-alignment)
-* [Somatic Analyses](docs/bioinformatic-components.md#somatic-analyses)
-* [Germline Analyses](docs/bioinformatic-components.md#germline-analyses)
-* [Quality Control](docs/bioinformatic-components.md#quality-control)
+For detailed usage instructions, parameters, and configuration options, see [docs/usage.md](docs/usage.md).
 
-#### 2.2. Reference Resources
-* [Genome Assembly](docs/reference-files.md#genome-assembly)
-* [Genomic Intervals](docs/reference-files.md#genomic-intervals)
-* [RepeatMasker and Mappability Blacklist](docs/reference-files.md#repeatmasker-and-mappability-blacklist)
-* [Preferred Transcript Isoforms](docs/reference-files.md#preferred-transcript-isoforms)
-* [Hotspot Annotation](docs/reference-files.md#hotspot-annotation.md)
-* [OncoKB Annotation](docs/reference-files.md#oncokb.md)
-* [gnomAD](docs/gnomad.md)
-* [Panel of Normals for Exomes](docs/wes-panel-of-normals.md)
+## Pipeline Output
 
-#### 2.3. Variant Annotation and Filtering
-* [Somatic SNVs and Indels](docs/variant-annotation-and-filtering.md#somatic-snvs-and-indels)
-* [Germline SNVs and Indels](docs/variant-annotation-and-filtering.md#germline-snvs-and-indels)
-* [Somatic and Germline SVs](docs/variant-annotation-and-filtering.md#somatic-and-germline-svs)
+Comprehensive documentation of output files and directory structure is available in [docs/output.md](docs/output.md).
 
-### 3. Help and Other Resources
-* [Troubleshooting](docs/troubleshooting.md)
-* [AWS Glossary](docs/aws-glossary.md)
+## Reference Genomes
 
-### 4. Contributing
-* [Contributing to Tempo](docs/contributing-to-tempo.md)
+Tempo supports the following reference genomes:
 
-### 5. Acknowledgements
-* [Acknowledgements](docs/acknowledgements.md)
+- **GRCh37** (default, primary)
+- **GRCh38** (supported)
 
+## Pipeline DAG
 
-## Pipeline Flowchart
-<p align="center">
-  <img id="diagram" src="./docs/pipeline-flowchart.png"/>
-</p>
+The pipeline workflow can be visualized using the metro map visualization:
 
-## Directed Acyclic Graph
-<p align="center">
-  <img id="dag" src="./docs/dag.png"/>
-</p>
+![Tempo Pipeline DAG](docs/images/tempo_metro_map.png)
 
-##
-<p align="center">
-  <img src="./docs/brandenburg5_allegro.jpg">
-</p>
----
+## Credits
+
+Tempo was developed and is maintained by the **MSKCC Center for Molecular Oncology**.
+
+## Citations
+
+For citations and references, see [CITATIONS.md](CITATIONS.md).
+
+## License
+
+This project is licensed under the MIT License.

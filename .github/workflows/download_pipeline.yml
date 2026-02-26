@@ -1,0 +1,27 @@
+name: Test pipeline download
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  release:
+    types: [published]
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - name: Install nf-core tools
+        run: pip install nf-core
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+      - name: Download pipeline
+        run: |
+          nf-core pipelines download ${{ github.event.repository.html_url }} \
+            --revision ${{ github.sha }} \
+            --outdir /tmp/tempo-download \
+            --compress none \
+            --container-system singularity \
+            --container-cache-utilisation amend

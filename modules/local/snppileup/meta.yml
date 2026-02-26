@@ -1,0 +1,56 @@
+name: "snppileup"
+description: SNP pileup generation for FACETS copy number analysis
+keywords:
+  - copy-number
+  - facets
+  - snp-pileup
+tools:
+  - snp-pileup:
+      description: Generate VCF pileup for FACETS
+      homepage: "https://github.com/mskcc/facets"
+      documentation: "https://github.com/mskcc/facets"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1', tumor_id:'tumor1', normal_id:'normal1' ]`
+  - - tumor_bam:
+        type: file
+        description: Tumor BAM file
+        pattern: "*.bam"
+  - - tumor_bai:
+        type: file
+        description: Tumor BAM index file
+        pattern: "*.bai"
+  - - normal_bam:
+        type: file
+        description: Normal BAM file
+        pattern: "*.bam"
+  - - normal_bai:
+        type: file
+        description: Normal BAM index file
+        pattern: "*.bai"
+  - - facets_vcf:
+        type: file
+        description: FACETS SNP VCF file
+        pattern: "*.vcf"
+output:
+  - pileup:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.snp_pileup.gz":
+          type: file
+          description: Compressed SNP pileup file for FACETS
+          pattern: "*.snp_pileup.gz"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

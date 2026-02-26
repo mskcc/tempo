@@ -1,0 +1,53 @@
+name: "vcf2maf"
+description: Convert VCF to MAF format with variant effect prediction
+keywords:
+  - vcf
+  - maf
+  - annotation
+  - vep
+tools:
+  - vcf2maf:
+      description: Convert VCF to MAF format
+      homepage: "https://github.com/mskcc/vcf2maf"
+      documentation: "https://github.com/mskcc/vcf2maf"
+      licence: ["MIT"]
+  - vep:
+      description: Variant Effect Predictor
+      homepage: "https://www.ensembl.org/info/docs/tools/vep/index.html"
+      documentation: "https://www.ensembl.org/info/docs/tools/vep/index.html"
+      licence: ["Apache-2.0"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1', tumor_id:'tumor1', normal_id:'normal1' ]`
+  - - vcf:
+        type: file
+        description: Input VCF file
+        pattern: "*.vcf,*.vcf.gz"
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - vep_cache:
+        type: directory
+        description: VEP cache directory for variant annotation
+output:
+  - maf:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.maf":
+          type: file
+          description: Mutation Annotation Format file
+          pattern: "*.maf"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

@@ -1,0 +1,17 @@
+name: Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+      - uses: actions/setup-python@v5
+      - name: Install nf-core tools
+        run: pip install nf-core
+      - name: Run nf-core lint
+        run: nf-core -l lint_log.txt pipelines lint --dir . --fail-warned

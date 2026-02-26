@@ -1,0 +1,58 @@
+name: nf-test
+on:
+  push:
+    branches: [main, dev, 'nf-core/**']
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Check changes
+    runs-on: ubuntu-latest
+    outputs:
+      nf_test_files: ${{ steps.list.outputs.components }}
+      has_changes: ${{ steps.list.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: List nf-test files
+        id: list
+        uses: ./.github/actions/get-shards
+
+  test:
+    name: "Test ${{ matrix.shard }}"
+    needs: changes
+    if: needs.changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.changes.outputs.nf_test_files) }}
+        profile: [docker]
+        NXF_VER:
+          - "24.04.2"
+          - "latest-everything"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/nf-test
+        with:
+          shard: ${{ matrix.shard }}
+          profile: ${{ matrix.profile }}
+          nextflow_version: ${{ matrix.NXF_VER }}
+
+  confirm:
+    name: nf-test-success
+    if: always()
+    needs: [changes, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All tests passed
+        if: needs.test.result == 'success' || needs.changes.outputs.has_changes != 'true'
+        run: echo "All tests passed"
+      - name: Some tests failed
+        if: needs.test.result != 'success' && needs.changes.outputs.has_changes == 'true'
+        run: exit 1

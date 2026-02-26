@@ -1,0 +1,52 @@
+name: "polysolver"
+description: HLA typing from sequencing data
+keywords:
+  - hla-typing
+  - immunotherapy
+  - polysolver
+tools:
+  - polysolver:
+      description: Computational method for HLA typing
+      homepage: "https://github.com/sachet/polysolver"
+      documentation: "https://github.com/sachet/polysolver"
+      licence: ["BSD"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1' ]`
+  - - bam:
+        type: file
+        description: Input BAM file
+        pattern: "*.bam"
+  - - bai:
+        type: file
+        description: BAM index file
+        pattern: "*.bai"
+output:
+  - hla_types:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.hla.txt":
+          type: file
+          description: HLA typing results
+          pattern: "*.hla.txt"
+  - results:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*":
+          type: file
+          description: All output files
+          pattern: "*"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

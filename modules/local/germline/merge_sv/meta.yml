@@ -1,0 +1,58 @@
+name: "germline_merge_sv"
+description: Merge DELLY and Manta germline structural variant calls
+keywords:
+  - germline
+  - structural-variants
+  - delly
+  - manta
+  - merge
+tools:
+  - bcftools:
+      description: VCF filtering and manipulation
+      homepage: "https://samtools.github.io/bcftools/"
+      documentation: "https://samtools.github.io/bcftools/"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1' ]`
+  - - delly_vcfs:
+        type: file
+        description: Array of DELLY VCF files
+        pattern: "*.vcf.gz"
+  - - delly_tbis:
+        type: file
+        description: Array of DELLY VCF index files
+        pattern: "*.vcf.gz.tbi"
+  - - manta_vcf:
+        type: file
+        description: Manta VCF file
+        pattern: "*.vcf.gz"
+  - - manta_tbi:
+        type: file
+        description: Manta VCF index file
+        pattern: "*.vcf.gz.tbi"
+output:
+  - vcf:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.delly.manta.vcf.gz":
+          type: file
+          description: Merged DELLY and Manta VCF file
+          pattern: "*.delly.manta.vcf.gz"
+    - - "*.delly.manta.vcf.gz.tbi":
+          type: file
+          description: Index of merged VCF file
+          pattern: "*.delly.manta.vcf.gz.tbi"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

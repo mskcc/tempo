@@ -1,0 +1,24 @@
+nextflow_pipeline {
+    name "Test full pipeline"
+    script "main.nf"
+    tag "pipeline"
+
+    test("Run with test profile") {
+        when {
+            params {
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert new File("$outputDir/multiqc/multiqc_report.html").exists() },
+                { assert snapshot(
+                    path("$outputDir/pipeline_info/software_versions.yml"),
+                    path("$outputDir/multiqc/multiqc_report.html").name
+                ).match() }
+            )
+        }
+    }
+}

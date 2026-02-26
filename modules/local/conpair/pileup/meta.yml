@@ -1,0 +1,57 @@
+name: "conpair_pileup"
+description: Conpair pileup generation for sample concordance/contamination analysis
+keywords:
+  - conpair
+  - pileup
+  - concordance
+  - contamination
+tools:
+  - conpair:
+      description: Concordance and contamination assessment
+      homepage: "https://github.com/mskcc/conpair"
+      documentation: "https://github.com/mskcc/conpair"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1' ]`
+  - - bam:
+        type: file
+        description: Input BAM file
+        pattern: "*.bam"
+  - - bai:
+        type: file
+        description: BAM index file
+        pattern: "*.bai"
+  - - fasta:
+        type: file
+        description: Reference genome FASTA file
+        pattern: "*.fa,*.fasta"
+  - - fasta_fai:
+        type: file
+        description: FASTA index file
+        pattern: "*.fai"
+  - - dict:
+        type: file
+        description: Sequence dictionary file
+        pattern: "*.dict"
+output:
+  - pileup:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.pileup":
+          type: file
+          description: Pileup file for concordance/contamination analysis
+          pattern: "*.pileup"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"

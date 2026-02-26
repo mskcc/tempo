@@ -1,0 +1,72 @@
+name: "lohhla"
+description: Loss of heterozygosity analysis in HLA genes
+keywords:
+  - hla
+  - loss-of-heterozygosity
+  - immunotherapy
+tools:
+  - lohhla:
+      description: Loss of HLA Heterozygosity
+      homepage: "https://github.com/shenlab/LOHHLA"
+      documentation: "https://github.com/shenlab/LOHHLA"
+      licence: ["MIT"]
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'sample1', tumor_id:'tumor1', normal_id:'normal1' ]`
+  - - tumor_bam:
+        type: file
+        description: Tumor BAM file
+        pattern: "*.bam"
+  - - tumor_bai:
+        type: file
+        description: Tumor BAM index file
+        pattern: "*.bai"
+  - - normal_bam:
+        type: file
+        description: Normal BAM file
+        pattern: "*.bam"
+  - - normal_bai:
+        type: file
+        description: Normal BAM index file
+        pattern: "*.bai"
+  - - hla_types:
+        type: file
+        description: HLA typing results file
+        pattern: "*.txt"
+  - - hla_fasta:
+        type: file
+        description: HLA reference FASTA file
+        pattern: "*.fasta"
+  - - hla_dat:
+        type: file
+        description: HLA exon location data file
+        pattern: "*.dat"
+output:
+  - predictions:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*.DNA.HLAlossPrediction_CI.xls":
+          type: file
+          description: HLA loss predictions with confidence intervals (optional)
+          pattern: "*.DNA.HLAlossPrediction_CI.xls"
+  - results:
+    - - meta:
+          type: map
+          description: Sample metadata
+    - - "*":
+          type: file
+          description: All output files
+          pattern: "*"
+  - versions:
+    - - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+authors:
+  - "@mskcc"
+maintainers:
+  - "@mskcc"
