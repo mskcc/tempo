@@ -1,8 +1,9 @@
+// SNP pileup — matches original Tempo DoFacets snp-pileup-wrapper.R call
 process SNPPILEUP {
     tag "$meta.id"
     label 'process_medium'
 
-    container "cmopipeline/facets-suite-preview-htstools:0.0.1"
+    container "docker.io/cmopipeline/facets-suite-preview-htstools:0.0.1"
 
     input:
     tuple val(meta), path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai)
@@ -19,13 +20,15 @@ process SNPPILEUP {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.tumor_id}__${meta.normal_id}"
     """
-    snp-pileup \\
-        ${args} \\
-        --gzip \\
-        ${facets_vcf} \\
-        ${prefix}.snp_pileup.gz \\
-        ${normal_bam} \\
-        ${tumor_bam}
+    export SNP_PILEUP=/usr/bin/snp-pileup
+
+    Rscript /usr/bin/facets-suite/snp-pileup-wrapper.R \\
+        --pseudo-snps 50 \\
+        --vcf-file ${facets_vcf} \\
+        --output-prefix ${prefix} \\
+        --normal-bam ${normal_bam} \\
+        --tumor-bam ${tumor_bam} \\
+        ${args}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

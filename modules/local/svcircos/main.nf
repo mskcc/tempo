@@ -3,8 +3,8 @@ process SVCIRCOS {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/biocircos:0.0.1' :
-        'cmopipeline/biocircos:0.0.1' }"
+        'docker://docker.io/cmopipeline/biocircos:0.0.1' :
+        'docker.io/cmopipeline/biocircos:0.0.1' }"
 
     input:
     tuple val(meta), path(bedpe), path(cnv)

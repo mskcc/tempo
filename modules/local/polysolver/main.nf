@@ -1,8 +1,10 @@
+// Polysolver HLA typing — matches original Tempo RunPolysolver
+// Genome-aware mapping: GRCh37→hg19, GRCh38→hg38, smallGRCh37→hardcoded
 process POLYSOLVER {
     tag "$meta.id"
     label 'process_high'
 
-    container "sachet/polysolver:v4"
+    container "docker.io/sachet/polysolver:v4"
 
     input:
     tuple val(meta), path(bam), path(bai)
@@ -18,17 +20,32 @@ process POLYSOLVER {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def genome = params.genome ?: 'GRCh37'
+    def genome_mapped = genome == 'GRCh37' ? 'hg19' : (genome == 'GRCh38' ? 'hg38' : (genome == 'smallGRCh37' ? 'small' : genome))
     """
-    /home/polysolver/scripts/shell_call_hla_type \\
-        ${bam} \\
-        Unknown \\
-        1 \\
-        hg19 \\
-        STRELKA \\
-        0 \\
-        ${prefix}
+    if [ "${genome_mapped}" != "small" ] ; then
 
-    mv ${prefix}/winners.hla.txt ${prefix}.hla.txt || true
+        cp /home/polysolver/scripts/shell_call_hla_type .
+        sed -i "171s|TMP_DIR=.*|TMP_DIR=\$(pwd)/nf-scratch/|" shell_call_hla_type
+
+        mkdir -p nf-scratch
+
+        bash shell_call_hla_type \\
+            ${bam} \\
+            Unknown \\
+            1 \\
+            ${genome_mapped} \\
+            STDFQ \\
+            0 \\
+            .
+
+        mv winners.hla.txt ${prefix}.hla.txt
+
+    else
+
+        echo -e 'HLA-A\\thla_a_01_01_01_01\\thla_a_01_01_01_01\\nHLA-B\\thla_b_15_02_01\\thla_b_15_02_01\\nHLA-C\\thla_c_01_02_01\\thla_c_01_02_01' > ${prefix}.hla.txt
+
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -39,8 +56,7 @@ process POLYSOLVER {
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.hla.txt
-    touch ${prefix}_winners.hla.txt
+    echo -e 'HLA-A\\thla_a_01_01_01_01\\thla_a_01_01_01_01\\nHLA-B\\thla_b_15_02_01\\thla_b_15_02_01\\nHLA-C\\thla_c_01_02_01\\thla_c_01_02_01' > ${prefix}.hla.txt
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         polysolver: "stub"

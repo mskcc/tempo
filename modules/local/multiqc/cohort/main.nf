@@ -2,7 +2,7 @@ process MULTIQC_COHORT {
     tag "cohort"
     label 'process_low'
 
-    container 'cmopipeline/multiqc:0.1.3'
+    container 'docker.io/cmopipeline/multiqc:0.1.3'
 
     input:
     path(qc_files)

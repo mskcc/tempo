@@ -1,7 +1,7 @@
 process HRDETECT {
     tag "${meta.id}"
     label 'process_high'
-    container 'cmopipeline/signaturetoolslib:0.0.1'
+    container 'docker.io/cmopipeline/signaturetoolslib:0.0.1'
 
     input:
     tuple val(meta), path(maf_file), path(cnv_file), path(sv_file)
@@ -21,17 +21,11 @@ process HRDETECT {
 
     script:
     def prefix = "${meta.tumor_id}__${meta.normal_id}"
+    def genome = params.genome ?: 'GRCh37'
+    def genome_version = genome == 'GRCh38' ? 'hg38' : 'hg19'
     """
-    # Build input TSV
-    cat > hrdetect_input.tsv << INPUT_EOF
-    sample_id\tmutation_file\tcnv_file\tsv_file
-    ${meta.id}\t${maf_file}\t${cnv_file}\t${sv_file}
-    INPUT_EOF
-
-    # Run HRDetect analysis
-    Rscript ${hrdetect_script} \\
-        -i hrdetect_input.tsv \\
-        -o ${prefix}.hrdetect.tsv \\
-        -n ${task.cpus}
+    echo -e "sample\\tsv\\tmutations\\tcnv" > ${prefix}.tsv
+    echo -e "${prefix}\\t${sv_file}\\t${maf_file}\\t${cnv_file}" >> ${prefix}.tsv
+    Rscript ${hrdetect_script} ${prefix}.tsv ${genome_version} ${task.cpus}
     """
 }

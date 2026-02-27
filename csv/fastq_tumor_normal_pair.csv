@@ -1,5 +1,0 @@
-patient,sex,status,sample,lane,fastq_1,fastq_2
-patient_1234,XX,0,1234N,L001,test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz,test-data/testdata/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
-patient_1234,XX,0,1234N,L002,test-data/testdata/tiny/normal/tiny_n_L002_R1_xxx.fastq.gz,test-data/testdata/tiny/normal/tiny_n_L002_R2_xxx.fastq.gz
-patient_1234,XX,1,1234T,L001,test-data/testdata/tiny/tumor/tiny_t_L001_R1_xxx.fastq.gz,test-data/testdata/tiny/tumor/tiny_t_L001_R2_xxx.fastq.gz
-patient_1234,XX,1,1234T,L002,test-data/testdata/tiny/tumor/tiny_t_L002_R1_xxx.fastq.gz,test-data/testdata/tiny/tumor/tiny_t_L002_R2_xxx.fastq.gz

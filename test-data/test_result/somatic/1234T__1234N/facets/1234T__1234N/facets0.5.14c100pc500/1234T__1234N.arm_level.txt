@@ -1,0 +1,1 @@
+sample	arm	tcn	lcn	cn_length	arm_length	frac_of_arm	cn_state

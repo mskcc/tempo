@@ -4,8 +4,8 @@ process MANTA_GERMLINE {
 
     conda "bioconda::strelka=2.9.10 bioconda::manta=1.5.0 bioconda::bcftools=1.9 bioconda::vt=0.57721"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/strelka2-manta-bcftools-vt:2.0.1' :
-        'cmopipeline/strelka2-manta-bcftools-vt:2.0.1' }"
+        'docker://docker.io/cmopipeline/strelka2-manta-bcftools-vt:2.0.1' :
+        'docker.io/cmopipeline/strelka2-manta-bcftools-vt:2.0.1' }"
 
     input:
     tuple val(meta), path(bam), path(bai)

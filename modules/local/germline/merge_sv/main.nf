@@ -3,8 +3,8 @@ process GERMLINE_MERGE_SV {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/bcftools-vt-mergesvvcf:0.0.1' :
-        'cmopipeline/bcftools-vt-mergesvvcf:0.0.1' }"
+        'docker://docker.io/cmopipeline/bcftools-vt-mergesvvcf:0.0.1' :
+        'docker.io/cmopipeline/bcftools-vt-mergesvvcf:0.0.1' }"
 
     input:
     tuple val(meta), path(vcfs), path(tbis), val(caller_names)

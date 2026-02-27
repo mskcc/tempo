@@ -2,7 +2,7 @@ process VCF2MAF {
     tag "$meta.id"
     label 'process_medium'
 
-    container "cmopipeline/vcf2maf:vep88_1.2.7"
+    container "docker.io/cmopipeline/vcf2maf:vep88_1.3.0"
 
     input:
     tuple val(meta), path(vcf)

@@ -3,8 +3,8 @@ process CLUSTERSV {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/clustersv:0.0.1' :
-        'cmopipeline/clustersv:0.0.1' }"
+        'docker://docker.io/cmopipeline/clustersv:0.0.1' :
+        'docker.io/cmopipeline/clustersv:0.0.1' }"
 
     input:
     tuple val(meta), path(bedpe)

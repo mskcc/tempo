@@ -1,9 +1,10 @@
 process AGGREGATE_SOMATIC_FACETS {
+    tag "${cohort}"
     label 'process_single'
-    container 'ubuntu:22.04'
+    container 'docker.io/library/ubuntu:22.04'
 
     input:
-    path(facets_files)
+    tuple val(cohort), path(purity), path(Hisens), path(outLog), path(armLev), path(geneLev)
 
     output:
     path("cna_hisens_run_segmentation.seg"), emit: hisens_seg
@@ -17,11 +18,17 @@ process AGGREGATE_SOMATIC_FACETS {
 
     script:
     """
-    # Merge hisens segmentation files (only hisens_seg sent by workflow)
-    awk 'FNR==1 && NR!=1 {next} {print}' ${facets_files} > cna_hisens_run_segmentation.seg
-
-    # Create stub files for other outputs
-    touch cna_purity_run_segmentation.seg cna_armlevel.txt cna_genelevel.txt cna_facets_run_info.txt
+    mkdir facets_tmp
+    mv *_OUT.txt facets_tmp/
+    mv *{purity,hisens}.seg facets_tmp/
+    awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_hisens.seg > cna_hisens_run_segmentation.seg
+    awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_purity.seg > cna_purity_run_segmentation.seg
+    awk 'FNR==1 && NR!=1{next;}{print}' facets_tmp/*_OUT.txt > cna_facets_run_info.txt
+    mv *{gene_level,arm_level}.txt facets_tmp/
+    cat facets_tmp/*gene_level.txt | head -n 1 > cna_genelevel.txt
+    awk -v FS='\t' '{ if (\$24 != "DIPLOID" && (\$25 == "PASS" || \$25 == "RESCUE" ))  print \$0 }' facets_tmp/*gene_level.txt >> cna_genelevel.txt
+    cat facets_tmp/*arm_level.txt | head -n 1 > cna_armlevel.txt
+    cat facets_tmp/*arm_level.txt | grep -v "DIPLOID" | grep -v "Tumor_Sample_Barcode" >> cna_armlevel.txt || [[ \$? == 1 ]]
     """
 
     stub:

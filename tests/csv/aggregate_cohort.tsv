@@ -1,0 +1,2 @@
+TUMOR_ID	NORMAL_ID	COHORT	PATH
+1234T	1234N	test_cohort	/path/to/previous/tempo/output

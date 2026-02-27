@@ -1,0 +1,2 @@
+sample	gene	chrom	gene_start	gene_end	tsg	seg	median_cnlr_seg	segclust	seg_start	seg_end	cf.em	tcn.em	lcn.em	cf	tcn	lcn	seg_length	mcn	genes_on_seg	gene_snps	gene_het_snps	spans_segs	cn_state	filter
+1234T__1234N	AL627309.1	1	134901	139379	FALSE	1	0.00125800861292774	1	133129	140450	0.3	2	NA	0.3	2	NA	7321	NA	1	16	5	FALSE	DIPLOID or CNLOH	PASS

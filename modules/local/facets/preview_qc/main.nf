@@ -1,10 +1,12 @@
+// FACETS Preview QC — matches original Tempo DoFacetsPreviewQC
+// Uses facetsPreview::generate_genomic_annotations with config file
 process FACETS_PREVIEW_QC {
     tag "${meta.tumor_id}__${meta.normal_id}"
     label 'process_medium'
-    container 'cmopipeline/facets-suite-preview-htstools:0.0.1'
+    container 'docker.io/cmopipeline/facets-suite-preview-htstools:0.0.1'
 
     input:
-    tuple val(meta), path(facets_output_files)
+    tuple val(meta), path(facets_output_files), path(counts_file)
 
     output:
     tuple val(meta), path("*.facets_preview_qc.txt"), emit: facets_qc
@@ -13,27 +15,23 @@ process FACETS_PREVIEW_QC {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
     def prefix = "${meta.tumor_id}__${meta.normal_id}"
     """
-    mkdir -p facets_qc_output
+    mkdir -p facets_output
+    for i in ${facets_output_files} ; do
+        cp \$i facets_output/\$i
+    done
 
-    # Run facetsPreview QC generation
-    Rscript - ${args} << 'RSCRIPT'
-    library(facetsPreview)
-    library(tidyverse)
+    echo -e "sample_id\\tsample_path\\ttumor_id" > manifest.txt
+    echo -e "${prefix}\\t\$(pwd)\\t${meta.tumor_id}" >> manifest.txt
+    gzip manifest.txt
 
-    output_file <- "${prefix}.facets_preview_qc.txt"
+    mkdir -p refit_watcher/bin/ refit_watcher/refit_jobs/
 
-    # Generate genomic annotations and QC metrics
-    qc_results <- facetsPreview::generate_genomic_annotations(
-        facets_directory = "."
-    )
+    R -e "facetsPreview::generate_genomic_annotations('${prefix}', '\$(pwd)/', '/usr/bin/facets-preview/tempo_config.json')"
 
-    # Write QC results to file
-    write.table(qc_results, output_file, sep = "\\t", row.names = FALSE, quote = FALSE)
-
-    RSCRIPT
+    cp facets_qc.txt ${prefix}.facets_preview_qc.txt
+    rm -f facets_output/*
     """
 
     stub:

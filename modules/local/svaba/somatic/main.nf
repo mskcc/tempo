@@ -3,8 +3,8 @@ process SVABA_SOMATIC {
     label 'process_high'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/svaba:0.0.1' :
-        'cmopipeline/svaba:0.0.1' }"
+        'docker://docker.io/cmopipeline/svaba:0.0.1' :
+        'docker.io/cmopipeline/svaba:0.0.1' }"
 
     input:
     tuple val(meta), path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai)

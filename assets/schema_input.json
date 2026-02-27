@@ -26,12 +26,11 @@
                 "errorMessage": "Status must be 0 (normal) or 1 (tumor)",
                 "default": 0
             },
-            "sex": {
+            "target": {
                 "type": "string",
-                "enum": ["XX", "XY", "NA", ""],
-                "meta": ["sex"],
-                "default": "NA",
-                "errorMessage": "Sex must be XX, XY, or NA"
+                "pattern": "^\\S+$",
+                "meta": ["target"],
+                "errorMessage": "Target/bait set must be provided (e.g., agilent, idt, wgs)"
             },
             "lane": {
                 "type": "string",
@@ -54,6 +53,6 @@
                 "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
             }
         },
-        "required": ["patient", "sample", "status", "fastq_1", "fastq_2"]
+        "required": ["patient", "sample", "status", "target", "fastq_1", "fastq_2"]
     }
 }

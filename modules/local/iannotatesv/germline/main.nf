@@ -3,8 +3,8 @@ process IANNOTATESV_GERMLINE {
     label 'process_medium'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/iannotatesv:0.0.2' :
-        'cmopipeline/iannotatesv:0.0.2' }"
+        'docker://docker.io/cmopipeline/iannotatesv:0.0.2' :
+        'docker.io/cmopipeline/iannotatesv:0.0.2' }"
 
     input:
     tuple val(meta), path(bedpe)

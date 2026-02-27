@@ -1,3 +1,5 @@
+// ASCAT run — matches original Tempo runAscat
+// Genome-aware: GRCh37→37/HUMAN, GRCh38→38/HUMAN
 process ASCAT_RUN {
     tag "${meta.id}"
     label 'process_high'
@@ -16,29 +18,33 @@ process ASCAT_RUN {
     when:
     params.assay_type == 'genome'
 
+    script:
+    def genome = params.genome ?: 'GRCh37'
+    def species = (genome in ['GRCh37', 'smallGRCh37', 'GRCh38']) ? 'HUMAN' : genome
+    def assembly = (genome in ['GRCh38']) ? '38' : '37'
+    """
+    export TMPDIR=\$(pwd)/tmp
+    mkdir -p \$TMPDIR
+
+    for i in ascat_alleleCount_*.tar.gz ; do
+        tar -xzf \$i
+    done
+
+    ascat.pl \\
+        -o ./ascatResults \\
+        -t ${tumor_bam} -n ${normal_bam} \\
+        -sg ${snp_gc_corrections} \\
+        -r ${fasta} \\
+        -q 20 -g L \\
+        -rs "${species}" -ra "${assembly}" -pr "WGS" \\
+        -c ${task.cpus} \\
+        -force
+    """
+
     stub:
     """
     mkdir -p ascatResults
     touch ascatResults/sample.copynumber.caveman.csv
     touch ascatResults/sample.samplestatistics.txt
-    """
-
-    script:
-    """
-    # Extract all tar files
-    mkdir -p ascat_work
-    for tar in ${ascat_tars}; do
-        tar -xzf \$tar -C ascat_work
-    done
-
-    # Run ASCAT full process
-    ascat.pl \\
-        full \\
-        -t ${tumor_bam} \\
-        -n ${normal_bam} \\
-        -r ${fasta} \\
-        -g ${snp_gc_corrections} \\
-        -i ascat_work \\
-        -o ascatResults
     """
 }

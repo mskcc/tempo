@@ -4,8 +4,8 @@ process STRELKA2_COMBINE_SOMATIC {
 
     conda "bioconda::strelka=2.9.10 bioconda::manta=1.5.0 bioconda::bcftools=1.9 bioconda::vt=0.57721"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/strelka2-manta-bcftools-vt:2.0.1' :
-        'cmopipeline/strelka2-manta-bcftools-vt:2.0.1' }"
+        'docker://docker.io/cmopipeline/strelka2-manta-bcftools-vt:2.0.1' :
+        'docker.io/cmopipeline/strelka2-manta-bcftools-vt:2.0.1' }"
 
     input:
     tuple val(meta), path(snv_vcf), path(snv_tbi), path(indel_vcf), path(indel_tbi)
@@ -38,6 +38,8 @@ process STRELKA2_COMBINE_SOMATIC {
         --output ${prefix}.strelka2.vcf.gz
 
     tabix --preset vcf ${prefix}.strelka2.vcf.gz
+
+    if [ \$(vcf-validator ${prefix}.strelka2.vcf.gz 2>&1 | wc -l ) -gt 0 ] ; then exit 1 ; fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

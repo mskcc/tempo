@@ -3,8 +3,8 @@ process SVCLONE {
     label 'process_high'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/svclone:0.0.1' :
-        'cmopipeline/svclone:0.0.1' }"
+        'docker://docker.io/cmopipeline/svclone:0.0.1' :
+        'docker.io/cmopipeline/svclone:0.0.1' }"
 
     input:
     tuple val(meta), path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai), path(bedpe), path(maf), path(cnv), path(ploidy)

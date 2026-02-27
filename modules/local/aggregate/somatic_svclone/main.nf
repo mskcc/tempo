@@ -1,9 +1,14 @@
+// Aggregate Somatic SVclone — matches original Tempo SomaticAggregateSVclone
+// Merges both SV and SNV cluster certainty files
 process AGGREGATE_SOMATIC_SVCLONE {
+    tag "${cohort}"
     label 'process_single'
-    container 'ubuntu:22.04'
+    container 'docker.io/library/ubuntu:22.04'
 
     input:
-    path(svclone_files)
+    val(cohort)
+    path(sv_files, stageAs: 'sv/*')
+    path(snv_files, stageAs: 'snv/*')
 
     output:
     path("svclone_sv_cluster_certainty.tsv"), emit: sv_clusters
@@ -14,11 +19,8 @@ process AGGREGATE_SOMATIC_SVCLONE {
 
     script:
     """
-    # Merge cluster certainty files (workflow collects both SV and SNV together)
-    awk 'FNR==1 && NR!=1 {next} {print}' ${svclone_files} > svclone_sv_cluster_certainty.tsv
-
-    # Create stub file for SNV clusters
-    touch svclone_snv_cluster_certainty.tsv
+    awk 'FNR==1 && NR!=1{next;}{print}' sv/* > svclone_sv_cluster_certainty.tsv
+    awk 'FNR==1 && NR!=1{next;}{print}' snv/* > svclone_snv_cluster_certainty.tsv
     """
 
     stub:

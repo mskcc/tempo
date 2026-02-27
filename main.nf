@@ -14,6 +14,7 @@
 */
 
 include { TEMPO                   } from './workflows/tempo'
+include { BWAMEM2_INDEX           } from './modules/local/bwamem2/index/main'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_tempo_pipeline/main'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_tempo_pipeline/main'
 
@@ -30,6 +31,7 @@ workflow MSKCC_TEMPO {
 
     take:
     samplesheet // channel: samplesheet read in from --input
+    bam_input   // channel: BAM inputs from --bamMapping
 
     main:
 
@@ -42,7 +44,20 @@ workflow MSKCC_TEMPO {
     ch_fasta            = params.fasta            ? Channel.value([ [id:'genome'], file(params.fasta, checkIfExists: true) ])            : Channel.value([ [id:'genome'], [] ])
     ch_fasta_fai        = params.fasta_fai        ? Channel.value([ [id:'genome'], file(params.fasta_fai, checkIfExists: true) ])        : Channel.value([ [id:'genome'], [] ])
     ch_dict             = params.dict             ? Channel.value([ [id:'genome'], file(params.dict, checkIfExists: true) ])             : Channel.value([ [id:'genome'], [] ])
-    ch_bwa_index        = params.bwa_index        ? Channel.fromPath("${params.bwa_index}.{amb,ann,bwt,pac,sa,0123,bwt.2bit.64}", checkIfExists: false).collect().map{ files -> [ [id:'genome'], files ] }        : Channel.value([ [id:'genome'], [] ])
+    // bwa-mem2 index: check if pre-built index exists, otherwise build on-the-fly
+    def bwamem2_index_exists = params.bwa_index ? file("${params.bwa_index}.bwt.2bit.64").exists() : false
+    if (params.bwa_index && bwamem2_index_exists) {
+        // Pre-built bwa-mem2 index available
+        ch_bwa_index = Channel.fromPath("${params.bwa_index}.{amb,ann,bwt.2bit.64,pac,0123}", checkIfExists: true)
+            .collect()
+            .map { files -> [ [id:'genome'], files ] }
+    } else if (params.bwa_index) {
+        // No bwa-mem2 index — build on-the-fly from fasta
+        BWAMEM2_INDEX ( ch_fasta )
+        ch_bwa_index = BWAMEM2_INDEX.out.index
+    } else {
+        ch_bwa_index = Channel.value([ [id:'genome'], [] ])
+    }
     ch_dbsnp            = params.dbsnp            ? Channel.value([ [id:'dbsnp'], file(params.dbsnp, checkIfExists: true) ])             : Channel.value([ [id:'dbsnp'], [] ])
     ch_dbsnp_tbi        = params.dbsnp_tbi        ? Channel.value([ [id:'dbsnp'], file(params.dbsnp_tbi, checkIfExists: true) ])         : Channel.value([ [id:'dbsnp'], [] ])
     ch_known_indels     = params.known_indels     ? Channel.value([ [id:'indels'], file(params.known_indels, checkIfExists: true) ])     : Channel.value([ [id:'indels'], [] ])
@@ -67,7 +82,8 @@ workflow MSKCC_TEMPO {
         ch_germline_resource_tbi,
         ch_intervals,
         ch_pon,
-        ch_pon_tbi
+        ch_pon_tbi,
+        bam_input
     )
 
     emit:
@@ -112,7 +128,8 @@ workflow {
     // WORKFLOW: Run main workflow
     //
     MSKCC_TEMPO (
-        PIPELINE_INITIALISATION.out.samplesheet
+        PIPELINE_INITIALISATION.out.samplesheet,
+        PIPELINE_INITIALISATION.out.bam_input
     )
 
     //

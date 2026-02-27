@@ -4,8 +4,8 @@ process SOMATIC_COMBINE_CHANNEL {
 
     conda "bioconda::bcftools=1.9 bioconda::htslib=1.9 bioconda::vt=0.57721 pip::pysam=0.15.2"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/bcftools-vt:1.2.3' :
-        'cmopipeline/bcftools-vt:1.2.3' }"
+        'docker://docker.io/cmopipeline/bcftools-vt:1.2.3' :
+        'docker.io/cmopipeline/bcftools-vt:1.2.3' }"
 
     input:
     tuple val(meta), path(mutect_vcf), path(mutect_tbi),

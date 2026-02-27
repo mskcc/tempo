@@ -1,7 +1,7 @@
 process ALFRED {
     tag "${meta.id}"
     label 'process_medium'
-    container 'cmopipeline/alfred:v0.1.17'
+    container 'docker.io/cmopipeline/alfred:v0.1.17'
 
     input:
     tuple val(meta), path(bam), path(bai), path(targets), path(targets_index)

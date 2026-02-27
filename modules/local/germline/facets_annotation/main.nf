@@ -1,7 +1,7 @@
 process GERMLINE_FACETS_ANNOTATION {
     tag "${meta.tumor_id}__${meta.normal_id}"
     label 'process_medium'
-    container 'cmopipeline/facets-suite-preview-htstools:0.0.1'
+    container 'docker.io/cmopipeline/facets-suite-preview-htstools:0.0.1'
 
     input:
     tuple val(meta), path(hisens_rdata), path(maf)

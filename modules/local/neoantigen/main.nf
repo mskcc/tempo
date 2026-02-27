@@ -1,7 +1,9 @@
+// Neoantigen prediction — matches original Tempo RunNeoantigen
+// Includes TMPDIR setup, config file, tab-separated output
 process NEOANTIGEN {
     tag "${meta.tumor_id}__${meta.normal_id}"
     label 'process_medium'
-    container 'cmopipeline/neoantigen:0.3.3'
+    container 'docker.io/cmopipeline/neoantigen:0.3.3'
 
     input:
     tuple val(meta), path(polysolver_file), path(maf_file)
@@ -18,30 +20,30 @@ process NEOANTIGEN {
     script:
     def args = task.ext.args ?: ''
     def prefix = "${meta.tumor_id}__${meta.normal_id}"
+    def output_dir = "neoantigen"
     """
-    mkdir -p neoantigen_output
+    export TMPDIR=\$PWD/${output_dir}-tmp/
+    mkdir -p ${output_dir}-tmp
+    chmod 777 ${output_dir}-tmp
 
-    python /opt/neoantigen.py \\
-        --polysolver-file ${polysolver_file} \\
-        --maf-file ${maf_file} \\
-        --cdna-fasta ${neoantigen_cdna} \\
-        --cds-fasta ${neoantigen_cds} \\
-        --output-dir neoantigen_output \\
+    python /usr/local/bin/neoantigen/neoantigen.py \\
+        --config_file /usr/local/bin/neoantigen/neoantigen-docker.config \\
+        --sample_id ${prefix} \\
+        --hla_file ${polysolver_file} \\
+        --maf_file ${maf_file} \\
+        --threads ${task.cpus} \\
+        --output_dir ${output_dir} \\
         ${args}
 
-    # Prepend sample ID to predictions
-    awk -v sample="${meta.tumor_id}" 'NR==1 {print "sample_id," \$0} NR>1 {print sample "," \$0}' \\
-        neoantigen_output/predictions.txt > ${prefix}.all_neoantigen_predictions.txt
+    awk 'NR==1 {printf("%s\\t%s\\n", "sample", \$0)} NR>1 {printf("%s\\t%s\\n", "${prefix}", \$0) }' ${output_dir}/*.all_neoantigen_predictions.txt > ${prefix}.all_neoantigen_predictions.txt
 
-    # Create neoantigen MAF file with sample ID
-    awk -v sample="${meta.tumor_id}" 'NR==1 {print} NR>1 {print}' \\
-        neoantigen_output/neoantigens.maf > ${prefix}.neoantigens.maf
+    cp ${output_dir}/${prefix}.neoantigens.maf ${prefix}.neoantigens.maf || true
     """
 
     stub:
     def prefix = "${meta.tumor_id}__${meta.normal_id}"
     """
-    mkdir -p neoantigen_output
+    mkdir -p neoantigen
     touch ${prefix}.all_neoantigen_predictions.txt ${prefix}.neoantigens.maf
     """
 }

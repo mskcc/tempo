@@ -1,8 +1,10 @@
 process AGGREGATE_SOMATIC_METADATA {
+    tag "${cohort}"
     label 'process_single'
-    container 'ubuntu:22.04'
+    container 'docker.io/library/ubuntu:22.04'
 
     input:
+    val(cohort)
     path(metadata_files)
 
     output:

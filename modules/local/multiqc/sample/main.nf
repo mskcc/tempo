@@ -2,10 +2,10 @@ process MULTIQC_SAMPLE {
     tag "$meta.id"
     label 'process_medium'
 
-    container 'cmopipeline/multiqc:0.1.3'
+    container 'docker.io/cmopipeline/multiqc:0.1.3'
 
     input:
-    tuple val(meta), path(alfred_rg_n), path(alfred_rg_y), path(fastp_json), path(qualimap_folder), path(hsmetrics_file)
+    tuple val(meta), path(alfred_rg_n), path(alfred_rg_y), path(fastp_jsons, stageAs: 'fastp_inputs/fastp_??.json'), path(qualimap_folder), path(hsmetrics_file)
     path(multiqc_configs)
 
     output:
@@ -28,8 +28,7 @@ process MULTIQC_SAMPLE {
     # Parse ALFRED results
     parse_alfred.sh ${alfred_rg_n} ${alfred_rg_y} > ${prefix}.alfred.parsed.txt
 
-    # Clean and prepare fastp results
-    python3 clean_fastp.py ${fastp_json} > ${prefix}.fastp.cleaned.json
+    # Fastp results are staged in fastp_inputs/ (may be multiple JSONs from multi-lane samples)
 
     # Parse HSmetrics if present
     if [ -f ${hsmetrics_file} ]; then
@@ -42,7 +41,7 @@ process MULTIQC_SAMPLE {
         -o . \\
         qualimap_extracted \\
         ${prefix}.alfred.parsed.txt \\
-        ${prefix}.fastp.cleaned.json \\
+        fastp_inputs/ \\
         -c ${multiqc_configs}
 
     # Run second multiqc pass for final report
@@ -51,7 +50,7 @@ process MULTIQC_SAMPLE {
         -o . \\
         qualimap_extracted \\
         ${prefix}.alfred.parsed.txt \\
-        ${prefix}.fastp.cleaned.json
+        fastp_inputs/
 
     # Generate QC status
     echo "Sample: ${meta.id}" > ${prefix}.QC_Status.txt

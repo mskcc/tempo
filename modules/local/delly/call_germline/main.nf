@@ -4,8 +4,8 @@ process DELLY_CALL_GERMLINE {
 
     conda "bioconda::delly=0.8.2 bioconda::bcftools=1.9 bioconda::htslib=1.9"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/delly-bcftools:0.0.1' :
-        'cmopipeline/delly-bcftools:0.0.1' }"
+        'docker://docker.io/cmopipeline/delly-bcftools:0.0.1' :
+        'docker.io/cmopipeline/delly-bcftools:0.0.1' }"
 
     input:
     tuple val(meta), path(bam), path(bai)

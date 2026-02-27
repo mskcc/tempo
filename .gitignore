@@ -1,31 +1,30 @@
-tmp/
+# Runtime artifacts
 work/
-data/
-example_data
-.*swp
-.DS_Store
-.nextflow*
-*.img
-*.tar.gz
-conf/awsbatch.config
-nf.*
-*.bam
-*.bai
-*.html
-*.html.*
-*.txt
-*.txt.*
-*.pdf
-*.pdf.*
-*.gz
-*.bam.*
+results/
+result/
 Result/
 Results/
-result/
-results/
-*.Rhistory
-*.tsv
-docs/node_modules
+.nextflow*
+nf.*
+
+# Temporary files
+tmp/
+data/
+example_data/
 testing/
 testing*
+
+# Editor/OS artifacts
+.*swp
+.DS_Store
 *.pyc
+*.Rhistory
+
+# Container images
+*.img
+
+# Trashbin (old Tempo files moved during nf-core migration)
+trashbin/
+
+# Node modules (docs site)
+docs/node_modules

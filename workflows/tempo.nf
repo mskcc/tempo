@@ -1,7 +1,7 @@
 /*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 */
 
 include { FASTQC                                       } from '../modules/nf-core/fastqc/main'
@@ -82,6 +82,7 @@ include { NEOANTIGEN                  } from '../modules/local/neoantigen/main'
 include { MUTSIG                      } from '../modules/local/mutsig/main'
 include { SPLIT_INTERVALS             } from '../modules/local/splitintervals/main'
 include { GERMLINE_COMBINE_HC_VCF     } from '../modules/local/germline/combine_hc_vcf/main'
+include { GERMLINE_HARD_FILTER        } from '../modules/local/germline/hard_filter/main'
 include { GATK4_MERGEMUTECTSTATS     } from '../modules/local/gatk4/mergemutectstats/main'
 include { METADATA_PARSER             } from '../modules/local/metadata_parser/main'
 
@@ -108,37 +109,38 @@ include { AGGREGATE_QC_BAM             } from '../modules/local/aggregate/qc_bam
 include { AGGREGATE_QC_CONPAIR         } from '../modules/local/aggregate/qc_conpair/main'
 
 /*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 */
 
 workflow TEMPO {
 
     take:
-    ch_input            // samplesheet parsed rows [ meta, fastq_1, fastq_2 ]
-    ch_fasta            // [ val(meta), path(fasta) ]
-    ch_fasta_fai        // [ val(meta), path(fai) ]
-    ch_dict             // [ val(meta), path(dict) ]
-    ch_bwa_index        // [ val(meta), path(index) ]
-    ch_dbsnp            // [ val(meta), path(vcf) ]
-    ch_dbsnp_tbi        // [ val(meta), path(tbi) ]
-    ch_known_indels     // [ val(meta), path(vcf) ]
-    ch_known_indels_tbi // [ val(meta), path(tbi) ]
-    ch_germline_resource     // [ val(meta), path(vcf) ]
-    ch_germline_resource_tbi // [ val(meta), path(tbi) ]
-    ch_intervals        // [ path(intervals) ]
-    ch_pon              // [ val(meta), path(vcf) ]
-    ch_pon_tbi          // [ val(meta), path(tbi) ]
+    ch_input
+    ch_fasta
+    ch_fasta_fai
+    ch_dict
+    ch_bwa_index
+    ch_dbsnp
+    ch_dbsnp_tbi
+    ch_known_indels
+    ch_known_indels_tbi
+    ch_germline_resource
+    ch_germline_resource_tbi
+    ch_intervals
+    ch_pon
+    ch_pon_tbi
+    ch_bam_input
 
     main:
 
     ch_versions      = Channel.empty()
     ch_multiqc_files = Channel.empty()
 
-    // =============================================
+    // ===============
     // WORKFLOW CONTROL FLAGS
-    // =============================================
+    // ===============
     // Parse --workflows string into boolean flags
     def WFs = params.workflows instanceof Boolean ? '' : (params.workflows ?: '')
     def wfList = WFs.split(',').collect{ it.trim().toLowerCase() }.unique().findAll{ it }
@@ -170,16 +172,16 @@ workflow TEMPO {
         }
         .set { ch_reads }
 
-    // =============================================
+    // ===============
     // RAW READ QC
-    // =============================================
+    // ===============
 
     FASTQC ( ch_reads )
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]})
 
-    // =============================================
+    // ===============
     // PREPROCESSING: TRIM + ALIGN + SORT
-    // =============================================
+    // ===============
 
     ch_reads
         .map { meta, reads -> [ meta, reads, [] ] }
@@ -221,13 +223,13 @@ workflow TEMPO {
 
     SAMTOOLS_INDEX_SORTED ( SAMTOOLS_SORT.out.bam )
 
-    // =============================================
+    // ===============
     // MULTI-LANE MERGE
-    // =============================================
+    // ===============
     // Group BAMs by sample for merging (multi-lane)
     SAMTOOLS_SORT.out.bam
         .map { meta, bam ->
-            def new_meta = meta.subMap('patient', 'sample', 'status', 'sex') + [id: meta.sample]
+            def new_meta = meta.subMap('patient', 'sample', 'status', 'target') + [id: meta.sample]
             [ new_meta, bam ]
         }
         .groupTuple()
@@ -254,9 +256,9 @@ workflow TEMPO {
         .mix(SAMTOOLS_MERGE.out.bam)
         .set { ch_bams_merged }
 
-    // =============================================
+    // ===============
     // MARK DUPLICATES
-    // =============================================
+    // ===============
 
     GATK4_MARKDUPLICATES (
         ch_bams_merged,
@@ -268,9 +270,9 @@ workflow TEMPO {
     // Index the marked BAMs
     SAMTOOLS_INDEX_MD ( GATK4_MARKDUPLICATES.out.bam )
 
-    // =============================================
+    // ===============
     // BASE QUALITY SCORE RECALIBRATION
-    // =============================================
+    // ===============
 
     GATK4_MARKDUPLICATES.out.bam
         .join(SAMTOOLS_INDEX_MD.out.bai)
@@ -322,10 +324,19 @@ workflow TEMPO {
         .join(SAMTOOLS_INDEX_RECAL.out.bai)
         .set { ch_recal_bam_bai }
 
-    // =============================================
-    // TUMOR-NORMAL PAIRING
-    // =============================================
+    // ===============
+    // BAM INPUT (skip alignment for pre-aligned BAMs)
+    // ===============
+    // BAM inputs bypass FASTQC->FASTP->BWAMEM2->SORT->MERGE->MARKDUP->BQSR
+    // and feed directly into the recalibrated BAM channel
     ch_recal_bam_bai
+        .mix(ch_bam_input)
+        .set { ch_all_recal_bam_bai }
+
+    // ===============
+    // TUMOR-NORMAL PAIRING
+    // ===============
+    ch_all_recal_bam_bai
         .branch {
             tumor:  it[0].status == 1
             normal: it[0].status == 0
@@ -346,19 +357,19 @@ workflow TEMPO {
                 tumor_id:  tumor_meta.sample,
                 normal_id: normal_meta.sample,
                 status:    1,
-                sex:       tumor_meta.sex ?: 'NA'
+                target:    tumor_meta.target
             ]
             [ pair_meta, tumor_bam, tumor_bai, normal_bam, normal_bai ]
         }
         .set { ch_tumor_normal_pair }
 
-    // =============================================
+    // ===============
     // SOMATIC SNV/INDEL CALLING
-    // =============================================
+    // ===============
 
-    // =============================================
+    // ===============
     // MANTA SOMATIC (needed by both SNV and SV workflows)
-    // =============================================
+    // ===============
 
     if (doWF_manta) {
         ch_tumor_normal_pair
@@ -375,9 +386,9 @@ workflow TEMPO {
         )
     }
 
-    // =============================================
+    // ===============
     // SPLIT INTERVALS (shared by Mutect2 + HaplotypeCaller scatter-gather)
-    // =============================================
+    // ===============
 
     if (doWF_SNV || doWF_germSNV) {
         ch_intervals = params.intervals
@@ -396,9 +407,9 @@ workflow TEMPO {
         ch_versions = ch_versions.mix(SPLIT_INTERVALS.out.versions)
     }
 
-    // =============================================
+    // ===============
     // SOMATIC SNV/INDEL CALLING
-    // =============================================
+    // ===============
 
     if (doWF_SNV) {
 
@@ -429,8 +440,6 @@ workflow TEMPO {
             ch_pon_tbi.map{ it[1] }
         )
 
-        //
-        //
         GATK4_MUTECT2.out.vcf
             .map { meta, vcf -> [ meta.original_id ?: meta.id, vcf ] }
             .groupTuple()
@@ -632,13 +641,12 @@ workflow TEMPO {
         ch_versions = ch_versions.mix(VCF2MAF.out.versions.first())
     }
 
-    // =============================================
+    // ===============
     // SOMATIC SV CALLING
-    // =============================================
+    // ===============
 
     if (doWF_SV) {
         // Calls each SV type separately for parallelism and fault tolerance,
-        //
 
         // SV types to call in parallel
         ch_sv_types = Channel.from("DEL", "DUP", "INV", "BND", "INS")
@@ -674,10 +682,9 @@ workflow TEMPO {
             ch_dict.map{ it[1] }
         )
 
-        //
         // Exome: Delly + Manta + SvABA (3 callers)
         // WGS:   + BRASS (4 callers, added in WGS block below)
-        //
+
         if (doWF_manta) {
             DELLY_COMBINE.out.vcf
                 .map { meta, vcf, tbi -> [ meta, vcf, tbi, "delly" ] }
@@ -694,9 +701,9 @@ workflow TEMPO {
         }
     }
 
-    // =============================================
+    // ===============
     // FACETS (Copy Number)
-    // =============================================
+    // ===============
 
     if (doWF_facets) {
         SNPPILEUP (
@@ -709,16 +716,17 @@ workflow TEMPO {
         ch_versions = ch_versions.mix(FACETS.out.versions.first())
     }
 
-    // =============================================
+    // ===============
     // FACETS PREVIEW QC & ANNOTATION
-    // =============================================
+    // ===============
 
     if (doWF_facets) {
         FACETS_PREVIEW_QC (
             FACETS.out.facets_output
+                .join(SNPPILEUP.out.pileup)
+                .map { meta, output, pileup -> [ meta, output, pileup ] }
         )
 
-        //
         if (doWF_SNV) {
             FACETS.out.hisens_rdata
                 .join(VCF2MAF.out.maf)
@@ -731,9 +739,9 @@ workflow TEMPO {
 
     }
 
-    // =============================================
+    // ===============
     // MUTATION SIGNATURES
-    // =============================================
+    // ===============
 
     if (doWF_mutSig) {
         if (doWF_facets && doWF_SNV) {
@@ -741,17 +749,17 @@ workflow TEMPO {
         }
     }
 
-    // =============================================
+    // ===============
     // MSI
-    // =============================================
+    // ===============
 
     if (doWF_msiSensor) {
         MSISENSORPRO_SCAN ( ch_fasta )
 
         //              path(tumor), path(tumor_index), path(intervals)
-        //        tuple val(meta2), path(fasta)
+
         //        path(msisensor_scan)
-        //
+
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai ->
                 [ meta, nbam, nbai, tbam, tbai, [] ]
@@ -765,9 +773,9 @@ workflow TEMPO {
         )
     }
 
-    // =============================================
+    // ===============
     // HLA TYPING & LOH
-    // =============================================
+    // ===============
 
     if (doWF_loh) {
         POLYSOLVER (
@@ -776,9 +784,7 @@ workflow TEMPO {
         ch_versions = ch_versions.mix(POLYSOLVER.out.versions.first())
 
         //              path(normal_bam), path(normal_bai), path(hla_types)
-        //        path hla_fasta
-        //        path hla_dat
-        //
+
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai ->
                 [ meta.normal_id, meta, tbam, tbai, nbam, nbai ]
@@ -788,7 +794,13 @@ workflow TEMPO {
                 by: 0
             )
             .map { normal_id, meta, tbam, tbai, nbam, nbai, hla_types ->
-                [ meta, tbam, tbai, nbam, nbai, hla_types ]
+                [ meta.id, meta, tbam, tbai, nbam, nbai, hla_types ]
+            }
+            .join(
+                FACETS.out.purity.map { meta, out_file -> [ meta.id, out_file ] }
+            )
+            .map { id, meta, tbam, tbai, nbam, nbai, hla_types, purity_out ->
+                [ meta, tbam, tbai, nbam, nbai, hla_types, purity_out ]
             }
             .set { ch_lohhla_input }
 
@@ -800,9 +812,9 @@ workflow TEMPO {
         ch_versions = ch_versions.mix(LOHHLA.out.versions.first())
     }
 
-    // =============================================
+    // ===============
     // GERMLINE VARIANT CALLING
-    // =============================================
+    // ===============
 
     if (doWF_germSNV) {
         ch_recal_branched.normal
@@ -825,7 +837,7 @@ workflow TEMPO {
         )
 
         // Groups VCFs by original sample ID, then concat + normalize + dedup
-        //
+
         GATK4_HAPLOTYPECALLER.out.vcf
             .map { meta, vcf -> [ meta.original_id ?: meta.id, vcf ] }
             .groupTuple()
@@ -848,8 +860,16 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(GERMLINE_COMBINE_HC_VCF.out.versions.first())
 
+        GERMLINE_HARD_FILTER (
+            GERMLINE_COMBINE_HC_VCF.out.vcf,
+            ch_fasta,
+            ch_fasta_fai,
+            ch_dict
+        )
+        ch_versions = ch_versions.mix(GERMLINE_HARD_FILTER.out.versions.first())
+
         //        path(call_regions), path(call_regions_tbi)
-        //
+
         ch_call_regions = params.call_regions
             ? Channel.value(file(params.call_regions, checkIfExists: true))
             : Channel.value([])
@@ -866,8 +886,7 @@ workflow TEMPO {
         )
         ch_versions = ch_versions.mix(STRELKA2_GERMLINE.out.versions.first())
 
-        //
-        GERMLINE_COMBINE_HC_VCF.out.vcf
+        GERMLINE_HARD_FILTER.out.vcf
             .join(STRELKA2_GERMLINE.out.vcf.map { meta, vcf, tbi -> [ meta, vcf, tbi ] })
             .map { meta, hc_vcf, hc_tbi, strelka_vcf, strelka_tbi ->
                 [ meta.patient, meta, hc_vcf, hc_tbi, strelka_vcf, strelka_tbi ]
@@ -937,9 +956,9 @@ workflow TEMPO {
         ch_versions = ch_versions.mix(GERMLINE_ANNOTATE_MAF.out.versions.first())
     }
 
-    // =============================================
+    // ===============
     // GERMLINE SV CALLING
-    // =============================================
+    // ===============
 
     if (doWF_germSV) {
         ch_sv_types_germline = Channel.from("DEL", "DUP", "INV", "BND", "INS")
@@ -988,8 +1007,6 @@ workflow TEMPO {
             ch_dict.map{ it[1] }
         )
 
-        //
-        //
         DELLY_COMBINE_GERMLINE.out.vcf
             .map { meta, vcf, tbi -> [ meta, vcf, tbi, "delly" ] }
             .mix(
@@ -1048,13 +1065,13 @@ workflow TEMPO {
         )
     }
 
-    // =============================================
+    // ===============
     // GERMLINE FACETS ANNOTATION (after germline SNV so GERMLINE_COMBINE_CHANNEL is available)
-    // =============================================
+    // ===============
 
     if (doWF_facets && doWF_germSNV) {
         FACETS.out.hisens_rdata
-            .join(GERMLINE_COMBINE_CHANNEL.out.germline_vcf)
+            .join(GERMLINE_ANNOTATE_MAF.out.maf_file)
             .set { ch_germline_facets_anno_input }
 
         GERMLINE_FACETS_ANNOTATION (
@@ -1062,9 +1079,9 @@ workflow TEMPO {
         )
     }
 
-    // =============================================
+    // ===============
     // NEOANTIGEN PREDICTION (after LOH/POLYSOLVER so POLYSOLVER.out is available)
-    // =============================================
+    // ===============
 
     if (doWF_loh && doWF_SNV) {
         ch_neoantigen_cdna = params.neoantigen_cdna
@@ -1095,9 +1112,9 @@ workflow TEMPO {
         )
     }
 
-    // =============================================
+    // ===============
     // METADATA PARSER (after MSI + LOH + MUTSIG so all inputs available)
-    // =============================================
+    // ===============
 
     if (doWF_mdParse) {
         FACETS.out.purity
@@ -1130,9 +1147,9 @@ workflow TEMPO {
         )
     }
 
-    // =============================================
+    // ===============
     // WGS-ONLY: ASCAT + BRASS + HRDetect
-    // =============================================
+    // ===============
 
     if (isWGS && doWF_SV) {
         ASCAT_ALLELECOUNT (
@@ -1162,8 +1179,8 @@ workflow TEMPO {
         )
 
         // Run separately on tumor and normal BAMs
-        //
-        ch_recal_bam_bai
+
+        ch_all_recal_bam_bai
             .map { meta, bam, bai ->
                 def bas_meta = [
                     id:     "${meta.sample}__bas",
@@ -1180,7 +1197,6 @@ workflow TEMPO {
             ch_fasta_fai.map{ it[1] }
         )
 
-        //
         ch_tumor_normal_pair
             .map { meta, tbam, tbai, nbam, nbai -> [ meta.tumor_id, meta, tbam, tbai, nbam, nbai ] }
             .combine(
@@ -1256,9 +1272,8 @@ workflow TEMPO {
             params.vagrent_ref_dir ? Channel.value(file(params.vagrent_ref_dir, checkIfExists: true)) : Channel.value(file('NO_FILE'))
         )
 
-        //
         // WGS: Add BRASS to the SV callers channel for 4-caller merge
-        //
+
         if (doWF_manta) {
             ch_somatic_sv_callers_base
                 .mix(
@@ -1269,11 +1284,11 @@ workflow TEMPO {
         }
     }
 
-    // =============================================
+    // ===============
     // SOMATIC SV MERGE + ANNOTATION
     // Runs after WGS block so BRASS is available for WGS
     // Exome: 3 callers (Delly+Manta+SvABA), WGS: 4 callers (+BRASS)
-    // =============================================
+    // ===============
 
     if (doWF_SV && doWF_manta) {
         def sv_caller_count = isWGS ? 4 : 3
@@ -1339,9 +1354,9 @@ workflow TEMPO {
         }
     }
 
-    // =============================================
+    // ===============
     // SVCircos (circos plot visualization)
-    // =============================================
+    // ===============
 
     if (doWF_SV && doWF_facets && doWF_manta) {
         IANNOTATESV_SOMATIC.out.bedpe_pass
@@ -1350,9 +1365,9 @@ workflow TEMPO {
         SVCIRCOS ( ch_svcircos_input, params.genome ?: 'GRCh37' )
     }
 
-    // =============================================
+    // ===============
     // SVCLONE
-    // =============================================
+    // ===============
 
     if (doWF_SV && doWF_facets && doWF_SNV && doWF_manta) {
         ch_tumor_normal_pair
@@ -1364,12 +1379,12 @@ workflow TEMPO {
         SVCLONE ( ch_svclone_input )
     }
 
-    // =============================================
+    // ===============
     // QC
-    // =============================================
+    // ===============
 
     if (doWF_QC) {
-        ch_recal_bam_bai
+        ch_all_recal_bam_bai
             .map { meta, bam, bai ->
                 [ meta, bam, bai, params.bait_intervals ? file(params.bait_intervals) : [], params.target_intervals ? file(params.target_intervals) : [] ]
             }
@@ -1385,12 +1400,12 @@ workflow TEMPO {
         ch_multiqc_files = ch_multiqc_files.mix(PICARD_COLLECTHSMETRICS.out.metrics.collect{it[1]})
 
         QUALIMAP_BAMQC (
-            ch_recal_bam_bai.map { meta, bam, bai -> [ meta, bam ] },
+            ch_all_recal_bam_bai.map { meta, bam, bai -> [ meta, bam ] },
             []
         )
 
         CONPAIR_PILEUP (
-            ch_recal_bam_bai.map { meta, bam, bai -> [ meta, bam, bai ] },
+            ch_all_recal_bam_bai.map { meta, bam, bai -> [ meta, bam, bai ] },
             ch_fasta.map{ it[1] },
             ch_fasta_fai.map{ it[1] },
             ch_dict.map{ it[1] }
@@ -1431,7 +1446,7 @@ workflow TEMPO {
             ch_dict.map{ it[1] }
         )
 
-        ch_recal_bam_bai
+        ch_all_recal_bam_bai
             .map { meta, bam, bai ->
                 def targets = params.target_intervals ? file(params.target_intervals) : file('NO_FILE')
                 def targets_idx = params.target_intervals ? file("${params.target_intervals}.idx", checkIfExists: false) : file('NO_FILE2')
@@ -1444,19 +1459,18 @@ workflow TEMPO {
             ch_fasta.map{ it[1] }
         )
 
-        //
         ch_multiqc_sample_configs = Channel.fromPath("$projectDir/assets/multiqc_config.yml", checkIfExists: true)
 
+        def ch_fastp_json_per_sample = FASTP.out.json
+            .map { meta, json -> [ meta.sample, json ] }
+            .groupTuple()
         ALFRED.out.alfred_qc
             .map { meta, rg_n, rg_y ->
                 [ meta.sample, meta, rg_n, rg_y ]
             }
-            .combine(
-                FASTP.out.json.map { meta, json -> [ meta.sample, json ] },
-                by: 0
-            )
-            .map { sample, meta, rg_n, rg_y, fastp_json ->
-                [ meta, rg_n, rg_y, fastp_json ]
+            .join( ch_fastp_json_per_sample, by: 0 )
+            .map { sample, meta, rg_n, rg_y, fastp_jsons ->
+                [ meta, rg_n, rg_y, fastp_jsons ]
             }
             .join(QUALIMAP_BAMQC.out.results)
             .map { meta, rg_n, rg_y, fastp_json, qualimap_dir ->
@@ -1474,13 +1488,24 @@ workflow TEMPO {
         )
 
         // Per tumor-normal pair QC metrics aggregation
-        //
+
         if (doWF_SNV && doWF_facets) {
+            def ch_qualimap_by_sample = QUALIMAP_BAMQC.out.results
+                .map { meta, dir -> [ meta.sample, dir ] }
             CONPAIR_CONCORDANCE.out.concordance
-                .join(FACETS.out.summary)
+                .map { meta, conc -> [ meta.tumor_id, meta, conc ] }
+                .combine( ch_qualimap_by_sample, by: 0 )
+                .map { tumor_id, meta, conc, qualimap_tumor ->
+                    [ meta.normal_id, meta, conc, qualimap_tumor ]
+                }
+                .combine( ch_qualimap_by_sample, by: 0 )
+                .map { normal_id, meta, conc, qualimap_tumor, qualimap_normal ->
+                    [ meta, conc, qualimap_tumor, qualimap_normal ]
+                }
+                .join(FACETS.out.summary_out)
                 .join(FACETS_PREVIEW_QC.out.facets_qc)
-                .map { meta, conpair, facets_sum, facets_qc ->
-                    [ meta, conpair, facets_sum, facets_qc ]
+                .map { meta, conpair, qualimap_t, qualimap_n, facets_sum, facets_qc ->
+                    [ meta, conpair, qualimap_t, qualimap_n, facets_sum, facets_qc ]
                 }
                 .set { ch_multiqc_somatic_input }
 
@@ -1491,9 +1516,9 @@ workflow TEMPO {
         }
     }
 
-    // =============================================
+    // ===============
     // MultiQC (nf-core - fallback aggregation)
-    // =============================================
+    // ===============
 
     if (doWF_QC && !params.skip_multiqc) {
 
@@ -1506,7 +1531,7 @@ workflow TEMPO {
         //        path(multiqc_logo)
         //        path(replace_names)
         //        path(sample_names)
-        //
+
         MULTIQC (
             ch_multiqc_files.collect(),
             ch_multiqc_config.toList(),
@@ -1517,145 +1542,251 @@ workflow TEMPO {
         )
     }
 
-    // =============================================
+    // ===============
     // AGGREGATION (cohort-level outputs)
-    // =============================================
-
+    // ===============
     if (params.aggregate) {
+        def aggregateIsFile = params.aggregate instanceof String && params.aggregate != 'true' && file(params.aggregate).exists()
+        if (aggregateIsFile) {
+            Channel.fromPath(params.aggregate)
+                .splitCsv(sep: '\t', header: true)
+                .map { row -> [ row.COHORT, row.TUMOR_ID, row.NORMAL_ID, row.PATH ?: '' ] }
+                .set { ch_aggregate_raw }
+
+            ch_aggregate_raw
+                .map { cohort, tid, nid, path -> [ cohort, tid, nid ] }
+                .set { ch_aggregate_map }
+
+            // Rows with PATH column — used for aggregate-only file resolution
+            ch_aggregate_raw
+                .filter { cohort, tid, nid, path -> path }
+                .set { ch_aggregate_with_path }
+        } else {
+            ch_tumor_normal_pair
+                .map { meta, tbam, tbai, nbam, nbai -> [ "default_cohort", meta.tumor_id, meta.normal_id ] }
+                .set { ch_aggregate_map }
+            ch_aggregate_with_path = Channel.empty()
+        }
         if (doWF_SNV && doWF_facets) {
-            SOMATIC_FACETS_ANNOTATION.out.final_maf
-                .map { meta, maf -> maf }
-                .collect()
-                .set { ch_aggregate_somatic_maf_input }
-
-            AGGREGATE_SOMATIC_MAF ( ch_aggregate_somatic_maf_input )
+            def ch_maf_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def resolved = file("${path}/somatic/${tid}__${nid}/*/*.final.maf")
+                    def f = resolved instanceof List ? (resolved.size() > 0 ? resolved[0] : file('NO_FILE')) : resolved
+                    [ tid, nid, f ]
+                }
+            def ch_maf_by_pair = SOMATIC_FACETS_ANNOTATION.out.final_maf
+                .map { meta, maf -> [ meta.tumor_id, meta.normal_id, maf ] }
+                .mix(ch_maf_from_path)
+            ch_aggregate_map.combine(ch_maf_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, mafs -> [ cohort, mafs ] }
+                .set { ch_agg_somatic_maf }
+            ch_agg_somatic_maf.map { cohort, mafs -> cohort }.set { ch_agg_maf_cohort }
+            ch_agg_somatic_maf.map { cohort, mafs -> mafs }.set { ch_agg_maf_files }
+            AGGREGATE_SOMATIC_MAF ( ch_agg_maf_cohort, ch_agg_maf_files )
         }
-
         if (doWF_SV && doWF_manta) {
-            IANNOTATESV_SOMATIC.out.bedpe_pass
-                .map { meta, bedpe -> bedpe }
-                .collect()
-                .set { ch_aggregate_somatic_sv_input }
-
-            AGGREGATE_SOMATIC_SV ( ch_aggregate_somatic_sv_input )
+            def ch_sv_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def resolved = file("${path}/somatic/${tid}__${nid}/*/*.delly.manta.vcf.gz")
+                    def f = resolved instanceof List ? (resolved.size() > 0 ? resolved[0] : file('NO_FILE')) : resolved
+                    [ tid, nid, f ]
+                }
+            def ch_sv_by_pair = IANNOTATESV_SOMATIC.out.bedpe_pass
+                .map { meta, bedpe -> [ meta.tumor_id, meta.normal_id, bedpe ] }
+                .mix(ch_sv_from_path)
+            ch_aggregate_map.combine(ch_sv_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, files -> [ cohort, files ] }
+                .set { ch_agg_somatic_sv }
+            ch_agg_somatic_sv.map { it[0] }.set { ch_agg_sv_cohort }
+            ch_agg_somatic_sv.map { it[1] }.set { ch_agg_sv_files }
+            AGGREGATE_SOMATIC_SV ( ch_agg_sv_cohort, ch_agg_sv_files )
         }
-
         if (doWF_facets) {
-            FACETS.out.hisens_seg
-                .map { meta, seg -> seg }
-                .collect()
-                .set { ch_aggregate_somatic_facets_input }
-
-            AGGREGATE_SOMATIC_FACETS ( ch_aggregate_somatic_facets_input )
+            def ch_facets_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def pur = file("${path}/somatic/${tid}__${nid}/*/*/*/*_purity.seg")
+                    def his = file("${path}/somatic/${tid}__${nid}/*/*/*/*_hisens.seg")
+                    def out_f = file("${path}/somatic/${tid}__${nid}/*/*/*_OUT.txt")
+                    def arm = file("${path}/somatic/${tid}__${nid}/*/*/*/*.arm_level.txt")
+                    def gene = file("${path}/somatic/${tid}__${nid}/*/*/*/*.gene_level.txt")
+                    [ tid, nid,
+                      pur instanceof List ? (pur.size() > 0 ? pur[0] : file('NO_FILE')) : pur,
+                      his instanceof List ? (his.size() > 0 ? his[0] : file('NO_FILE')) : his,
+                      out_f instanceof List ? (out_f.size() > 0 ? out_f[0] : file('NO_FILE')) : out_f,
+                      arm instanceof List ? (arm.size() > 0 ? arm[0] : file('NO_FILE')) : arm,
+                      gene instanceof List ? (gene.size() > 0 ? gene[0] : file('NO_FILE')) : gene ]
+                }
+            def ch_facets_by_pair = FACETS.out.purity_seg
+                .join(FACETS.out.hisens_seg).join(FACETS.out.summary_out)
+                .join(FACETS.out.arm_level).join(FACETS.out.gene_level)
+                .map { meta, pur, his, out, arm, gene -> [ meta.tumor_id, meta.normal_id, pur, his, out, arm, gene ] }
+                .mix(ch_facets_from_path)
+            ch_aggregate_map.combine(ch_facets_by_pair, by: [1,2])
+                .groupTuple(by: 0)
+                .map { cohort, tids, nids, purs, hiss, outs, arms, genes -> [ cohort, purs, hiss, outs, arms, genes ] }
+                .set { ch_agg_facets }
+            AGGREGATE_SOMATIC_FACETS ( ch_agg_facets )
         }
-
         if (doWF_loh && doWF_SNV) {
-            NEOANTIGEN.out.predictions
-                .map { meta, neo -> neo }
-                .collect()
-                .set { ch_aggregate_somatic_netmhc_input }
-
-            AGGREGATE_SOMATIC_NETMHC ( ch_aggregate_somatic_netmhc_input )
+            def ch_neo_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def resolved = file("${path}/somatic/${tid}__${nid}/*/*.all_neoantigen_predictions.txt")
+                    def f = resolved instanceof List ? (resolved.size() > 0 ? resolved[0] : file('NO_FILE')) : resolved
+                    [ tid, nid, f ]
+                }
+            def ch_neo_by_pair = NEOANTIGEN.out.predictions
+                .map { meta, neo -> [ meta.tumor_id, meta.normal_id, neo ] }
+                .mix(ch_neo_from_path)
+            ch_aggregate_map.combine(ch_neo_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, files -> [ cohort, files ] }
+                .set { ch_agg_netmhc }
+            ch_agg_netmhc.map { it[0] }.set { ch_agg_netmhc_cohort }
+            ch_agg_netmhc.map { it[1] }.set { ch_agg_netmhc_files }
+            AGGREGATE_SOMATIC_NETMHC ( ch_agg_netmhc_cohort, ch_agg_netmhc_files )
         }
-
         if (doWF_mdParse) {
-            METADATA_PARSER.out.metadata
-                .map { meta, metadata -> metadata }
-                .collect()
-                .set { ch_aggregate_somatic_metadata_input }
-
-            AGGREGATE_SOMATIC_METADATA ( ch_aggregate_somatic_metadata_input )
+            def ch_md_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def resolved = file("${path}/somatic/${tid}__${nid}/*/*.sample_data.txt")
+                    def f = resolved instanceof List ? (resolved.size() > 0 ? resolved[0] : file('NO_FILE')) : resolved
+                    [ tid, nid, f ]
+                }
+            def ch_md_by_pair = METADATA_PARSER.out.metadata
+                .map { meta, md -> [ meta.tumor_id, meta.normal_id, md ] }
+                .mix(ch_md_from_path)
+            ch_aggregate_map.combine(ch_md_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, files -> [ cohort, files ] }
+                .set { ch_agg_metadata }
+            ch_agg_metadata.map { it[0] }.set { ch_agg_md_cohort }
+            ch_agg_metadata.map { it[1] }.set { ch_agg_md_files }
+            AGGREGATE_SOMATIC_METADATA ( ch_agg_md_cohort, ch_agg_md_files )
         }
-
         if (doWF_loh) {
-            LOHHLA.out.predictions
-                .map { meta, summary -> summary }
-                .collect()
-                .set { ch_aggregate_somatic_lohhla_input }
-
-            AGGREGATE_SOMATIC_LOHHLA ( ch_aggregate_somatic_lohhla_input )
+            def ch_lohhla_pred_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def pred = file("${path}/somatic/${tid}__${nid}/*/*.DNA.HLAlossPrediction_CI.txt")
+                    def cpn = file("${path}/somatic/${tid}__${nid}/*/*DNA.IntegerCPN_CI.txt")
+                    def p = pred instanceof List ? (pred.size() > 0 ? pred[0] : file('NO_FILE')) : pred
+                    def c = cpn instanceof List ? (cpn.size() > 0 ? cpn[0] : file('NO_FILE')) : cpn
+                    [ tid, nid, p, c ]
+                }
+            def ch_lohhla_by_pair = LOHHLA.out.predictions
+                .join(LOHHLA.out.integer_cpn)
+                .map { meta, pred, cpn -> [ meta.tumor_id, meta.normal_id, pred, cpn ] }
+                .mix(ch_lohhla_pred_from_path)
+            ch_aggregate_map.combine(ch_lohhla_by_pair, by: [1,2])
+                .groupTuple(by: 0)
+                .map { cohort, tids, nids, preds, cpns -> [ cohort, preds, cpns ] }
+                .set { ch_agg_lohhla }
+            ch_agg_lohhla.map { it[0] }.set { ch_agg_lohhla_cohort }
+            ch_agg_lohhla.map { it[1] }.set { ch_agg_lohhla_preds }
+            ch_agg_lohhla.map { it[2] }.set { ch_agg_lohhla_cpns }
+            AGGREGATE_SOMATIC_LOHHLA ( ch_agg_lohhla_cohort, ch_agg_lohhla_preds, ch_agg_lohhla_cpns )
         }
-
         if (isWGS && doWF_SV && doWF_SNV && doWF_facets) {
-            HRDETECT.out.hrdetect_output
-                .map { meta, hrdetect -> hrdetect }
-                .collect()
-                .set { ch_aggregate_somatic_hrdetect_input }
-
-            AGGREGATE_SOMATIC_HRDETECT ( ch_aggregate_somatic_hrdetect_input )
+            def ch_hrd_by_pair = HRDETECT.out.hrdetect_output
+                .map { meta, hrd -> [ meta.tumor_id, meta.normal_id, hrd ] }
+            ch_aggregate_map.combine(ch_hrd_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, files -> [ cohort, files ] }
+                .set { ch_agg_hrdetect }
+            ch_agg_hrdetect.map { it[0] }.set { ch_agg_hrd_cohort }
+            ch_agg_hrdetect.map { it[1] }.set { ch_agg_hrd_files }
+            AGGREGATE_SOMATIC_HRDETECT ( ch_agg_hrd_cohort, ch_agg_hrd_files )
         }
-
         if (doWF_SV && doWF_facets && doWF_SNV && doWF_manta) {
-            SVCLONE.out.cluster_certainty
-                .map { meta, sv_cert, snv_cert -> [ sv_cert, snv_cert ] }
-                .collect()
-                .set { ch_aggregate_somatic_svclone_input }
-
-            AGGREGATE_SOMATIC_SVCLONE ( ch_aggregate_somatic_svclone_input )
+            def ch_svc_by_pair = SVCLONE.out.cluster_certainty
+                .map { meta, sv_cert, snv_cert -> [ meta.tumor_id, meta.normal_id, sv_cert, snv_cert ] }
+            ch_aggregate_map.combine(ch_svc_by_pair, by: [1,2])
+                .groupTuple(by: 0)
+                .map { cohort, tids, nids, svs, snvs -> [ cohort, svs, snvs ] }
+                .set { ch_agg_svclone }
+            ch_agg_svclone.map { it[0] }.set { ch_agg_svc_cohort }
+            ch_agg_svclone.map { it[1] }.set { ch_agg_svc_sv }
+            ch_agg_svclone.map { it[2] }.set { ch_agg_svc_snv }
+            AGGREGATE_SOMATIC_SVCLONE ( ch_agg_svc_cohort, ch_agg_svc_sv, ch_agg_svc_snv )
         }
-
         if (isWGS && doWF_SV && doWF_manta) {
-            SV_SIGNATURES.out.sv_signatures
-                .map { meta, sigs -> sigs }
-                .collect()
-                .set { ch_aggregate_somatic_svsignatures_input }
-
-            AGGREGATE_SOMATIC_SVSIGNATURES ( ch_aggregate_somatic_svsignatures_input )
+            def ch_svsig_by_pair = SV_SIGNATURES.out.catalogues
+                .join(SV_SIGNATURES.out.sv_signatures)
+                .map { meta, pdf, sigs -> [ meta.tumor_id, meta.normal_id, pdf, sigs ] }
+            ch_aggregate_map.combine(ch_svsig_by_pair, by: [1,2])
+                .groupTuple(by: 0)
+                .map { cohort, tids, nids, pdfs, sigs -> [ cohort, pdfs, sigs ] }
+                .set { ch_agg_svsig }
+            ch_agg_svsig.map { it[0] }.set { ch_agg_svsig_cohort }
+            ch_agg_svsig.map { it[1] }.set { ch_agg_svsig_pdfs }
+            ch_agg_svsig.map { it[2] }.set { ch_agg_svsig_exps }
+            AGGREGATE_SOMATIC_SVSIGNATURES ( ch_agg_svsig_cohort, ch_agg_svsig_pdfs, ch_agg_svsig_exps )
         }
-
         if (doWF_germSNV) {
-            GERMLINE_ANNOTATE_MAF.out.maf_file
-                .map { meta, maf -> maf }
-                .collect()
-                .set { ch_aggregate_germline_maf_input }
-
-            AGGREGATE_GERMLINE_MAF ( ch_aggregate_germline_maf_input )
+            def ch_gmaf_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def resolved = file("${path}/germline/${nid}/*/${tid}__${nid}.germline.final.maf")
+                    def f = resolved instanceof List ? (resolved.size() > 0 ? resolved[0] : file('NO_FILE')) : resolved
+                    [ tid, nid, f ]
+                }
+            def ch_gmaf_by_pair = GERMLINE_ANNOTATE_MAF.out.maf_file
+                .map { meta, maf -> [ meta.tumor_id, meta.normal_id, maf ] }
+                .mix(ch_gmaf_from_path)
+            ch_aggregate_map.combine(ch_gmaf_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, files -> [ cohort, files ] }
+                .set { ch_agg_germline_maf }
+            ch_agg_germline_maf.map { it[0] }.set { ch_agg_gmaf_cohort }
+            ch_agg_germline_maf.map { it[1] }.set { ch_agg_gmaf_files }
+            AGGREGATE_GERMLINE_MAF ( ch_agg_gmaf_cohort, ch_agg_gmaf_files )
         }
-
         if (doWF_germSV) {
-            IANNOTATESV_GERMLINE.out.bedpe_pass
-                .map { meta, bedpe -> bedpe }
-                .collect()
-                .set { ch_aggregate_germline_sv_input }
-
-            AGGREGATE_GERMLINE_SV ( ch_aggregate_germline_sv_input )
+            def ch_gsv_from_path = ch_aggregate_with_path
+                .map { cohort, tid, nid, path ->
+                    def resolved = file("${path}/germline/${nid}/*/*.delly.manta.vcf.gz")
+                    def f = resolved instanceof List ? (resolved.size() > 0 ? resolved[0] : file('NO_FILE')) : resolved
+                    [ nid, cohort, f ]
+                }
+            def ch_gsv_by_normal = IANNOTATESV_GERMLINE.out.bedpe_pass
+                .map { meta, bedpe -> [ meta.sample ?: meta.id, bedpe ] }
+            def ch_gsv_from_pipeline = ch_aggregate_map.map { cohort, tid, nid -> [ nid, cohort ] }
+                .combine(ch_gsv_by_normal, by: 0)
+                .map { nid, cohort, bedpe -> [ cohort, bedpe ] }
+            ch_gsv_from_pipeline
+                .mix(ch_gsv_from_path.map { nid, cohort, f -> [ cohort, f ] })
+                .groupTuple(by: 0).map { cohort, files -> [ cohort, files.unique() ] }
+                .set { ch_agg_germline_sv }
+            ch_agg_germline_sv.map { it[0] }.set { ch_agg_gsv_cohort }
+            ch_agg_germline_sv.map { it[1] }.set { ch_agg_gsv_files }
+            AGGREGATE_GERMLINE_SV ( ch_agg_gsv_cohort, ch_agg_gsv_files )
         }
-
         if (doWF_QC) {
             ALFRED.out.alfred_qc
                 .map { meta, rg_n, rg_y -> [ rg_n, rg_y ] }
-                .flatten()
-                .collect()
-                .set { ch_aggregate_alfred_input }
-
+                .flatten().collect()
+                .set { ch_agg_alfred }
             PICARD_COLLECTHSMETRICS.out.metrics
-                .map { meta, metrics -> metrics }
-                .collect()
-                .set { ch_aggregate_hsmetrics_input }
-
-            AGGREGATE_QC_BAM ( ch_aggregate_alfred_input, ch_aggregate_hsmetrics_input )
+                .map { meta, m -> m }.collect()
+                .set { ch_agg_hsmetrics }
+            AGGREGATE_QC_BAM ( Channel.value("default_cohort"), ch_agg_alfred, ch_agg_hsmetrics )
         }
-
         if (doWF_QC) {
-            CONPAIR_CONCORDANCE.out.concordance
-                .map { meta, concordance -> concordance }
-                .collect()
-                .set { ch_aggregate_qc_conpair_input }
-
-            AGGREGATE_QC_CONPAIR ( ch_aggregate_qc_conpair_input )
+            def ch_conc_by_pair = CONPAIR_CONCORDANCE.out.concordance
+                .map { meta, c -> [ meta.tumor_id, meta.normal_id, c ] }
+            def ch_cont_by_pair = CONPAIR_CONCORDANCE.out.contamination
+                .map { meta, c -> [ meta.tumor_id, meta.normal_id, c ] }
+            ch_aggregate_map.combine(ch_conc_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, files -> [ cohort, files ] }
+                .set { ch_agg_conc }
+            ch_aggregate_map.combine(ch_cont_by_pair, by: [1,2])
+                .groupTuple(by: 0).map { cohort, tids, nids, files -> [ cohort, files ] }
+                .set { ch_agg_cont }
+            ch_agg_conc.join(ch_agg_cont, by: 0)
+                .set { ch_agg_conpair }
+            ch_agg_conpair.map { it[0] }.set { ch_agg_conpair_cohort }
+            ch_agg_conpair.map { it[1] }.set { ch_agg_conpair_conc }
+            ch_agg_conpair.map { it[2] }.set { ch_agg_conpair_cont }
+            AGGREGATE_QC_CONPAIR ( ch_agg_conpair_cohort, ch_agg_conpair_conc, ch_agg_conpair_cont )
         }
-
-        // Collect per-sample multiqc reports + individual QC outputs for cohort-level summary
-        //
         MULTIQC_SAMPLE.out.multiqc_report
-            .map { meta, html, data -> [ html, data ] }
-            .flatMap()
-            .mix(
-                doWF_QC ? CONPAIR_ALL.out.conpair_output.map { meta, conc, cont -> [ conc, cont ] }.flatMap() : Channel.empty()
-            )
-            .collect()
-            .set { ch_cohort_multiqc_input }
-
+            .map { meta, html, data -> [ html, data ] }.flatMap()
+            .mix(doWF_QC ? CONPAIR_ALL.out.conpair_output.map { meta, conc, cont -> [ conc, cont ] }.flatMap() : Channel.empty())
+            .collect().set { ch_cohort_multiqc_input }
         MULTIQC_COHORT ( ch_cohort_multiqc_input )
         ch_versions = ch_versions.mix(MULTIQC_COHORT.out.versions)
     }
@@ -1666,7 +1797,7 @@ workflow TEMPO {
 }
 
 /*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
     THE END
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 */

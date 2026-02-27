@@ -1,8 +1,12 @@
+// Aggregate QC BAM — matches original Tempo QcBamAggregate
+// Passes assay type and cpus to R script
 process AGGREGATE_QC_BAM {
+    tag "${cohort}"
     label 'process_single'
-    container 'cmopipeline/alfred:v0.1.17'
+    container 'docker.io/cmopipeline/alfred:v0.1.17'
 
     input:
+    val(cohort)
     path(alfred_files)
     path(hsmetrics_files)
 
@@ -13,8 +17,9 @@ process AGGREGATE_QC_BAM {
     task.ext.when == null || task.ext.when
 
     script:
+    def assayType = params.assay_type == 'exome' ? 'wes' : 'wgs'
     """
-    Rscript create-aggregate-qc-file.R
+    Rscript --no-init-file /usr/bin/create-aggregate-qc-file.R -n ${task.cpus} -a ${assayType}
     """
 
     stub:

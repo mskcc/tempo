@@ -2,7 +2,7 @@ process MULTIQC_SOMATIC {
     tag "$meta.tumor_id-$meta.normal_id"
     label 'process_medium'
 
-    container 'cmopipeline/multiqc:0.1.3'
+    container 'docker.io/cmopipeline/multiqc:0.1.3'
 
     input:
     tuple val(meta), path(conpair_files), path(qualimap_tumor), path(qualimap_normal), path(facets_summary), path(facets_qc)

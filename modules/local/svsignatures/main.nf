@@ -1,7 +1,7 @@
 process SV_SIGNATURES {
     tag "${meta.id}"
     label 'process_high'
-    container 'cmopipeline/signaturetoolslib:0.0.1'
+    container 'docker.io/cmopipeline/signaturetoolslib:0.0.1'
 
     input:
     tuple val(meta), path(bedpe)

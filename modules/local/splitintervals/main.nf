@@ -3,8 +3,8 @@ process SPLIT_INTERVALS {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://broadinstitute/gatk:4.1.0.0' :
-        'broadinstitute/gatk:4.1.0.0' }"
+        'docker://docker.io/broadinstitute/gatk:4.1.0.0' :
+        'docker.io/broadinstitute/gatk:4.1.0.0' }"
 
     input:
     tuple val(meta), path(fasta)

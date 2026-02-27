@@ -3,8 +3,8 @@ process METADATA_PARSER {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/metadataparser:0.5.9' :
-        'cmopipeline/metadataparser:0.5.9' }"
+        'docker://docker.io/cmopipeline/metadataparser:0.5.9' :
+        'docker.io/cmopipeline/metadataparser:0.5.9' }"
 
     input:
     tuple val(meta), path(purity_out), path(maf_file), path(qc_output), path(msi_file), path(mutsig), path(polysolver_file)

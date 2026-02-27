@@ -3,8 +3,8 @@ process SVTOOLS_VCF2BEDPE_GERMLINE {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/svtools:0.0.3' :
-        'cmopipeline/svtools:0.0.3' }"
+        'docker://docker.io/cmopipeline/svtools:0.0.3' :
+        'docker.io/cmopipeline/svtools:0.0.3' }"
 
     input:
     tuple val(meta), path(vcf), path(tbi)

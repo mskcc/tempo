@@ -1,0 +1,2 @@
+ID	chrom	loc.start	loc.end	seg	num.mark	nhet	cnlr.median	mafR	segclust	cnlr.median.clust	mafR.clust	cf	tcn	lcn	cf.em	tcn.em	lcn.em
+1234T__1234N_hisens	1	133129	140450	1	27	9	0.00125800861292774	0.769940033798648	1	0.00125800861292774	NA	0.3	2	NA	0.3	2	NA

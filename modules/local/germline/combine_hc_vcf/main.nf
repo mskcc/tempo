@@ -3,8 +3,8 @@ process GERMLINE_COMBINE_HC_VCF {
     label 'process_medium'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'docker://cmopipeline/bcftools-vt:1.1.1' :
-        'cmopipeline/bcftools-vt:1.1.1' }"
+        'docker://docker.io/cmopipeline/bcftools-vt:1.1.1' :
+        'docker.io/cmopipeline/bcftools-vt:1.1.1' }"
 
     input:
     tuple val(meta), path(vcfs), path(tbis)

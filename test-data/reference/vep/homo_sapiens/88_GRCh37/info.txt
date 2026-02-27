@@ -1,0 +1,21 @@
+# CACHE UPDATED 2017-05-15 17:03:23
+sift	b
+var_type	tabix
+species	homo_sapiens
+regulatory	1
+assembly	GRCh37
+variation_cols	chr,variation_name,failed,somatic,start,end,allele_string,strand,minor_allele,minor_allele_freq,clin_sig,phenotype_or_disease,pubmed,AFR,AMR,EAS,EUR,SAS,AA,EA,ExAC,ExAC_AFR,ExAC_AMR,ExAC_Adj,ExAC_EAS,ExAC_FIN,ExAC_NFE,ExAC_OTH,ExAC_SAS
+polyphen	b
+source_1000genomes	phase3
+source_regbuild	1.0
+source_ESP	20141103
+source_polyphen	2.2.2
+source_gencode	GENCODE 19
+source_assembly	GRCh37.p13
+source_ExAC	0.3
+source_HGMD-PUBLIC	20162
+source_ClinVar	201610
+source_COSMIC	78
+source_genebuild	2011-04
+source_dbSNP	147
+source_sift	sift5.2.2

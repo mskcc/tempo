@@ -1,7 +1,9 @@
+// MUTSIG / TempoSig — matches original Tempo RunMutationSignatures
+// Two-stage: maf2cat2.R → tempoSig.R with fixed statistical params
 process MUTSIG {
     tag "${meta.tumor_id}__${meta.normal_id}"
     label 'process_medium'
-    container 'cmopipeline/temposig:0.2.3'
+    container 'docker.io/cmopipeline/temposig:0.2.3'
 
     input:
     tuple val(meta), path(maf)
@@ -15,28 +17,18 @@ process MUTSIG {
     script:
     def args = task.ext.args ?: ''
     def prefix = "${meta.tumor_id}__${meta.normal_id}"
-    def cosmic_version = params.cosmic_version ?: '92'
+    def cosmic = params.cosmic ?: 'v3'
     """
-    mkdir -p mutsig_output
+    maf2cat2.R ${maf} \\
+        ${prefix}.trinucmat.txt
 
-    # Convert MAF to catalog format using maf2cat2.R
-    Rscript /opt/maf2cat2.R \\
-        --maf-file ${maf} \\
-        --output-dir mutsig_output \\
-        ${args}
-
-    # Run tempoSig analysis with cosmic version
-    Rscript /opt/tempoSig.R \\
-        --catalog-file mutsig_output/catalog.txt \\
-        --cosmic-version ${cosmic_version} \\
-        --output-file ${prefix}.mutsig.txt \\
-        ${args}
+    tempoSig.R --cosmic_${cosmic} --pvalue --nperm 10000 --seed 132 ${prefix}.trinucmat.txt \\
+        ${prefix}.mutsig.txt
     """
 
     stub:
     def prefix = "${meta.tumor_id}__${meta.normal_id}"
     """
-    mkdir -p mutsig_output
     touch ${prefix}.mutsig.txt
     """
 }

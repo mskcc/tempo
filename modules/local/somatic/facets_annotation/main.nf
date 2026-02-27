@@ -1,7 +1,7 @@
 process SOMATIC_FACETS_ANNOTATION {
     tag "${meta.tumor_id}__${meta.normal_id}"
     label 'process_medium'
-    container 'cmopipeline/facets-suite-preview-htstools:0.0.1'
+    container 'docker.io/cmopipeline/facets-suite-preview-htstools:0.0.1'
 
     input:
     tuple val(meta), path(hisens_rdata), path(maf)
@@ -27,18 +27,17 @@ process SOMATIC_FACETS_ANNOTATION {
         touch ${prefix}.somatic.final.maf
         echo "0" > file-size.txt
     else
-        Rscript /opt/annotate-maf-wrapper.R \\
-            --hisens-rdata ${hisens_rdata} \\
+        Rscript --no-init-file /usr/bin/facets-suite/annotate-maf-wrapper.R \\
+            --facets-output ${hisens_rdata} \\
             --maf-file ${maf} \\
-            --output-dir annotation_output \\
-            ${args}
+            --facets-algorithm em \\
+            --output ${prefix}.facets.maf
 
-        Rscript /opt/annotate-with-zygosity-somatic.R \\
-            --maf-file annotation_output/annotated.maf \\
-            --output-maf ${prefix}.somatic.final.maf \\
-            ${args}
+        Rscript --no-init-file /usr/bin/annotate-with-zygosity-somatic.R \\
+            ${prefix}.facets.maf ${prefix}.facets.zygosity.maf
 
-        wc -l < ${prefix}.somatic.final.maf > file-size.txt
+        echo -e "${prefix}\\t\$(wc -l < ${prefix}.facets.zygosity.maf)" > file-size.txt
+        mv ${prefix}.facets.zygosity.maf ${prefix}.somatic.final.maf
     fi
     """
 
