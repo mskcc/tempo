@@ -39,11 +39,22 @@ workflow MSKCC_TEMPO {
     // WORKFLOW: Run pipeline
     //
 
+    // Validate required reference parameters — fail early with clear message
+    def required_refs = [
+        'fasta', 'fasta_fai', 'dict', 'bwa_index',
+        'dbsnp', 'dbsnp_tbi', 'known_indels', 'known_indels_tbi'
+    ]
+    def missing = required_refs.findAll { !params[it] }
+    if (missing) {
+        error "Missing required reference parameter(s): ${missing.join(', ')}. " +
+              "Please provide all reference files via params or a config profile (e.g., -profile test)."
+    }
+
     // Prepare reference channels as value channels (nf-core/sarek pattern)
     // Using Channel.value() ensures these pair correctly with every sample in multi-sample runs
-    ch_fasta            = params.fasta            ? Channel.value([ [id:'genome'], file(params.fasta, checkIfExists: true) ])            : Channel.value([ [id:'genome'], [] ])
-    ch_fasta_fai        = params.fasta_fai        ? Channel.value([ [id:'genome'], file(params.fasta_fai, checkIfExists: true) ])        : Channel.value([ [id:'genome'], [] ])
-    ch_dict             = params.dict             ? Channel.value([ [id:'genome'], file(params.dict, checkIfExists: true) ])             : Channel.value([ [id:'genome'], [] ])
+    ch_fasta            = Channel.value([ [id:'genome'], file(params.fasta, checkIfExists: true) ])
+    ch_fasta_fai        = Channel.value([ [id:'genome'], file(params.fasta_fai, checkIfExists: true) ])
+    ch_dict             = Channel.value([ [id:'genome'], file(params.dict, checkIfExists: true) ])
     // bwa-mem2 index: check if pre-built index exists, otherwise build on-the-fly
     def bwamem2_index_exists = params.bwa_index ? file("${params.bwa_index}.bwt.2bit.64").exists() : false
     if (params.bwa_index && bwamem2_index_exists) {
@@ -55,13 +66,11 @@ workflow MSKCC_TEMPO {
         // No bwa-mem2 index — build on-the-fly from fasta
         BWAMEM2_INDEX ( ch_fasta )
         ch_bwa_index = BWAMEM2_INDEX.out.index
-    } else {
-        ch_bwa_index = Channel.value([ [id:'genome'], [] ])
     }
-    ch_dbsnp            = params.dbsnp            ? Channel.value([ [id:'dbsnp'], file(params.dbsnp, checkIfExists: true) ])             : Channel.value([ [id:'dbsnp'], [] ])
-    ch_dbsnp_tbi        = params.dbsnp_tbi        ? Channel.value([ [id:'dbsnp'], file(params.dbsnp_tbi, checkIfExists: true) ])         : Channel.value([ [id:'dbsnp'], [] ])
-    ch_known_indels     = params.known_indels     ? Channel.value([ [id:'indels'], file(params.known_indels, checkIfExists: true) ])     : Channel.value([ [id:'indels'], [] ])
-    ch_known_indels_tbi = params.known_indels_tbi ? Channel.value([ [id:'indels'], file(params.known_indels_tbi, checkIfExists: true) ]) : Channel.value([ [id:'indels'], [] ])
+    ch_dbsnp            = Channel.value([ [id:'dbsnp'], file(params.dbsnp, checkIfExists: true) ])
+    ch_dbsnp_tbi        = Channel.value([ [id:'dbsnp'], file(params.dbsnp_tbi, checkIfExists: true) ])
+    ch_known_indels     = Channel.value([ [id:'indels'], file(params.known_indels, checkIfExists: true) ])
+    ch_known_indels_tbi = Channel.value([ [id:'indels'], file(params.known_indels_tbi, checkIfExists: true) ])
     ch_germline_resource     = params.germline_resource     ? Channel.value([ [id:'gnomad'], file(params.germline_resource, checkIfExists: true) ])     : Channel.value([ [id:'gnomad'], [] ])
     ch_germline_resource_tbi = params.germline_resource_tbi ? Channel.value([ [id:'gnomad'], file(params.germline_resource_tbi, checkIfExists: true) ]) : Channel.value([ [id:'gnomad'], [] ])
     ch_intervals        = params.intervals        ? Channel.value([ file(params.intervals, checkIfExists: true) ])                       : Channel.value([])
