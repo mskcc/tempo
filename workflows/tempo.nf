@@ -1793,7 +1793,7 @@ workflow TEMPO {
 
     emit:
     versions       = ch_versions
-    multiqc_report = MULTIQC.out.report
+    multiqc_report = (doWF_QC && !params.skip_multiqc) ? MULTIQC.out.report : Channel.empty()
 }
 
 /*
