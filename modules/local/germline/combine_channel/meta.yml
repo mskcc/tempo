@@ -87,54 +87,54 @@ input:
         pattern: "*.vcf.gz.tbi"
 output:
   - germline_vcf:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.germline.vcf":
-          type: file
-          description: Merged germline variants (uncompressed)
-          pattern: "*.germline.vcf"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.germline.vcf":
+            type: file
+            description: Merged germline variants (uncompressed)
+            pattern: "*.germline.vcf"
   - union:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.union.vcf.gz":
-          type: file
-          description: Union of HC and Strelka2 calls (annotated)
-          pattern: "*.union.vcf.gz"
-    - - "*.union.vcf.gz.tbi":
-          type: file
-          description: Index of union VCF
-          pattern: "*.union.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.union.vcf.gz":
+            type: file
+            description: Union of HC and Strelka2 calls (annotated)
+            pattern: "*.union.vcf.gz"
+      - - "*.union.vcf.gz.tbi":
+            type: file
+            description: Index of union VCF
+            pattern: "*.union.vcf.gz.tbi"
   - union_pass:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.union.pass.vcf.gz":
-          type: file
-          description: PASS variants from union
-          pattern: "*.union.pass.vcf.gz"
-    - - "*.union.pass.vcf.gz.tbi":
-          type: file
-          description: Index of PASS variants
-          pattern: "*.union.pass.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.union.pass.vcf.gz":
+            type: file
+            description: PASS variants from union
+            pattern: "*.union.pass.vcf.gz"
+      - - "*.union.pass.vcf.gz.tbi":
+            type: file
+            description: Index of PASS variants
+            pattern: "*.union.pass.vcf.gz.tbi"
   - germline_vcf_gz:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.germline.vcf.gz":
-          type: file
-          description: Merged germline variants (compressed)
-          pattern: "*.germline.vcf.gz"
-    - - "*.germline.vcf.gz.tbi":
-          type: file
-          description: Index of compressed germline VCF
-          pattern: "*.germline.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.germline.vcf.gz":
+            type: file
+            description: Merged germline variants (compressed)
+            pattern: "*.germline.vcf.gz"
+      - - "*.germline.vcf.gz.tbi":
+            type: file
+            description: Index of compressed germline VCF
+            pattern: "*.germline.vcf.gz.tbi"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

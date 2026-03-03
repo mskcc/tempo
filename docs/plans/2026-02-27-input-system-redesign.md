@@ -13,6 +13,7 @@
 ### Task 1: Update samplesheet schema — remove sex, add target
 
 **Files:**
+
 - Modify: `assets/schema_input.json`
 
 **Step 1: Edit schema_input.json**
@@ -21,62 +22,62 @@ Replace the entire file with this updated schema:
 
 ```json
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/mskcc/tempo/main/assets/schema_input.json",
-    "title": "mskcc/tempo pipeline - params.input schema",
-    "description": "Schema for the file provided with params.input",
-    "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "patient": {
-                "type": "string",
-                "pattern": "^\\S+$",
-                "meta": ["patient"],
-                "errorMessage": "Patient ID must be provided and cannot contain spaces"
-            },
-            "sample": {
-                "type": "string",
-                "pattern": "^\\S+$",
-                "meta": ["sample"],
-                "errorMessage": "Sample name must be provided and cannot contain spaces"
-            },
-            "status": {
-                "type": "integer",
-                "enum": [0, 1],
-                "meta": ["status"],
-                "errorMessage": "Status must be 0 (normal) or 1 (tumor)",
-                "default": 0
-            },
-            "target": {
-                "type": "string",
-                "pattern": "^\\S+$",
-                "meta": ["target"],
-                "errorMessage": "Target/bait set must be provided (e.g., agilent, idt, wgs)"
-            },
-            "lane": {
-                "type": "string",
-                "meta": ["lane"],
-                "default": "L001",
-                "errorMessage": "Lane identifier (e.g., L001, L002)"
-            },
-            "fastq_1": {
-                "type": "string",
-                "pattern": "^\\S+\\.f(ast)?q\\.gz$",
-                "format": "file-path",
-                "exists": true,
-                "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
-            },
-            "fastq_2": {
-                "type": "string",
-                "pattern": "^\\S+\\.f(ast)?q\\.gz$",
-                "format": "file-path",
-                "exists": true,
-                "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
-            }
-        },
-        "required": ["patient", "sample", "status", "target", "fastq_1", "fastq_2"]
-    }
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mskcc/tempo/main/assets/schema_input.json",
+  "title": "mskcc/tempo pipeline - params.input schema",
+  "description": "Schema for the file provided with params.input",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "patient": {
+        "type": "string",
+        "pattern": "^\\S+$",
+        "meta": ["patient"],
+        "errorMessage": "Patient ID must be provided and cannot contain spaces"
+      },
+      "sample": {
+        "type": "string",
+        "pattern": "^\\S+$",
+        "meta": ["sample"],
+        "errorMessage": "Sample name must be provided and cannot contain spaces"
+      },
+      "status": {
+        "type": "integer",
+        "enum": [0, 1],
+        "meta": ["status"],
+        "errorMessage": "Status must be 0 (normal) or 1 (tumor)",
+        "default": 0
+      },
+      "target": {
+        "type": "string",
+        "pattern": "^\\S+$",
+        "meta": ["target"],
+        "errorMessage": "Target/bait set must be provided (e.g., agilent, idt, wgs)"
+      },
+      "lane": {
+        "type": "string",
+        "meta": ["lane"],
+        "default": "L001",
+        "errorMessage": "Lane identifier (e.g., L001, L002)"
+      },
+      "fastq_1": {
+        "type": "string",
+        "pattern": "^\\S+\\.f(ast)?q\\.gz$",
+        "format": "file-path",
+        "exists": true,
+        "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+      },
+      "fastq_2": {
+        "type": "string",
+        "pattern": "^\\S+\\.f(ast)?q\\.gz$",
+        "format": "file-path",
+        "exists": true,
+        "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+      }
+    },
+    "required": ["patient", "sample", "status", "target", "fastq_1", "fastq_2"]
+  }
 }
 ```
 
@@ -97,6 +98,7 @@ git commit -m "feat(input): remove sex column, add required target column to sam
 ### Task 2: Update samplesheet parsing subworkflow
 
 **Files:**
+
 - Modify: `subworkflows/local/utils_nfcore_tempo_pipeline/main.nf`
 
 **Step 1: Update the samplesheet channel mapping**
@@ -104,6 +106,7 @@ git commit -m "feat(input): remove sex column, add required target column to sam
 In the `.map` closure (around line 71-91), update the meta map construction:
 
 Replace:
+
 ```nextflow
 def meta = [
     id:      meta_raw.sample,
@@ -116,6 +119,7 @@ def meta = [
 ```
 
 With:
+
 ```nextflow
 def meta = [
     id:      meta_raw.sample,
@@ -139,16 +143,19 @@ git commit -m "feat(input): parse target column instead of sex in samplesheet su
 ### Task 3: Update workflow to remove sex references and carry target through meta
 
 **Files:**
+
 - Modify: `workflows/tempo.nf`
 
 **Step 1: Update multi-lane merge grouping (line ~231)**
 
 Replace:
+
 ```nextflow
 def new_meta = meta.subMap('patient', 'sample', 'status', 'sex') + [id: meta.sample]
 ```
 
 With:
+
 ```nextflow
 def new_meta = meta.subMap('patient', 'sample', 'status', 'target') + [id: meta.sample]
 ```
@@ -156,6 +163,7 @@ def new_meta = meta.subMap('patient', 'sample', 'status', 'target') + [id: meta.
 **Step 2: Update tumor-normal pairing (line ~343-351)**
 
 Replace the pair_meta construction:
+
 ```nextflow
 def pair_meta = [
     id:        "${tumor_meta.sample}__${normal_meta.sample}",
@@ -168,6 +176,7 @@ def pair_meta = [
 ```
 
 With:
+
 ```nextflow
 def pair_meta = [
     id:        "${tumor_meta.sample}__${normal_meta.sample}",
@@ -191,12 +200,14 @@ git commit -m "feat(input): replace sex with target in workflow meta maps"
 ### Task 4: Add --bamMapping parameter and parsing
 
 **Files:**
+
 - Modify: `nextflow.config` (add param)
 - Modify: `subworkflows/local/utils_nfcore_tempo_pipeline/main.nf` (add BAM parsing)
 
 **Step 1: Add params.bamMapping to nextflow.config**
 
 After `input = null` (line 17), add:
+
 ```nextflow
 bamMapping                 = null    // TSV: PATIENT, SAMPLE, STATUS, TARGET, BAM, BAI
 ```
@@ -243,6 +254,7 @@ After the existing `ch_samplesheet` creation (line ~92) and before `emit:`, add 
 **Step 3: Add ch_bam_input to emit block**
 
 Update the emit block:
+
 ```nextflow
     emit:
     samplesheet = ch_samplesheet
@@ -261,12 +273,14 @@ git commit -m "feat(input): add --bamMapping parameter and BAM input channel par
 ### Task 5: Wire BAM input into workflow — skip alignment
 
 **Files:**
+
 - Modify: `workflows/tempo.nf` (accept BAM channel, skip alignment for BAMs)
 - Modify: `main.nf` (pass BAM channel to TEMPO workflow)
 
 **Step 1: Add ch_bam_input to TEMPO workflow take block**
 
 In `workflows/tempo.nf`, after `ch_pon_tbi` in the `take:` section (line ~133), add:
+
 ```nextflow
     ch_bam_input
 ```
@@ -296,11 +310,13 @@ After the existing `ch_recal_bam_bai` creation (line ~324, after SAMTOOLS_INDEX_
 In `main.nf`, update the MSKCC_TEMPO workflow:
 
 Add after `take: samplesheet`:
+
 ```nextflow
     bam_input   // channel: BAM inputs from --bamMapping
 ```
 
 Update the TEMPO call to pass the BAM channel:
+
 ```nextflow
     TEMPO (
         samplesheet,
@@ -322,6 +338,7 @@ Update the TEMPO call to pass the BAM channel:
 ```
 
 Update the entry workflow to pass BAM channel:
+
 ```nextflow
     MSKCC_TEMPO (
         PIPELINE_INITIALISATION.out.samplesheet,
@@ -334,6 +351,7 @@ Update the entry workflow to pass BAM channel:
 In `subworkflows/local/utils_nfcore_tempo_pipeline/main.nf`, update the mandatory check:
 
 Replace:
+
 ```nextflow
     if (!params.input) {
         error("Please provide an input samplesheet with --input")
@@ -341,6 +359,7 @@ Replace:
 ```
 
 With:
+
 ```nextflow
     if (!params.input && !params.bamMapping && !(params.aggregate instanceof String && params.aggregate != 'true')) {
         error("Please provide an input samplesheet with --input, a BAM mapping with --bamMapping, or an aggregate TSV with --aggregate")
@@ -348,6 +367,7 @@ With:
 ```
 
 Also make the FASTQ samplesheet channel conditional:
+
 ```nextflow
     if (params.input) {
         Channel
@@ -373,6 +393,7 @@ git commit -m "feat(input): wire BAM input to skip alignment and feed directly i
 ### Task 6: Add aggregate-only mode via --aggregate TSV with PATH
 
 **Files:**
+
 - Modify: `workflows/tempo.nf` (add aggregate-only input path)
 
 **Step 1: Add aggregate-only file resolution**
@@ -454,6 +475,7 @@ git commit -m "feat(input): add aggregate-only mode with PATH column for pre-com
 ### Task 7: Update test samplesheets
 
 **Files:**
+
 - Modify: `tests/csv/fastq_tumor_normal_pair.csv`
 - Create: `tests/csv/bam_tumor_normal_pair.tsv` (test BAM mapping)
 - Create: `tests/csv/aggregate_cohort.tsv` (test aggregate TSV)
@@ -461,6 +483,7 @@ git commit -m "feat(input): add aggregate-only mode with PATH column for pre-com
 **Step 1: Update FASTQ test samplesheet**
 
 Replace `tests/csv/fastq_tumor_normal_pair.csv`:
+
 ```csv
 patient,sample,status,target,lane,fastq_1,fastq_2
 patient_1234,1234N,0,agilent,L001,test-data/testdata/tiny/normal/tiny_n_L001_R1_xxx.fastq.gz,test-data/testdata/tiny/normal/tiny_n_L001_R2_xxx.fastq.gz
@@ -472,6 +495,7 @@ patient_1234,1234T,1,agilent,L002,test-data/testdata/tiny/tumor/tiny_t_L002_R1_x
 **Step 2: Create BAM test mapping**
 
 Create `tests/csv/bam_tumor_normal_pair.tsv`:
+
 ```tsv
 PATIENT	SAMPLE	STATUS	TARGET	BAM	BAI
 patient_1234	1234N	0	agilent	test-data/testdata/tiny/normal/tiny_n.bam	test-data/testdata/tiny/normal/tiny_n.bam.bai
@@ -481,6 +505,7 @@ patient_1234	1234T	1	agilent	test-data/testdata/tiny/tumor/tiny_t.bam	test-data/
 **Step 3: Create aggregate test TSV**
 
 Create `tests/csv/aggregate_cohort.tsv`:
+
 ```tsv
 TUMOR_ID	NORMAL_ID	COHORT	PATH
 1234T	1234N	test_cohort	/path/to/previous/tempo/output
@@ -502,6 +527,7 @@ git commit -m "test: update test samplesheets with target column, add BAM and ag
 ### Task 8: Update check_samplesheet.py validator
 
 **Files:**
+
 - Modify: `bin/check_samplesheet.py`
 
 **Step 1: Add target validation to RowChecker**

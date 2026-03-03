@@ -22,58 +22,58 @@ input:
         pattern: "*.snp_pileup.gz"
 output:
   - rdata:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.Rdata":
-          type: file
-          description: FACETS R data object with copy number results
-          pattern: "*.Rdata"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.Rdata":
+            type: file
+            description: FACETS R data object with copy number results
+            pattern: "*.Rdata"
   - plots:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.png":
-          type: file
-          description: Diagnostic plots (optional)
-          pattern: "*.png"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.png":
+            type: file
+            description: Diagnostic plots (optional)
+            pattern: "*.png"
   - out_files:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.out":
-          type: file
-          description: Summary output files (optional)
-          pattern: "*.out"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.out":
+            type: file
+            description: Summary output files (optional)
+            pattern: "*.out"
   - segments:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.seg":
-          type: file
-          description: Segment files with copy number calls (optional)
-          pattern: "*.seg"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.seg":
+            type: file
+            description: Segment files with copy number calls (optional)
+            pattern: "*.seg"
   - txt_files:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.txt":
-          type: file
-          description: Text output files (optional)
-          pattern: "*.txt"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.txt":
+            type: file
+            description: Text output files (optional)
+            pattern: "*.txt"
   - csv_files:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.csv":
-          type: file
-          description: CSV output files (optional)
-          pattern: "*.csv"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.csv":
+            type: file
+            description: CSV output files (optional)
+            pattern: "*.csv"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

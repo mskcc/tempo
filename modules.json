@@ -10,6 +10,11 @@
                         "git_sha": "8325a8155a77a336a613a504b8e4d6cea7a2344a",
                         "installed_by": ["modules"]
                     },
+                    "custom/dumpsoftwareversions": {
+                        "branch": "master",
+                        "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
+                        "installed_by": ["modules"]
+                    },
                     "delly/call": {
                         "branch": "master",
                         "git_sha": "fdcc3976e728b5d6ffc3f15979905829531e6072",
@@ -56,6 +61,11 @@
                         "installed_by": ["modules"]
                     },
                     "gatk4/haplotypecaller": {
+                        "branch": "master",
+                        "git_sha": "52b7843bd92ccf833cc12e71cd84aeccf2583852",
+                        "installed_by": ["modules"]
+                    },
+                    "gatk4/learnreadorientationmodel": {
                         "branch": "master",
                         "git_sha": "52b7843bd92ccf833cc12e71cd84aeccf2583852",
                         "installed_by": ["modules"]

@@ -103,54 +103,54 @@ input:
         pattern: "*.vcf.gz.tbi"
 output:
   - pass_vcf:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.pass.vcf":
-          type: file
-          description: PASS variants with raw read counts
-          pattern: "*.pass.vcf"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.pass.vcf":
+            type: file
+            description: PASS variants with raw read counts
+            pattern: "*.pass.vcf"
   - union_annot:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.union.annot.vcf.gz":
-          type: file
-          description: Annotated union of MuTect2 and Strelka2 calls
-          pattern: "*.union.annot.vcf.gz"
-    - - "*.union.annot.vcf.gz.tbi":
-          type: file
-          description: Index of annotated union VCF
-          pattern: "*.union.annot.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.union.annot.vcf.gz":
+            type: file
+            description: Annotated union of MuTect2 and Strelka2 calls
+            pattern: "*.union.annot.vcf.gz"
+      - - "*.union.annot.vcf.gz.tbi":
+            type: file
+            description: Index of annotated union VCF
+            pattern: "*.union.annot.vcf.gz.tbi"
   - union_annot_filter:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.union.annot.filter.vcf.gz":
-          type: file
-          description: Filtered annotated union VCF
-          pattern: "*.union.annot.filter.vcf.gz"
-    - - "*.union.annot.filter.vcf.gz.tbi":
-          type: file
-          description: Index of filtered annotated union VCF
-          pattern: "*.union.annot.filter.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.union.annot.filter.vcf.gz":
+            type: file
+            description: Filtered annotated union VCF
+            pattern: "*.union.annot.filter.vcf.gz"
+      - - "*.union.annot.filter.vcf.gz.tbi":
+            type: file
+            description: Index of filtered annotated union VCF
+            pattern: "*.union.annot.filter.vcf.gz.tbi"
   - union_annot_filter_pass:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.union.annot.filter.pass.vcf.gz":
-          type: file
-          description: PASS filtered annotated union VCF
-          pattern: "*.union.annot.filter.pass.vcf.gz"
-    - - "*.union.annot.filter.pass.vcf.gz.tbi":
-          type: file
-          description: Index of PASS filtered annotated union VCF
-          pattern: "*.union.annot.filter.pass.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.union.annot.filter.pass.vcf.gz":
+            type: file
+            description: PASS filtered annotated union VCF
+            pattern: "*.union.annot.filter.pass.vcf.gz"
+      - - "*.union.annot.filter.pass.vcf.gz.tbi":
+            type: file
+            description: Index of PASS filtered annotated union VCF
+            pattern: "*.union.annot.filter.pass.vcf.gz.tbi"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

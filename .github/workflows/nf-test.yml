@@ -1,7 +1,7 @@
 name: nf-test
 on:
   push:
-    branches: [main, dev, 'nf-core/**']
+    branches: [main, dev, "nf-core/**"]
   pull_request:
     branches: [main, dev]
   workflow_dispatch:

@@ -6,9 +6,10 @@
 
 **Architecture:** The original Tempo uses a `--workflows snv,sv,mutsig,...` comma-separated string parsed into `doWF_*` booleans, plus `--assayType exome|genome` to gate WGS-only features. We will replicate this exact control pattern in the nf-core migration, replacing the current `skip_*` flag approach. All 45 missing processes will be added as local modules following the existing module pattern (script + stub blocks, versions.yml, container directives).
 
-**Tech Stack:** Nextflow DSL2, nf-core module conventions, original cmopipeline/* Docker containers, stub-mode testing
+**Tech Stack:** Nextflow DSL2, nf-core module conventions, original cmopipeline/\* Docker containers, stub-mode testing
 
 **Reference files:**
+
 - Original workflow: `/sessions/sleepy-tender-newton/tempo-dev/dsl2.nf` (322 lines)
 - Current nf-core workflow: `workflows/tempo.nf` (1081 lines)
 - Process catalog: `/sessions/sleepy-tender-newton/ORIGINAL_PROCESS_CATALOG.md` (1683 lines)
@@ -16,11 +17,12 @@
 
 ---
 
-## Phase 1: Replace skip_* Flags with workflows/assayType Control
+## Phase 1: Replace skip\_\* Flags with workflows/assayType Control
 
 ### Task 1.1: Add workflows and assayType params to nextflow.config
 
 **Files:**
+
 - Modify: `nextflow.config` (lines 55-79)
 
 **Step 1: Edit nextflow.config to replace skip params with workflows/assayType**
@@ -56,9 +58,10 @@ git commit -m "feat: replace skip_* flags with --workflows/--assayType control"
 
 ---
 
-### Task 1.2: Add doWF_* boolean derivation to workflows/tempo.nf
+### Task 1.2: Add doWF\_\* boolean derivation to workflows/tempo.nf
 
 **Files:**
+
 - Modify: `workflows/tempo.nf` (top of `main:` block, ~line 84)
 
 **Step 1: Add workflow flag parsing at top of main block**
@@ -98,6 +101,7 @@ Insert after `ch_versions = Channel.empty()` / `ch_multiqc_files = Channel.empty
 **Step 2: Replace all `if (!params.skip_*)` blocks with `if (doWF_*)` equivalents**
 
 Mapping:
+
 - `if (!params.skip_somatic_snv)` → `if (doWF_SNV)`
 - `if (!params.skip_somatic_sv)` → `if (doWF_SV)`
 - `if (!params.skip_somatic_combine)` → stays inside `if (doWF_SNV)` (it's part of SNV)
@@ -116,6 +120,7 @@ Mapping:
 **Step 3: Run stub test**
 
 Run:
+
 ```bash
 PERL5LIB=/sessions/sleepy-tender-newton/perl-lib \
 PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/sessions/sleepy-tender-newton/stub-tools" \
@@ -128,6 +133,7 @@ NXF_OFFLINE=true \
   -with-report false -with-timeline false -with-trace false \
   -stub
 ```
+
 Expected: All existing tasks pass (75 tasks, 0 failures)
 
 **Step 4: Commit**
@@ -142,6 +148,7 @@ git commit -m "feat: wire doWF_* workflow control booleans into tempo.nf"
 ### Task 1.3: Update test configs for workflows param
 
 **Files:**
+
 - Modify: `conf/test.config`
 - Modify: `conf/test_comprehensive.config`
 
@@ -172,15 +179,19 @@ Keep all the reference file paths unchanged.
 **Step 3: Run both profiles**
 
 Minimal test:
+
 ```bash
 nextflow run . -profile test --outdir /tmp/t3 -stub ...
 ```
+
 Expected: Only alignment tasks run
 
 Comprehensive test:
+
 ```bash
 nextflow run . -profile test,test_comprehensive --outdir /tmp/t4 -stub ...
 ```
+
 Expected: All paths enabled, ~75+ tasks pass
 
 **Step 4: Commit**
@@ -195,6 +206,7 @@ git commit -m "feat: update test configs to use --workflows instead of skip_* fl
 ## Phase 2: Add Missing Local Modules (Groups A-F)
 
 Each module follows this pattern (reference: `modules/local/delly/call/main.nf`):
+
 1. Process declaration with tag, label, container
 2. `input:` / `output:` blocks with nf-core meta map convention
 3. `script:` block with the original command
@@ -206,6 +218,7 @@ Each module follows this pattern (reference: `modules/local/delly/call/main.nf`)
 These have no dependencies on other new modules and are needed earliest.
 
 **Files to create:**
+
 - `modules/local/splitintervals/main.nf` (CreateScatteredIntervals)
 - `modules/local/germline/combine_hc_vcf/main.nf` (GermlineCombineHaplotypecallerVcf)
 - `modules/local/metadata_parser/main.nf` (MetaDataParser)
@@ -422,6 +435,7 @@ process CROSSVALIDATE_SAMPLES {
 ```bash
 nextflow run . -profile test,test_comprehensive --outdir /tmp/t5 -stub ...
 ```
+
 Expected: Pipeline parses (new modules not yet wired, so task count unchanged)
 
 **Step 6: Commit**
@@ -436,6 +450,7 @@ git commit -m "feat: add Group F utility local modules (splitintervals, combine_
 ### Task 2.2: Group A — SV Pipeline Modules (9 modules)
 
 **Files to create:**
+
 - `modules/local/svaba/somatic/main.nf`
 - `modules/local/svaba/germline/main.nf`
 - `modules/local/svtools/vcf2bedpe_somatic/main.nf`
@@ -447,6 +462,7 @@ git commit -m "feat: add Group F utility local modules (splitintervals, combine_
 - `modules/local/svclone/main.nf`
 
 Each module follows the same pattern. Key containers from the original:
+
 - SvABA: `cmopipeline/svaba:0.0.1`
 - SVVcf2Bedpe: `cmopipeline/svtools:0.0.3`
 - AnnotateSVBedpe: `cmopipeline/iannotatesv:0.0.2`
@@ -478,6 +494,7 @@ git commit -m "feat: add Group A SV pipeline local modules (svaba, svtools, iann
 ### Task 2.3: Group B — WGS-Only Modules (8 modules)
 
 **Files to create:**
+
 - `modules/local/ascat/allelecount/main.nf` (runAscatAlleleCount)
 - `modules/local/ascat/run/main.nf` (runAscat)
 - `modules/local/brass/generate_bas/main.nf` (generateBasFile)
@@ -488,6 +505,7 @@ git commit -m "feat: add Group A SV pipeline local modules (svaba, svtools, iann
 - `modules/local/svsignatures/main.nf` (RunSVSignatures)
 
 Key containers:
+
 - ASCAT: `quay.io/wtsicgp/ascatNgs:4.4.0`
 - generateBasFile: `quay.io/wtsicgp/pcap-core:5.5.0`
 - BRASS: `cmopipeline/brass:0.0.2`
@@ -509,6 +527,7 @@ git commit -m "feat: add Group B WGS-only local modules (ascat, brass, hrdetect,
 ### Task 2.4: Group C — Annotation & Signatures Modules (6 modules)
 
 **Files to create:**
+
 - `modules/local/germline/annotate_maf/main.nf` (GermlineAnnotateMaf)
 - `modules/local/somatic/facets_annotation/main.nf` (SomaticFacetsAnnotation)
 - `modules/local/germline/facets_annotation/main.nf` (GermlineFacetsAnnotation)
@@ -517,6 +536,7 @@ git commit -m "feat: add Group B WGS-only local modules (ascat, brass, hrdetect,
 - `modules/local/mutsig/main.nf` (RunMutationSignatures)
 
 Key containers:
+
 - GermlineAnnotateMaf: `cmopipeline/vcf2maf:vep88_1.2.7`
 - Facets annotation: `cmopipeline/facets-suite-preview-htstools:0.0.1`
 - Neoantigen: `cmopipeline/neoantigen:0.3.3`
@@ -536,6 +556,7 @@ git commit -m "feat: add Group C annotation & signatures local modules"
 ### Task 2.5: Group D — QC & Reporting Modules (5 modules)
 
 **Files to create:**
+
 - `modules/local/alfred/main.nf` (QcAlfred)
 - `modules/local/conpair/all/main.nf` (QcConpairAll)
 - `modules/local/multiqc/sample/main.nf` (SampleRunMultiQC)
@@ -543,6 +564,7 @@ git commit -m "feat: add Group C annotation & signatures local modules"
 - `modules/local/multiqc/cohort/main.nf` (CohortRunMultiQC)
 
 Key containers:
+
 - Alfred: `cmopipeline/alfred:v0.1.17`
 - ConpairAll: `cmopipeline/conpair:v0.3.3`
 - MultiQC (all 3): `cmopipeline/multiqc:0.1.3`
@@ -561,6 +583,7 @@ git commit -m "feat: add Group D QC & reporting local modules (alfred, conpair_a
 ### Task 2.6: Group E — Aggregation Modules (13 modules)
 
 **Files to create:**
+
 - `modules/local/aggregate/somatic_maf/main.nf`
 - `modules/local/aggregate/somatic_sv/main.nf`
 - `modules/local/aggregate/somatic_facets/main.nf`
@@ -593,6 +616,7 @@ git commit -m "feat: add Group E aggregation local modules (13 aggregate process
 ### Task 3.1: Wire Group F utilities into tempo.nf
 
 **Files:**
+
 - Modify: `workflows/tempo.nf`
 
 **Step 1: Add include statements for Group F modules**
@@ -634,6 +658,7 @@ Inside `if (doWF_mdParse)`, after combining facets + maf + qc + msi + mutsig + p
 ### Task 3.2: Wire Group C annotation modules into tempo.nf
 
 **Files:**
+
 - Modify: `workflows/tempo.nf`
 
 **Step 1: Add include statements**
@@ -665,6 +690,7 @@ include { MUTATION_SIGNATURES        } from '../modules/local/mutsig/main'
 ### Task 3.3: Wire Group A SV modules into tempo.nf
 
 **Files:**
+
 - Modify: `workflows/tempo.nf`
 
 **Step 1: Add include statements for all 9 SV modules**
@@ -706,6 +732,7 @@ Inside `if (doWF_SV && doWF_SNV && isWGS)`, after SV annotation + somatic MAF + 
 ### Task 3.4: Wire Group B WGS-only modules into tempo.nf
 
 **Files:**
+
 - Modify: `workflows/tempo.nf`
 
 **Step 1: Add include statements for ASCAT, BRASS, HRDetect, SVSignatures**
@@ -750,6 +777,7 @@ Inside `if (doWF_SV && doWF_SNV && isWGS)`:
 ### Task 3.5: Wire Group D QC modules into tempo.nf
 
 **Files:**
+
 - Modify: `workflows/tempo.nf`
 
 **Step 1: Add include statements for QC modules**
@@ -789,6 +817,7 @@ Keep the nf-core MULTIQC as a fallback when Tempo-specific MultiQC configs are n
 ### Task 3.6: Wire Group E aggregation modules into tempo.nf
 
 **Files:**
+
 - Modify: `workflows/tempo.nf`
 
 **Step 1: Add include statements for all 13 aggregate modules**
@@ -832,6 +861,7 @@ At the end of the workflow, add an `if (params.aggregate)` block:
 ### Task 4.1: Add missing test reference files
 
 **Files:**
+
 - Create: `test-data/genome/` (various empty/stub reference files)
 - Modify: `conf/test_comprehensive.config`
 
@@ -916,78 +946,78 @@ git commit -m "feat: complete 100% feature parity with original Tempo pipeline"
 
 Run a final audit comparing original `containers.config` processes vs nf-core modules:
 
-| Original Process | nf-core Module | Status |
-|---|---|---|
-| AlignReads | FASTP + BWAMEM2_MEM | EXISTS |
-| MergeBamsAndMarkDuplicates | GATK4_MARKDUPLICATES | EXISTS |
-| RunBQSR | GATK4_BASERECALIBRATOR + GATK4_APPLYBQSR | EXISTS |
-| CreateScatteredIntervals | SPLIT_INTERVALS | NEW |
-| RunMutect2 | GATK4_MUTECT2 | EXISTS |
-| SomaticCombineMutect2Vcf | STRELKA2_COMBINE_SOMATIC | EXISTS |
-| SomaticRunStrelka2 | STRELKA_SOMATIC | EXISTS |
-| SomaticCombineChannel | SOMATIC_COMBINE_CHANNEL | EXISTS |
-| SomaticAnnotateMaf | ENSEMBLVEP_VEP + VCF2MAF | EXISTS |
-| SomaticFacetsAnnotation | SOMATIC_FACETS_ANNOTATION | NEW |
-| SomaticDellyCall | DELLY_CALL_SOMATIC | EXISTS |
-| DellyCombine | DELLY_COMBINE | EXISTS |
-| SomaticRunManta | MANTA_SOMATIC | EXISTS |
-| SomaticMergeSVs | SOMATIC_MERGE_SV | EXISTS |
-| SomaticRunSvABA | SVABA_SOMATIC | NEW |
-| SomaticSVVcf2Bedpe | SV_VCF2BEDPE_SOMATIC | NEW |
-| SomaticAnnotateSVBedpe | ANNOTATE_SV_BEDPE_SOMATIC | NEW |
-| SomaticRunClusterSV | CLUSTER_SV | NEW |
-| SomaticRunSVCircos | SV_CIRCOS | NEW |
-| SomaticRunSVclone | SVCLONE | NEW |
-| DoFacets | FACETS | EXISTS |
-| DoFacetsPreviewQC | FACETS_PREVIEW_QC | NEW |
-| RunMsiSensor | MSISENSORPRO_SCAN + MSISENSORPRO_MSISOMATIC | EXISTS |
-| RunPolysolver | POLYSOLVER | EXISTS |
-| RunLOHHLA | LOHHLA | EXISTS |
-| RunNeoantigen | NEOANTIGEN | NEW |
-| RunMutationSignatures | MUTATION_SIGNATURES | NEW |
-| MetaDataParser | METADATA_PARSER | NEW |
-| runAscatAlleleCount | ASCAT_ALLELECOUNT | NEW |
-| runAscat | ASCAT_RUN | NEW |
-| generateBasFile | GENERATE_BAS_FILE | NEW |
-| SomaticRunBRASSInput | BRASS_INPUT | NEW |
-| SomaticRunBRASSCover | BRASS_COVER | NEW |
-| runBRASS | BRASS_RUN | NEW |
-| HRDetect | HRDETECT | NEW |
-| RunSVSignatures | SV_SIGNATURES | NEW |
-| GermlineRunHaplotypecaller | GATK4_HAPLOTYPECALLER | EXISTS |
-| GermlineCombineHaplotypecallerVcf | GERMLINE_COMBINE_HC_VCF | NEW |
-| GermlineRunStrelka2 | STRELKA2_GERMLINE | EXISTS |
-| GermlineCombineChannel | GERMLINE_COMBINE_CHANNEL | EXISTS |
-| GermlineAnnotateMaf | GERMLINE_ANNOTATE_MAF | NEW |
-| GermlineFacetsAnnotation | GERMLINE_FACETS_ANNOTATION | NEW |
-| GermlineDellyCall | DELLY_CALL_GERMLINE | EXISTS |
-| GermlineRunManta | MANTA_GERMLINE | EXISTS |
-| GermlineMergeSVs | GERMLINE_MERGE_SV | EXISTS |
-| GermlineRunSvABA | SVABA_GERMLINE | NEW |
-| GermlineSVVcf2Bedpe | SV_VCF2BEDPE_GERMLINE | NEW |
-| GermlineAnnotateSVBedpe | ANNOTATE_SV_BEDPE_GERMLINE | NEW |
-| QcPileup | CONPAIR_PILEUP | EXISTS |
-| QcConpair | CONPAIR_CONCORDANCE | EXISTS |
-| QcConpairAll | CONPAIR_ALL | NEW |
-| QcAlfred | ALFRED | NEW |
-| QcCollectHsMetrics | PICARD_COLLECTHSMETRICS | EXISTS |
-| QcQualimap | QUALIMAP_BAMQC | EXISTS |
-| SampleRunMultiQC | SAMPLE_MULTIQC | NEW |
-| SomaticRunMultiQC | SOMATIC_MULTIQC | NEW |
-| CohortRunMultiQC | COHORT_MULTIQC | NEW |
-| SomaticAggregateMaf | AGGREGATE_SOMATIC_MAF | NEW |
-| SomaticAggregateNetMHC | AGGREGATE_SOMATIC_NETMHC | NEW |
-| SomaticAggregateFacets | AGGREGATE_SOMATIC_FACETS | NEW |
-| SomaticAggregateSv | AGGREGATE_SOMATIC_SV | NEW |
-| SomaticAggregateMetadata | AGGREGATE_SOMATIC_METADATA | NEW |
-| SomaticAggregateLOHHLA | AGGREGATE_SOMATIC_LOHHLA | NEW |
-| SomaticAggregateHRDetect | AGGREGATE_SOMATIC_HRDETECT | NEW |
-| SomaticAggregateSVclone | AGGREGATE_SOMATIC_SVCLONE | NEW |
-| SomaticAggregateSvSignatures | AGGREGATE_SOMATIC_SVSIGNATURES | NEW |
-| GermlineAggregateMaf | AGGREGATE_GERMLINE_MAF | NEW |
-| GermlineAggregateSv | AGGREGATE_GERMLINE_SV | NEW |
-| QcBamAggregate | AGGREGATE_QC_BAM | NEW |
-| QcConpairAggregate | AGGREGATE_QC_CONPAIR | NEW |
+| Original Process                  | nf-core Module                              | Status |
+| --------------------------------- | ------------------------------------------- | ------ |
+| AlignReads                        | FASTP + BWAMEM2_MEM                         | EXISTS |
+| MergeBamsAndMarkDuplicates        | GATK4_MARKDUPLICATES                        | EXISTS |
+| RunBQSR                           | GATK4_BASERECALIBRATOR + GATK4_APPLYBQSR    | EXISTS |
+| CreateScatteredIntervals          | SPLIT_INTERVALS                             | NEW    |
+| RunMutect2                        | GATK4_MUTECT2                               | EXISTS |
+| SomaticCombineMutect2Vcf          | STRELKA2_COMBINE_SOMATIC                    | EXISTS |
+| SomaticRunStrelka2                | STRELKA_SOMATIC                             | EXISTS |
+| SomaticCombineChannel             | SOMATIC_COMBINE_CHANNEL                     | EXISTS |
+| SomaticAnnotateMaf                | ENSEMBLVEP_VEP + VCF2MAF                    | EXISTS |
+| SomaticFacetsAnnotation           | SOMATIC_FACETS_ANNOTATION                   | NEW    |
+| SomaticDellyCall                  | DELLY_CALL_SOMATIC                          | EXISTS |
+| DellyCombine                      | DELLY_COMBINE                               | EXISTS |
+| SomaticRunManta                   | MANTA_SOMATIC                               | EXISTS |
+| SomaticMergeSVs                   | SOMATIC_MERGE_SV                            | EXISTS |
+| SomaticRunSvABA                   | SVABA_SOMATIC                               | NEW    |
+| SomaticSVVcf2Bedpe                | SV_VCF2BEDPE_SOMATIC                        | NEW    |
+| SomaticAnnotateSVBedpe            | ANNOTATE_SV_BEDPE_SOMATIC                   | NEW    |
+| SomaticRunClusterSV               | CLUSTER_SV                                  | NEW    |
+| SomaticRunSVCircos                | SV_CIRCOS                                   | NEW    |
+| SomaticRunSVclone                 | SVCLONE                                     | NEW    |
+| DoFacets                          | FACETS                                      | EXISTS |
+| DoFacetsPreviewQC                 | FACETS_PREVIEW_QC                           | NEW    |
+| RunMsiSensor                      | MSISENSORPRO_SCAN + MSISENSORPRO_MSISOMATIC | EXISTS |
+| RunPolysolver                     | POLYSOLVER                                  | EXISTS |
+| RunLOHHLA                         | LOHHLA                                      | EXISTS |
+| RunNeoantigen                     | NEOANTIGEN                                  | NEW    |
+| RunMutationSignatures             | MUTATION_SIGNATURES                         | NEW    |
+| MetaDataParser                    | METADATA_PARSER                             | NEW    |
+| runAscatAlleleCount               | ASCAT_ALLELECOUNT                           | NEW    |
+| runAscat                          | ASCAT_RUN                                   | NEW    |
+| generateBasFile                   | GENERATE_BAS_FILE                           | NEW    |
+| SomaticRunBRASSInput              | BRASS_INPUT                                 | NEW    |
+| SomaticRunBRASSCover              | BRASS_COVER                                 | NEW    |
+| runBRASS                          | BRASS_RUN                                   | NEW    |
+| HRDetect                          | HRDETECT                                    | NEW    |
+| RunSVSignatures                   | SV_SIGNATURES                               | NEW    |
+| GermlineRunHaplotypecaller        | GATK4_HAPLOTYPECALLER                       | EXISTS |
+| GermlineCombineHaplotypecallerVcf | GERMLINE_COMBINE_HC_VCF                     | NEW    |
+| GermlineRunStrelka2               | STRELKA2_GERMLINE                           | EXISTS |
+| GermlineCombineChannel            | GERMLINE_COMBINE_CHANNEL                    | EXISTS |
+| GermlineAnnotateMaf               | GERMLINE_ANNOTATE_MAF                       | NEW    |
+| GermlineFacetsAnnotation          | GERMLINE_FACETS_ANNOTATION                  | NEW    |
+| GermlineDellyCall                 | DELLY_CALL_GERMLINE                         | EXISTS |
+| GermlineRunManta                  | MANTA_GERMLINE                              | EXISTS |
+| GermlineMergeSVs                  | GERMLINE_MERGE_SV                           | EXISTS |
+| GermlineRunSvABA                  | SVABA_GERMLINE                              | NEW    |
+| GermlineSVVcf2Bedpe               | SV_VCF2BEDPE_GERMLINE                       | NEW    |
+| GermlineAnnotateSVBedpe           | ANNOTATE_SV_BEDPE_GERMLINE                  | NEW    |
+| QcPileup                          | CONPAIR_PILEUP                              | EXISTS |
+| QcConpair                         | CONPAIR_CONCORDANCE                         | EXISTS |
+| QcConpairAll                      | CONPAIR_ALL                                 | NEW    |
+| QcAlfred                          | ALFRED                                      | NEW    |
+| QcCollectHsMetrics                | PICARD_COLLECTHSMETRICS                     | EXISTS |
+| QcQualimap                        | QUALIMAP_BAMQC                              | EXISTS |
+| SampleRunMultiQC                  | SAMPLE_MULTIQC                              | NEW    |
+| SomaticRunMultiQC                 | SOMATIC_MULTIQC                             | NEW    |
+| CohortRunMultiQC                  | COHORT_MULTIQC                              | NEW    |
+| SomaticAggregateMaf               | AGGREGATE_SOMATIC_MAF                       | NEW    |
+| SomaticAggregateNetMHC            | AGGREGATE_SOMATIC_NETMHC                    | NEW    |
+| SomaticAggregateFacets            | AGGREGATE_SOMATIC_FACETS                    | NEW    |
+| SomaticAggregateSv                | AGGREGATE_SOMATIC_SV                        | NEW    |
+| SomaticAggregateMetadata          | AGGREGATE_SOMATIC_METADATA                  | NEW    |
+| SomaticAggregateLOHHLA            | AGGREGATE_SOMATIC_LOHHLA                    | NEW    |
+| SomaticAggregateHRDetect          | AGGREGATE_SOMATIC_HRDETECT                  | NEW    |
+| SomaticAggregateSVclone           | AGGREGATE_SOMATIC_SVCLONE                   | NEW    |
+| SomaticAggregateSvSignatures      | AGGREGATE_SOMATIC_SVSIGNATURES              | NEW    |
+| GermlineAggregateMaf              | AGGREGATE_GERMLINE_MAF                      | NEW    |
+| GermlineAggregateSv               | AGGREGATE_GERMLINE_SV                       | NEW    |
+| QcBamAggregate                    | AGGREGATE_QC_BAM                            | NEW    |
+| QcConpairAggregate                | AGGREGATE_QC_CONPAIR                        | NEW    |
 
 **Total: 67 processes → 67 nf-core equivalents = 100% parity**
 

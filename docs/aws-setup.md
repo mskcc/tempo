@@ -34,7 +34,7 @@ This command submits CloudFormation Stack for building the [AMI](https://docs.aw
 
 ```json
 {
-    "StackId": "arn:aws:cloudformation:us-east-1:474622381158:stack/tempoAMI/f8d47a90-41c8-11e9-98cc-0eb85d5eff94"
+  "StackId": "arn:aws:cloudformation:us-east-1:474622381158:stack/tempoAMI/f8d47a90-41c8-11e9-98cc-0eb85d5eff94"
 }
 ```
 
@@ -50,6 +50,7 @@ When build is complete the `StackStatus` field in the response JSON will have th
                 }
             ]
 ```
+
 We will use `OutputValue` for the next step.
 
 ## Building the Compute Environment

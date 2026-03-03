@@ -49,22 +49,22 @@ input:
         pattern: "*.bed.gz.tbi"
 output:
   - vcf:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.strelka2.vcf.gz":
-          type: file
-          description: Germline variant calls VCF file
-          pattern: "*.strelka2.vcf.gz"
-    - - "*.strelka2.vcf.gz.tbi":
-          type: file
-          description: Index of VCF file
-          pattern: "*.strelka2.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.strelka2.vcf.gz":
+            type: file
+            description: Germline variant calls VCF file
+            pattern: "*.strelka2.vcf.gz"
+      - - "*.strelka2.vcf.gz.tbi":
+            type: file
+            description: Index of VCF file
+            pattern: "*.strelka2.vcf.gz.tbi"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

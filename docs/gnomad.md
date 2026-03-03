@@ -1,4 +1,5 @@
 # gnomAD
+
 <small>As of 2019-08-16, the latest release of gnomAD is 2.1.1 from March 6, 2019.</small>
 
 Variant-level allele counts and frequencies from gnomAD's exome and genome cohorts are used to annotate somatic and germline SNVs/indels.

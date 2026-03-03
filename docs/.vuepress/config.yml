@@ -25,7 +25,7 @@ themeConfig:
         - "/gnomad"
         - "/wes-panel-of-normals"
     - "/variant-annotation-and-filtering"
-    - title: Help and Other Resources 
+    - title: Help and Other Resources
       collapsable: false
       children:
         - "/troubleshooting"
@@ -33,11 +33,11 @@ themeConfig:
         - "/contributing-to-tempo"
         - "/acknowledgements"
   repo: mskcc/tempo
-  docsBranch: 'develop'
+  docsBranch: "develop"
 plugins:
-- - vuepress-plugin-medium-zoom
-  - selector: "#diagram"
-    delay: 1000
-    options:
-      margin: 24
-      scrollOffset: 0
+  - - vuepress-plugin-medium-zoom
+    - selector: "#diagram"
+      delay: 1000
+      options:
+        margin: 24
+        scrollOffset: 0

@@ -39,18 +39,18 @@ input:
         pattern: "*.dict"
 output:
   - pileup:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.pileup":
-          type: file
-          description: Pileup file for concordance/contamination analysis
-          pattern: "*.pileup"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.pileup":
+            type: file
+            description: Pileup file for concordance/contamination analysis
+            pattern: "*.pileup"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

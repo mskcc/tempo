@@ -10,6 +10,8 @@ lint:
   nf_test_content: false
   rocrate_readme_sync: false
   multiqc_config: false
+  system_exit: false
+  local_component_structure: false
   nextflow_config:
     # MSKCC branding - not nf-core branded pipeline
     - manifest.name

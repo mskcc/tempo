@@ -85,6 +85,7 @@ results/alignment/
 ### Per-Sample Alignment Metrics
 
 Each sample has quality metrics that include:
+
 - Number of reads aligned
 - Mapping quality distribution
 - Duplication rates
@@ -404,6 +405,7 @@ results/pipeline_info/
 ### Coordinate Systems
 
 All genomic coordinates follow standard conventions:
+
 - 0-based half-open intervals in most internal tools
 - 1-based closed intervals in BED and some report files
 - GRCh37 (hg19) coordinates by default

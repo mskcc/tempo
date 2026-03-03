@@ -26,26 +26,26 @@ input:
         pattern: "*.bai"
 output:
   - hla_types:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.hla.txt":
-          type: file
-          description: HLA typing results
-          pattern: "*.hla.txt"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.hla.txt":
+            type: file
+            description: HLA typing results
+            pattern: "*.hla.txt"
   - results:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*":
-          type: file
-          description: All output files
-          pattern: "*"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*":
+            type: file
+            description: All output files
+            pattern: "*"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

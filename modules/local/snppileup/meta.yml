@@ -38,18 +38,18 @@ input:
         pattern: "*.vcf"
 output:
   - pileup:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.snp_pileup.gz":
-          type: file
-          description: Compressed SNP pileup file for FACETS
-          pattern: "*.snp_pileup.gz"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.snp_pileup.gz":
+            type: file
+            description: Compressed SNP pileup file for FACETS
+            pattern: "*.snp_pileup.gz"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

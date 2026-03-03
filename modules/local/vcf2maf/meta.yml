@@ -35,18 +35,18 @@ input:
         description: VEP cache directory for variant annotation
 output:
   - maf:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.maf":
-          type: file
-          description: Mutation Annotation Format file
-          pattern: "*.maf"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.maf":
+            type: file
+            description: Mutation Annotation Format file
+            pattern: "*.maf"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

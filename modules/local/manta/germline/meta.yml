@@ -48,22 +48,22 @@ input:
         pattern: "*.bed.gz.tbi"
 output:
   - vcf:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.manta.vcf.gz":
-          type: file
-          description: Germline structural variant calls VCF file
-          pattern: "*.manta.vcf.gz"
-    - - "*.manta.vcf.gz.tbi":
-          type: file
-          description: Index of VCF file
-          pattern: "*.manta.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.manta.vcf.gz":
+            type: file
+            description: Germline structural variant calls VCF file
+            pattern: "*.manta.vcf.gz"
+      - - "*.manta.vcf.gz.tbi":
+            type: file
+            description: Index of VCF file
+            pattern: "*.manta.vcf.gz.tbi"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:

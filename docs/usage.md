@@ -12,15 +12,15 @@ The pipeline requires a CSV (comma-separated values) samplesheet specified via t
 
 ### Columns
 
-| Column | Description | Valid Values |
-|--------|-------------|--------------|
-| `patient` | Unique patient identifier | Alphanumeric string |
-| `sample` | Unique sample identifier within patient | Alphanumeric string |
-| `status` | Sample type classification | `0` (normal), `1` (tumor) |
-| `sex` | Biological sex for sex chromosome analysis | `XX`, `XY`, `NA` |
-| `lane` | Sequencing lane identifier | Alphanumeric string (e.g., `L001`, `L002`) |
-| `fastq_1` | Path to first read FASTQ file | Full absolute path to `*_R1.fastq.gz` |
-| `fastq_2` | Path to second read FASTQ file | Full absolute path to `*_R2.fastq.gz` |
+| Column    | Description                                | Valid Values                               |
+| --------- | ------------------------------------------ | ------------------------------------------ |
+| `patient` | Unique patient identifier                  | Alphanumeric string                        |
+| `sample`  | Unique sample identifier within patient    | Alphanumeric string                        |
+| `status`  | Sample type classification                 | `0` (normal), `1` (tumor)                  |
+| `sex`     | Biological sex for sex chromosome analysis | `XX`, `XY`, `NA`                           |
+| `lane`    | Sequencing lane identifier                 | Alphanumeric string (e.g., `L001`, `L002`) |
+| `fastq_1` | Path to first read FASTQ file              | Full absolute path to `*_R1.fastq.gz`      |
+| `fastq_2` | Path to second read FASTQ file             | Full absolute path to `*_R2.fastq.gz`      |
 
 ### Example Samplesheet
 
@@ -96,13 +96,13 @@ results             # Finished results in specified location (defined with --out
 
 ### Common Command-Line Parameters
 
-| Parameter | Description | Default | Required |
-|-----------|-------------|---------|----------|
-| `--input` | Path to samplesheet CSV | - | Yes |
-| `--outdir` | Output directory | `./results` | No |
-| `-profile` | Configuration profile (singularity, docker, juno, test) | - | Yes |
-| `-resume` | Resume from last successful task | false | No |
-| `-r` | Specific pipeline version | Latest | No |
+| Parameter  | Description                                             | Default     | Required |
+| ---------- | ------------------------------------------------------- | ----------- | -------- |
+| `--input`  | Path to samplesheet CSV                                 | -           | Yes      |
+| `--outdir` | Output directory                                        | `./results` | No       |
+| `-profile` | Configuration profile (singularity, docker, juno, test) | -           | Yes      |
+| `-resume`  | Resume from last successful task                        | false       | No       |
+| `-r`       | Specific pipeline version                               | Latest      | No       |
 
 ### Updating the Pipeline
 
@@ -136,25 +136,25 @@ To use a different reference genome, you must provide the following required fil
 
 ### Required Reference Files
 
-| Parameter | Description | Format |
-|-----------|-------------|--------|
-| `--fasta` | Reference genome FASTA file | FASTA (.fa or .fasta) |
-| `--fasta_fai` | FASTA index file | Generated with `samtools faidx` |
-| `--dict` | Dictionary file | Generated with `picard CreateSequenceDictionary` |
-| `--bwa_index` | BWA index files | Prefix for `*.amb`, `*.ann`, `*.bwt`, `*.pac`, `*.sa` files |
-| `--dbsnp` | dbSNP known variants | VCF (.vcf.gz) |
-| `--known_indels` | Known indel locations | VCF (.vcf.gz) (e.g., Mills and 1000G gold standard) |
-| `--germline_resource` | Germline variants for contamination filtering | VCF (.vcf.gz) (e.g., gnomAD) |
-| `--intervals` | Target regions for analysis | BED or interval_list format |
+| Parameter             | Description                                   | Format                                                      |
+| --------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `--fasta`             | Reference genome FASTA file                   | FASTA (.fa or .fasta)                                       |
+| `--fasta_fai`         | FASTA index file                              | Generated with `samtools faidx`                             |
+| `--dict`              | Dictionary file                               | Generated with `picard CreateSequenceDictionary`            |
+| `--bwa_index`         | BWA index files                               | Prefix for `*.amb`, `*.ann`, `*.bwt`, `*.pac`, `*.sa` files |
+| `--dbsnp`             | dbSNP known variants                          | VCF (.vcf.gz)                                               |
+| `--known_indels`      | Known indel locations                         | VCF (.vcf.gz) (e.g., Mills and 1000G gold standard)         |
+| `--germline_resource` | Germline variants for contamination filtering | VCF (.vcf.gz) (e.g., gnomAD)                                |
+| `--intervals`         | Target regions for analysis                   | BED or interval_list format                                 |
 
 ### TEMPO-Specific Reference Files
 
-| Parameter | Description | Format |
-|-----------|-------------|--------|
-| `--facets_vcf` | Common SNP VCF for FACETS copy number analysis | VCF (.vcf.gz) |
-| `--msi_sensor_list` | Microsatellite list for MSIsensor-pro scoring | List format |
-| `--vep_cache` | VEP (Variant Effect Predictor) annotation cache | Directory |
-| `--hla_fasta` | HLA reference sequences for HLA typing | FASTA |
+| Parameter           | Description                                     | Format        |
+| ------------------- | ----------------------------------------------- | ------------- |
+| `--facets_vcf`      | Common SNP VCF for FACETS copy number analysis  | VCF (.vcf.gz) |
+| `--msi_sensor_list` | Microsatellite list for MSIsensor-pro scoring   | List format   |
+| `--vep_cache`       | VEP (Variant Effect Predictor) annotation cache | Directory     |
+| `--hla_fasta`       | HLA reference sequences for HLA typing          | FASTA         |
 
 ### Example Reference Configuration
 
@@ -372,6 +372,7 @@ export NXF_OPTS='-Xms1g -Xmx4g'
 ### Getting Help
 
 For additional support:
+
 - Visit the [mskcc/tempo GitHub repository](https://github.com/mskcc/tempo)
 - Check existing issues and discussions
 - Review the [nf-core documentation](https://nf-co.re/)

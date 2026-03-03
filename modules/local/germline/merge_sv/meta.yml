@@ -36,22 +36,22 @@ input:
         pattern: "*.vcf.gz.tbi"
 output:
   - vcf:
-    - - meta:
-          type: map
-          description: Sample metadata
-    - - "*.delly.manta.vcf.gz":
-          type: file
-          description: Merged DELLY and Manta VCF file
-          pattern: "*.delly.manta.vcf.gz"
-    - - "*.delly.manta.vcf.gz.tbi":
-          type: file
-          description: Index of merged VCF file
-          pattern: "*.delly.manta.vcf.gz.tbi"
+      - - meta:
+            type: map
+            description: Sample metadata
+      - - "*.delly.manta.vcf.gz":
+            type: file
+            description: Merged DELLY and Manta VCF file
+            pattern: "*.delly.manta.vcf.gz"
+      - - "*.delly.manta.vcf.gz.tbi":
+            type: file
+            description: Index of merged VCF file
+            pattern: "*.delly.manta.vcf.gz.tbi"
   - versions:
-    - - "versions.yml":
-          type: file
-          description: File containing software versions
-          pattern: "versions.yml"
+      - - "versions.yml":
+            type: file
+            description: File containing software versions
+            pattern: "versions.yml"
 authors:
   - "@mskcc"
 maintainers:
