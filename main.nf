@@ -46,9 +46,26 @@ workflow MSKCC_TEMPO {
     // available here, not during config parsing.  If flat nf-core
     // params (e.g. params.fasta) are already set (via -profile test
     // or CLI --fasta), they take priority.
+    //
+    // NOTE: params is READ-ONLY in Nextflow 24+, so we compute into
+    // local variables (ref_*) and use those for channel creation.
     // ---------------------------------------------------------------
-    if (params.genome && params.reference_base && !params.fasta) {
-        def rb = params.reference_base
+    def ref_fasta             = params.fasta
+    def ref_fasta_fai         = params.fasta_fai
+    def ref_dict              = params.dict
+    def ref_bwa_index         = params.bwa_index
+    def ref_dbsnp             = params.dbsnp
+    def ref_dbsnp_tbi         = params.dbsnp_tbi
+    def ref_known_indels      = params.known_indels
+    def ref_known_indels_tbi  = params.known_indels_tbi
+    def ref_germline_resource     = params.germline_resource
+    def ref_germline_resource_tbi = params.germline_resource_tbi
+    def ref_intervals         = params.intervals
+    def ref_pon               = params.pon
+    def ref_pon_tbi           = params.pon_tbi
+
+    if (params.genome && params.reference_base && !ref_fasta) {
+        def rb = params.reference_base.replaceAll('/+$', '')  // strip trailing slash
         def genome_base = params.genome == 'GRCh37'
             ? "${rb}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh37"
             : params.genome == 'GRCh38'
@@ -57,54 +74,41 @@ workflow MSKCC_TEMPO {
         def targets_base = "${rb}/mskcc-igenomes/${params.genome.toLowerCase()}/tempo_targets"
 
         // Core GATK references
-        params.fasta             = "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.fasta"
-        params.fasta_fai         = "${params.fasta}.fai"
-        params.dict              = "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.dict"
-        params.bwa_index         = "${genome_base}/Sequence/BWAIndex/human_g1k_v37_decoy.fasta.{amb,ann,bwt,pac,sa}"
-        params.dbsnp             = "${genome_base}/Annotation/GATKBundle/dbsnp_138.b37.vcf"
-        params.dbsnp_tbi         = "${params.dbsnp}.idx"
-        params.known_indels      = "${genome_base}/Annotation/GATKBundle/{1000G_phase1,Mills_and_1000G_gold_standard}.indels.b37.vcf"
-        params.known_indels_tbi  = "${genome_base}/Annotation/GATKBundle/{1000G_phase1,Mills_and_1000G_gold_standard}.indels.b37.vcf.idx"
-        params.intervals         = params.intervals ?: "${genome_base}/Annotation/intervals/human.b37.genome.bed"
+        ref_fasta             = "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.fasta"
+        ref_fasta_fai         = "${ref_fasta}.fai"
+        ref_dict              = "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.dict"
+        ref_bwa_index         = "${genome_base}/Sequence/BWAIndex/human_g1k_v37_decoy.fasta"
+        ref_dbsnp             = "${genome_base}/Annotation/GATKBundle/dbsnp_138.b37.vcf"
+        ref_dbsnp_tbi         = "${ref_dbsnp}.idx"
+        ref_known_indels      = "${genome_base}/Annotation/GATKBundle/{1000G_phase1,Mills_and_1000G_gold_standard}.indels.b37.vcf"
+        ref_known_indels_tbi  = "${genome_base}/Annotation/GATKBundle/{1000G_phase1,Mills_and_1000G_gold_standard}.indels.b37.vcf.idx"
+        ref_intervals         = ref_intervals ?: "${genome_base}/Annotation/intervals/human.b37.genome.bed"
 
         // Tempo-specific references
-        params.germline_resource     = params.germline_resource     ?: "${rb}/mskcc-igenomes/grch37/gnomad/gnomad.exomes.r2.1.1.sites.non_cancer.vcf.gz"
-        params.germline_resource_tbi = params.germline_resource_tbi ?: "${params.germline_resource}.tbi"
-        params.msi_sensor_list       = params.msi_sensor_list       ?: "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.fasta.microsatellites.list"
-        params.facets_vcf            = params.facets_vcf            ?: "${rb}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf"
-        params.delly_exclude_regions = params.delly_exclude_regions ?: "${rb}/mskcc-igenomes/grch37/delly/human.hg19.excl.tsv"
-        params.snp_gc_corrections    = params.snp_gc_corrections    ?: "${rb}/mskcc-igenomes/grch37/ascat/SnpGcCorrections.tsv"
+        ref_germline_resource     = ref_germline_resource     ?: "${rb}/mskcc-igenomes/grch37/gnomad/gnomad.exomes.r2.1.1.sites.non_cancer.vcf.gz"
+        ref_germline_resource_tbi = ref_germline_resource_tbi ?: "${ref_germline_resource}.tbi"
 
         // PON: depends on assay type
-        if (!params.pon) {
+        if (!ref_pon) {
             if (params.assay_type == 'genome') {
-                params.pon     = "${rb}/mskcc-igenomes/grch37/annotation/wgs.pon.vcf.gz"
-                params.pon_tbi = "${params.pon}.tbi"
+                ref_pon     = "${rb}/mskcc-igenomes/grch37/annotation/wgs.pon.vcf.gz"
+                ref_pon_tbi = "${ref_pon}.tbi"
             } else {
-                params.pon     = "${rb}/mskcc-igenomes/grch37/annotation/wes.pon.vcf.gz"
-                params.pon_tbi = "${params.pon}.tbi"
+                ref_pon     = "${rb}/mskcc-igenomes/grch37/annotation/wes.pon.vcf.gz"
+                ref_pon_tbi = "${ref_pon}.tbi"
             }
         }
-
-        // Additional Tempo references
-        params.bait_intervals    = params.bait_intervals    ?: "${targets_base}/\${targets_id}/baits.interval_list"
-        params.target_intervals  = params.target_intervals  ?: "${targets_base}/\${targets_id}/targets.interval_list"
-        params.splice_sites      = params.splice_sites      ?: "${rb}/mskcc-igenomes/grch37/splice_sites/splice_sites.bed"
-        params.hla_fasta         = params.hla_fasta         ?: "${rb}/mskcc-igenomes/grch37/hla/abc_complete.fasta"
-        params.hla_dat           = params.hla_dat           ?: "${rb}/mskcc-igenomes/grch37/hla/hla.dat"
-        params.neoantigen_cdna   = params.neoantigen_cdna   ?: "${rb}/mskcc-igenomes/grch37/neoantigen/Homo_sapiens.GRCh37.75.cdna.all.fa.gz"
-        params.neoantigen_cds    = params.neoantigen_cds    ?: "${rb}/mskcc-igenomes/grch37/neoantigen/Homo_sapiens.GRCh37.75.cds.all.fa.gz"
-        params.vep_cache         = params.vep_cache         ?: "${rb}/mskcc-igenomes/grch37/vep"
 
         log.info "Resolved references for genome '${params.genome}' from reference_base: ${rb}"
     }
 
     // Validate required reference parameters — fail early with clear message
-    def required_refs = [
-        'fasta', 'fasta_fai', 'dict', 'bwa_index',
-        'dbsnp', 'dbsnp_tbi', 'known_indels', 'known_indels_tbi'
+    def ref_map = [
+        fasta: ref_fasta, fasta_fai: ref_fasta_fai, dict: ref_dict,
+        bwa_index: ref_bwa_index, dbsnp: ref_dbsnp, dbsnp_tbi: ref_dbsnp_tbi,
+        known_indels: ref_known_indels, known_indels_tbi: ref_known_indels_tbi
     ]
-    def missing = required_refs.findAll { !params[it] }
+    def missing = ref_map.findAll { k, v -> !v }.collect { k, v -> k }
     if (missing) {
         error "Missing required reference parameter(s): ${missing.join(', ')}. " +
               "Please provide --genome and --reference_base, use -profile test, " +
@@ -113,30 +117,30 @@ workflow MSKCC_TEMPO {
 
     // Prepare reference channels as value channels (nf-core/sarek pattern)
     // Using Channel.value() ensures these pair correctly with every sample in multi-sample runs
-    ch_fasta            = Channel.value([ [id:'genome'], file(params.fasta, checkIfExists: true) ])
-    ch_fasta_fai        = Channel.value([ [id:'genome'], file(params.fasta_fai, checkIfExists: true) ])
-    ch_dict             = Channel.value([ [id:'genome'], file(params.dict, checkIfExists: true) ])
+    ch_fasta            = Channel.value([ [id:'genome'], file(ref_fasta, checkIfExists: true) ])
+    ch_fasta_fai        = Channel.value([ [id:'genome'], file(ref_fasta_fai, checkIfExists: true) ])
+    ch_dict             = Channel.value([ [id:'genome'], file(ref_dict, checkIfExists: true) ])
     // bwa-mem2 index: check if pre-built index exists, otherwise build on-the-fly
-    def bwamem2_index_exists = params.bwa_index ? file("${params.bwa_index}.bwt.2bit.64").exists() : false
-    if (params.bwa_index && bwamem2_index_exists) {
+    def bwamem2_index_exists = ref_bwa_index ? file("${ref_bwa_index}.bwt.2bit.64").exists() : false
+    if (ref_bwa_index && bwamem2_index_exists) {
         // Pre-built bwa-mem2 index available
-        ch_bwa_index = Channel.fromPath("${params.bwa_index}.{amb,ann,bwt.2bit.64,pac,0123}", checkIfExists: true)
+        ch_bwa_index = Channel.fromPath("${ref_bwa_index}.{amb,ann,bwt.2bit.64,pac,0123}", checkIfExists: true)
             .collect()
             .map { files -> [ [id:'genome'], files ] }
-    } else if (params.bwa_index) {
+    } else if (ref_bwa_index) {
         // No bwa-mem2 index — build on-the-fly from fasta
         BWAMEM2_INDEX ( ch_fasta )
         ch_bwa_index = BWAMEM2_INDEX.out.index
     }
-    ch_dbsnp            = Channel.value([ [id:'dbsnp'], file(params.dbsnp, checkIfExists: true) ])
-    ch_dbsnp_tbi        = Channel.value([ [id:'dbsnp'], file(params.dbsnp_tbi, checkIfExists: true) ])
-    ch_known_indels     = Channel.value([ [id:'indels'], file(params.known_indels, checkIfExists: true) ])
-    ch_known_indels_tbi = Channel.value([ [id:'indels'], file(params.known_indels_tbi, checkIfExists: true) ])
-    ch_germline_resource     = params.germline_resource     ? Channel.value([ [id:'gnomad'], file(params.germline_resource, checkIfExists: true) ])     : Channel.value([ [id:'gnomad'], [] ])
-    ch_germline_resource_tbi = params.germline_resource_tbi ? Channel.value([ [id:'gnomad'], file(params.germline_resource_tbi, checkIfExists: true) ]) : Channel.value([ [id:'gnomad'], [] ])
-    ch_intervals        = params.intervals        ? Channel.value([ file(params.intervals, checkIfExists: true) ])                       : Channel.value([])
-    ch_pon              = params.pon              ? Channel.value([ [id:'pon'], file(params.pon, checkIfExists: true) ])                  : Channel.value([ [id:'pon'], [] ])
-    ch_pon_tbi          = params.pon_tbi          ? Channel.value([ [id:'pon'], file(params.pon_tbi, checkIfExists: true) ])              : Channel.value([ [id:'pon'], [] ])
+    ch_dbsnp            = Channel.value([ [id:'dbsnp'], file(ref_dbsnp, checkIfExists: true) ])
+    ch_dbsnp_tbi        = Channel.value([ [id:'dbsnp'], file(ref_dbsnp_tbi, checkIfExists: true) ])
+    ch_known_indels     = Channel.value([ [id:'indels'], file(ref_known_indels, checkIfExists: true) ])
+    ch_known_indels_tbi = Channel.value([ [id:'indels'], file(ref_known_indels_tbi, checkIfExists: true) ])
+    ch_germline_resource     = ref_germline_resource     ? Channel.value([ [id:'gnomad'], file(ref_germline_resource, checkIfExists: true) ])     : Channel.value([ [id:'gnomad'], [] ])
+    ch_germline_resource_tbi = ref_germline_resource_tbi ? Channel.value([ [id:'gnomad'], file(ref_germline_resource_tbi, checkIfExists: true) ]) : Channel.value([ [id:'gnomad'], [] ])
+    ch_intervals        = ref_intervals        ? Channel.value([ file(ref_intervals, checkIfExists: true) ])                       : Channel.value([])
+    ch_pon              = ref_pon              ? Channel.value([ [id:'pon'], file(ref_pon, checkIfExists: true) ])                  : Channel.value([ [id:'pon'], [] ])
+    ch_pon_tbi          = ref_pon_tbi          ? Channel.value([ [id:'pon'], file(ref_pon_tbi, checkIfExists: true) ])              : Channel.value([ [id:'pon'], [] ])
 
     TEMPO (
         samplesheet,
