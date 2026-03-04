@@ -40,49 +40,63 @@ workflow MSKCC_TEMPO {
     //
 
     // ---------------------------------------------------------------
-    // Resolve genome references: bridge original Tempo params.genomes
-    // structure (from conf/references.config) to nf-core flat params.
-    // If flat params (e.g. params.fasta) are already set (e.g. via
-    // -profile test), they take priority.  Otherwise, look up from
-    // params.genomes[params.genome].
+    // Resolve genome references at RUNTIME (not config-parse time).
+    //
+    // CLI params (--genome, --reference_base) are only guaranteed
+    // available here, not during config parsing.  If flat nf-core
+    // params (e.g. params.fasta) are already set (via -profile test
+    // or CLI --fasta), they take priority.
     // ---------------------------------------------------------------
-    def genomeRef = (params.genome && params.genomes && params.genomes.containsKey(params.genome))
-                    ? params.genomes[params.genome]
-                    : [:]
+    if (params.genome && params.reference_base && !params.fasta) {
+        def rb = params.reference_base
+        def genome_base = params.genome == 'GRCh37'
+            ? "${rb}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh37"
+            : params.genome == 'GRCh38'
+                ? "${rb}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/GRCh38"
+                : "${rb}/mskcc-igenomes/igenomes/smallGRCh37"
+        def targets_base = "${rb}/mskcc-igenomes/${params.genome.toLowerCase()}/tempo_targets"
 
-    // Helper: resolve a flat param from the genomes map, with a mapping
-    // from nf-core flat param name -> original Tempo genomes key name
-    def refMapping = [
-        fasta            : 'genomeFile',
-        fasta_fai        : 'genomeIndex',
-        dict             : 'genomeDict',
-        bwa_index        : 'bwaIndex',
-        dbsnp            : 'dbsnp',
-        dbsnp_tbi        : 'dbsnpIndex',
-        known_indels     : 'knownIndels',
-        known_indels_tbi : 'knownIndelsIndex',
-        intervals        : 'intervals',
-        germline_resource     : 'gnomadWesVcf',
-        germline_resource_tbi : 'gnomadWesVcfIndex',
-        msi_sensor_list  : 'msiSensorList',
-        facets_vcf       : 'facetsVcf',
-        delly_exclude_regions : 'svCallingExcludeRegions',
-        snp_gc_corrections    : 'snpGcCorrections',
-    ]
+        // Core GATK references
+        params.fasta             = "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.fasta"
+        params.fasta_fai         = "${params.fasta}.fai"
+        params.dict              = "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.dict"
+        params.bwa_index         = "${genome_base}/Sequence/BWAIndex/human_g1k_v37_decoy.fasta.{amb,ann,bwt,pac,sa}"
+        params.dbsnp             = "${genome_base}/Annotation/GATKBundle/dbsnp_138.b37.vcf"
+        params.dbsnp_tbi         = "${params.dbsnp}.idx"
+        params.known_indels      = "${genome_base}/Annotation/GATKBundle/{1000G_phase1,Mills_and_1000G_gold_standard}.indels.b37.vcf"
+        params.known_indels_tbi  = "${genome_base}/Annotation/GATKBundle/{1000G_phase1,Mills_and_1000G_gold_standard}.indels.b37.vcf.idx"
+        params.intervals         = params.intervals ?: "${genome_base}/Annotation/intervals/human.b37.genome.bed"
 
-    // For each mapping, if the flat param is not set, fill from genomes map
-    refMapping.each { flatKey, genomesKey ->
-        if (!params[flatKey] && genomeRef[genomesKey]) {
-            params[flatKey] = genomeRef[genomesKey]
+        // Tempo-specific references
+        params.germline_resource     = params.germline_resource     ?: "${rb}/mskcc-igenomes/grch37/gnomad/gnomad.exomes.r2.1.1.sites.non_cancer.vcf.gz"
+        params.germline_resource_tbi = params.germline_resource_tbi ?: "${params.germline_resource}.tbi"
+        params.msi_sensor_list       = params.msi_sensor_list       ?: "${genome_base}/Sequence/WholeGenomeFasta/human_g1k_v37_decoy.fasta.microsatellites.list"
+        params.facets_vcf            = params.facets_vcf            ?: "${rb}/mskcc-igenomes/igenomes/Homo_sapiens/GATK/b37/dbsnp_137.b37__RmDupsClean__plusPseudo50__DROP_SORT.vcf"
+        params.delly_exclude_regions = params.delly_exclude_regions ?: "${rb}/mskcc-igenomes/grch37/delly/human.hg19.excl.tsv"
+        params.snp_gc_corrections    = params.snp_gc_corrections    ?: "${rb}/mskcc-igenomes/grch37/ascat/SnpGcCorrections.tsv"
+
+        // PON: depends on assay type
+        if (!params.pon) {
+            if (params.assay_type == 'genome') {
+                params.pon     = "${rb}/mskcc-igenomes/grch37/annotation/wgs.pon.vcf.gz"
+                params.pon_tbi = "${params.pon}.tbi"
+            } else {
+                params.pon     = "${rb}/mskcc-igenomes/grch37/annotation/wes.pon.vcf.gz"
+                params.pon_tbi = "${params.pon}.tbi"
+            }
         }
-    }
 
-    // Resolve PON based on assay_type (exome vs genome)
-    if (!params.pon && genomeRef) {
-        def ponKey = params.assay_type == 'genome' ? 'wgsPoN' : 'exomePoN'
-        def ponIdxKey = params.assay_type == 'genome' ? 'wgsPoNIndex' : 'exomePoNIndex'
-        if (genomeRef[ponKey])    params.pon     = genomeRef[ponKey]
-        if (genomeRef[ponIdxKey]) params.pon_tbi = genomeRef[ponIdxKey]
+        // Additional Tempo references
+        params.bait_intervals    = params.bait_intervals    ?: "${targets_base}/\${targets_id}/baits.interval_list"
+        params.target_intervals  = params.target_intervals  ?: "${targets_base}/\${targets_id}/targets.interval_list"
+        params.splice_sites      = params.splice_sites      ?: "${rb}/mskcc-igenomes/grch37/splice_sites/splice_sites.bed"
+        params.hla_fasta         = params.hla_fasta         ?: "${rb}/mskcc-igenomes/grch37/hla/abc_complete.fasta"
+        params.hla_dat           = params.hla_dat           ?: "${rb}/mskcc-igenomes/grch37/hla/hla.dat"
+        params.neoantigen_cdna   = params.neoantigen_cdna   ?: "${rb}/mskcc-igenomes/grch37/neoantigen/Homo_sapiens.GRCh37.75.cdna.all.fa.gz"
+        params.neoantigen_cds    = params.neoantigen_cds    ?: "${rb}/mskcc-igenomes/grch37/neoantigen/Homo_sapiens.GRCh37.75.cds.all.fa.gz"
+        params.vep_cache         = params.vep_cache         ?: "${rb}/mskcc-igenomes/grch37/vep"
+
+        log.info "Resolved references for genome '${params.genome}' from reference_base: ${rb}"
     }
 
     // Validate required reference parameters — fail early with clear message
@@ -93,8 +107,8 @@ workflow MSKCC_TEMPO {
     def missing = required_refs.findAll { !params[it] }
     if (missing) {
         error "Missing required reference parameter(s): ${missing.join(', ')}. " +
-              "Please provide all reference files via params, --genome with conf/references.config, " +
-              "or a config profile (e.g., -profile test)."
+              "Please provide --genome and --reference_base, use -profile test, " +
+              "or set each reference path individually (--fasta, --dbsnp, etc.)."
     }
 
     // Prepare reference channels as value channels (nf-core/sarek pattern)
