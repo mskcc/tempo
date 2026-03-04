@@ -39,6 +39,52 @@ workflow MSKCC_TEMPO {
     // WORKFLOW: Run pipeline
     //
 
+    // ---------------------------------------------------------------
+    // Resolve genome references: bridge original Tempo params.genomes
+    // structure (from conf/references.config) to nf-core flat params.
+    // If flat params (e.g. params.fasta) are already set (e.g. via
+    // -profile test), they take priority.  Otherwise, look up from
+    // params.genomes[params.genome].
+    // ---------------------------------------------------------------
+    def genomeRef = (params.genome && params.genomes && params.genomes.containsKey(params.genome))
+                    ? params.genomes[params.genome]
+                    : [:]
+
+    // Helper: resolve a flat param from the genomes map, with a mapping
+    // from nf-core flat param name -> original Tempo genomes key name
+    def refMapping = [
+        fasta            : 'genomeFile',
+        fasta_fai        : 'genomeIndex',
+        dict             : 'genomeDict',
+        bwa_index        : 'bwaIndex',
+        dbsnp            : 'dbsnp',
+        dbsnp_tbi        : 'dbsnpIndex',
+        known_indels     : 'knownIndels',
+        known_indels_tbi : 'knownIndelsIndex',
+        intervals        : 'intervals',
+        germline_resource     : 'gnomadWesVcf',
+        germline_resource_tbi : 'gnomadWesVcfIndex',
+        msi_sensor_list  : 'msiSensorList',
+        facets_vcf       : 'facetsVcf',
+        delly_exclude_regions : 'svCallingExcludeRegions',
+        snp_gc_corrections    : 'snpGcCorrections',
+    ]
+
+    // For each mapping, if the flat param is not set, fill from genomes map
+    refMapping.each { flatKey, genomesKey ->
+        if (!params[flatKey] && genomeRef[genomesKey]) {
+            params[flatKey] = genomeRef[genomesKey]
+        }
+    }
+
+    // Resolve PON based on assay_type (exome vs genome)
+    if (!params.pon && genomeRef) {
+        def ponKey = params.assay_type == 'genome' ? 'wgsPoN' : 'exomePoN'
+        def ponIdxKey = params.assay_type == 'genome' ? 'wgsPoNIndex' : 'exomePoNIndex'
+        if (genomeRef[ponKey])    params.pon     = genomeRef[ponKey]
+        if (genomeRef[ponIdxKey]) params.pon_tbi = genomeRef[ponIdxKey]
+    }
+
     // Validate required reference parameters — fail early with clear message
     def required_refs = [
         'fasta', 'fasta_fai', 'dict', 'bwa_index',
@@ -47,7 +93,8 @@ workflow MSKCC_TEMPO {
     def missing = required_refs.findAll { !params[it] }
     if (missing) {
         error "Missing required reference parameter(s): ${missing.join(', ')}. " +
-              "Please provide all reference files via params or a config profile (e.g., -profile test)."
+              "Please provide all reference files via params, --genome with conf/references.config, " +
+              "or a config profile (e.g., -profile test)."
     }
 
     // Prepare reference channels as value channels (nf-core/sarek pattern)
