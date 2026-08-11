@@ -1,5 +1,7 @@
 process CreateScatteredIntervals {
   tag "${targetId}"
+  publishDir "${params.outdir}/intervals", mode: 'copy', enabled: false  // Disabled publishing
+  array 0
 
   input:
     tuple path(genomeFile), path(genomeIndex), path(genomeDict)
@@ -17,9 +19,9 @@ process CreateScatteredIntervals {
     --intervals ${targets} \
     --scatter-count ${scatterCount} \
     --subdivision-mode ${subdivision_mode} \
-    --output $targetId
+    --output ${targetId}
 
-  for i in $targetId/*.interval_list;
+  for i in ${targetId}/*.interval_list;
   do
     BASENAME=`basename \$i`
     mv \$i ${targetId}-\$BASENAME

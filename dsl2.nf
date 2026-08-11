@@ -1,13 +1,14 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl = 2
 
-if (!(workflow.profile in ['juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
+if (!(workflow.profile in ['iris','juno', 'awsbatch', 'docker', 'singularity', 'test_singularity', 'test'])) {
   println 'ERROR: You need to set -profile (values: juno, awsbatch, docker, singularity)'
   exit 1
 }
 
 // User-set runtime parameters
 outDir           = file(params.outDir).toAbsolutePath()
+outDirSomatic    = file(params.outDir).toAbsolutePath() + '/somatic/'
 outname          = params.outname
 runAggregate     = params.aggregate
 runConpairAll    = false
@@ -322,7 +323,7 @@ workflow {
 }
 workflow.onComplete {
   file(params.fileTracking).text = ""
-  file(outDir).eachFileRecurse{
+  file(outDirSomatic).eachFileRecurse{
     file(params.fileTracking).append(it + "\n")
   }
 }
