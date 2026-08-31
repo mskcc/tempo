@@ -1,5 +1,9 @@
 {
     "test_full": {
+        "command": ["nextflow", "run", "dsl2.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor,germSNV,germSV", "-resume", "--aggregate"],
+        "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/default_cohort/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
+    },
+    "test_full_abra2": {
         "command": ["nextflow", "run", "dsl2.nf", "--mapping", "tests/mapping.tsv", "--pairing", "tests/pairing.tsv", "-profile", "test", "--workflows", "snv,sv,mutsig,lohhla,facets,msisensor,germSNV,germSV", "-resume", "--aggregate", "--abra2"],
         "checks": [{"type": "checkNumberOfLines", "filename": "test-data/test_result/cohort_level/default_cohort/sample_data.txt", "num_lines": 2}, {"type": "checkExitCode", "expected": 0}]
     },
