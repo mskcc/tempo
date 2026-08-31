@@ -1,0 +1,17 @@
+{
+  "name": "tempo",
+  "homePage": "https://github.com/mskcc/tempo",
+  "repos": {
+    "https://github.com/nf-core/modules.git": {
+      "modules": {
+        "nf-core": {
+          "abra2": {
+            "branch": "master",
+            "git_sha": "4dd270e412e2a7e78761be38aafa5cfa1dcdf891",
+            "installed_by": ["modules"]
+          }
+        }
+      }
+    }
+  }
+}
