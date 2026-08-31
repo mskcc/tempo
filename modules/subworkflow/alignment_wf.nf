@@ -3,6 +3,7 @@ include { AlignReads }                 from '../process/Alignment/AlignReads'
 include { MergeBamsAndMarkDuplicates } from '../process/Alignment/MergeBamsAndMarkDuplicates'
 include { RunBQSR }                    from '../process/Alignment/RunBQSR'
 include { ABRA2 }                      from '../nf-core/abra2/main'
+include { IndexBam }                   from '../process/Alignment/IndexBam'
 
 workflow alignment_wf
 {
@@ -177,9 +178,11 @@ workflow alignment_wf
           Channel.value([[:], []])    // known_indels: tempo's knownIndels is a multi-file glob; --in-vcf takes one
         )
 
-        bamsForBQSR = ABRA2.out.bam
-          .join(ABRA2.out.bai, failOnMismatch: true, failOnDuplicate: true)
-          .map { meta, bam, bai -> tuple(meta.id, bam, bai, meta.target) }
+        IndexBam(
+          ABRA2.out.bam.map { meta, bam -> tuple(meta.id, bam, meta.target) }
+        )
+
+        bamsForBQSR = IndexBam.out.indexedBam
       }
       else {
         bamsForBQSR = MergeBamsAndMarkDuplicates.out.mdBams
