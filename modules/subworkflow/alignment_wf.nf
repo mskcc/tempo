@@ -1,7 +1,9 @@
 include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
 include { AlignReads }                 from '../process/Alignment/AlignReads'
 include { MergeBamsAndMarkDuplicates } from '../process/Alignment/MergeBamsAndMarkDuplicates'
-include { RunBQSR }                    from '../process/Alignment/RunBQSR' 
+include { RunBQSR }                    from '../process/Alignment/RunBQSR'
+include { ABRA2 }                      from '../nf-core/abra2/main'
+include { SAMTOOLS_INDEX }             from '../nf-core/samtools/index/main'
 
 workflow alignment_wf
 {
@@ -157,7 +159,36 @@ workflow alignment_wf
         .set { groupedBam }
 
       MergeBamsAndMarkDuplicates(groupedBam)
-      RunBQSR(MergeBamsAndMarkDuplicates.out.mdBams,
+
+      if (params.abra2) {
+        MergeBamsAndMarkDuplicates.out.mdBams
+          .multiMap { idSample, bam, bai, target ->
+            bams:    tuple([id: idSample, target: target], bam, bai)
+            targets: tuple([id: idSample, target: target],
+                           params.assayType == "genome" ? [] : targetsMap[target].targetsBed)
+          }
+          .set { abraInput }
+
+        ABRA2(
+          abraInput.bams,
+          Channel.value([[id: 'genome'], referenceMap.genomeFile]),
+          Channel.value([[id: 'genome'], referenceMap.genomeIndex]),
+          abraInput.targets,
+          Channel.value([[:], []]),   // gtf: RNA-only, unused
+          Channel.value([[:], []])    // known_indels: tempo's knownIndels is a multi-file glob; --in-vcf takes one
+        )
+
+        SAMTOOLS_INDEX(ABRA2.out.bam)
+
+        bamsForBQSR = ABRA2.out.bam
+          .join(SAMTOOLS_INDEX.out.index, failOnMismatch: true, failOnDuplicate: true)
+          .map { meta, bam, index -> tuple(meta.id, bam, index, meta.target) }
+      }
+      else {
+        bamsForBQSR = MergeBamsAndMarkDuplicates.out.mdBams
+      }
+
+      RunBQSR(bamsForBQSR,
               Channel.value([
                 referenceMap.genomeFile,
                 referenceMap.genomeIndex,
