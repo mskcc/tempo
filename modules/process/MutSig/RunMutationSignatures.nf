@@ -1,5 +1,6 @@
 process RunMutationSignatures {
   tag "${idTumor + "__" + idNormal}"
+  publishDir "${params.outDir}/somatic/${outputPrefix}/MutationSignatures", mode: 'copy', enabled: false  // Disabled publishing
 
   input:
     tuple val(idTumor), val(idNormal), val(target), path(maf)
