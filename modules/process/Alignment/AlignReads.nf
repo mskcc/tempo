@@ -36,9 +36,14 @@ process AlignReads {
   // memDivider --- If mem_per_core is true, use 1. Else, use task.cpus
   // memMultiplier --- If mem_per_core is false, use 1. Else, use task.cpus
   // originalMem -- If this is the first attempt, use task.memory. Else, use `originalMem`
+  // allocatedMem -- total memory actually reserved for this task, in MB. Read before the
+  // branches below, which rewrite `task.memory` and make it unusable as a measure of what the
+  // scheduler granted. On juno (mem_per_core = true) the reservation is per-core, so multiply
+  // by task.cpus; on iris/aws it is already the whole-task figure.
   mem = (inputSize/1024**2).round()
   memDivider = params.mem_per_core ? 1 : task.cpus
   memMultiplier = params.mem_per_core ? task.cpus : 1
+  allocatedMem = task.memory.toMega() * memMultiplier
   originalMem = task.attempt ==1 ? task.memory : originalMem
 
   if ( mem < 6 * 1024 / task.cpus ) {
@@ -58,7 +63,11 @@ process AlignReads {
 
   task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
-  mem = (mem * task.cpus ) > (task.memory.toMega() * .95).round() ? (task.memory.toMega() * .95 / task.cpus ).round() : mem
+  // `samtools sort -m` is a per-thread budget and we run task.cpus threads (`-@ task.cpus - 1`),
+  // so its footprint is mem * task.cpus. Keep that under 95% of the memory actually reserved.
+  // Cap against allocatedMem, not task.memory: the branches above inflate task.memory to fit the
+  // input, but that rewrite does not change what the scheduler already reserved for the job.
+  mem = (mem * task.cpus) > (allocatedMem * .95) ? (allocatedMem * .95 / task.cpus).round() : mem
 
   filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
   """

@@ -22,7 +22,8 @@ process QcQualimap {
     nr = 500
     nw = 300
   }
-  availMem = task.memory.toString().split(" ")[0].toInteger()
+  memMultiplier = params.mem_per_core ? task.cpus : 1
+  availMem = task.memory.toString().split(" ")[0].toInteger() * memMultiplier
   // javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
   javaMem = availMem > 20 ? (availMem * 0.75).round() : ( availMem > 1 ? availMem - 1 : 1 )
   if (workflow.profile == "juno") {
