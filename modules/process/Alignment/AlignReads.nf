@@ -58,6 +58,8 @@ process AlignReads {
 
   task.memory = task.memory.toGiga() < 1 ? { 1.GB } : task.memory
 
+  mem = (mem * task.cpus ) > (task.memory.toMega() * .95).round() ? (task.memory.toMega() * .95 / task.cpus ).round() : mem
+
   filePartNo = fastqFile1.getSimpleName().split("_R1")[-1]
   """
   rgID=`zcat $fastqFile1 | head -1 | tr ':/' '@' | cut -d '@' -f2-5`
@@ -78,7 +80,7 @@ process AlignReads {
   fastp --html ${idSample}@\${rgID}${filePartNo}.fastp.html --json ${idSample}@\${rgID}${filePartNo}.fastp.json --in1 \${fastq1} --in2 \${fastq2}
   bwa mem -R \"\${readGroup}\" -t ${task.cpus} -M ${genomeFile} \${fastq1} \${fastq2} | samtools view -Sb - > ${idSample}@\${rgID}${filePartNo}.bam
 
-  samtools sort -m ${mem}M -@ ${task.cpus} -o ${idSample}@\${rgID}${filePartNo}.sorted.bam ${idSample}@\${rgID}${filePartNo}.bam
+  samtools sort -m ${mem}M -@ ${task.cpus - 1} -o ${idSample}@\${rgID}${filePartNo}.sorted.bam ${idSample}@\${rgID}${filePartNo}.bam
   echo -e "${fileID}@${lane}\t${inputSize}" > file-size.txt
   """
 }

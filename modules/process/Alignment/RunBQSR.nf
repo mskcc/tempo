@@ -12,7 +12,7 @@
       path("file-size.txt"), emit: bamSize
 
     script:
-    if (workflow.profile == "juno") {
+    if (workflow.profile == "iris") {
       if(bam.size() > 200.GB) {
         task.time = { params.maxWallTime }
       }
@@ -29,9 +29,7 @@
     }
     else {
       sparkConf=""
-      task.cpus = 4
-      task.memory = { 6.GB }
-      if (workflow.profile == "juno"){ task.time = { params.maxWallTime } }
+      if (workflow.profile == "iris"){ task.time = { params.maxWallTime } }
     }
     
     memMultiplier = params.mem_per_core ? task.cpus : 1
