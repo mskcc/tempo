@@ -19,15 +19,18 @@ process AlignReads {
   // if total size of the FASTQ pairs is over 20 GB, use params.maxWallTimeours
   // if total size of the FASTQ pairs is under 12 GB, use 3h. If there is a 140 error, try again with 6h. If 6h doesn't work, try 500h.
   inputSize = sizeFastqFile1 + sizeFastqFile2
+  // params.wallTimeExitCode is a comma-delimited string. Groovy's `in` on a String tests
+  // equality against the whole value, not membership, so split it first.
+  wallTimeExitCodes = params.wallTimeExitCode ? params.wallTimeExitCode.tokenize(',')*.trim() : []
   if (workflow.profile == "juno") {
     if (inputSize > 18.GB) {
       task.time = { params.maxWallTime }
     }
     else if (inputSize < 9.GB) {
-      task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCodes ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCodes ? { params.maxWallTime } : { params.medWallTime }
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }

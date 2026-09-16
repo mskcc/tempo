@@ -26,15 +26,18 @@ process QcQualimap {
   availMem = task.memory.toString().split(" ")[0].toInteger() * memMultiplier
   // javaMem = availMem > 20 ? availMem - 4 : ( availMem > 10 ? availMem - 2 : ( availMem > 1 ? availMem - 1 : 1 ))
   javaMem = availMem > 20 ? (availMem * 0.75).round() : ( availMem > 1 ? availMem - 1 : 1 )
+  // params.wallTimeExitCode is a comma-delimited string. Groovy's `in` on a String tests
+  // equality against the whole value, not membership, so split it first.
+  wallTimeExitCodes = params.wallTimeExitCode ? params.wallTimeExitCode.tokenize(',')*.trim() : []
   if (workflow.profile == "juno") {
     if (bam.size() > 200.GB) {
       task.time = { params.maxWallTime }
     }
     else if (bam.size() < 100.GB) {
-      task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.medWallTime } : { params.minWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCodes ? { params.medWallTime } : { params.minWallTime }
     }
     else {
-      task.time = task.exitStatus.toString() in params.wallTimeExitCode ? { params.maxWallTime } : { params.medWallTime }
+      task.time = task.exitStatus.toString() in wallTimeExitCodes ? { params.maxWallTime } : { params.medWallTime }
     }
     task.time = task.attempt < 3 ? task.time : { params.maxWallTime }
   }
