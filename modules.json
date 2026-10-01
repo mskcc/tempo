@@ -7,7 +7,7 @@
         "msk": {
           "custom/filteredgeindels": {
             "branch": "feature/custom/filteredgeindels",
-            "git_sha": "28860431531c428ed4c67e6a02af118b24a504f0",
+            "git_sha": "c47e24fac2a2e2c3dd8a6f08f2699aa94cbcb0be",
             "installed_by": ["modules"]
           }
         }
