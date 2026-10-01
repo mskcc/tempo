@@ -7,7 +7,7 @@
         "nf-core": {
           "abra2": {
             "branch": "master",
-            "git_sha": "4dd270e412e2a7e78761be38aafa5cfa1dcdf891",
+            "git_sha": "d8519701300f99de0ff6db954df2e20dadb77717",
             "installed_by": ["modules"]
           },
           "samtools/index": {
