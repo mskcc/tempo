@@ -2,6 +2,17 @@
   "name": "tempo",
   "homePage": "https://github.com/mskcc/tempo",
   "repos": {
+    "https://github.com/mskcc-omics-workflows/modules.git": {
+      "modules": {
+        "msk": {
+          "custom/filteredgeindels": {
+            "branch": "feature/custom/filteredgeindels",
+            "git_sha": "28860431531c428ed4c67e6a02af118b24a504f0",
+            "installed_by": ["modules"]
+          }
+        }
+      }
+    },
     "https://github.com/nf-core/modules.git": {
       "modules": {
         "nf-core": {
