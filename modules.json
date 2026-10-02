@@ -2,17 +2,23 @@
   "name": "tempo",
   "homePage": "https://github.com/mskcc/tempo",
   "repos": {
+    "https://github.com/mskcc-omics-workflows/modules.git": {
+      "modules": {
+        "msk": {
+          "custom/filteredgeindels": {
+            "branch": "feature/custom/filteredgeindels",
+            "git_sha": "630cd5018b76dee48e9c8f15ad41f7a4426b8528",
+            "installed_by": ["modules"]
+          }
+        }
+      }
+    },
     "https://github.com/nf-core/modules.git": {
       "modules": {
         "nf-core": {
           "abra2": {
             "branch": "master",
-            "git_sha": "4dd270e412e2a7e78761be38aafa5cfa1dcdf891",
-            "installed_by": ["modules"]
-          },
-          "samtools/index": {
-            "branch": "master",
-            "git_sha": "9339809fcb90af8a8b7051e6cd914894d5c52002",
+            "git_sha": "d8519701300f99de0ff6db954df2e20dadb77717",
             "installed_by": ["modules"]
           }
         }
