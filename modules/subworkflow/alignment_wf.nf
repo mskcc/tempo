@@ -1,7 +1,9 @@
 include { SplitLanesR1; SplitLanesR2 } from '../process/Alignment/SplitLanes' 
 include { AlignReads }                 from '../process/Alignment/AlignReads'
 include { MergeBamsAndMarkDuplicates } from '../process/Alignment/MergeBamsAndMarkDuplicates'
-include { RunBQSR }                    from '../process/Alignment/RunBQSR' 
+include { RunBQSR }                    from '../process/Alignment/RunBQSR'
+include { ABRA2 }                      from '../nf-core/abra2/main'
+include { CUSTOM_FILTEREDGEINDELS }    from '../msk/custom/filteredgeindels/main'
 
 workflow alignment_wf
 {
@@ -157,7 +159,39 @@ workflow alignment_wf
         .set { groupedBam }
 
       MergeBamsAndMarkDuplicates(groupedBam)
-      RunBQSR(MergeBamsAndMarkDuplicates.out.mdBams,
+
+      if (params.abra2) {
+        MergeBamsAndMarkDuplicates.out.mdBams
+          .multiMap { idSample, bam, bai, target ->
+            bams:    tuple([id: idSample, target: target], bam, bai)
+            targets: tuple([id: idSample, target: target],
+                           params.assayType == "genome" ? [] : targetsMap[target].targetsBed)
+          }
+          .set { abraInput }
+
+        ABRA2(
+          abraInput.bams,
+          Channel.value([[id: 'genome'], referenceMap.genomeFile]),
+          Channel.value([[id: 'genome'], referenceMap.genomeIndex]),
+          abraInput.targets,
+          Channel.value([[:], []]),   // gtf: RNA-only, unused
+          Channel.value([[:], []])    // known_indels: tempo's knownIndels is a multi-file glob; --in-vcf takes one
+        )
+
+        // Drop read pairs with unanchored edge-indel CIGARs from ABRA2 (e.g. 92M22D8I) that crash Manta
+        CUSTOM_FILTEREDGEINDELS(
+          ABRA2.out.bam.join(ABRA2.out.bai, failOnMismatch: true, failOnDuplicate: true)
+        )
+
+        bamsForBQSR = CUSTOM_FILTEREDGEINDELS.out.bam
+          .join(CUSTOM_FILTEREDGEINDELS.out.bai, failOnMismatch: true, failOnDuplicate: true)
+          .map { meta, bam, bai -> tuple(meta.id, bam, bai, meta.target) }
+      }
+      else {
+        bamsForBQSR = MergeBamsAndMarkDuplicates.out.mdBams
+      }
+
+      RunBQSR(bamsForBQSR,
               Channel.value([
                 referenceMap.genomeFile,
                 referenceMap.genomeIndex,
