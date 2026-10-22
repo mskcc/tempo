@@ -1,0 +1,3 @@
+# Minimal marker so `nf-core modules` tooling recognises this repo. tempo is not an nf-core-template pipeline; do not run `nf-core lint` against it.
+repository_type: pipeline
+nf_core_version: 4.1.0
